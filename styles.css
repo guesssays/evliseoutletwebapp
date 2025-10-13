@@ -20,11 +20,12 @@
   --bg:#0a0a0a; --paper:#111; --text:#f4f4f4; --muted:#b6b6b6;
   --brand:#ffffff; --accent:#0ea5e9; --stroke:#2a2a2a; --pill:#1f1f1f;
   --radius:18px; --shadow:0 10px 30px rgba(0,0,0,.35);
+  --glass:rgba(255,255,255,.06);
 }
 :root[data-theme="light"]{
   --bg:#f6f7fb; --paper:#fff; --text:#161616; --muted:#5a5a5a;
   --brand:#111; --accent:#0ea5e9; --stroke:#e5e7eb; --pill:#f1f3f5;
-  --shadow:0 8px 24px rgba(16,24,40,.06);
+  --shadow:0 8px 24px rgba(16,24,40,.06); --glass:rgba(0,0,0,.06);
 }
 
 /* === BASE === */
@@ -66,12 +67,25 @@ body{
 }
 
 /* === LAYOUT === */
-.view{ padding:16px; max-width:1100px; margin:0 auto 90px}
+.view{ padding:16px; max-width:1100px; margin:0 auto 110px}
 .grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:18px}
 @media(min-width:640px){ .grid{grid-template-columns:repeat(3,1fr)} }
 @media(min-width:960px){ .grid{grid-template-columns:repeat(4,1fr)} }
 
-/* === CARDS (как в референсе: только название + цена) === */
+/* === ONLINE SHOWCASE (промо-слайды) === */
+.showcase{
+  display:flex; gap:12px; overflow:auto; scroll-snap-type:x mandatory; padding:4px 2px 8px;
+}
+.showcase .slide{
+  min-width:84%; max-width:84%; scroll-snap-align:start;
+  border:1px solid var(--stroke); border-radius:18px; background:linear-gradient(120deg,#0ea5e9 0%,#22c55e 100%);
+  color:#fff; padding:16px; box-shadow:var(--shadow);
+}
+:root[data-theme="light"] .showcase .slide{ color:#0b1020 }
+.slide .title{ font-family:"BebasNeueCyrillic", sans-serif; font-size:22px; letter-spacing:.5px; text-transform:uppercase }
+.slide .text{ opacity:.9; margin-top:4px }
+
+/* === CARDS (как на референсе: название + цена) === */
 .card{
   display:block; overflow:hidden; border:1px solid var(--stroke); border-radius:var(--radius);
   background:var(--paper); text-decoration:none; color:inherit; box-shadow:var(--shadow);
@@ -87,6 +101,9 @@ body{
   letter-spacing:.8px; font-size:18px; line-height:1.1;
 }
 .card-price{ color:var(--muted); margin-top:6px; font-size:14px }
+
+/* Отступ между фильтрами и сеткой */
+.toolbar + .grid{ margin-top:14px }
 
 /* === TYPO === */
 .section{ margin:6px 0 18px}
@@ -132,20 +149,21 @@ body{
 
 /* === PRODUCT PAGE === */
 .product{ display:grid; gap:16px; grid-template-columns:1fr}
-@media(min-width:860px){ .product{ grid-template-columns: 1.2fr 1fr } }
+@media(min-width:940px){ .product{ grid-template-columns: 1.2fr 1fr } }
 .p-gallery{ border:1px solid var(--stroke); border-radius:var(--radius); overflow:hidden; background:#0e0e0e}
 :root[data-theme="light"] .p-gallery{background:#f3f4f6}
+.gallery-strip{
+  display:flex; gap:6px; overflow:auto; padding:6px; background:var(--paper); border-top:1px solid var(--stroke)
+}
+.gallery-strip img{ width:76px; height:76px; object-fit:cover; border-radius:10px; cursor:pointer; border:1px solid var(--stroke) }
+.real-photos{ margin-top:10px; border:1px solid var(--stroke); border-radius:16px; overflow:hidden; background:var(--paper) }
+.real-photos h3{ margin:10px 12px 0; font-size:16px }
+.real-photos .strip{ display:flex; gap:8px; padding:10px; overflow:auto }
+.real-photos .strip img{ width:120px; height:160px; object-fit:cover; border-radius:12px; border:1px solid var(--stroke) }
+
 .p-gallery img{ width:100%; display:block; object-fit:cover }
 .p-panel{ border:1px solid var(--stroke); border-radius:var(--radius); padding:16px; background:var(--paper)}
 .price{ font-weight:800; margin:8px 0 12px}
-
-.btn{
-  display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:12px 14px;
-  border-radius:999px; border:1px solid var(--stroke);
-  background:var(--accent); color:#fff; cursor:pointer; font-weight:800;
-}
-.btn.secondary{ background:var(--paper); color:var(--text) }
-.push-right{ margin-left:auto } /* в корзине — «Оформить» справа */
 
 .size-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:10px 0 6px}
 .size{ padding:10px; border:1px solid var(--stroke); border-radius:12px; text-align:center; cursor:pointer; background:var(--paper); color:var(--text)}
@@ -155,6 +173,22 @@ body{
 .table{ width:100%; border-collapse:collapse; font-size:14px }
 .table th,.table td{ border:1px solid var(--stroke); padding:8px; text-align:center}
 .table th{ background:var(--pill); color:var(--text)}
+
+/* === ACTION BAR (круглые стеклянные кнопки) === */
+.action-bar{
+  position:fixed; left:0; right:0; bottom:14px; z-index:55;
+  display:flex; justify-content:center; gap:14px;
+}
+.action-btn{
+  width:56px; height:56px; border-radius:50%;
+  display:grid; place-items:center; color:var(--text);
+  background:var(--glass); border:1px solid var(--stroke);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  box-shadow:0 10px 30px rgba(0,0,0,.35); cursor:pointer;
+}
+.action-btn i, .action-btn svg{ width:24px; height:24px }
+.action-btn.primary{ outline:2px solid rgba(14,165,233,.25) }
+.action-btn.heart-active{ color:#ef4444 }
 
 /* === CART === */
 .cart{ display:grid; gap:12px}
@@ -166,10 +200,20 @@ body{
 .footer-note{ color:var(--muted); font-size:13px; margin-top:10px}
 .link{ color:var(--accent); text-decoration:none}
 
+.cart-actions{ display:flex; gap:8px; margin-top:10px }
+.cart-actions .btn{ flex:1; min-width:0 }
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:12px 14px;
+  border-radius:999px; border:1px solid var(--stroke);
+  background:var(--accent); color:#fff; cursor:pointer; font-weight:800;
+}
+.btn.secondary{ background:var(--paper); color:var(--text) }
+.push-right{ margin-left:auto }
+
 /* === MODAL & TOAST === */
 .modal{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.55); z-index:60}
 .modal.show{ display:grid }
-.modal-dialog{ width:min(92vw,520px); background:var(--paper); border:1px solid var(--stroke); border-radius:16px; box-shadow:var(--shadow); overflow:hidden }
+.modal-dialog{ width:min(92vw,560px); background:var(--paper); border:1px solid var(--stroke); border-radius:16px; box-shadow:var(--shadow); overflow:hidden }
 .modal-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 14px; border-bottom:1px solid var(--stroke); font-weight:800}
 .modal-body{ padding:14px }
 .modal-actions{ display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--stroke); justify-content:flex-end}
@@ -183,3 +227,11 @@ body{
   background:#22c55e; color:#fff; text-decoration:none; border:1px solid #16a34a; box-shadow:0 10px 30px rgba(34,197,94,.35);
 }
 .fab-support i{ width:24px; height:24px }
+
+/* === FAQ (улучшенная стилизация) === */
+.faq{ display:grid; gap:12px }
+.faq .item{ border:1px solid var(--stroke); border-radius:16px; overflow:hidden; background:var(--paper); box-shadow:var(--shadow) }
+.faq summary{ list-style:none; cursor:pointer; padding:14px 16px; font-weight:800; display:flex; align-items:center; gap:8px }
+.faq summary::marker{display:none}
+.faq .content{ padding:0 16px 16px; color:var(--muted) }
+.faq .badge{ margin-left:auto; background:var(--pill); border:1px solid var(--stroke); color:var(--text); padding:2px 8px; border-radius:999px; font-size:12px }

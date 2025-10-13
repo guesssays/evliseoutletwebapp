@@ -1,8 +1,7 @@
-// === Evlise Outlet WebApp (enhanced) ===
-// Светлая/тёмная тема, RU/UZ, валюта UZS,
-// модалки/тосты, FAQ, фильтры, индивидуальные размерные сетки,
-// плавающая поддержка, меню справа.
-// tg.MainButton показываем ТОЛЬКО в корзине.
+// === Evlise Outlet WebApp ===
+// RU/UZ, цены в UZS, шрифты, соц-иконки в меню,
+// карточки как на референсе (только название и цена),
+// индивидуальные размерные сетки, улучшенная корзина.
 
 const tg = window.Telegram?.WebApp;
 if (tg) {
@@ -14,7 +13,7 @@ if (tg) {
 
 // ------ Settings ------
 const PRICE_CURRENCY = 'UZS';
-const RUB_TO_UZS = 1; // цены в JSON уже считаем как UZS
+const RUB_TO_UZS = 1; // цены уже в сумах
 const DEFAULT_LANG = localStorage.getItem('evlise_lang') || 'ru';
 const DEFAULT_THEME = localStorage.getItem('evlise_theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
 
@@ -180,7 +179,7 @@ function buildDrawer(){
 
 /* ---------- Router ---------- */
 function router(){
-  if (tg?.MainButton) tg.MainButton.hide(); // на всех страницах, кроме корзины
+  if (tg?.MainButton) tg.MainButton.hide(); // прячем везде, кроме корзины
   const hash = location.hash.replace(/^#/, '') || '/';
   for (const pattern in routes){
     const match = matchRoute(pattern, hash);
@@ -208,6 +207,21 @@ function renderHome(){
       <div class="h1">${t('categories')}</div>
       <div class="grid" id="catGrid"></div>
     </section>
+
+    <!-- онлайн-витрина/промо -->
+    <section class="section">
+      <div class="showcase">
+        <div class="slide">
+          <div class="title">-20% на худи</div>
+          <div class="text">Только до конца недели, промокод: EV20</div>
+        </div>
+        <div class="slide" style="background:linear-gradient(120deg,#22c55e,#14b8a6)">
+          <div class="title">Бесплатная доставка</div>
+          <div class="text">при заказе от 700 000 сумов</div>
+        </div>
+      </div>
+    </section>
+
     <section class="section">
       <div class="row" style="justify-content:space-between; align-items:end">
         <div>
@@ -284,7 +298,14 @@ function renderProduct({id}){
 
   view.innerHTML = `
     <div class="product">
-      <div class="p-gallery"><img src="${p.images[0]}" alt="${p.title}"/></div>
+      <div class="p-gallery" id="gWrap">
+        <img id="gMain" src="${p.images[0]}" alt="${p.title}"/>
+        <div class="gallery-strip" id="gStrip"></div>
+        <div class="real-photos">
+          <h3>Реальные фото</h3>
+          <div class="strip" id="realStrip"></div>
+        </div>
+      </div>
       <div class="p-panel">
         <div class="h1">${p.title}</div>
         <div class="sub">${p.subtitle || ''}</div>
@@ -297,7 +318,6 @@ function renderProduct({id}){
           <div class="size-grid" id="colorGrid"></div>
         ` : ''}
 
-        <button class="btn" id="addBtn" style="margin-top:8px"><i data-lucide="plus"></i>${t('addToCart')}</button>
         <div class="hr"></div>
 
         <div class="h2">${t('description')}</div>
@@ -311,14 +331,40 @@ function renderProduct({id}){
         ${p.sizeChart ? `<div class="hr"></div><div class="h2">${t('sizeChart')}</div>${renderSizeChartHTML(p.sizeChart)}` : ''}
       </div>
     </div>
+
+    <!-- стеклянные action-кнопки снизу -->
+    <div class="action-bar" id="actionBar">
+      <button class="action-btn" id="favBtn" title="В избранное"><i data-lucide="heart"></i></button>
+      <a class="action-btn" id="homeBtn" title="Главная" href="#/"><i data-lucide="home"></i></a>
+      <button class="action-btn primary" id="cartBtn" title="Добавить в корзину"><i data-lucide="plus"></i></button>
+    </div>
   `;
+
+  // миниатюры из p.images (если всего одна - дублируем превью)
+  const thumbs = p.images.length ? p.images : [p.images[0]];
+  const strip = el('#gStrip');
+  thumbs.forEach(src => {
+    const im = new Image();
+    im.src = src; im.alt = p.title; 
+    im.onclick = () => el('#gMain').src = src;
+    strip.appendChild(im);
+  });
+
+  // «реальные фото» — пока используем те же, можно заменить на реальные URL
+  const realStrip = el('#realStrip');
+  (p.realPhotos || thumbs).forEach(src => {
+    const im = new Image();
+    im.src = src; im.alt = p.title + ' real';
+    realStrip.appendChild(im);
+  });
 
   // Размеры
   const sg = el('#sizeGrid');
+  let selectedSize = null;
   sizes.forEach(s => {
     const b = document.createElement('button');
     b.className='size'; b.textContent=s;
-    b.onclick = () => { sg.querySelectorAll('.size').forEach(x=>x.classList.remove('active')); b.classList.add('active'); };
+    b.onclick = () => { sg.querySelectorAll('.size').forEach(x=>x.classList.remove('active')); b.classList.add('active'); selectedSize = s; };
     sg.appendChild(b);
   });
 
@@ -334,11 +380,24 @@ function renderProduct({id}){
     });
   }
 
-  el('#addBtn').onclick = () => {
-    const sel = sg ? sg.querySelector('.size.active') : null;
-    const size = sel ? sel.textContent : null;
-    addToCart(p, size, selectedColor);
+  // Action buttons behaviour
+  const cartBtn = el('#cartBtn');
+  const favBtn  = el('#favBtn');
+  cartBtn.onclick = () => {
+    addToCart(p, selectedSize, selectedColor);
+    cartBtn.innerHTML = '<i data-lucide="shopping-bag"></i>';
+    cartBtn.title = 'Перейти в корзину';
+    cartBtn.onclick = () => location.hash = '#/cart';
+    lucide.createIcons();
   };
+  favBtn.onclick = () => {
+    favBtn.classList.toggle('heart-active');
+    favBtn.innerHTML = favBtn.classList.contains('heart-active')
+      ? '<i data-lucide="heart"></i>' // заливка имитируется цветом
+      : '<i data-lucide="heart"></i>';
+    lucide.createIcons();
+  };
+
   lucide.createIcons();
 }
 
@@ -405,7 +464,6 @@ function renderCart(){
     localStorage.setItem('evlise_note', state.orderNote);
   };
 
-  // Показываем MainButton только здесь
   if (tg){
     tg.MainButton.setText(t('proceed'));
     tg.MainButton.show();
@@ -421,11 +479,23 @@ function renderFAQ(){
   view.innerHTML = `
     <section class="section">
       <div class="h1">${t('faq')}</div>
-      <div class="p-panel">
-        <details open><summary>Как оформить заказ?</summary><p>Добавьте товар в корзину, перейдите в «${t('cart')}» и нажмите «${t('proceed')}». Заказ уйдёт менеджеру в Telegram.</p></details>
-        <details><summary>Оплата и доставка</summary><p>Оплата по согласованию с менеджером. Доставка курьером/самовывоз.</p></details>
-        <details><summary>Возвраты и обмен</summary><p>В течение 14 дней при сохранении товарного вида. Уточняйте условия в поддержке.</p></details>
-        <details><summary>Как подобрать размер?</summary><p>Смотрите раздел «${t('sizeChart')}» в карточке товара или напишите нам в поддержку.</p></details>
+      <div class="faq">
+        <details class="item" open>
+          <summary>Как оформить заказ? <span class="badge">шаг-за-шагом</span></summary>
+          <div class="content"><p>Добавьте товар в корзину, перейдите в «${t('cart')}» и нажмите «${t('proceed')}». Заказ уйдёт менеджеру в Telegram.</p></div>
+        </details>
+        <details class="item">
+          <summary>Оплата и доставка</summary>
+          <div class="content"><p>Оплата по согласованию с менеджером. Доставка курьером/самовывоз.</p></div>
+        </details>
+        <details class="item">
+          <summary>Возвраты и обмен</summary>
+          <div class="content"><p>В течение 14 дней при сохранении товарного вида. Уточняйте условия в поддержке.</p></div>
+        </details>
+        <details class="item">
+          <summary>Как подобрать размер?</summary>
+          <div class="content"><p>Смотрите раздел «${t('sizeChart')}» в карточке товара или напишите нам в поддержку.</p></div>
+        </details>
       </div>
     </section>
   `;
@@ -583,7 +653,6 @@ function priceFmt(v){
 function getCategoryName(slug){ return state.categories.find(c=>c.slug===slug)?.name || slug; }
 
 function renderSizeChartHTML(chart){
-  // chart: { headers:[], rows:[[...],[...]] }
   const thead = `<tr>${chart.headers.map(h=>`<th>${h}</th>`).join('')}</tr>`;
   const body = chart.rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('');
   return `<div class="table-wrap"><table class="table">${thead}${body}</table></div>`;
