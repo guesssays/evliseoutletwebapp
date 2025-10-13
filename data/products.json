@@ -11,20 +11,28 @@
       "title": "Nasledstvo Tank Top — White",
       "subtitle": "Лайк-референс Murka",
       "category": "tops",
-      "price": 190000, 
+      "price": 190000,
       "sizes": ["XS","S","M","L"],
       "colors": ["White","Black"],
-      "images": ["https://images.unsplash.com/photo-1520975922325-24ba2b56b1c0?auto=format&fit=crop&w=1080&q=70"],
+      "images": [
+        "https://images.unsplash.com/photo-1520975922325-24ba2b56b1c0?auto=format&fit=crop&w=1080&q=70",
+        "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=1080&q=70",
+        "https://images.unsplash.com/photo-1542060748-10c28b62716f?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "realPhotos": [
+        "https://images.unsplash.com/photo-1553050938-005eec06c04b?auto=format&fit=crop&w=1080&q=70",
+        "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1080&q=70"
+      ],
       "description": "Базовый топ из хлопка, посадка по фигуре. Идеален для ежедневных образов.",
       "material": "100% хлопок",
       "badge": "new",
       "sizeChart": {
-        "headers": ["INT","Грудь (см)","Талия (см)","Длина (см)"],
+        "headers": ["INT","Грудь (см)","Талия (см)","Длина (см)","Рост (см)","Вес (кг)"],
         "rows": [
-          ["XS","78–82","60–64","50"],
-          ["S","82–86","64–68","52"],
-          ["M","86–90","68–72","54"],
-          ["L","90–94","72–76","56"]
+          ["XS","78–82","60–64","50","150–160","40–52"],
+          ["S","82–86","64–68","52","158–166","48–58"],
+          ["M","86–90","68–72","54","164–172","56–66"],
+          ["L","90–94","72–76","56","170–178","64–74"]
         ]
       }
     },
@@ -35,16 +43,23 @@
       "price": 550000,
       "sizes": ["S","M","L","XL"],
       "colors": ["Black","Gray"],
-      "images": ["https://images.unsplash.com/photo-1583001804940-c26b0b6b7d3a?auto=format&fit=crop&w=1080&q=70"],
+      "images": [
+        "https://images.unsplash.com/photo-1583001804940-c26b0b6b7d3a?auto=format&fit=crop&w=1080&q=70",
+        "https://images.unsplash.com/photo-1560243563-062b00b4eecb?auto=format&fit=crop&w=1080&q=70",
+        "https://images.unsplash.com/photo-1581619835805-0b6b8d0ff844?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "realPhotos": [
+        "https://images.unsplash.com/photo-1593030668930-29f2a7bc01db?auto=format&fit=crop&w=1080&q=70"
+      ],
       "description": "Прямой крой, мягкий футер, комфортная посадка на талии.",
       "material": "Футер 3-нити",
       "sizeChart": {
-        "headers": ["INT","Талия (см)","Бёдра (см)","Длина по бок. (см)"],
+        "headers": ["INT","Талия (см)","Бёдра (см)","Длина по бок. (см)","Рост (см)","Вес (кг)"],
         "rows": [
-          ["S","70–76","90–96","100"],
-          ["M","76–82","96–102","102"],
-          ["L","82–88","102–108","104"],
-          ["XL","88–94","108–114","106"]
+          ["S","70–76","90–96","100","160–170","50–60"],
+          ["M","76–82","96–102","102","168–176","58–70"],
+          ["L","82–88","102–108","104","174–182","68–82"],
+          ["XL","88–94","108–114","106","180–188","80–95"]
         ]
       }
     },
@@ -55,7 +70,13 @@
       "price": 2000000,
       "sizes": [],
       "colors": ["Black"],
-      "images": ["https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=1080&q=70"],
+      "images": [
+        "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=1080&q=70",
+        "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "realPhotos": [
+        "https://images.unsplash.com/photo-1520975594083-6c02f3b1b68a?auto=format&fit=crop&w=1080&q=70"
+      ],
       "description": "Функциональный рюкзак кросс-силуэта. Несколько карманов, регулируемые лямки.",
       "material": "Эко-кожа",
       "badge": "limit",
@@ -76,15 +97,21 @@
       "price": 390000,
       "sizes": ["S","M","L"],
       "colors": ["Black"],
-      "images": ["https://images.unsplash.com/photo-1520974735194-6112f7c7bd9f?auto=format&fit=crop&w=1080&q=70"],
+      "images": [
+        "https://images.unsplash.com/photo-1520974735194-6112f7c7bd9f?auto=format&fit=crop&w=1080&q=70",
+        "https://images.unsplash.com/photo-1516826957135-700dedea698c?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "realPhotos": [
+        "https://images.unsplash.com/photo-1591381484000-b4db5d3bf4cf?auto=format&fit=crop&w=1080&q=70"
+      ],
       "description": "Универсальная кепка с вышивкой. Регулируемый ремешок.",
       "material": "Хлопок",
       "sizeChart": {
-        "headers": ["INT","Окружность головы (см)"],
+        "headers": ["INT","Окружность головы (см)","Рост (см)","Вес (кг)"],
         "rows": [
-          ["S","54–56"],
-          ["M","56–58"],
-          ["L","58–60"]
+          ["S","54–56","—","—"],
+          ["M","56–58","—","—"],
+          ["L","58–60","—","—"]
         ]
       }
     },
@@ -95,16 +122,23 @@
       "price": 690000,
       "sizes": ["S","M","L","XL"],
       "colors": ["Black","Gray"],
-      "images": ["https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1080&q=70"],
+      "images": [
+        "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1080&q=70",
+        "https://images.unsplash.com/photo-1520975922325-24ba2b56b1c0?auto=format&fit=crop&w=1080&q=70",
+        "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "realPhotos": [
+        "https://images.unsplash.com/photo-1618354691438-a6f57b2fcf6b?auto=format&fit=crop&w=1080&q=70"
+      ],
       "description": "Тёплое худи с мягким начёсом, свободная посадка, фирменный принт.",
       "material": "Хлопок/полиэстер",
       "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)"],
+        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
         "rows": [
-          ["S","96–100","62","66"],
-          ["M","100–104","64","68"],
-          ["L","104–110","66","70"],
-          ["XL","110–116","68","72"]
+          ["S","96–100","62","66","160–170","50–62"],
+          ["M","100–104","64","68","168–176","60–72"],
+          ["L","104–110","66","70","174–182","70–86"],
+          ["XL","110–116","68","72","180–188","84–100"]
         ]
       }
     },
@@ -115,15 +149,21 @@
       "price": 500000,
       "sizes": ["S","M","L"],
       "colors": ["Black"],
-      "images": ["https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=1080&q=70"],
+      "images": [
+        "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=1080&q=70",
+        "https://images.unsplash.com/photo-1542060748-10c28b62716f?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "realPhotos": [
+        "https://images.unsplash.com/photo-1618354691463-04b48195af64?auto=format&fit=crop&w=1080&q=70"
+      ],
       "description": "Минималистичное худи без лишних деталей. Комфорт каждый день.",
       "material": "Футер 3-нити",
       "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)"],
+        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
         "rows": [
-          ["S","94–98","62","66"],
-          ["M","98–102","64","68"],
-          ["L","102–108","66","70"]
+          ["S","94–98","62","66","160–170","48–60"],
+          ["M","98–102","64","68","168–176","58–72"],
+          ["L","102–108","66","70","174–182","68–84"]
         ]
       }
     },
@@ -134,16 +174,22 @@
       "price": 200000,
       "sizes": ["M","L"],
       "colors": ["Gray"],
-      "images": ["https://images.unsplash.com/photo-1529336953121-ad3c67a5ce3f?auto=format&fit=crop&w=1080&q=70"],
+      "images": [
+        "https://images.unsplash.com/photo-1529336953121-ad3c67a5ce3f?auto=format&fit=crop&w=1080&q=70",
+        "https://images.unsplash.com/photo-1516826957135-700dedea698c?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "realPhotos": [
+        "https://images.unsplash.com/photo-1591381484000-b4db5d3bf4cf?auto=format&fit=crop&w=1080&q=70"
+      ],
       "description": "Деним-кепка с изношенным эффектом.",
       "material": "Деним",
       "soldOut": true,
       "badge": "sold out",
       "sizeChart": {
-        "headers": ["INT","Окружность головы (см)"],
+        "headers": ["INT","Окружность головы (см)","Рост (см)","Вес (кг)"],
         "rows": [
-          ["M","56–58"],
-          ["L","58–60"]
+          ["M","56–58","—","—"],
+          ["L","58–60","—","—"]
         ]
       }
     },
@@ -154,14 +200,20 @@
       "price": 590000,
       "sizes": ["S","M"],
       "colors": ["Black","Gray"],
-      "images": ["https://images.unsplash.com/photo-1542060748-10c28b62716f?auto=format&fit=crop&w=1080&q=70"],
+      "images": [
+        "https://images.unsplash.com/photo-1542060748-10c28b62716f?auto=format&fit=crop&w=1080&q=70",
+        "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "realPhotos": [
+        "https://images.unsplash.com/photo-1553050938-005eec06c04b?auto=format&fit=crop&w=1080&q=70"
+      ],
       "description": "Юбка миди с посадкой на талии. Лаконичный силуэт.",
       "material": "Вискоза",
       "sizeChart": {
-        "headers": ["INT","Талия (см)","Бёдра (см)","Длина (см)"],
+        "headers": ["INT","Талия (см)","Бёдра (см)","Длина (см)","Рост (см)","Вес (кг)"],
         "rows": [
-          ["S","62–68","88–94","78"],
-          ["M","68–74","94–100","80"]
+          ["S","62–68","88–94","78","158–166","48–58"],
+          ["M","68–74","94–100","80","164–172","56–66"]
         ]
       }
     }

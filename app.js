@@ -1,7 +1,7 @@
 // === Evlise Outlet WebApp ===
-// RU/UZ, цены в UZS, шрифты, соц-иконки в меню,
-// карточки как на референсе (только название и цена),
-// индивидуальные размерные сетки, улучшенная корзина.
+// RU/UZ, цены в UZS. Мобильное меню с «Избранное», мультигалерея,
+// реальные фото в полноэкранной модалке, цветовые свотчи,
+// мини-подсказки для нижних кнопок, тосты сверху, улучшенная корзина.
 
 const tg = window.Telegram?.WebApp;
 if (tg) {
@@ -13,8 +13,8 @@ if (tg) {
 
 // ------ Settings ------
 const PRICE_CURRENCY = 'UZS';
-const RUB_TO_UZS = 1; // цены уже в сумах
-const DEFAULT_LANG = localStorage.getItem('evlise_lang') || 'ru';
+const RUB_TO_UZS = 1;
+const DEFAULT_LANG  = localStorage.getItem('evlise_lang')  || 'ru';
 const DEFAULT_THEME = localStorage.getItem('evlise_theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
 
 // ------ I18N ------
@@ -34,6 +34,7 @@ const i18n = {
     category: 'Категория',
     sizeChart: 'Размерная сетка',
     cart: 'Корзина',
+    favorites: 'Избранное',
     orderComment: 'Комментарий к заказу',
     orderCommentPlaceholder: 'Напишите пожелания: примерка, удобное время, адрес…',
     total: 'Сумма',
@@ -47,7 +48,8 @@ const i18n = {
     inStockOnly: 'Только в наличии',
     clear: 'Сбросить',
     apply: 'Применить',
-    cancel: 'Отмена'
+    cancel: 'Отмена',
+    emptyFav: 'Список избранного пуст.'
   },
   uz: {
     categories: 'Kategoriyalar',
@@ -64,6 +66,7 @@ const i18n = {
     category: 'Kategoriya',
     sizeChart: 'O‘lcham jadvali',
     cart: 'Savat',
+    favorites: 'Sevimlilar',
     orderComment: 'Buyurtma uchun izoh',
     orderCommentPlaceholder: 'Istaklaringizni yozing: kiyib ko‘rish, vaqt, manzil…',
     total: 'Jami',
@@ -77,7 +80,8 @@ const i18n = {
     inStockOnly: 'Faqat mavjud',
     clear: 'Tozalash',
     apply: 'Qo‘llash',
-    cancel: 'Bekor qilish'
+    cancel: 'Bekor qilish',
+    emptyFav: 'Sevimlilar ro‘yxati bo‘sh.'
   }
 };
 let lang = DEFAULT_LANG;
@@ -89,10 +93,11 @@ const state = {
   categories: [],
   filters: { size: [], colors: [], materials: [], minPrice: null, maxPrice: null, inStock: false },
   cart: JSON.parse(localStorage.getItem('evlise_cart') || '{"items":[]}'),
+  favorites: JSON.parse(localStorage.getItem('evlise_fav') || '[]'), // array of product ids
   orderNote: localStorage.getItem('evlise_note') || ""
 };
 
-// ------ DOM helpers ------
+// ------ DOM ------
 const el = (sel) => document.querySelector(sel);
 const view = el('#view');
 const drawer = el('#drawer');
@@ -114,6 +119,7 @@ const routes = {
   '/product/:id': renderProduct,
   '/cart': renderCart,
   '/faq': renderFAQ,
+  '/favorites': renderFavorites
 };
 
 init();
@@ -168,6 +174,7 @@ function buildDrawer(){
   const nav = el('#drawerNav'); nav.innerHTML = '';
   const links = [
     [t('home'), '#/'],
+    [t('favorites'), '#/favorites'],
     [t('faq'), '#/faq'],
     ...state.categories.map(c => [c.name, `#/category/${c.slug}`]),
     [t('cart'), '#/cart']
@@ -179,7 +186,7 @@ function buildDrawer(){
 
 /* ---------- Router ---------- */
 function router(){
-  if (tg?.MainButton) tg.MainButton.hide(); // прячем везде, кроме корзины
+  if (tg?.MainButton) tg.MainButton.hide(); // скрываем везде, кроме корзины
   const hash = location.hash.replace(/^#/, '') || '/';
   for (const pattern in routes){
     const match = matchRoute(pattern, hash);
@@ -208,7 +215,6 @@ function renderHome(){
       <div class="grid" id="catGrid"></div>
     </section>
 
-    <!-- онлайн-витрина/промо -->
     <section class="section">
       <div class="showcase">
         <div class="slide">
@@ -271,6 +277,21 @@ function renderCategory({slug}){
   renderActiveFilterChips();
 }
 
+/* ---------- Favorites ---------- */
+function renderFavorites(){
+  closeDrawer();
+  const favSet = new Set(state.favorites);
+  const list = state.products.filter(p => favSet.has(p.id));
+  view.innerHTML = `
+    <section class="section">
+      <div class="h1">${t('favorites')}</div>
+      <div class="grid" id="productGrid"></div>
+    </section>
+  `;
+  if (list.length) drawProducts(list);
+  else el('#productGrid').innerHTML = `<div class="sub">${t('emptyFav')}</div>`;
+}
+
 /* ---------- Draw products ---------- */
 function drawProducts(list){
   const grid = el('#productGrid'); grid.innerHTML = '';
@@ -301,11 +322,13 @@ function renderProduct({id}){
       <div class="p-gallery" id="gWrap">
         <img id="gMain" src="${p.images[0]}" alt="${p.title}"/>
         <div class="gallery-strip" id="gStrip"></div>
+
         <div class="real-photos">
           <h3>Реальные фото</h3>
           <div class="strip" id="realStrip"></div>
         </div>
       </div>
+
       <div class="p-panel">
         <div class="h1">${p.title}</div>
         <div class="sub">${p.subtitle || ''}</div>
@@ -315,7 +338,7 @@ function renderProduct({id}){
 
         ${colors.length ? `
           <div class="h2" style="margin-top:8px">${t('color')}</div>
-          <div class="size-grid" id="colorGrid"></div>
+          <div class="color-grid" id="colorGrid"></div>
         ` : ''}
 
         <div class="hr"></div>
@@ -332,29 +355,29 @@ function renderProduct({id}){
       </div>
     </div>
 
-    <!-- стеклянные action-кнопки снизу -->
+    <!-- стеклянные action-кнопки -->
     <div class="action-bar" id="actionBar">
-      <button class="action-btn" id="favBtn" title="В избранное"><i data-lucide="heart"></i></button>
-      <a class="action-btn" id="homeBtn" title="Главная" href="#/"><i data-lucide="home"></i></a>
-      <button class="action-btn primary" id="cartBtn" title="Добавить в корзину"><i data-lucide="plus"></i></button>
+      <button class="action-btn ${isFav(p.id)?'heart-active':''}" id="favBtn" data-tip="${isFav(p.id)?'В избранном':'В избранное'}"><i data-lucide="heart"></i></button>
+      <a class="action-btn" id="homeBtn" data-tip="Главная" href="#/"><i data-lucide="home"></i></a>
+      <button class="action-btn primary" id="cartBtn" data-tip="Добавить в корзину"><i data-lucide="plus"></i></button>
     </div>
   `;
 
-  // миниатюры из p.images (если всего одна - дублируем превью)
-  const thumbs = p.images.length ? p.images : [p.images[0]];
+  // миниатюры
   const strip = el('#gStrip');
-  thumbs.forEach(src => {
+  (p.images || []).forEach((src, idx) => {
     const im = new Image();
-    im.src = src; im.alt = p.title; 
+    im.src = src; im.alt = p.title + ' ' + (idx+1);
     im.onclick = () => el('#gMain').src = src;
     strip.appendChild(im);
   });
 
-  // «реальные фото» — пока используем те же, можно заменить на реальные URL
+  // реальные фото (клик — полноэкранно)
   const realStrip = el('#realStrip');
-  (p.realPhotos || thumbs).forEach(src => {
+  (p.realPhotos || []).forEach((src) => {
     const im = new Image();
     im.src = src; im.alt = p.title + ' real';
+    im.onclick = () => openImageFullscreen(src);
     realStrip.appendChild(im);
   });
 
@@ -368,37 +391,48 @@ function renderProduct({id}){
     sg.appendChild(b);
   });
 
-  // Цвета
+  // Цвета как свотчи
   let selectedColor = null;
   if (colors.length){
     const cg = el('#colorGrid');
     colors.forEach(c => {
-      const b = document.createElement('button');
-      b.className='size'; b.textContent=c;
-      b.onclick = () => { cg.querySelectorAll('.size').forEach(x=>x.classList.remove('active')); b.classList.add('active'); selectedColor = c; };
-      cg.appendChild(b);
+      const btn = document.createElement('button');
+      btn.className = 'swatch';
+      btn.title = c;
+      btn.innerHTML = `<span style="background:${colorToHex(c)}"></span>`;
+      btn.onclick = () => { cg.querySelectorAll('.swatch').forEach(x=>x.classList.remove('active')); btn.classList.add('active'); selectedColor = c; };
+      cg.appendChild(btn);
     });
   }
 
-  // Action buttons behaviour
+  // Action buttons
   const cartBtn = el('#cartBtn');
   const favBtn  = el('#favBtn');
+
   cartBtn.onclick = () => {
     addToCart(p, selectedSize, selectedColor);
     cartBtn.innerHTML = '<i data-lucide="shopping-bag"></i>';
-    cartBtn.title = 'Перейти в корзину';
+    cartBtn.setAttribute('data-tip','Перейти в корзину');
     cartBtn.onclick = () => location.hash = '#/cart';
     lucide.createIcons();
   };
+
   favBtn.onclick = () => {
+    toggleFav(p.id);
     favBtn.classList.toggle('heart-active');
-    favBtn.innerHTML = favBtn.classList.contains('heart-active')
-      ? '<i data-lucide="heart"></i>' // заливка имитируется цветом
-      : '<i data-lucide="heart"></i>';
-    lucide.createIcons();
+    favBtn.setAttribute('data-tip', isFav(p.id) ? 'В избранном' : 'В избранное');
   };
 
   lucide.createIcons();
+}
+
+/* ---------- Fullscreen Image ---------- */
+function openImageFullscreen(src){
+  openModal({
+    title: '',
+    body: `<img src="${src}" alt="" style="width:100%;height:auto;display:block;border-radius:12px">`,
+    actions: [{ label: 'OK', onClick: closeModal }]
+  });
 }
 
 /* ---------- Cart ---------- */
@@ -436,18 +470,24 @@ function renderCart(){
     for (const x of enriched){
       const row = document.createElement('div');
       row.className='cart-item';
+      const sw = colorToHex(x.color || '');
       row.innerHTML = `
         <img src="${x.product.images[0]}" alt="${x.product.title}">
         <div>
-          <div><b>${x.product.title}</b></div>
-          <div class="sub">${t('size')}: ${x.size || '—'}${x.color ? ` · ${t('color')}: ${x.color}` : ''}</div>
-          <div class="sub">${priceFmt(x.product.price)}</div>
+          <div class="cart-title">${x.product.title}</div>
+          <div class="cart-meta">
+            ${x.size ? `${t('size')}: ${x.size}` : ''}${x.color ? ` · ${t('color')}: <span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${sw};border:1px solid var(--stroke);vertical-align:middle"></span>` : ''}
+          </div>
+          <div class="cart-meta">${priceFmt(x.product.price)} × ${x.qty}</div>
         </div>
-        <div class="qty">
-          <button data-act="dec">−</button>
-          <span>${x.qty}</span>
-          <button data-act="inc">+</button>
-          <button data-act="del" title="Удалить">✕</button>
+        <div style="display:flex; align-items:center; gap:10px">
+          <div class="cart-price">${priceFmt(x.product.price * x.qty)}</div>
+          <div class="qty">
+            <button data-act="dec">−</button>
+            <span>${x.qty}</span>
+            <button data-act="inc">+</button>
+            <button data-act="del" title="Удалить">✕</button>
+          </div>
         </div>
       `;
       row.querySelector('[data-act="inc"]').onclick = () => changeQty(x.product.id, x.size, x.color, 1);
@@ -607,6 +647,15 @@ function changeQty(productId, size, color, delta){
 function persistCart(){ localStorage.setItem('evlise_cart', JSON.stringify(state.cart)); }
 function updateCartBadge(){ const count = state.cart.items.reduce((s,x)=>s+x.qty,0); cartCount.textContent = count; }
 
+/* ---------- Favorites ---------- */
+function isFav(id){ return state.favorites.includes(id); }
+function toggleFav(id){
+  if (isFav(id)) state.favorites = state.favorites.filter(x=>x!==id);
+  else state.favorites.push(id);
+  localStorage.setItem('evlise_fav', JSON.stringify(state.favorites));
+  toast(isFav(id) ? 'Добавлено в избранное' : 'Удалено из избранного');
+}
+
 /* ---------- Checkout ---------- */
 function checkoutInTelegram(summary){
   const tgUser = tg?.initDataUnsafe?.user
@@ -656,6 +705,17 @@ function renderSizeChartHTML(chart){
   const thead = `<tr>${chart.headers.map(h=>`<th>${h}</th>`).join('')}</tr>`;
   const body = chart.rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('');
   return `<div class="table-wrap"><table class="table">${thead}${body}</table></div>`;
+}
+
+function colorToHex(name){
+  const map = {
+    white:'#ffffff', black:'#111111', gray:'#8a8a8a',
+    red:'#ef4444', blue:'#3b82f6', green:'#22c55e',
+    beige:'#d6c7b0', brown:'#6b4f4f'
+  };
+  if (!name) return '#cccccc';
+  const key = String(name).toLowerCase();
+  return map[key] || key; // если пришел hex/rgba — используем напрямую
 }
 
 /* ---------- Modal/Toast ---------- */
