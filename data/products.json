@@ -28,15 +28,9 @@
       "subtitle": "Лайк-референс Murka",
       "category": "tops",
       "price": 1900,
-      "sizes": [
-        "XS",
-        "S",
-        "M",
-        "L"
-      ],
-      "images": [
-        "https://images.unsplash.com/photo-1520975922325-24ba2b56b1c0?auto=format&fit=crop&w=1080&q=70"
-      ],
+      "sizes": ["XS","S","M","L"],
+      "colors": ["White","Black"],
+      "images": ["https://images.unsplash.com/photo-1520975922325-24ba2b56b1c0?auto=format&fit=crop&w=1080&q=70"],
       "description": "Базовый топ из хлопка, посадка по фигуре. Идеален для ежедневных образов.",
       "material": "100% хлопок",
       "badge": "new"
@@ -46,15 +40,9 @@
       "title": "Nasledstvo Sweatpants — Black",
       "category": "pants",
       "price": 5500,
-      "sizes": [
-        "S",
-        "M",
-        "L",
-        "XL"
-      ],
-      "images": [
-        "https://images.unsplash.com/photo-1583001804940-c26b0b6b7d3a?auto=format&fit=crop&w=1080&q=70"
-      ],
+      "sizes": ["S","M","L","XL"],
+      "colors": ["Black","Gray"],
+      "images": ["https://images.unsplash.com/photo-1583001804940-c26b0b6b7d3a?auto=format&fit=crop&w=1080&q=70"],
       "description": "Прямой крой, мягкий футер, комфортная посадка на талии.",
       "material": "Футер 3-нити"
     },
@@ -64,9 +52,8 @@
       "category": "accessories",
       "price": 20000,
       "sizes": [],
-      "images": [
-        "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=1080&q=70"
-      ],
+      "colors": ["Black"],
+      "images": ["https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=1080&q=70"],
       "description": "Функциональный рюкзак кросс-силуэта. Несколько карманов, регулируемые лямки.",
       "material": "Эко-кожа",
       "badge": "limit"
@@ -76,14 +63,9 @@
       "title": "Nasledstvo Fitted Cap — Black",
       "category": "accessories",
       "price": 3900,
-      "sizes": [
-        "S",
-        "M",
-        "L"
-      ],
-      "images": [
-        "https://images.unsplash.com/photo-1520974735194-6112f7c7bd9f?auto=format&fit=crop&w=1080&q=70"
-      ],
+      "sizes": ["S","M","L"],
+      "colors": ["Black"],
+      "images": ["https://images.unsplash.com/photo-1520974735194-6112f7c7bd9f?auto=format&fit=crop&w=1080&q=70"],
       "description": "Универсальная кепка с вышивкой. Регулируемый ремешок.",
       "material": "Хлопок"
     },
@@ -92,15 +74,9 @@
       "title": "Hoodie MANIA",
       "category": "hoodies",
       "price": 6900,
-      "sizes": [
-        "S",
-        "M",
-        "L",
-        "XL"
-      ],
-      "images": [
-        "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1080&q=70"
-      ],
+      "sizes": ["S","M","L","XL"],
+      "colors": ["Black","Gray"],
+      "images": ["https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1080&q=70"],
       "description": "Тёплое худи с мягким начёсом, свободная посадка, фирменный принт.",
       "material": "Хлопок/полиэстер"
     },
@@ -109,14 +85,9 @@
       "title": "Hoodie DIRT",
       "category": "hoodies",
       "price": 5000,
-      "sizes": [
-        "S",
-        "M",
-        "L"
-      ],
-      "images": [
-        "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=1080&q=70"
-      ],
+      "sizes": ["S","M","L"],
+      "colors": ["Black"],
+      "images": ["https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=1080&q=70"],
       "description": "Минималистичное худи без лишних деталей. Комфорт каждый день.",
       "material": "Футер 3-нити"
     },
@@ -125,13 +96,9 @@
       "title": "Cap DIE",
       "category": "accessories",
       "price": 2000,
-      "sizes": [
-        "M",
-        "L"
-      ],
-      "images": [
-        "https://images.unsplash.com/photo-1529336953121-ad3c67a5ce3f?auto=format&fit=crop&w=1080&q=70"
-      ],
+      "sizes": ["M","L"],
+      "colors": ["Gray"],
+      "images": ["https://images.unsplash.com/photo-1529336953121-ad3c67a5ce3f?auto=format&fit=crop&w=1080&q=70"],
       "description": "Деним-кепка с изношенным эффектом.",
       "material": "Деним",
       "soldOut": true,
@@ -142,13 +109,9 @@
       "title": "Skirt SHADE",
       "category": "tops",
       "price": 5900,
-      "sizes": [
-        "S",
-        "M"
-      ],
-      "images": [
-        "https://images.unsplash.com/photo-1542060748-10c28b62716f?auto=format&fit=crop&w=1080&q=70"
-      ],
+      "sizes": ["S","M"],
+      "colors": ["Black","Gray"],
+      "images": ["https://images.unsplash.com/photo-1542060748-10c28b62716f?auto=format&fit=crop&w=1080&q=70"],
       "description": "Юбка миди с посадкой на талии. Лаконичный силуэт.",
       "material": "Вискоза"
     }

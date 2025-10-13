@@ -4,33 +4,59 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Evlise Outlet — каталог</title>
-  <meta name="description" content="Каталог одежды Evlise Outlet. Выбор по категориям, фильтры, размеры, корзина. Заказ через Telegram." />
+  <meta name="description" content="Каталог одежды Evlise Outlet. Категории, фильтры, размеры, корзина. Заказ через Telegram." />
   <link rel="icon" href="assets/favicon.png">
   <link rel="stylesheet" href="styles.css" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- библиотека иконок -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
 <body>
   <div id="app">
     <header class="header">
-      <button id="menuBtn" class="icon-btn" aria-label="Меню">☰</button>
       <a class="brand" href="#/">Evlise Outlet</a>
       <div class="header-actions">
-        <button id="searchBtn" class="icon-btn" aria-label="Поиск">🔍</button>
-        <a class="icon-btn" href="#/cart" aria-label="Корзина">🛒<span id="cartCount" class="badge">0</span></a>
+        <button id="themeBtn" class="icon-btn" aria-label="Theme"><i data-lucide="sun"></i></button>
+        <button id="langBtn" class="icon-btn" aria-label="Language">RU</button>
+        <button id="searchBtn" class="icon-btn" aria-label="Search"><i data-lucide="search"></i></button>
+        <a class="icon-btn" href="#/cart" aria-label="Cart"><i data-lucide="shopping-bag"></i><span id="cartCount" class="badge">0</span></a>
+        <!-- мобильное меню справа -->
+        <button id="menuBtn" class="icon-btn" aria-label="Menu"><i data-lucide="menu"></i></button>
       </div>
     </header>
 
+    <!-- drawer выезжает справа -->
     <aside id="drawer" class="drawer" aria-hidden="true">
-      <button id="closeDrawer" class="icon-btn close">✕</button>
+      <button id="closeDrawer" class="icon-btn close"><i data-lucide="x"></i></button>
       <nav id="drawerNav"></nav>
       <div class="drawer-footer">
-        <a class="ext" href="https://www.instagram.com/evliseoutlet/" target="_blank" rel="noopener">Instagram →</a>
+        <a class="ext" href="https://www.instagram.com/evliseoutlet/" target="_blank" rel="noopener"><i data-lucide="instagram"></i> Instagram</a>
       </div>
     </aside>
     <div id="overlay" class="overlay" aria-hidden="true"></div>
 
     <main id="view" class="view"></main>
   </div>
+
+  <!-- Плавающая кнопка поддержки -->
+  <a href="https://t.me/evliseoutlet" target="_blank" class="fab-support" aria-label="Support">
+    <i data-lucide="message-circle"></i>
+  </a>
+
+  <!-- Модалка -->
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <div id="modalTitle"></div>
+        <button id="modalClose" class="icon-btn"><i data-lucide="x"></i></button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+      <div id="modalActions" class="modal-actions"></div>
+    </div>
+  </div>
+
+  <!-- Тосты -->
+  <div id="toastWrap" class="toast-wrap"></div>
 
   <template id="product-card">
     <a class="card" href="#">
@@ -48,5 +74,6 @@
   <template id="filter-chip"><button class="chip" data-key="" data-value=""></button></template>
 
   <script src="app.js"></script>
+  <script>lucide.createIcons();</script>
 </body>
 </html>

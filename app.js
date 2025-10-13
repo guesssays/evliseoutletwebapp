@@ -1,6 +1,7 @@
-// === Evlise Outlet WebApp — full updated app.js ===
-// Теперь при оформлении заказа в бота отправляется JSON со всеми полями:
-// товары (id, title, price, qty, size, color), общий комментарий, итого, данные tg-пользователя
+// === Evlise Outlet WebApp (enhanced) ===
+// Темы (светлая/тёмная), мультиязычность RU/UZ, UZS-валюта (конверсия RUB×150),
+// модалки/тосты, FAQ, расширенные фильтры (размер/цвет/материал),
+// размерная сетка в карточке, плавающая кнопка поддержки, меню справа.
 
 const tg = window.Telegram?.WebApp;
 if (tg) {
@@ -10,25 +11,113 @@ if (tg) {
   try { tg.setBackgroundColor('#0a0a0a'); } catch(e){}
 }
 
+// ------ Settings ------
+const PRICE_CURRENCY = 'UZS';           // отображаемая валюта
+const RUB_TO_UZS = 150;                 // коэффициент конверсии (можно менять)
+const DEFAULT_LANG = localStorage.getItem('evlise_lang') || 'ru';
+const DEFAULT_THEME = localStorage.getItem('evlise_theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+
+// ------ I18N ------
+const i18n = {
+  ru: {
+    categories: 'Категории',
+    newItems: 'Новинки',
+    freshFromIg: 'Свежие позиции из Instagram',
+    filters: 'Фильтры',
+    items: 'товаров',
+    size: 'Размер',
+    color: 'Цвет',
+    material: 'Материал',
+    addToCart: 'Добавить в корзину',
+    description: 'Описание',
+    sku: 'Артикул',
+    category: 'Категория',
+    sizeChart: 'Размерная сетка',
+    cart: 'Корзина',
+    orderComment: 'Комментарий к заказу',
+    orderCommentPlaceholder: 'Напишите пожелания: примерка, удобное время, адрес…',
+    total: 'Сумма',
+    proceed: 'Оформить в Telegram',
+    continue: 'Продолжить покупки',
+    empty: 'Корзина пуста.',
+    search: 'Поиск по каталогу',
+    notFound: 'Ничего не найдено. Измените фильтры.',
+    faq: 'FAQ',
+    home: 'Главная',
+    support: 'Поддержка',
+    inStockOnly: 'Только в наличии',
+    clear: 'Сбросить',
+    apply: 'Применить',
+    yes: 'Да',
+    cancel: 'Отмена'
+  },
+  uz: {
+    categories: 'Kategoriyalar',
+    newItems: 'Yangi tovarlar',
+    freshFromIg: 'Instagram’dan yangi pozitsiyalar',
+    filters: 'Filtrlar',
+    items: 'ta mahsulot',
+    size: 'O‘lcham',
+    color: 'Rang',
+    material: 'Material',
+    addToCart: 'Savatga qo‘shish',
+    description: 'Tavsif',
+    sku: 'Artikul',
+    category: 'Kategoriya',
+    sizeChart: 'O‘lcham jadvali',
+    cart: 'Savat',
+    orderComment: 'Buyurtma uchun izoh',
+    orderCommentPlaceholder: 'Istaklaringizni yozing: kiyib ko‘rish, vaqt, manzil…',
+    total: 'Jami',
+    proceed: 'Telegram orqali rasmiylashtirish',
+    continue: 'Xaridni davom ettirish',
+    empty: 'Savat bo‘sh.',
+    search: 'Katalog bo‘yicha qidiruv',
+    notFound: 'Hech narsa topilmadi. Filtrlarni o‘zgartiring.',
+    faq: 'Savol-javob',
+    home: 'Bosh sahifa',
+    support: 'Qo‘llab-quvvatlash',
+    inStockOnly: 'Faqat mavjud',
+    clear: 'Tozalash',
+    apply: 'Qo‘llash',
+    yes: 'Ha',
+    cancel: 'Bekor qilish'
+  }
+};
+let lang = DEFAULT_LANG;
+const t = (k) => i18n[lang][k] || k;
+
+// ------ State ------
 const state = {
   products: [],
   categories: [],
-  filters: { size: [], minPrice: null, maxPrice: null, inStock: false, query: "" },
+  filters: { size: [], colors: [], materials: [], minPrice: null, maxPrice: null, inStock: false, query: "" },
   cart: JSON.parse(localStorage.getItem('evlise_cart') || '{"items":[]}'),
-  orderNote: localStorage.getItem('evlise_note') || "" // общий комментарий к заказу
+  orderNote: localStorage.getItem('evlise_note') || ""
 };
 
+// ------ DOM helpers ------
 const el = (sel) => document.querySelector(sel);
 const view = el('#view');
 const drawer = el('#drawer');
 const overlay = el('#overlay');
 const cartCount = el('#cartCount');
+const modal = el('#modal');
+const modalTitle = el('#modalTitle');
+const modalBody = el('#modalBody');
+const modalActions = el('#modalActions');
+const toastWrap = el('#toastWrap');
+
+// Theme apply now
+document.documentElement.setAttribute('data-theme', DEFAULT_THEME);
+updateHeaderToggles();
 
 const routes = {
   '/': renderHome,
   '/category/:slug': renderCategory,
   '/product/:id': renderProduct,
   '/cart': renderCart,
+  '/faq': renderFAQ,
 };
 
 init();
@@ -42,20 +131,40 @@ async function init(){
   bindChrome();
   router();
   window.addEventListener('hashchange', router);
+  lucide.createIcons();
 }
 
+/* ---------- Header & chrome ---------- */
 function bindChrome(){
   el('#menuBtn').onclick = () => openDrawer();
   el('#closeDrawer').onclick = () => closeDrawer();
   overlay.onclick = closeDrawer;
-  el('#searchBtn').onclick = () => {
-    const q = prompt('Поиск по каталогу:');
-    if (q != null) {
-      state.filters.query = q.trim();
-      location.hash = '#/';
-      renderHome();
-    }
-  }
+  el('#searchBtn').onclick = () => openSearch();
+  el('#modalClose').onclick = closeModal;
+  el('#themeBtn').onclick = toggleTheme;
+  el('#langBtn').onclick = toggleLanguage;
+}
+
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('evlise_theme', next);
+  updateHeaderToggles();
+}
+function updateHeaderToggles(){
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  el('#themeBtn').innerHTML = `<i data-lucide="${isLight ? 'moon' : 'sun'}"></i>`;
+  lucide.createIcons();
+}
+
+function toggleLanguage(){
+  lang = (lang === 'ru') ? 'uz' : 'ru';
+  localStorage.setItem('evlise_lang', lang);
+  buildDrawer();
+  router();
+  // Обновить подпись на кнопке
+  el('#langBtn').textContent = lang.toUpperCase();
 }
 
 function openDrawer(){ drawer.classList.add('open'); overlay.classList.add('show'); drawer.setAttribute('aria-hidden','false'); }
@@ -63,12 +172,18 @@ function closeDrawer(){ drawer.classList.remove('open'); overlay.classList.remov
 
 function buildDrawer(){
   const nav = el('#drawerNav'); nav.innerHTML = '';
-  const links = [['Главная', '#/'], ...state.categories.map(c => [c.name, `#/category/${c.slug}`]), ['Корзина', '#/cart']];
+  const links = [
+    [t('home'), '#/'],
+    [t('faq'), '#/faq'],
+    ...state.categories.map(c => [c.name, `#/category/${c.slug}`]),
+    [t('cart'), '#/cart']
+  ];
   for (const [label, href] of links){
     const a = document.createElement('a'); a.href = href; a.textContent = label; nav.appendChild(a);
   }
 }
 
+/* ---------- Router ---------- */
 function router(){
   const hash = location.hash.replace(/^#/, '') || '/';
   for (const pattern in routes){
@@ -89,22 +204,21 @@ function matchRoute(pattern, path){
   return { params };
 }
 
-/* ---------------- Home ---------------- */
-
+/* ---------- Home ---------- */
 function renderHome(){
   closeDrawer();
   view.innerHTML = `
     <section class="section">
-      <div class="h1">Категории</div>
+      <div class="h1">${t('categories')}</div>
       <div class="grid" id="catGrid"></div>
     </section>
     <section class="section">
       <div class="row" style="justify-content:space-between; align-items:end">
         <div>
-          <div class="h1">Новинки</div>
-          <div class="sub">Свежие позиции из Instagram</div>
+          <div class="h1">${t('newItems')}</div>
+          <div class="sub">${t('freshFromIg')}</div>
         </div>
-        <button class="chip" id="openFilter">Фильтры</button>
+        <button class="chip" id="openFilter">${t('filters')}</button>
       </div>
       <div class="toolbar" id="activeFilters"></div>
       <div class="grid" id="productGrid"></div>
@@ -118,12 +232,12 @@ function renderHome(){
     catGrid.appendChild(a);
   }
   drawProducts(state.products.slice(0, 12));
-  el('#openFilter').onclick = showFilterPrompt;
+  el('#openFilter').onclick = () => openFilterModal();
   renderActiveFilterChips();
+  lucide.createIcons();
 }
 
-/* ---------------- Category ---------------- */
-
+/* ---------- Category ---------- */
 function renderCategory({slug}){
   closeDrawer();
   const cat = state.categories.find(c => c.slug === slug);
@@ -134,25 +248,26 @@ function renderCategory({slug}){
       <div class="row" style="justify-content:space-between; align-items:end">
         <div>
           <div class="h1">${cat.name}</div>
-          <div class="sub">${products.length} товаров</div>
+          <div class="sub">${products.length} ${t('items')}</div>
         </div>
-        <button class="chip" id="openFilter">Фильтры</button>
+        <button class="chip" id="openFilter">${t('filters')}</button>
       </div>
       <div class="toolbar" id="activeFilters"></div>
       <div class="grid" id="productGrid"></div>
     </section>
   `;
   drawProducts(products);
-  el('#openFilter').onclick = showFilterPrompt;
+  el('#openFilter').onclick = () => openFilterModal();
   renderActiveFilterChips();
 }
 
+/* ---------- Draw products with filters ---------- */
 function drawProducts(list){
   const grid = el('#productGrid'); grid.innerHTML = '';
   const filtered = applyFilters(list);
   for (const p of filtered){
-    const t = document.getElementById('product-card');
-    const node = t.content.firstElementChild.cloneNode(true);
+    const tCard = document.getElementById('product-card');
+    const node = tCard.content.firstElementChild.cloneNode(true);
     node.href = `#/product/${p.id}`;
     node.querySelector('img').src = p.images[0];
     node.querySelector('img').alt = p.title;
@@ -162,17 +277,16 @@ function drawProducts(list){
     if (p.badge){ pill.textContent = p.badge; pill.classList.add('show'); }
     grid.appendChild(node);
   }
-  if (filtered.length === 0){ grid.innerHTML = `<div class="sub">Ничего не найдено. Измените фильтры.</div>`; }
+  if (filtered.length === 0){ grid.innerHTML = `<div class="sub">${t('notFound')}</div>`; }
 }
 
-/* ---------------- Product ---------------- */
-
+/* ---------- Product page ---------- */
 function renderProduct({id}){
   closeDrawer();
   const p = state.products.find(x => String(x.id) === String(id));
   if (!p){ renderHome(); return; }
   const sizes  = p.sizes  || [];
-  const colors = p.colors || []; // опционально в products.json
+  const colors = p.colors || [];
 
   view.innerHTML = `
     <div class="product">
@@ -182,25 +296,28 @@ function renderProduct({id}){
         <div class="sub">${p.subtitle || ''}</div>
         <div class="price">${priceFmt(p.price)}</div>
 
-        <div class="h2">Размер</div>
+        <div class="h2">${t('size')}</div>
         <div class="size-grid" id="sizeGrid"></div>
 
         ${colors.length ? `
-          <div class="h2" style="margin-top:8px">Цвет</div>
+          <div class="h2" style="margin-top:8px">${t('color')}</div>
           <div class="size-grid" id="colorGrid"></div>
         ` : ''}
 
-        <button class="btn" id="addBtn" style="margin-top:8px">Добавить в корзину</button>
+        <button class="btn" id="addBtn" style="margin-top:8px"><i data-lucide="plus"></i>${t('addToCart')}</button>
         <div class="hr"></div>
 
-        <div class="h2">Описание</div>
+        <div class="h2">${t('description')}</div>
         <div>${p.description}</div>
         <div class="kv">
-          <div>Категория</div><div>${getCategoryName(p.category)}</div>
-          <div>Материал</div><div>${p.material || '—'}</div>
-          <div>Артикул</div><div>${p.sku || p.id}</div>
+          <div>${t('category')}</div><div>${getCategoryName(p.category)}</div>
+          <div>${t('material')}</div><div>${p.material || '—'}</div>
+          <div>${t('sku')}</div><div>${p.sku || p.id}</div>
         </div>
-        <div class="footer-note">Есть вопросы? Напишите нам в <a class="link" href="https://t.me/evliseoutlet" target="_blank">Telegram</a>.</div>
+
+        <div class="hr"></div>
+        <div class="h2">${t('sizeChart')}</div>
+        ${renderSizeChartHTML()}
       </div>
     </div>
   `;
@@ -214,7 +331,7 @@ function renderProduct({id}){
     sg.appendChild(b);
   });
 
-  // Цвета (если заданы)
+  // Цвета
   let selectedColor = null;
   if (colors.length){
     const cg = el('#colorGrid');
@@ -231,10 +348,10 @@ function renderProduct({id}){
     const size = sel ? sel.textContent : null;
     addToCart(p, size, selectedColor);
   };
+  lucide.createIcons();
 }
 
-/* ---------------- Cart ---------------- */
-
+/* ---------- Cart ---------- */
 function renderCart(){
   closeDrawer();
   const items = state.cart.items;
@@ -242,29 +359,29 @@ function renderCart(){
   let total = 0; enriched.forEach(x => total += x.qty * x.product.price);
 
   view.innerHTML = `
-    <div class="h1">Корзина</div>
+    <div class="h1">${t('cart')}</div>
     <div class="cart" id="cartList"></div>
 
     <div class="p-panel" style="margin-top:4px">
-      <div class="h2">Комментарий к заказу</div>
-      <textarea id="orderNote" rows="3" placeholder="Размер маломерит? Нужна примерка? Укажите пожелания..." style="width:100%;border-radius:12px;border:1px solid var(--stroke);background:#0f0f0f;color:#fff;padding:10px;"></textarea>
+      <div class="h2">${t('orderComment')}</div>
+      <textarea id="orderNote" rows="3" placeholder="${t('orderCommentPlaceholder')}" style="width:100%;border-radius:12px;border:1px solid var(--stroke);background:var(--paper);color:var(--text);padding:10px;"></textarea>
     </div>
 
     <div class="p-panel" style="margin-top:8px">
       <div class="row" style="justify-content:space-between">
-        <div>Сумма</div><div><b>${priceFmt(total)}</b></div>
+        <div>${t('total')}</div><div><b>${priceFmt(total)}</b></div>
       </div>
-      <div class="footer-note">Оформление происходит в Telegram: заказ отправится менеджеру, он подтвердит наличие и оплату.</div>
+      <div class="footer-note">Telegram WebApp sendData → заказ придёт менеджеру.</div>
       <div class="row" style="margin-top:10px">
-        <button class="btn" id="checkoutBtn">Оформить в Telegram</button>
-        <a class="btn secondary" href="#/">Продолжить покупки</a>
+        <button class="btn" id="checkoutBtn"><i data-lucide="send"></i>${t('proceed')}</button>
+        <a class="btn secondary" href="#/"><i data-lucide="arrow-left"></i>${t('continue')}</a>
       </div>
     </div>
   `;
 
   const list = el('#cartList');
   if (enriched.length === 0){
-    list.innerHTML = `<div class="sub">Корзина пуста.</div>`;
+    list.innerHTML = `<div class="sub">${t('empty')}</div>`;
   } else {
     for (const x of enriched){
       const row = document.createElement('div');
@@ -273,7 +390,7 @@ function renderCart(){
         <img src="${x.product.images[0]}" alt="${x.product.title}">
         <div>
           <div><b>${x.product.title}</b></div>
-          <div class="sub">Размер: ${x.size || '—'}${x.color ? ` · Цвет: ${x.color}` : ''}</div>
+          <div class="sub">${t('size')}: ${x.size || '—'}${x.color ? ` · ${t('color')}: ${x.color}` : ''}</div>
           <div class="sub">${priceFmt(x.product.price)}</div>
         </div>
         <div class="qty">
@@ -301,17 +418,30 @@ function renderCart(){
   const btn = document.getElementById('checkoutBtn');
   btn.onclick = () => checkoutInTelegram(enriched);
   if (tg){
-    tg.MainButton.setText("Отправить заказ");
+    tg.MainButton.setText(t('proceed'));
     tg.MainButton.show();
     tg.MainButton.onClick(() => checkoutInTelegram(enriched));
   }
+  lucide.createIcons();
 }
 
-/* ---------------- Helpers & Filters ---------------- */
+/* ---------- FAQ ---------- */
+function renderFAQ(){
+  closeDrawer();
+  view.innerHTML = `
+    <section class="section">
+      <div class="h1">${t('faq')}</div>
+      <div class="p-panel">
+        <details open><summary>Как оформить заказ?</summary><p>Добавьте товар в корзину, перейдите в «${t('cart')}» и нажмите «${t('proceed')}». Заказ уйдёт менеджеру в Telegram.</p></details>
+        <details><summary>Оплата и доставка</summary><p>Оплата по согласованию с менеджером. Доставка курьером/самовывоз.</p></details>
+        <details><summary>Возвраты и обмен</summary><p>В течение 14 дней при сохранении товарного вида. Уточняйте условия в поддержке.</p></details>
+        <details><summary>Как подобрать размер?</summary><p>Смотрите раздел «${t('sizeChart')}» в карточке товара или напишите нам в поддержку.</p></details>
+      </div>
+    </section>
+  `;
+}
 
-function priceFmt(v){ return new Intl.NumberFormat('ru-RU', { style:'currency', currency:'RUB', maximumFractionDigits:0 }).format(v); }
-function getCategoryName(slug){ return state.categories.find(c=>c.slug===slug)?.name || slug; }
-
+/* ---------- Filters ---------- */
 function applyFilters(list){
   const f = state.filters;
   return list.filter(p => {
@@ -322,6 +452,12 @@ function applyFilters(list){
     if (f.size.length){
       if (!p.sizes || !p.sizes.some(s => f.size.includes(s))) return false;
     }
+    if (f.colors.length){
+      if (!p.colors || !p.colors.some(c => f.colors.includes(c))) return false;
+    }
+    if (f.materials.length){
+      if (!p.material || !f.materials.includes(p.material)) return false;
+    }
     if (f.minPrice != null && p.price < f.minPrice) return false;
     if (f.maxPrice != null && p.price > f.maxPrice) return false;
     if (f.inStock && p.soldOut) return false;
@@ -329,57 +465,99 @@ function applyFilters(list){
   });
 }
 
-function showFilterPrompt(){
-  const size = prompt('Фильтр размеров (через запятую), например: S,M,L\nОставьте пустым чтобы не фильтровать.', state.filters.size.join(','));
-  const price = prompt('Диапазон цены, напр. 1000-5000 (пусто — без фильтра)', '');
-  if (size != null){
-    state.filters.size = size.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
-  }
-  if (price != null && price.includes('-')){
-    const [a,b] = price.split('-').map(x=>parseInt(x.trim(),10));
-    state.filters.minPrice = isFinite(a) ? a : null;
-    state.filters.maxPrice = isFinite(b) ? b : null;
-  }
-  renderActiveFilterChips();
-  router();
+function openSearch(){
+  openModal({
+    title: t('search'),
+    body: `<input id="searchInput" type="search" placeholder="${t('search')}" style="width:100%;padding:10px;border-radius:12px;border:1px solid var(--stroke);background:var(--paper);color:var(--text)">`,
+    actions: [
+      { label: t('cancel'), variant: 'secondary', onClick: closeModal },
+      { label: t('apply'), onClick: () => {
+        const q = (el('#searchInput').value || '').trim();
+        state.filters.query = q;
+        closeModal(); location.hash = '#/'; renderHome();
+      }}
+    ]
+  });
+}
+
+function openFilterModal(){
+  const allSizes = Array.from(new Set(state.products.flatMap(p => p.sizes || [])));
+  const allColors = Array.from(new Set(state.products.flatMap(p => p.colors || [])));
+  const allMaterials = Array.from(new Set(state.products.map(p => p.material).filter(Boolean)));
+
+  const chipGroup = (items, selected, key) => items.map(v => `
+    <button class="chip ${selected.includes(v)?'active':''}" data-${key}="${v}">${v}</button>
+  `).join('');
+
+  openModal({
+    title: t('filters'),
+    body: `
+      <div class="h2">${t('size')}</div>
+      <div class="toolbar" id="fSizes">${chipGroup(allSizes, state.filters.size, 'size')}</div>
+      <div class="h2">${t('color')}</div>
+      <div class="toolbar" id="fColors">${chipGroup(allColors, state.filters.colors, 'color')}</div>
+      <div class="h2">${t('material')}</div>
+      <div class="toolbar" id="fMaterials">${chipGroup(allMaterials, state.filters.materials, 'mat')}</div>
+      <div class="row" style="margin-top:8px">
+        <label class="chip"><input id="fStock" type="checkbox" ${state.filters.inStock?'checked':''} style="margin-right:8px"> ${t('inStockOnly')}</label>
+        <button id="clearBtn" class="chip">${t('clear')}</button>
+      </div>
+    `,
+    actions: [
+      { label: t('cancel'), variant: 'secondary', onClick: closeModal },
+      { label: t('apply'), onClick: () => {
+        state.filters.inStock = el('#fStock').checked;
+        const pick = (sel, attr) => Array.from(el(sel).querySelectorAll('.chip.active')).map(b => b.getAttribute(attr));
+        state.filters.size = pick('#fSizes','data-size');
+        state.filters.colors = pick('#fColors','data-color');
+        state.filters.materials = pick('#fMaterials','data-mat');
+        closeModal(); router(); renderActiveFilterChips();
+      }}
+    ],
+    onOpen: () => {
+      // toggle chips
+      ['#fSizes','#fColors','#fMaterials'].forEach(s=>{
+        el(s).addEventListener('click',e=>{
+          const btn = e.target.closest('.chip'); if(!btn) return;
+          btn.classList.toggle('active');
+        });
+      });
+      el('#clearBtn').onclick = () => {
+        state.filters = { size:[], colors:[], materials:[], minPrice:null, maxPrice:null, inStock:false, query:state.filters.query||"" };
+        closeModal(); router(); renderActiveFilterChips();
+      };
+    }
+  });
 }
 
 function renderActiveFilterChips(){
-  const bar = el('#activeFilters'); bar.innerHTML = '';
-  const addChip = (label, key, value) => {
+  const bar = el('#activeFilters'); if (!bar) return;
+  bar.innerHTML = '';
+  const addChip = (label) => {
     const t = document.getElementById('filter-chip');
     const n = t.content.firstElementChild.cloneNode(true);
-    n.textContent = label; n.dataset.key = key; n.dataset.value = value ?? '';
-    n.classList.add('active'); n.onclick = () => clearFilter(key, value);
+    n.textContent = label; n.classList.add('active');
     bar.appendChild(n);
   };
-  if (state.filters.query) addChip('Поиск: '+state.filters.query, 'query', '');
-  if (state.filters.size.length) addChip('Размер: '+state.filters.size.join(','), 'size', '');
-  if (state.filters.minPrice != null || state.filters.maxPrice != null) addChip(`Цена: ${state.filters.minPrice||'—'}–${state.filters.maxPrice||'—'}`, 'price', '');
+  if (state.filters.query) addChip('🔎 ' + state.filters.query);
+  if (state.filters.size.length) addChip(t('size') + ': ' + state.filters.size.join(','));
+  if (state.filters.colors.length) addChip(t('color') + ': ' + state.filters.colors.join(','));
+  if (state.filters.materials.length) addChip(t('material') + ': ' + state.filters.materials.join(','));
 }
 
-function clearFilter(key, value){
-  if (key === 'query') state.filters.query = '';
-  if (key === 'size') state.filters.size = [];
-  if (key === 'price') { state.filters.minPrice = null; state.filters.maxPrice = null; }
-  router(); renderActiveFilterChips();
-}
-
-/* ---------------- Cart data ops ---------------- */
-
+/* ---------- Mutations ---------- */
 function addToCart(product, size, color){
   const same = (a)=> a.productId===product.id && a.size===size && a.color===color;
   const existing = state.cart.items.find(same);
   if (existing) existing.qty += 1;
   else state.cart.items.push({ productId: product.id, size, color, qty: 1 });
-  persistCart(); updateCartBadge(); alert('Добавлено в корзину');
+  persistCart(); updateCartBadge();
+  toast('Добавлено в корзину');
 }
-
 function removeFromCart(productId, size, color){
   state.cart.items = state.cart.items.filter(a => !(a.productId===productId && a.size===size && a.color===color));
   persistCart(); updateCartBadge(); renderCart();
 }
-
 function changeQty(productId, size, color, delta){
   const it = state.cart.items.find(a => a.productId===productId && a.size===size && a.color===color);
   if (!it) return;
@@ -387,14 +565,11 @@ function changeQty(productId, size, color, delta){
   if (it.qty <= 0) removeFromCart(productId, size, color);
   persistCart(); updateCartBadge(); renderCart();
 }
-
 function persistCart(){ localStorage.setItem('evlise_cart', JSON.stringify(state.cart)); }
 function updateCartBadge(){ const count = state.cart.items.reduce((s,x)=>s+x.qty,0); cartCount.textContent = count; }
 
-/* ---------------- Checkout ---------------- */
-
+/* ---------- Checkout ---------- */
 function checkoutInTelegram(summary){
-  // Пользователь TG (если есть)
   const tgUser = tg?.initDataUnsafe?.user
     ? {
         id: tg.initDataUnsafe.user.id,
@@ -415,6 +590,7 @@ function checkoutInTelegram(summary){
       color: x.color || null
     })),
     total: summary.reduce((s,x)=> s + x.qty * x.product.price, 0),
+    currency: PRICE_CURRENCY,
     comment: state.orderNote || "",
     user: tgUser,
     ts: Date.now()
@@ -423,9 +599,57 @@ function checkoutInTelegram(summary){
   const payload = JSON.stringify(order);
   if (tg?.sendData){
     tg.sendData(payload);
-    alert('Заказ отправлен в чат-бот. Мы свяжемся с вами.');
+    toast('Заказ отправлен менеджеру в Telegram');
   } else {
     navigator.clipboard.writeText(payload);
-    alert('Телеграм недоступен в браузере. Заказ (JSON) скопирован в буфер обмена.');
+    toast('WebApp вне Telegram: заказ (JSON) скопирован');
   }
+}
+
+/* ---------- Utils ---------- */
+function priceFmt(rub){
+  // исходные цены в products.json заданы в RUB → конвертируем в UZS
+  const uzs = Math.round(rub * RUB_TO_UZS);
+  return new Intl.NumberFormat('ru-RU', { style:'currency', currency: PRICE_CURRENCY, maximumFractionDigits:0 }).format(uzs);
+}
+function getCategoryName(slug){ return state.categories.find(c=>c.slug===slug)?.name || slug; }
+
+function renderSizeChartHTML(){
+  const rows = [
+    ['INT','Грудь (см)','Талия (см)','Бёдра (см)'],
+    ['XS','80–84','60–64','86–90'],
+    ['S','84–88','64–68','90–94'],
+    ['M','88–92','68–72','94–98'],
+    ['L','92–98','72–78','98–104'],
+    ['XL','98–104','78–86','104–110']
+  ];
+  const thead = `<tr>${rows[0].map(h=>`<th>${h}</th>`).join('')}</tr>`;
+  const body = rows.slice(1).map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('');
+  return `<div class="table-wrap"><table class="table">${thead}${body}</table></div>`;
+}
+
+/* ---------- Modal/Toast ---------- */
+function openModal({title, body, actions=[], onOpen}){
+  modalTitle.textContent = title || '';
+  modalBody.innerHTML = body || '';
+  modalActions.innerHTML = '';
+  actions.forEach(a=>{
+    const b = document.createElement('button');
+    b.className = 'btn' + (a.variant==='secondary' ? ' secondary' : '');
+    b.textContent = a.label;
+    b.onclick = a.onClick || closeModal;
+    modalActions.appendChild(b);
+  });
+  modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
+  if (onOpen) onOpen();
+  lucide.createIcons();
+}
+function closeModal(){
+  modal.classList.remove('show'); modal.setAttribute('aria-hidden','true');
+}
+function toast(msg){
+  const n = document.createElement('div');
+  n.className='toast'; n.textContent = msg;
+  toastWrap.appendChild(n);
+  setTimeout(()=>{ n.remove(); }, 2500);
 }
