@@ -1,0 +1,156 @@
+{
+  "categories": [
+    {
+      "slug": "tops",
+      "name": "Топы",
+      "image": "https://images.unsplash.com/photo-1503342394123-480259?auto=format&fit=crop&w=800&q=60"
+    },
+    {
+      "slug": "hoodies",
+      "name": "Худи и свитшоты",
+      "image": "https://images.unsplash.com/photo-1520975922325-24ba2b56b1c0?auto=format&fit=crop&w=800&q=60"
+    },
+    {
+      "slug": "pants",
+      "name": "Брюки",
+      "image": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=60"
+    },
+    {
+      "slug": "accessories",
+      "name": "Аксессуары",
+      "image": "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=60"
+    }
+  ],
+  "products": [
+    {
+      "id": 101,
+      "title": "Nasledstvo Tank Top — White",
+      "subtitle": "Лайк-референс Murka",
+      "category": "tops",
+      "price": 1900,
+      "sizes": [
+        "XS",
+        "S",
+        "M",
+        "L"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1520975922325-24ba2b56b1c0?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "description": "Базовый топ из хлопка, посадка по фигуре. Идеален для ежедневных образов.",
+      "material": "100% хлопок",
+      "badge": "new"
+    },
+    {
+      "id": 102,
+      "title": "Nasledstvo Sweatpants — Black",
+      "category": "pants",
+      "price": 5500,
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1583001804940-c26b0b6b7d3a?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "description": "Прямой крой, мягкий футер, комфортная посадка на талии.",
+      "material": "Футер 3-нити"
+    },
+    {
+      "id": 103,
+      "title": "The Burden Cross — рюкзак",
+      "category": "accessories",
+      "price": 20000,
+      "sizes": [],
+      "images": [
+        "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "description": "Функциональный рюкзак кросс-силуэта. Несколько карманов, регулируемые лямки.",
+      "material": "Эко-кожа",
+      "badge": "limit"
+    },
+    {
+      "id": 104,
+      "title": "Nasledstvo Fitted Cap — Black",
+      "category": "accessories",
+      "price": 3900,
+      "sizes": [
+        "S",
+        "M",
+        "L"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1520974735194-6112f7c7bd9f?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "description": "Универсальная кепка с вышивкой. Регулируемый ремешок.",
+      "material": "Хлопок"
+    },
+    {
+      "id": 105,
+      "title": "Hoodie MANIA",
+      "category": "hoodies",
+      "price": 6900,
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "description": "Тёплое худи с мягким начёсом, свободная посадка, фирменный принт.",
+      "material": "Хлопок/полиэстер"
+    },
+    {
+      "id": 106,
+      "title": "Hoodie DIRT",
+      "category": "hoodies",
+      "price": 5000,
+      "sizes": [
+        "S",
+        "M",
+        "L"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "description": "Минималистичное худи без лишних деталей. Комфорт каждый день.",
+      "material": "Футер 3-нити"
+    },
+    {
+      "id": 107,
+      "title": "Cap DIE",
+      "category": "accessories",
+      "price": 2000,
+      "sizes": [
+        "M",
+        "L"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1529336953121-ad3c67a5ce3f?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "description": "Деним-кепка с изношенным эффектом.",
+      "material": "Деним",
+      "soldOut": true,
+      "badge": "sold out"
+    },
+    {
+      "id": 108,
+      "title": "Skirt SHADE",
+      "category": "tops",
+      "price": 5900,
+      "sizes": [
+        "S",
+        "M"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1542060748-10c28b62716f?auto=format&fit=crop&w=1080&q=70"
+      ],
+      "description": "Юбка миди с посадкой на талии. Лаконичный силуэт.",
+      "material": "Вискоза"
+    }
+  ]
+}
