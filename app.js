@@ -1,7 +1,8 @@
 // === Evlise Outlet WebApp (enhanced) ===
-// Темы (светлая/тёмная), мультиязычность RU/UZ, UZS-валюта (конверсия RUB×150),
-// модалки/тосты, FAQ, расширенные фильтры (размер/цвет/материал),
-// размерная сетка в карточке, плавающая кнопка поддержки, меню справа.
+// Светлая/тёмная тема, RU/UZ, единственная валюта UZS,
+// модалки/тосты, FAQ, фильтры (размер/цвет/материал),
+// размерная сетка, плавающая поддержка, меню справа,
+// tg.MainButton показываем ТОЛЬКО в корзине.
 
 const tg = window.Telegram?.WebApp;
 if (tg) {
@@ -12,8 +13,9 @@ if (tg) {
 }
 
 // ------ Settings ------
-const PRICE_CURRENCY = 'UZS';           // отображаемая валюта
-const RUB_TO_UZS = 150;                 // коэффициент конверсии (можно менять)
+const PRICE_CURRENCY = 'UZS';       // отображаемая валюта
+const RUB_TO_UZS = 1;
+             // коэффициент конверсии (если прайс в рублях)
 const DEFAULT_LANG = localStorage.getItem('evlise_lang') || 'ru';
 const DEFAULT_THEME = localStorage.getItem('evlise_theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
 
@@ -40,7 +42,6 @@ const i18n = {
     proceed: 'Оформить в Telegram',
     continue: 'Продолжить покупки',
     empty: 'Корзина пуста.',
-    search: 'Поиск по каталогу',
     notFound: 'Ничего не найдено. Измените фильтры.',
     faq: 'FAQ',
     home: 'Главная',
@@ -48,7 +49,6 @@ const i18n = {
     inStockOnly: 'Только в наличии',
     clear: 'Сбросить',
     apply: 'Применить',
-    yes: 'Да',
     cancel: 'Отмена'
   },
   uz: {
@@ -72,7 +72,6 @@ const i18n = {
     proceed: 'Telegram orqali rasmiylashtirish',
     continue: 'Xaridni davom ettirish',
     empty: 'Savat bo‘sh.',
-    search: 'Katalog bo‘yicha qidiruv',
     notFound: 'Hech narsa topilmadi. Filtrlarni o‘zgartiring.',
     faq: 'Savol-javob',
     home: 'Bosh sahifa',
@@ -80,7 +79,6 @@ const i18n = {
     inStockOnly: 'Faqat mavjud',
     clear: 'Tozalash',
     apply: 'Qo‘llash',
-    yes: 'Ha',
     cancel: 'Bekor qilish'
   }
 };
@@ -91,7 +89,7 @@ const t = (k) => i18n[lang][k] || k;
 const state = {
   products: [],
   categories: [],
-  filters: { size: [], colors: [], materials: [], minPrice: null, maxPrice: null, inStock: false, query: "" },
+  filters: { size: [], colors: [], materials: [], minPrice: null, maxPrice: null, inStock: false }, // без query
   cart: JSON.parse(localStorage.getItem('evlise_cart') || '{"items":[]}'),
   orderNote: localStorage.getItem('evlise_note') || ""
 };
@@ -108,7 +106,7 @@ const modalBody = el('#modalBody');
 const modalActions = el('#modalActions');
 const toastWrap = el('#toastWrap');
 
-// Theme apply now
+// Theme init
 document.documentElement.setAttribute('data-theme', DEFAULT_THEME);
 updateHeaderToggles();
 
@@ -139,7 +137,6 @@ function bindChrome(){
   el('#menuBtn').onclick = () => openDrawer();
   el('#closeDrawer').onclick = () => closeDrawer();
   overlay.onclick = closeDrawer;
-  el('#searchBtn').onclick = () => openSearch();
   el('#modalClose').onclick = closeModal;
   el('#themeBtn').onclick = toggleTheme;
   el('#langBtn').onclick = toggleLanguage;
@@ -163,7 +160,6 @@ function toggleLanguage(){
   localStorage.setItem('evlise_lang', lang);
   buildDrawer();
   router();
-  // Обновить подпись на кнопке
   el('#langBtn').textContent = lang.toUpperCase();
 }
 
@@ -185,6 +181,9 @@ function buildDrawer(){
 
 /* ---------- Router ---------- */
 function router(){
+  // на всех страницах, кроме корзины, прячем MainButton
+  if (tg?.MainButton) tg.MainButton.hide();
+
   const hash = location.hash.replace(/^#/, '') || '/';
   for (const pattern in routes){
     const match = matchRoute(pattern, hash);
@@ -261,7 +260,7 @@ function renderCategory({slug}){
   renderActiveFilterChips();
 }
 
-/* ---------- Draw products with filters ---------- */
+/* ---------- Draw products ---------- */
 function drawProducts(list){
   const grid = el('#productGrid'); grid.innerHTML = '';
   const filtered = applyFilters(list);
@@ -415,13 +414,13 @@ function renderCart(){
     localStorage.setItem('evlise_note', state.orderNote);
   };
 
-  const btn = document.getElementById('checkoutBtn');
-  btn.onclick = () => checkoutInTelegram(enriched);
+  // ТОЛЬКО здесь показываем MainButton
   if (tg){
     tg.MainButton.setText(t('proceed'));
     tg.MainButton.show();
     tg.MainButton.onClick(() => checkoutInTelegram(enriched));
   }
+  el('#checkoutBtn').onclick = () => checkoutInTelegram(enriched);
   lucide.createIcons();
 }
 
@@ -445,10 +444,6 @@ function renderFAQ(){
 function applyFilters(list){
   const f = state.filters;
   return list.filter(p => {
-    if (f.query){
-      const q = f.query.toLowerCase();
-      if (!(`${p.title} ${p.subtitle||''} ${p.description||''}`).toLowerCase().includes(q)) return false;
-    }
     if (f.size.length){
       if (!p.sizes || !p.sizes.some(s => f.size.includes(s))) return false;
     }
@@ -462,21 +457,6 @@ function applyFilters(list){
     if (f.maxPrice != null && p.price > f.maxPrice) return false;
     if (f.inStock && p.soldOut) return false;
     return true;
-  });
-}
-
-function openSearch(){
-  openModal({
-    title: t('search'),
-    body: `<input id="searchInput" type="search" placeholder="${t('search')}" style="width:100%;padding:10px;border-radius:12px;border:1px solid var(--stroke);background:var(--paper);color:var(--text)">`,
-    actions: [
-      { label: t('cancel'), variant: 'secondary', onClick: closeModal },
-      { label: t('apply'), onClick: () => {
-        const q = (el('#searchInput').value || '').trim();
-        state.filters.query = q;
-        closeModal(); location.hash = '#/'; renderHome();
-      }}
-    ]
   });
 }
 
@@ -515,7 +495,6 @@ function openFilterModal(){
       }}
     ],
     onOpen: () => {
-      // toggle chips
       ['#fSizes','#fColors','#fMaterials'].forEach(s=>{
         el(s).addEventListener('click',e=>{
           const btn = e.target.closest('.chip'); if(!btn) return;
@@ -523,7 +502,7 @@ function openFilterModal(){
         });
       });
       el('#clearBtn').onclick = () => {
-        state.filters = { size:[], colors:[], materials:[], minPrice:null, maxPrice:null, inStock:false, query:state.filters.query||"" };
+        state.filters = { size:[], colors:[], materials:[], minPrice:null, maxPrice:null, inStock:false };
         closeModal(); router(); renderActiveFilterChips();
       };
     }
@@ -539,7 +518,6 @@ function renderActiveFilterChips(){
     n.textContent = label; n.classList.add('active');
     bar.appendChild(n);
   };
-  if (state.filters.query) addChip('🔎 ' + state.filters.query);
   if (state.filters.size.length) addChip(t('size') + ': ' + state.filters.size.join(','));
   if (state.filters.colors.length) addChip(t('color') + ': ' + state.filters.colors.join(','));
   if (state.filters.materials.length) addChip(t('material') + ': ' + state.filters.materials.join(','));

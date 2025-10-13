@@ -8,7 +8,6 @@
   <link rel="icon" href="assets/favicon.png">
   <link rel="stylesheet" href="styles.css" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- библиотека иконок -->
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
 <body>
@@ -18,8 +17,13 @@
       <div class="header-actions">
         <button id="themeBtn" class="icon-btn" aria-label="Theme"><i data-lucide="sun"></i></button>
         <button id="langBtn" class="icon-btn" aria-label="Language">RU</button>
-        <button id="searchBtn" class="icon-btn" aria-label="Search"><i data-lucide="search"></i></button>
-        <a class="icon-btn" href="#/cart" aria-label="Cart"><i data-lucide="shopping-bag"></i><span id="cartCount" class="badge">0</span></a>
+
+        <!-- Кнопка корзины с бейджем СВЕРХУ -->
+        <a class="icon-btn cart-btn" href="#/cart" aria-label="Cart">
+          <i data-lucide="shopping-bag"></i>
+          <span id="cartCount" class="badge">0</span>
+        </a>
+
         <!-- мобильное меню справа -->
         <button id="menuBtn" class="icon-btn" aria-label="Menu"><i data-lucide="menu"></i></button>
       </div>
@@ -29,8 +33,12 @@
     <aside id="drawer" class="drawer" aria-hidden="true">
       <button id="closeDrawer" class="icon-btn close"><i data-lucide="x"></i></button>
       <nav id="drawerNav"></nav>
-      <div class="drawer-footer">
-        <a class="ext" href="https://www.instagram.com/evliseoutlet/" target="_blank" rel="noopener"><i data-lucide="instagram"></i> Instagram</a>
+
+      <!-- док с иконками внизу (без текста) -->
+      <div class="drawer-dock">
+        <a class="dock-btn" href="https://www.instagram.com/evliseoutlet/" target="_blank" aria-label="Instagram"><i data-lucide="instagram"></i></a>
+        <a class="dock-btn" href="https://t.me/evliseoutlet" target="_blank" aria-label="Telegram"><i data-lucide="send"></i></a>
+        <a class="dock-btn" href="https://t.me/evliseoutlet" target="_blank" aria-label="Support"><i data-lucide="message-circle"></i></a>
       </div>
     </aside>
     <div id="overlay" class="overlay" aria-hidden="true"></div>
@@ -43,7 +51,7 @@
     <i data-lucide="message-circle"></i>
   </a>
 
-  <!-- Модалка -->
+  <!-- Модалка (для фильтров/диалогов) -->
   <div id="modal" class="modal" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-head">
