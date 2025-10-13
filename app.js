@@ -1,7 +1,7 @@
 // === Evlise Outlet WebApp (enhanced) ===
-// Светлая/тёмная тема, RU/UZ, единственная валюта UZS,
-// модалки/тосты, FAQ, фильтры (размер/цвет/материал),
-// размерная сетка, плавающая поддержка, меню справа,
+// Светлая/тёмная тема, RU/UZ, валюта UZS,
+// модалки/тосты, FAQ, фильтры, индивидуальные размерные сетки,
+// плавающая поддержка, меню справа.
 // tg.MainButton показываем ТОЛЬКО в корзине.
 
 const tg = window.Telegram?.WebApp;
@@ -13,9 +13,8 @@ if (tg) {
 }
 
 // ------ Settings ------
-const PRICE_CURRENCY = 'UZS';       // отображаемая валюта
-const RUB_TO_UZS = 1;
-             // коэффициент конверсии (если прайс в рублях)
+const PRICE_CURRENCY = 'UZS';
+const RUB_TO_UZS = 1; // цены в JSON уже считаем как UZS
 const DEFAULT_LANG = localStorage.getItem('evlise_lang') || 'ru';
 const DEFAULT_THEME = localStorage.getItem('evlise_theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
 
@@ -39,7 +38,7 @@ const i18n = {
     orderComment: 'Комментарий к заказу',
     orderCommentPlaceholder: 'Напишите пожелания: примерка, удобное время, адрес…',
     total: 'Сумма',
-    proceed: 'Оформить в Telegram',
+    proceed: 'Оформить заказ',
     continue: 'Продолжить покупки',
     empty: 'Корзина пуста.',
     notFound: 'Ничего не найдено. Измените фильтры.',
@@ -69,7 +68,7 @@ const i18n = {
     orderComment: 'Buyurtma uchun izoh',
     orderCommentPlaceholder: 'Istaklaringizni yozing: kiyib ko‘rish, vaqt, manzil…',
     total: 'Jami',
-    proceed: 'Telegram orqali rasmiylashtirish',
+    proceed: 'Buyurtmani rasmiylashtirish',
     continue: 'Xaridni davom ettirish',
     empty: 'Savat bo‘sh.',
     notFound: 'Hech narsa topilmadi. Filtrlarni o‘zgartiring.',
@@ -89,7 +88,7 @@ const t = (k) => i18n[lang][k] || k;
 const state = {
   products: [],
   categories: [],
-  filters: { size: [], colors: [], materials: [], minPrice: null, maxPrice: null, inStock: false }, // без query
+  filters: { size: [], colors: [], materials: [], minPrice: null, maxPrice: null, inStock: false },
   cart: JSON.parse(localStorage.getItem('evlise_cart') || '{"items":[]}'),
   orderNote: localStorage.getItem('evlise_note') || ""
 };
@@ -181,9 +180,7 @@ function buildDrawer(){
 
 /* ---------- Router ---------- */
 function router(){
-  // на всех страницах, кроме корзины, прячем MainButton
-  if (tg?.MainButton) tg.MainButton.hide();
-
+  if (tg?.MainButton) tg.MainButton.hide(); // на всех страницах, кроме корзины
   const hash = location.hash.replace(/^#/, '') || '/';
   for (const pattern in routes){
     const match = matchRoute(pattern, hash);
@@ -272,8 +269,6 @@ function drawProducts(list){
     node.querySelector('img').alt = p.title;
     node.querySelector('.card-title').textContent = p.title;
     node.querySelector('.card-price').textContent = priceFmt(p.price);
-    const pill = node.querySelector('[data-pill]');
-    if (p.badge){ pill.textContent = p.badge; pill.classList.add('show'); }
     grid.appendChild(node);
   }
   if (filtered.length === 0){ grid.innerHTML = `<div class="sub">${t('notFound')}</div>`; }
@@ -295,8 +290,7 @@ function renderProduct({id}){
         <div class="sub">${p.subtitle || ''}</div>
         <div class="price">${priceFmt(p.price)}</div>
 
-        <div class="h2">${t('size')}</div>
-        <div class="size-grid" id="sizeGrid"></div>
+        ${sizes.length ? `<div class="h2">${t('size')}</div><div class="size-grid" id="sizeGrid"></div>` : ''}
 
         ${colors.length ? `
           <div class="h2" style="margin-top:8px">${t('color')}</div>
@@ -314,9 +308,7 @@ function renderProduct({id}){
           <div>${t('sku')}</div><div>${p.sku || p.id}</div>
         </div>
 
-        <div class="hr"></div>
-        <div class="h2">${t('sizeChart')}</div>
-        ${renderSizeChartHTML()}
+        ${p.sizeChart ? `<div class="hr"></div><div class="h2">${t('sizeChart')}</div>${renderSizeChartHTML(p.sizeChart)}` : ''}
       </div>
     </div>
   `;
@@ -342,8 +334,8 @@ function renderProduct({id}){
     });
   }
 
-  document.getElementById('addBtn').onclick = () => {
-    const sel = sg.querySelector('.size.active');
+  el('#addBtn').onclick = () => {
+    const sel = sg ? sg.querySelector('.size.active') : null;
     const size = sel ? sel.textContent : null;
     addToCart(p, size, selectedColor);
   };
@@ -370,10 +362,10 @@ function renderCart(){
       <div class="row" style="justify-content:space-between">
         <div>${t('total')}</div><div><b>${priceFmt(total)}</b></div>
       </div>
-      <div class="footer-note">Telegram WebApp sendData → заказ придёт менеджеру.</div>
-      <div class="row" style="margin-top:10px">
-        <button class="btn" id="checkoutBtn"><i data-lucide="send"></i>${t('proceed')}</button>
+      <div class="footer-note">Заказ отправится менеджеру в Telegram (WebApp).</div>
+      <div class="row" style="margin-top:10px; width:100%">
         <a class="btn secondary" href="#/"><i data-lucide="arrow-left"></i>${t('continue')}</a>
+        <button class="btn push-right" id="checkoutBtn"><i data-lucide="send"></i>${t('proceed')}</button>
       </div>
     </div>
   `;
@@ -406,7 +398,6 @@ function renderCart(){
     }
   }
 
-  // Комментарий
   const note = el('#orderNote');
   note.value = state.orderNote || '';
   note.oninput = () => {
@@ -414,7 +405,7 @@ function renderCart(){
     localStorage.setItem('evlise_note', state.orderNote);
   };
 
-  // ТОЛЬКО здесь показываем MainButton
+  // Показываем MainButton только здесь
   if (tg){
     tg.MainButton.setText(t('proceed'));
     tg.MainButton.show();
@@ -585,24 +576,16 @@ function checkoutInTelegram(summary){
 }
 
 /* ---------- Utils ---------- */
-function priceFmt(rub){
-  // исходные цены в products.json заданы в RUB → конвертируем в UZS
-  const uzs = Math.round(rub * RUB_TO_UZS);
+function priceFmt(v){
+  const uzs = Math.round(v * RUB_TO_UZS);
   return new Intl.NumberFormat('ru-RU', { style:'currency', currency: PRICE_CURRENCY, maximumFractionDigits:0 }).format(uzs);
 }
 function getCategoryName(slug){ return state.categories.find(c=>c.slug===slug)?.name || slug; }
 
-function renderSizeChartHTML(){
-  const rows = [
-    ['INT','Грудь (см)','Талия (см)','Бёдра (см)'],
-    ['XS','80–84','60–64','86–90'],
-    ['S','84–88','64–68','90–94'],
-    ['M','88–92','68–72','94–98'],
-    ['L','92–98','72–78','98–104'],
-    ['XL','98–104','78–86','104–110']
-  ];
-  const thead = `<tr>${rows[0].map(h=>`<th>${h}</th>`).join('')}</tr>`;
-  const body = rows.slice(1).map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('');
+function renderSizeChartHTML(chart){
+  // chart: { headers:[], rows:[[...],[...]] }
+  const thead = `<tr>${chart.headers.map(h=>`<th>${h}</th>`).join('')}</tr>`;
+  const body = chart.rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('');
   return `<div class="table-wrap"><table class="table">${thead}${body}</table></div>`;
 }
 
