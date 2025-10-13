@@ -1,7 +1,7 @@
 // === Evlise Outlet WebApp ===
-// RU/UZ, цены в UZS. Мобильное меню с «Избранное», мультигалерея,
-// реальные фото в полноэкранной модалке, цветовые свотчи,
-// мини-подсказки для нижних кнопок, тосты сверху, улучшенная корзина.
+// RU/UZ, цены в UZS. Мобильное меню с «Избранное», выдвижной список категорий,
+// мультигалерея, реальные фото в полноэкранной модалке, цветовые свотчи,
+// мини-подсказки для нижних кнопок, тосты сверху с отступом от хедера, улучшенная корзина.
 
 const tg = window.Telegram?.WebApp;
 if (tg) {
@@ -21,6 +21,7 @@ const DEFAULT_THEME = localStorage.getItem('evlise_theme') || (matchMedia('(pref
 const i18n = {
   ru: {
     categories: 'Категории',
+    showCategories: 'Показать категории',
     newItems: 'Новинки',
     freshFromIg: 'Свежие позиции из Instagram',
     filters: 'Фильтры',
@@ -39,7 +40,7 @@ const i18n = {
     orderCommentPlaceholder: 'Напишите пожелания: примерка, удобное время, адрес…',
     total: 'Сумма',
     proceed: 'Оформить заказ',
-    continue: 'Продолжить покупки',
+    back: 'Вернуться',
     empty: 'Корзина пуста.',
     notFound: 'Ничего не найдено. Измените фильтры.',
     faq: 'FAQ',
@@ -49,10 +50,12 @@ const i18n = {
     clear: 'Сбросить',
     apply: 'Применить',
     cancel: 'Отмена',
-    emptyFav: 'Список избранного пуст.'
+    emptyFav: 'Список избранного пуст.',
+    cleared: 'Корзина очищена'
   },
   uz: {
     categories: 'Kategoriyalar',
+    showCategories: 'Kategoriyalarni ko‘rsatish',
     newItems: 'Yangi tovarlar',
     freshFromIg: 'Instagram’dan yangi pozitsiyalar',
     filters: 'Filtrlar',
@@ -71,7 +74,7 @@ const i18n = {
     orderCommentPlaceholder: 'Istaklaringizni yozing: kiyib ko‘rish, vaqt, manzil…',
     total: 'Jami',
     proceed: 'Buyurtmani rasmiylashtirish',
-    continue: 'Xaridni davom ettirish',
+    back: 'Qaytish',
     empty: 'Savat bo‘sh.',
     notFound: 'Hech narsa topilmadi. Filtrlarni o‘zgartiring.',
     faq: 'Savol-javob',
@@ -81,7 +84,8 @@ const i18n = {
     clear: 'Tozalash',
     apply: 'Qo‘llash',
     cancel: 'Bekor qilish',
-    emptyFav: 'Sevimlilar ro‘yxati bo‘sh.'
+    emptyFav: 'Sevimlilar ro‘yxati bo‘sh.',
+    cleared: 'Savat tozalandi'
   }
 };
 let lang = DEFAULT_LANG;
@@ -93,7 +97,7 @@ const state = {
   categories: [],
   filters: { size: [], colors: [], materials: [], minPrice: null, maxPrice: null, inStock: false },
   cart: JSON.parse(localStorage.getItem('evlise_cart') || '{"items":[]}'),
-  favorites: JSON.parse(localStorage.getItem('evlise_fav') || '[]'), // array of product ids
+  favorites: JSON.parse(localStorage.getItem('evlise_fav') || '[]'),
   orderNote: localStorage.getItem('evlise_note') || ""
 };
 
@@ -108,10 +112,15 @@ const modalTitle = el('#modalTitle');
 const modalBody = el('#modalBody');
 const modalActions = el('#modalActions');
 const toastWrap = el('#toastWrap');
+const headerEl = el('#appHeader');
+const sheet = el('#sheet');
+const sheetBody = el('#sheetBody');
 
 // Theme init
 document.documentElement.setAttribute('data-theme', DEFAULT_THEME);
 updateHeaderToggles();
+updateToastTop(); // начальный отступ под высоту хедера
+window.addEventListener('resize', updateToastTop);
 
 const routes = {
   '/': renderHome,
@@ -140,7 +149,7 @@ async function init(){
 function bindChrome(){
   el('#menuBtn').onclick = () => openDrawer();
   el('#closeDrawer').onclick = () => closeDrawer();
-  overlay.onclick = closeDrawer;
+  overlay.onclick = () => { closeDrawer(); closeSheet(); };
   el('#modalClose').onclick = closeModal;
   el('#themeBtn').onclick = toggleTheme;
   el('#langBtn').onclick = toggleLanguage;
@@ -158,6 +167,10 @@ function updateHeaderToggles(){
   el('#themeBtn').innerHTML = `<i data-lucide="${isLight ? 'moon' : 'sun'}"></i>`;
   lucide.createIcons();
 }
+function updateToastTop(){
+  const h = headerEl?.offsetHeight || 56;
+  document.documentElement.style.setProperty('--toastTop', `${h + 8}px`);
+}
 
 function toggleLanguage(){
   lang = (lang === 'ru') ? 'uz' : 'ru';
@@ -170,23 +183,60 @@ function toggleLanguage(){
 function openDrawer(){ drawer.classList.add('open'); overlay.classList.add('show'); drawer.setAttribute('aria-hidden','false'); }
 function closeDrawer(){ drawer.classList.remove('open'); overlay.classList.remove('show'); drawer.setAttribute('aria-hidden','true'); }
 
+/* ---------- Drawer: компактное меню с выдвижными категориями ---------- */
 function buildDrawer(){
   const nav = el('#drawerNav'); nav.innerHTML = '';
   const links = [
     [t('home'), '#/'],
     [t('favorites'), '#/favorites'],
+    // одна кнопка, которая открывает низовой лист с категориями
+    ['button', t('showCategories'), () => openCategoriesSheet()],
     [t('faq'), '#/faq'],
-    ...state.categories.map(c => [c.name, `#/category/${c.slug}`]),
     [t('cart'), '#/cart']
   ];
-  for (const [label, href] of links){
-    const a = document.createElement('a'); a.href = href; a.textContent = label; nav.appendChild(a);
+
+  for (const entry of links){
+    if (entry[0] === 'button'){
+      const btn = document.createElement('button');
+      btn.className = 'as-link';
+      btn.textContent = entry[1];
+      btn.onclick = entry[2];
+      nav.appendChild(btn);
+    } else {
+      const [label, href] = entry;
+      const a = document.createElement('a'); a.href = href; a.textContent = label; nav.appendChild(a);
+    }
   }
+}
+
+function openCategoriesSheet(){
+  // собираем список категорий
+  sheetBody.innerHTML = '';
+  state.categories.forEach(c=>{
+    const a = document.createElement('a');
+    a.href = `#/category/${c.slug}`;
+    a.textContent = c.name;
+    a.onclick = () => closeSheet();
+    sheetBody.appendChild(a);
+  });
+  openSheet(t('categories'));
+}
+
+function openSheet(title){
+  el('#sheetTitle').textContent = title || '';
+  sheet.classList.add('show');
+  overlay.classList.add('show');
+  sheet.setAttribute('aria-hidden','false');
+}
+function closeSheet(){
+  sheet.classList.remove('show');
+  sheet.setAttribute('aria-hidden','true');
+  overlay.classList.remove('show');
 }
 
 /* ---------- Router ---------- */
 function router(){
-  if (tg?.MainButton) tg.MainButton.hide(); // скрываем везде, кроме корзины
+  if (tg?.MainButton) tg.MainButton.hide();
   const hash = location.hash.replace(/^#/, '') || '/';
   for (const pattern in routes){
     const match = matchRoute(pattern, hash);
@@ -208,7 +258,7 @@ function matchRoute(pattern, path){
 
 /* ---------- Home ---------- */
 function renderHome(){
-  closeDrawer();
+  closeDrawer(); closeSheet();
   view.innerHTML = `
     <section class="section">
       <div class="h1">${t('categories')}</div>
@@ -255,7 +305,7 @@ function renderHome(){
 
 /* ---------- Category ---------- */
 function renderCategory({slug}){
-  closeDrawer();
+  closeDrawer(); closeSheet();
   const cat = state.categories.find(c => c.slug === slug);
   if (!cat){ renderHome(); return; }
   const products = state.products.filter(p => p.category === slug);
@@ -279,7 +329,7 @@ function renderCategory({slug}){
 
 /* ---------- Favorites ---------- */
 function renderFavorites(){
-  closeDrawer();
+  closeDrawer(); closeSheet();
   const favSet = new Set(state.favorites);
   const list = state.products.filter(p => favSet.has(p.id));
   view.innerHTML = `
@@ -311,7 +361,7 @@ function drawProducts(list){
 
 /* ---------- Product page ---------- */
 function renderProduct({id}){
-  closeDrawer();
+  closeDrawer(); closeSheet();
   const p = state.products.find(x => String(x.id) === String(id));
   if (!p){ renderHome(); return; }
   const sizes  = p.sizes  || [];
@@ -437,13 +487,19 @@ function openImageFullscreen(src){
 
 /* ---------- Cart ---------- */
 function renderCart(){
-  closeDrawer();
+  closeDrawer(); closeSheet();
   const items = state.cart.items;
   const enriched = items.map(it => ({ ...it, product: state.products.find(p=>p.id===it.productId) })).filter(x => x.product);
   let total = 0; enriched.forEach(x => total += x.qty * x.product.price);
 
   view.innerHTML = `
-    <div class="h1">${t('cart')}</div>
+    <div class="row" style="justify-content:space-between; align-items:center">
+      <div class="h1" style="margin:0">${t('cart')}</div>
+      <button class="icon-btn" id="clearCart" title="${t('clear')}" aria-label="${t('clear')}">
+        <i data-lucide="trash-2"></i>
+      </button>
+    </div>
+
     <div class="cart" id="cartList"></div>
 
     <div class="p-panel" style="margin-top:4px">
@@ -457,7 +513,7 @@ function renderCart(){
       </div>
       <div class="footer-note">Заказ отправится менеджеру в Telegram (WebApp).</div>
       <div class="row" style="margin-top:10px; width:100%">
-        <a class="btn secondary" href="#/"><i data-lucide="arrow-left"></i>${t('continue')}</a>
+        <button class="btn secondary" id="backBtn"><i data-lucide="arrow-left"></i>${t('back')}</button>
         <button class="btn push-right" id="checkoutBtn"><i data-lucide="send"></i>${t('proceed')}</button>
       </div>
     </div>
@@ -480,7 +536,7 @@ function renderCart(){
           </div>
           <div class="cart-meta">${priceFmt(x.product.price)} × ${x.qty}</div>
         </div>
-        <div style="display:flex; align-items:center; gap:10px">
+        <div class="cart-right">
           <div class="cart-price">${priceFmt(x.product.price * x.qty)}</div>
           <div class="qty">
             <button data-act="dec">−</button>
@@ -504,6 +560,16 @@ function renderCart(){
     localStorage.setItem('evlise_note', state.orderNote);
   };
 
+  // Очистить корзину
+  el('#clearCart').onclick = () => {
+    state.cart.items = [];
+    persistCart(); updateCartBadge(); renderCart();
+    toast(t('cleared'));
+  };
+
+  // Вернуться
+  el('#backBtn').onclick = () => history.length > 1 ? history.back() : (location.hash = '#/');
+
   if (tg){
     tg.MainButton.setText(t('proceed'));
     tg.MainButton.show();
@@ -515,7 +581,7 @@ function renderCart(){
 
 /* ---------- FAQ ---------- */
 function renderFAQ(){
-  closeDrawer();
+  closeDrawer(); closeSheet();
   view.innerHTML = `
     <section class="section">
       <div class="h1">${t('faq')}</div>

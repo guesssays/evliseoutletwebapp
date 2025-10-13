@@ -12,7 +12,7 @@
 </head>
 <body>
   <div id="app">
-    <header class="header">
+    <header class="header" id="appHeader">
       <a class="brand" href="#/">EVLISE OUTLET</a>
       <div class="header-actions">
         <button id="themeBtn" class="icon-btn" aria-label="Theme"><i data-lucide="sun"></i></button>
@@ -27,11 +27,11 @@
       </div>
     </header>
 
+    <!-- Drawer (правое меню) -->
     <aside id="drawer" class="drawer" aria-hidden="true">
       <button id="closeDrawer" class="icon-btn close"><i data-lucide="x"></i></button>
       <nav id="drawerNav"></nav>
 
-      <!-- Нижний док с соц-иконками -->
       <div class="drawer-dock">
         <a class="dock-btn" href="https://t.me/evliseoutlet" target="_blank" aria-label="Telegram">
           <i data-lucide="send"></i>
@@ -52,6 +52,15 @@
       </div>
     </aside>
     <div id="overlay" class="overlay" aria-hidden="true"></div>
+
+    <!-- Низовой выдвижной список (категории) -->
+    <div id="sheet" class="sheet" aria-hidden="true">
+      <div class="sheet-dialog">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title" id="sheetTitle">Категории</div>
+        <div class="sheet-body" id="sheetBody"></div>
+      </div>
+    </div>
 
     <main id="view" class="view"></main>
   </div>

@@ -21,6 +21,7 @@
   --brand:#ffffff; --accent:#0ea5e9; --stroke:#2a2a2a; --pill:#1f1f1f;
   --radius:18px; --shadow:0 10px 30px rgba(0,0,0,.35);
   --glass:rgba(255,255,255,.06);
+  --toastTop: 16px; /* динамически обновляется из JS высотой хедера */
 }
 :root[data-theme="light"]{
   --bg:#f6f7fb; --paper:#fff; --text:#161616; --muted:#5a5a5a;
@@ -87,15 +88,16 @@ body{
 
 /* === CARDS === */
 .card{
-  display:block; overflow:hidden; border:1px solid var(--stroke); border-radius:var(--radius);
+  display:flex; flex-direction:column; overflow:hidden;
+  border:1px solid var(--stroke); border-radius:var(--radius);
   background:var(--paper); text-decoration:none; color:inherit; box-shadow:var(--shadow);
-  transition:transform .15s ease;
+  transition:transform .15s ease; min-height:100%;
 }
 .card:hover{ transform:translateY(-2px) }
-.card-img-wrap{position:relative; aspect-ratio:4/5; background:#0e0e0e}
+.card-img-wrap{position:relative; aspect-ratio:4/5; background:#0e0e0e; flex:1 0 auto}
 :root[data-theme="light"] .card-img-wrap{background:#f3f4f6}
 .card-img-wrap img{width:100%; height:100%; object-fit:cover; display:block}
-.card-body{padding:12px; text-align:center}
+.card-body{padding:12px; display:flex; flex-direction:column; justify-content:flex-end; min-height:72px}
 .card-title{
   font-family:"BebasNeueCyrillic", sans-serif; text-transform:uppercase;
   letter-spacing:.8px; font-size:18px; line-height:1.1;
@@ -130,9 +132,9 @@ body{
   transform:translateX(100%); transition:transform .2s ease; z-index:50; padding:56px 16px 90px;
 }
 .drawer.open{ transform:translateX(0) }
-.drawer nav a{
+.drawer nav a, .drawer nav button.as-link{
   display:block; padding:12px 10px; border:1px solid var(--stroke);
-  border-radius:12px; margin-bottom:10px; text-decoration:none; color:var(--text); background:var(--paper)
+  border-radius:12px; margin-bottom:10px; text-decoration:none; color:var(--text); background:var(--paper); width:100%; text-align:left;
 }
 .drawer-dock{
   position:absolute; left:0; right:0; bottom:0; padding:12px 16px; border-top:1px solid var(--stroke);
@@ -146,6 +148,19 @@ body{
 
 .overlay{ position:fixed; inset:0; background:rgba(0,0,0,.5); opacity:0; visibility:hidden; transition:opacity .2s ease; z-index:40}
 .overlay.show{ opacity:1; visibility:visible}
+
+/* === BOTTOM SHEET === */
+.sheet{ position:fixed; inset:0; display:none; background:rgba(0,0,0,.45); z-index:60 }
+.sheet.show{ display:block }
+.sheet-dialog{
+  position:absolute; left:0; right:0; bottom:0;
+  background:var(--paper); border-top-left-radius:18px; border-top-right-radius:18px;
+  border-top:1px solid var(--stroke); box-shadow:var(--shadow); padding:8px 12px 16px;
+}
+.sheet-handle{ width:44px; height:5px; border-radius:999px; margin:6px auto 8px; background:var(--pill) }
+.sheet-title{ font-weight:800; text-align:center; margin-bottom:8px }
+.sheet-body{ display:grid; gap:10px; padding:4px 0 8px }
+.sheet a{ display:block; padding:12px; border:1px solid var(--stroke); border-radius:12px; text-decoration:none; color:var(--text); background:var(--paper) }
 
 /* === PRODUCT PAGE === */
 .product{ display:grid; gap:16px; grid-template-columns:1fr}
@@ -213,20 +228,28 @@ body{
 .action-btn:active[data-tip]::after,
 .action-btn:hover[data-tip]::after{ opacity:1 }
 
-/* === CART (улучшено) === */
+/* === CART (улучшено + адаптив) === */
 .cart{ display:grid; gap:12px}
 .cart-item{
   display:grid; grid-template-columns:64px 1fr auto; gap:12px; align-items:center;
-  border:1px solid var(--stroke); border-radius:14px; padding:10px; background:var(--paper);
+  border:1px solid var(--stroke); border-radius:14px; padding:10px; background:var(--paper)
 }
 .cart-item img{ width:64px; height:64px; object-fit:cover; border-radius:10px}
-.cart-title{ font-weight:700 }
-.cart-meta{ color:var(--muted); font-size:13px }
-.cart-price{ font-weight:700; text-align:right }
+.cart-item > div:nth-child(2){ min-width:0 } /* чтобы текст схлопывался */
+.cart-title{ font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.cart-meta{ color:var(--muted); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.cart-price{ font-weight:700; text-align:right; white-space:nowrap }
 
-.qty{ display:flex; align-items:center; gap:8px}
+.cart-right{ display:flex; align-items:center; gap:10px }
+.qty{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap }
 .qty button{ width:28px; height:28px; border-radius:8px; border:1px solid var(--stroke); background:var(--pill); color:var(--text); cursor:pointer}
 
+@media(max-width:540px){
+  .cart-item{ grid-template-columns:64px 1fr; align-items:start }
+  .cart-right{ grid-column:1 / -1; justify-content:space-between; margin-top:6px }
+}
+
+/* misc */
 .hr{ height:1px; background:var(--stroke); margin:8px 0}
 .footer-note{ color:var(--muted); font-size:13px; margin-top:10px}
 .link{ color:var(--accent); text-decoration:none}
@@ -251,8 +274,8 @@ body{
 .modal-body{ padding:14px }
 .modal-actions{ display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--stroke); justify-content:flex-end}
 
-/* toasts now top-right */
-.toast-wrap{ position:fixed; top:16px; right:16px; display:grid; gap:8px; z-index:70 }
+/* toasts: сверху с отступом = высота хедера */
+.toast-wrap{ position:fixed; top:var(--toastTop); right:16px; display:grid; gap:8px; z-index:70 }
 .toast{ background:var(--paper); color:var(--text); border:1px solid var(--stroke); padding:10px 12px; border-radius:12px; box-shadow:var(--shadow)}
 
 /* === FAB SUPPORT === */
