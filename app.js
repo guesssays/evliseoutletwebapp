@@ -1,7 +1,7 @@
 // === Evlise Outlet WebApp ===
 // RU/UZ, цены в UZS. Мобильное меню с «Избранное», встроенный аккордеон «Категории»,
 // мультигалерея, реальные фото в полноэкранной модалке, квадратные свотчи,
-// модальное "онбординг"-окно с сильным блюром (1 раз + чекбокс), тосты сверху, улучшенная корзина.
+// модальное "онбординг"-окно с сильным блюром (1 раз + чекбокс, пометка на TG-пользователя), тосты сверху, улучшенная корзина.
 
 const tg = window.Telegram?.WebApp;
 if (tg) {
@@ -238,14 +238,17 @@ function buildDrawer(){
 /* ---------- Router ---------- */
 function router(){
   if (tg?.MainButton) tg.MainButton.hide();
-  const hash = location.hash.replace(/^#/, '') || '/';
+  let hash = location.hash.replace(/^#/, '') || '/';
+  // убираем query-часть из пути для корректного матчинга маршрутов
+  const hashNoQuery = hash.split('?')[0];
   for (const pattern in routes){
-    const match = matchRoute(pattern, hash);
+    const match = matchRoute(pattern, hashNoQuery);
     if (match){ routes[pattern](match.params); return; }
   }
   renderHome();
 }
 function matchRoute(pattern, path){
+  path = path.split('?')[0]; // страховка
   const p = pattern.split('/').filter(Boolean);
   const a = path.split('/').filter(Boolean);
   if (p.length !== a.length) return null;
@@ -482,17 +485,31 @@ function renderProduct({id}){
     favBtn.setAttribute('data-tip', isFav(p.id) ? 'В избранном' : 'В избранное');
   };
 
-  // Однократные подсказки — через заметную модалку с сильным блюром
+  // Однократные подсказки — через заметную модалку с сильным блюром (привязка к TG-пользователю)
   tryShowTipsOnce();
 
   lucide.createIcons();
 }
 
-/* ---------- Tips via modal (once unless disabled) ---------- */
+/* ---------- helpers: ключи под конкретного TG-пользователя ---------- */
+function userScopedKey(base){
+  const uid = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  return uid ? `${base}_${uid}` : base;
+}
+
+/* ---------- Tips via modal (once unless disabled; scoped per TG user) ---------- */
 function tryShowTipsOnce(){
-  const never = localStorage.getItem('evlise_tips_never') === '1';
-  const seen  = localStorage.getItem('evlise_tips_seen') === '1';
-  if (never || seen) return;
+  const neverKey = userScopedKey('evlise_tips_never');
+  const seenKey  = userScopedKey('evlise_tips_seen');
+
+  // форс-показ: #/product/:id?tips=1
+  const q = (location.hash.split('?')[1] || '');
+  const params = new URLSearchParams(q);
+  const force = params.get('tips') === '1';
+
+  const never = localStorage.getItem(neverKey) === '1';
+  const seen  = localStorage.getItem(seenKey) === '1';
+  if ((never || seen) && !force) return;
 
   openModal({
     title: t('tipsTitle'),
@@ -504,8 +521,8 @@ function tryShowTipsOnce(){
     `,
     actions: [
       { label: 'OK', onClick: () => {
-          if (el('#tipsNever')?.checked) localStorage.setItem('evlise_tips_never','1');
-          localStorage.setItem('evlise_tips_seen','1');
+          if (el('#tipsNever')?.checked) localStorage.setItem(neverKey,'1');
+          localStorage.setItem(seenKey,'1');
           closeModal();
         }
       }
