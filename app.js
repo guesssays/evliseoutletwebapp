@@ -1,7 +1,8 @@
 // === Evlise Outlet WebApp ===
 // RU/UZ, цены в UZS. Мобильное меню с «Избранное», встроенный аккордеон «Категории»,
 // мультигалерея, реальные фото в полноэкранной модалке, квадратные свотчи,
-// модальное "онбординг"-окно с сильным блюром (1 раз + чекбокс, пометка на TG-пользователя), тосты сверху, улучшенная корзина.
+// ПОЛНОЦЕННЫЙ ОНБОРДИНГ (мульти-слайды с иллюстрациями, 1 раз на TG-пользователя),
+// тосты сверху, улучшенная корзина.
 
 const tg = window.Telegram?.WebApp;
 if (tg) {
@@ -51,10 +52,21 @@ const i18n = {
     cancel: 'Отмена',
     emptyFav: 'Список избранного пуст.',
     cleared: 'Корзина очищена',
-    tipsTitle: 'Как пользоваться кнопками?',
-    tipsText:
-      '♥ — добавить в избранное. Домик — перейти на главную. Плюс — добавить товар в корзину. Подсказки показываются один раз.',
-    tipsDontShow: 'Больше не показывать'
+
+    // Онбординг
+    ob_welcome_t: 'Добро пожаловать 👋',
+    ob_welcome_d: 'Коротко покажем, как пользоваться приложением.',
+    ob_actions_t: 'Кнопки на карточке товара',
+    ob_actions_d: '♥ — добавить в избранное.\nДом — вернуться на главную.\n+ — добавить в корзину.',
+    ob_filters_t: 'Фильтры и категории',
+    ob_filters_d: 'Откройте «Фильтры», чтобы отобрать товары.\nКатегории — в боковом меню (≡).',
+    ob_gallery_t: 'Галерея и реальные фото',
+    ob_gallery_d: 'Листайте миниатюры, кликайте на «Реальные фото» — они откроются во весь экран.',
+    ob_cart_t: 'Оформление заказа',
+    ob_cart_d: 'Товары из корзины одним нажатием отправятся менеджеру в Telegram.',
+    ob_next: 'Далее',
+    ob_skip: 'Пропустить',
+    ob_start: 'Начнём'
   },
   uz: {
     categories: 'Kategoriyalar',
@@ -88,10 +100,21 @@ const i18n = {
     cancel: 'Bekor qilish',
     emptyFav: 'Sevimlilar ro‘yxati bo‘sh.',
     cleared: 'Savat tozalandi',
-    tipsTitle: 'Tugmalar qanday ishlaydi?',
-    tipsText:
-      '♥ — sevimlilarga qo‘shish. Uy — bosh sahifa. Plus — savatga qo‘shish. Maslahat bir marta ko‘rsatiladi.',
-    tipsDontShow: 'Yana ko‘rsatmaslik'
+
+    // Onboarding
+    ob_welcome_t: 'Xush kelibsiz 👋',
+    ob_welcome_d: 'Ilova bilan qanday ishlashni qisqacha ko‘rsatamiz.',
+    ob_actions_t: 'Tovar kartasidagi tugmalar',
+    ob_actions_d: '♥ — sevimlilarga qo‘shish.\nUy — bosh sahifa.\n+ — savatga qo‘shish.',
+    ob_filters_t: 'Filtrlar va kategoriyalar',
+    ob_filters_d: '“Filtrlar” orqali saralang.\nKategoriyalar — yon menyuda (≡).',
+    ob_gallery_t: 'Galereya va real suratlar',
+    ob_gallery_d: 'Miniaturalarni aylantiring, “Real suratlar” ni bosing — to‘liq ekranda ochiladi.',
+    ob_cart_t: 'Buyurtma berish',
+    ob_cart_d: 'Savatdagi tovarlar Telegram menejeriga bitta bosishda yuboriladi.',
+    ob_next: 'Keyingi',
+    ob_skip: 'O‘tkazib yuborish',
+    ob_start: 'Boshlaymiz'
   }
 };
 let lang = DEFAULT_LANG;
@@ -144,6 +167,8 @@ async function init(){
   buildDrawer();
   updateCartBadge();
   bindChrome();
+  // Онбординг сразу после первой инициализации
+  showOnboardingOnce();
   router();
   window.addEventListener('hashchange', router);
   lucide.createIcons();
@@ -182,6 +207,11 @@ function toggleLanguage(){
   buildDrawer();
   router();
   el('#langBtn').textContent = lang.toUpperCase();
+
+  // Если открыт онбординг — перерисовать тексты на лету
+  if (modal.classList.contains('show') && modalBody.querySelector('.ob')){
+    renderOnboardingSlide(currentOnboardingIndex);
+  }
 }
 
 function openDrawer(){ drawer.classList.add('open'); overlay.classList.add('show'); drawer.setAttribute('aria-hidden','false'); }
@@ -199,7 +229,7 @@ function buildDrawer(){
   mkLink(t('home'), '#/');
   mkLink(t('favorites'), '#/favorites');
 
-  // Раздел «Категории» (одного размера/стиля с остальными пунктами)
+  // Раздел «Категории»
   const sec = document.createElement('div');
   sec.className = 'nav-section';
 
@@ -239,7 +269,6 @@ function buildDrawer(){
 function router(){
   if (tg?.MainButton) tg.MainButton.hide();
   let hash = location.hash.replace(/^#/, '') || '/';
-  // убираем query-часть из пути для корректного матчинга маршрутов
   const hashNoQuery = hash.split('?')[0];
   for (const pattern in routes){
     const match = matchRoute(pattern, hashNoQuery);
@@ -248,7 +277,7 @@ function router(){
   renderHome();
 }
 function matchRoute(pattern, path){
-  path = path.split('?')[0]; // страховка
+  path = path.split('?')[0];
   const p = pattern.split('/').filter(Boolean);
   const a = path.split('/').filter(Boolean);
   if (p.length !== a.length) return null;
@@ -400,7 +429,6 @@ function renderProduct({id}){
         <div class="h2">${t('description')}</div>
         <div>${p.description}</div>
 
-        <!-- Иконки у характеристик -->
         <div class="kv-ico">
           <div class="kv-row">
             <i data-lucide="folder"></i><span>${t('category')}</span><b>${getCategoryName(p.category)}</b>
@@ -453,7 +481,7 @@ function renderProduct({id}){
     sg.appendChild(b);
   });
 
-  // Цвета — ЧИСТЫЕ КВАДРАТЫ (без внутренних элементов)
+  // Цвета — квадратные свотчи
   let selectedColor = null;
   if (colors.length){
     const cg = el('#colorGrid');
@@ -485,184 +513,7 @@ function renderProduct({id}){
     favBtn.setAttribute('data-tip', isFav(p.id) ? 'В избранном' : 'В избранное');
   };
 
-  // Однократные подсказки — через заметную модалку с сильным блюром (привязка к TG-пользователю)
-  tryShowTipsOnce();
-
   lucide.createIcons();
-}
-
-/* ---------- helpers: ключи под конкретного TG-пользователя ---------- */
-function userScopedKey(base){
-  const uid = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-  return uid ? `${base}_${uid}` : base;
-}
-
-/* ---------- Tips via modal (once unless disabled; scoped per TG user) ---------- */
-function tryShowTipsOnce(){
-  const neverKey = userScopedKey('evlise_tips_never');
-  const seenKey  = userScopedKey('evlise_tips_seen');
-
-  // форс-показ: #/product/:id?tips=1
-  const q = (location.hash.split('?')[1] || '');
-  const params = new URLSearchParams(q);
-  const force = params.get('tips') === '1';
-
-  const never = localStorage.getItem(neverKey) === '1';
-  const seen  = localStorage.getItem(seenKey) === '1';
-  if ((never || seen) && !force) return;
-
-  openModal({
-    title: t('tipsTitle'),
-    body: `
-      <div class="tips-modal-body">
-        <p class="tips-text">${t('tipsText')}</p>
-        <label class="tips-check"><input id="tipsNever" type="checkbox"> ${t('tipsDontShow')}</label>
-      </div>
-    `,
-    actions: [
-      { label: 'OK', onClick: () => {
-          if (el('#tipsNever')?.checked) localStorage.setItem(neverKey,'1');
-          localStorage.setItem(seenKey,'1');
-          closeModal();
-        }
-      }
-    ],
-    onOpen: () => {
-      // усиливаем блюр под этим конкретным модальным окном
-      modal.classList.add('blur-heavy');
-    }
-  });
-}
-
-/* ---------- Fullscreen Image ---------- */
-function openImageFullscreen(src){
-  openModal({
-    title: '',
-    body: `<img src="${src}" alt="" style="width:100%;height:auto;display:block;border-radius:12px">`,
-    actions: [{ label: 'OK', onClick: closeModal }]
-  });
-}
-
-/* ---------- Cart ---------- */
-function renderCart(){
-  closeDrawer();
-  const items = state.cart.items;
-  const enriched = items.map(it => ({ ...it, product: state.products.find(p=>p.id===it.productId) })).filter(x => x.product);
-  let total = 0; enriched.forEach(x => total += x.qty * x.product.price);
-
-  view.innerHTML = `
-    <div class="row cart-head">
-      <div class="h1" style="margin:0">${t('cart')}</div>
-      <button class="icon-btn" id="clearCart" title="${t('clear')}" aria-label="${t('clear')}">
-        <i data-lucide="trash-2"></i>
-      </button>
-    </div>
-
-    <div class="cart" id="cartList"></div>
-
-    <div class="p-panel cart-note">
-      <div class="h2">${t('orderComment')}</div>
-      <textarea id="orderNote" rows="3" placeholder="${t('orderCommentPlaceholder')}" class="note-input"></textarea>
-    </div>
-
-    <div class="p-panel cart-summary">
-      <div class="row" style="justify-content:space-between">
-        <div>${t('total')}</div><div><b>${priceFmt(total)}</b></div>
-      </div>
-      <div class="footer-note">Заказ отправится менеджеру в Telegram (WebApp).</div>
-      <div class="row cart-summary-actions">
-        <button class="btn secondary" id="backBtn"><i data-lucide="arrow-left"></i>${t('back')}</button>
-        <button class="btn push-right" id="checkoutBtn"><i data-lucide="send"></i>${t('proceed')}</button>
-      </div>
-    </div>
-  `;
-
-  const list = el('#cartList');
-  if (enriched.length === 0){
-    list.innerHTML = `<div class="sub">${t('empty')}</div>`;
-  } else {
-    for (const x of enriched){
-      const row = document.createElement('div');
-      row.className='cart-item';
-      const sw = colorToHex(x.color || '');
-      row.innerHTML = `
-        <img src="${x.product.images[0]}" alt="${x.product.title}">
-        <div class="cart-mid">
-          <div class="cart-title">${x.product.title}</div>
-          <div class="cart-meta">
-            ${x.size ? `${t('size')}: ${x.size}` : ''}${x.color ? ` · ${t('color')}: <span class="cm-swatch" style="background:${sw};"></span>` : ''}
-          </div>
-          <div class="cart-meta">${priceFmt(x.product.price)} × ${x.qty}</div>
-        </div>
-        <div class="cart-right">
-          <div class="cart-price">${priceFmt(x.product.price * x.qty)}</div>
-          <div class="qty">
-            <button data-act="dec" aria-label="Минус">−</button>
-            <span>${x.qty}</span>
-            <button data-act="inc" aria-label="Плюс">+</button>
-            <button data-act="del" class="qty-del" title="Удалить" aria-label="Удалить">✕</button>
-          </div>
-        </div>
-      `;
-      row.querySelector('[data-act="inc"]').onclick = () => changeQty(x.product.id, x.size, x.color, 1);
-      row.querySelector('[data-act="dec"]').onclick = () => changeQty(x.product.id, x.size, x.color, -1);
-      row.querySelector('[data-act="del"]').onclick = () => removeFromCart(x.product.id, x.size, x.color);
-      list.appendChild(row);
-    }
-  }
-
-  const note = el('#orderNote');
-  note.value = state.orderNote || '';
-  note.oninput = () => {
-    state.orderNote = note.value;
-    localStorage.setItem('evlise_note', state.orderNote);
-  };
-
-  // Очистить корзину
-  el('#clearCart').onclick = () => {
-    state.cart.items = [];
-    persistCart(); updateCartBadge(); renderCart();
-    toast(t('cleared'));
-  };
-
-  // Вернуться
-  el('#backBtn').onclick = () => history.length > 1 ? history.back() : (location.hash = '#/');
-
-  if (tg){
-    tg.MainButton.setText(t('proceed'));
-    tg.MainButton.show();
-    tg.MainButton.onClick(() => checkoutInTelegram(enriched));
-  }
-  el('#checkoutBtn').onclick = () => checkoutInTelegram(enriched);
-  lucide.createIcons();
-}
-
-/* ---------- FAQ ---------- */
-function renderFAQ(){
-  closeDrawer();
-  view.innerHTML = `
-    <section class="section">
-      <div class="h1">${t('faq')}</div>
-      <div class="faq">
-        <details class="item" open>
-          <summary>Как оформить заказ? <span class="badge">шаг-за-шагом</span></summary>
-          <div class="content"><p>Добавьте товар в корзину, перейдите в «${t('cart')}» и нажмите «${t('proceed')}». Заказ уйдёт менеджеру в Telegram.</p></div>
-        </details>
-        <details class="item">
-          <summary>Оплата и доставка</summary>
-          <div class="content"><p>Оплата по согласованию с менеджером. Доставка курьером/самовывоз.</p></div>
-        </details>
-        <details class="item">
-          <summary>Возвраты и обмен</summary>
-          <div class="content"><p>В течение 14 дней при сохранении товарного вида. Уточняйте условия в поддержке.</p></div>
-        </details>
-        <details class="item">
-          <summary>Как подобрать размер?</summary>
-          <div class="content"><p>Смотрите раздел «${t('sizeChart')}» в карточке товара или напишите нам в поддержку.</p></div>
-        </details>
-      </div>
-    </section>
-  `;
 }
 
 /* ---------- Filters ---------- */
@@ -839,7 +690,7 @@ function colorToHex(name){
   };
   if (!name) return '#cccccc';
   const key = String(name).toLowerCase();
-  return map[key] || key; // hex/rgba пройдут напрямую
+  return map[key] || key;
 }
 
 /* ---------- Modal/Toast ---------- */
@@ -854,13 +705,14 @@ function openModal({title, body, actions=[], onOpen}){
     b.onclick = a.onClick || closeModal;
     modalActions.appendChild(b);
   });
-  modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden','false');
   if (onOpen) onOpen();
   lucide.createIcons();
 }
 function closeModal(){
   modal.classList.remove('show');
-  modal.classList.remove('blur-heavy'); // снять усиленный блюр, если был
+  modal.classList.remove('blur-heavy');
   modal.setAttribute('aria-hidden','true');
 }
 function toast(msg){
@@ -868,4 +720,150 @@ function toast(msg){
   n.className='toast'; n.textContent = msg;
   toastWrap.appendChild(n);
   setTimeout(()=>{ n.remove(); }, 2500);
+}
+
+/* ============================================================
+   ONBOARDING (multi-step, once per TG user, with illustrations)
+   ============================================================ */
+function userScopedKey(base){
+  const uid = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  return uid ? `${base}_${uid}` : base;
+}
+const ONBOARDING_KEY = () => userScopedKey('evlise_onboarding_seen');
+let currentOnboardingIndex = 0;
+
+function showOnboardingOnce(){
+  const seen = localStorage.getItem(ONBOARDING_KEY()) === '1';
+  if (seen) return;
+
+  // allow force show via #/?ob=1
+  const q = (location.hash.split('?')[1] || '');
+  const params = new URLSearchParams(q);
+  const force = params.get('ob') === '1';
+  if (!seen || force){
+    currentOnboardingIndex = 0;
+    openModal({
+      title: '',
+      body: `<div class="ob"></div>`,
+      actions: [],
+      onOpen: () => {
+        modal.classList.add('blur-heavy');
+        renderOnboardingSlide(currentOnboardingIndex);
+      }
+    });
+  }
+}
+
+function renderOnboardingSlide(i){
+  const slides = getOnboardingSlides();
+  currentOnboardingIndex = Math.max(0, Math.min(i, slides.length - 1));
+  const s = slides[currentOnboardingIndex];
+
+  const body = el('#modalBody');
+  body.innerHTML = `
+    <div class="ob">
+      <div class="ob-ill">${s.ill}</div>
+      <div class="ob-title">${s.title}</div>
+      <div class="ob-desc">${s.desc.replace(/\n/g,'<br>')}</div>
+      <div class="ob-dots">${slides.map((_,idx)=>`<span class="dot ${idx===currentOnboardingIndex?'active':''}"></span>`).join('')}</div>
+    </div>
+  `;
+
+  // Actions
+  modalActions.innerHTML = '';
+  // Left (Skip) shows only if not last
+  if (currentOnboardingIndex < slides.length - 1){
+    const skip = document.createElement('button');
+    skip.className = 'btn secondary';
+    skip.textContent = t('ob_skip');
+    skip.onclick = finishOnboarding;
+    modalActions.appendChild(skip);
+  } else {
+    const spacer = document.createElement('div');
+    spacer.style.flex = '1';
+    spacer.style.visibility = 'hidden';
+    modalActions.appendChild(spacer);
+  }
+
+  const primary = document.createElement('button');
+  primary.className = 'btn';
+  primary.textContent = currentOnboardingIndex === 0 ? t('ob_start')
+                      : currentOnboardingIndex < slides.length - 1 ? t('ob_next')
+                      : t('ob_start');
+  primary.onclick = () => {
+    if (currentOnboardingIndex < slides.length - 1) {
+      renderOnboardingSlide(currentOnboardingIndex + 1);
+    } else {
+      finishOnboarding();
+    }
+  };
+  modalActions.appendChild(primary);
+}
+
+function finishOnboarding(){
+  localStorage.setItem(ONBOARDING_KEY(), '1');
+  closeModal();
+}
+
+// Simple inline SVG illustrations (lightweight, no external assets)
+function svgPhone(content){
+  return `
+  <svg viewBox="0 0 280 220" class="ob-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <rect x="70" y="10" rx="18" ry="18" width="140" height="200" fill="currentColor" opacity=".06"/>
+    <rect x="85" y="30" rx="12" ry="12" width="110" height="160" fill="currentColor" opacity=".08"/>
+    ${content}
+  </svg>`;
+}
+function illActions(){
+  return svgPhone(`
+    <circle cx="140" cy="170" r="28" stroke="currentColor" stroke-width="2" fill="none"/>
+    <path d="M140 158 v24 M128 170 h24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <path d="M100 170 a10 10 0 1 0 20 0 a10 10 0 1 0 -20 0" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M180 170 l14 -14 M194 170 l-14 -14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <rect x="95" y="60" width="90" height="60" rx="8" fill="currentColor" opacity=".12"/>
+  `);
+}
+function illFilters(){
+  return svgPhone(`
+    <rect x="95" y="60" width="90" height="44" rx="8" fill="currentColor" opacity=".12"/>
+    <rect x="95" y="110" width="28" height="10" rx="4" fill="currentColor" opacity=".25"/>
+    <rect x="128" y="110" width="28" height="10" rx="4" fill="currentColor" opacity=".18"/>
+    <rect x="161" y="110" width="24" height="10" rx="4" fill="currentColor" opacity=".1"/>
+    <path d="M150 150 l10 12 l10 -20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <rect x="180" y="30" width="22" height="8" rx="4" fill="currentColor" opacity=".25"/>
+  `);
+}
+function illGallery(){
+  return svgPhone(`
+    <rect x="95" y="54" width="90" height="70" rx="8" fill="currentColor" opacity=".12"/>
+    <rect x="100" y="130" width="22" height="22" rx="4" fill="currentColor" opacity=".25"/>
+    <rect x="126" y="130" width="22" height="22" rx="4" fill="currentColor" opacity=".18"/>
+    <rect x="152" y="130" width="22" height="22" rx="4" fill="currentColor" opacity=".12"/>
+    <rect x="178" y="130" width="22" height="22" rx="4" fill="currentColor" opacity=".06"/>
+  `);
+}
+function illCart(){
+  return svgPhone(`
+    <rect x="100" y="70" width="80" height="18" rx="6" fill="currentColor" opacity=".12"/>
+    <rect x="100" y="96" width="80" height="18" rx="6" fill="currentColor" opacity=".12"/>
+    <circle cx="120" cy="146" r="12" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M112 146 h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <rect x="148" y="136" width="32" height="20" rx="10" fill="currentColor" opacity=".18"/>
+  `);
+}
+function illWelcome(){
+  return svgPhone(`
+    <rect x="100" y="70" width="80" height="60" rx="12" fill="currentColor" opacity=".12"/>
+    <path d="M120 94 l20 20 M140 94 l-20 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  `);
+}
+
+function getOnboardingSlides(){
+  return [
+    { title: t('ob_welcome_t'), desc: t('ob_welcome_d'), ill: illWelcome() },
+    { title: t('ob_actions_t'), desc: t('ob_actions_d'), ill: illActions() },
+    { title: t('ob_filters_t'), desc: t('ob_filters_d'), ill: illFilters() },
+    { title: t('ob_gallery_t'), desc: t('ob_gallery_d'), ill: illGallery() },
+    { title: t('ob_cart_t'), desc: t('ob_cart_d'), ill: illCart() },
+  ];
 }

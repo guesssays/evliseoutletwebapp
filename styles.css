@@ -137,13 +137,13 @@ body{
   border-radius:12px; margin-bottom:10px; text-decoration:none; color:var(--text); background:var(--paper); width:100%; text-align:left;
 }
 
-/* Категории-аккордеон в drawer: размер и стиль как у ссылок */
+/* Аккордеон категорий */
 .nav-section{ margin-bottom:10px }
 .nav-accordion{
   width:100%; display:flex; align-items:center; justify-content:space-between;
   padding:12px 10px; border:1px solid var(--stroke); border-radius:12px;
   background:var(--paper); color:var(--text); cursor:pointer;
-  font: inherit; /* тот же размер и гарнитура, что у ссылок */
+  font: inherit;
 }
 .nav-accordion-title{ font-size:16px; line-height:1.25 }
 .nav-accordion .chev{ width:18px; height:18px; transition:transform .15s }
@@ -192,7 +192,7 @@ body{
 .size{ padding:10px; border:1px solid var(--stroke); border-radius:12px; text-align:center; cursor:pointer; background:var(--paper); color:var(--text)}
 .size.active{ background:var(--accent); color:#fff; font-weight:800}
 
-/* color swatches — чистые квадраты с полной заливкой */
+/* color swatches */
 .color-grid{ display:flex; gap:8px; flex-wrap:wrap }
 .swatch{
   width:36px; height:36px; border-radius:10px; border:1px solid var(--stroke);
@@ -200,7 +200,7 @@ body{
 }
 .swatch.active{ outline:2px solid var(--accent) }
 
-/* key-values с иконками */
+/* key-values */
 .kv-ico{ display:grid; gap:8px; margin:12px 0 4px }
 .kv-row{
   display:grid; grid-template-columns:20px 1fr auto; gap:8px; align-items:center;
@@ -248,13 +248,23 @@ body{
 .modal-dialog{ width:min(92vw,560px); background:var(--paper); border:1px solid var(--stroke); border-radius:16px; box-shadow:var(--shadow); overflow:hidden }
 .modal-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 14px; border-bottom:1px solid var(--stroke); font-weight:800}
 .modal-body{ padding:14px }
-.modal-actions{ display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--stroke); justify-content:flex-end}
+.modal-actions{ display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--stroke); justify-content:space-between}
 
-/* Текст/чекбокс в онбординге */
-.tips-text{ color:var(--muted); line-height:1.5; margin:0 0 10px }
-.tips-check{ display:flex; align-items:center; gap:8px; color:var(--muted); font-size:14px }
+/* === ONBOARDING === */
+.ob{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; padding:6px 2px }
+.ob-ill{ width:100%; display:flex; justify-content:center; align-items:center; margin:4px 0 6px }
+.ob-svg{ width:80%; height:auto; color:var(--text) }
+.ob-title{
+  font-family:"BebasNeueCyrillic", sans-serif; font-size:22px; letter-spacing:.4px; text-transform:uppercase;
+}
+.ob-desc{ color:var(--muted); white-space:pre-line }
+.ob-dots{ display:flex; gap:8px; margin-top:6px }
+.ob-dots .dot{
+  width:8px; height:8px; border-radius:50%; background:var(--pill); border:1px solid var(--stroke);
+}
+.ob-dots .dot.active{ background:var(--accent); border-color:var(--accent) }
 
-/* === CART (отступы и структурность) === */
+/* === CART === */
 .cart-head{ margin-bottom:12px }
 .cart{ display:grid; gap:16px}
 .cart-item{
@@ -303,7 +313,7 @@ body{
 .btn.secondary{ background:var(--paper); color:var(--text) }
 .push-right{ margin-left:auto }
 
-/* toasts: сверху с динамическим отступом от хедера */
+/* toasts */
 .toast-wrap{ position:fixed; top:var(--toastTop); right:16px; display:grid; gap:8px; z-index:70 }
 .toast{ background:var(--paper); color:var(--text); border:1px solid var(--stroke); padding:10px 12px; border-radius:12px; box-shadow:var(--shadow)}
 
