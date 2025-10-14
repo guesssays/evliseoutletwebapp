@@ -171,7 +171,7 @@ async function init(){
   showOnboardingOnce();
   router();
   window.addEventListener('hashchange', router);
-  lucide.createIcons();
+  if (window.lucide?.createIcons) lucide.createIcons();
 }
 
 /* ---------- Header & chrome ---------- */
@@ -194,7 +194,7 @@ function toggleTheme(){
 function updateHeaderToggles(){
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
   el('#themeBtn').innerHTML = `<i data-lucide="${isLight ? 'moon' : 'sun'}"></i>`;
-  lucide.createIcons();
+  if (window.lucide?.createIcons) lucide.createIcons();
 }
 function updateToastTop(){
   const h = headerEl?.offsetHeight || 56;
@@ -208,9 +208,9 @@ function toggleLanguage(){
   router();
   el('#langBtn').textContent = lang.toUpperCase();
 
-  // Если открыт онбординг — перерисовать тексты на лету
+  // Если открыт онбординг — перерисовать тексты на лету (и не падать, если его нет)
   if (modal.classList.contains('show') && modalBody.querySelector('.ob')){
-    renderOnboardingSlide(currentOnboardingIndex);
+    renderOnboardingSlide(currentOnboardingIndex || 0);
   }
 }
 
@@ -252,7 +252,7 @@ function buildDrawer(){
   header.onclick = () => {
     const opened = panel.classList.toggle('open');
     header.classList.toggle('open', opened);
-    lucide.createIcons();
+    if (window.lucide?.createIcons) lucide.createIcons();
   };
 
   sec.appendChild(header);
@@ -262,7 +262,7 @@ function buildDrawer(){
   mkLink(t('faq'), '#/faq');
   mkLink(t('cart'), '#/cart');
 
-  lucide.createIcons();
+  if (window.lucide?.createIcons) lucide.createIcons();
 }
 
 /* ---------- Router ---------- */
@@ -333,7 +333,7 @@ function renderHome(){
   drawProducts(state.products.slice(0, 12));
   el('#openFilter').onclick = () => openFilterModal();
   renderActiveFilterChips();
-  lucide.createIcons();
+  if (window.lucide?.createIcons) lucide.createIcons();
 }
 
 /* ---------- Category ---------- */
@@ -504,7 +504,7 @@ function renderProduct({id}){
     cartBtn.innerHTML = '<i data-lucide="shopping-bag"></i>';
     cartBtn.setAttribute('data-tip','Перейти в корзину');
     cartBtn.onclick = () => location.hash = '#/cart';
-    lucide.createIcons();
+    if (window.lucide?.createIcons) lucide.createIcons();
   };
 
   favBtn.onclick = () => {
@@ -513,7 +513,35 @@ function renderProduct({id}){
     favBtn.setAttribute('data-tip', isFav(p.id) ? 'В избранном' : 'В избранное');
   };
 
-  lucide.createIcons();
+  if (window.lucide?.createIcons) lucide.createIcons();
+}
+
+/* ---------- FAQ ---------- */
+function renderFAQ(){
+  closeDrawer();
+  view.innerHTML = `
+    <section class="section">
+      <div class="h1">${t('faq')}</div>
+      <div class="faq">
+        <details class="item" open>
+          <summary>Как оформить заказ? <span class="badge">шаг-за-шагом</span></summary>
+          <div class="content"><p>Добавьте товар в корзину, перейдите в «${t('cart')}» и нажмите «${t('proceed')}». Заказ уйдёт менеджеру в Telegram.</p></div>
+        </details>
+        <details class="item">
+          <summary>Оплата и доставка</summary>
+          <div class="content"><p>Оплата по согласованию с менеджером. Доставка курьером/самовывоз.</p></div>
+        </details>
+        <details class="item">
+          <summary>Возвраты и обмен</summary>
+          <div class="content"><p>В течение 14 дней при сохранении товарного вида. Уточняйте условия в поддержке.</p></div>
+        </details>
+        <details class="item">
+          <summary>Как подобрать размер?</summary>
+          <div class="content"><p>Смотрите раздел «${t('sizeChart')}» в карточке товара или напишите нам в поддержку.</p></div>
+        </details>
+      </div>
+    </section>
+  `;
 }
 
 /* ---------- Filters ---------- */
@@ -708,7 +736,7 @@ function openModal({title, body, actions=[], onOpen}){
   modal.classList.add('show');
   modal.setAttribute('aria-hidden','false');
   if (onOpen) onOpen();
-  lucide.createIcons();
+  if (window.lucide?.createIcons) lucide.createIcons();
 }
 function closeModal(){
   modal.classList.remove('show');
@@ -722,6 +750,15 @@ function toast(msg){
   setTimeout(()=>{ n.remove(); }, 2500);
 }
 
+/* ---------- Fullscreen Image (вернули) ---------- */
+function openImageFullscreen(src){
+  openModal({
+    title: '',
+    body: `<img src="${src}" alt="" style="width:100%;height:auto;display:block;border-radius:12px">`,
+    actions: [{ label: 'OK', onClick: closeModal }]
+  });
+}
+
 /* ============================================================
    ONBOARDING (multi-step, once per TG user, with illustrations)
    ============================================================ */
@@ -733,25 +770,20 @@ const ONBOARDING_KEY = () => userScopedKey('evlise_onboarding_seen');
 let currentOnboardingIndex = 0;
 
 function showOnboardingOnce(){
+  const force = new URLSearchParams((location.hash.split('?')[1] || '')).get('ob') === '1';
   const seen = localStorage.getItem(ONBOARDING_KEY()) === '1';
-  if (seen) return;
+  if (seen && !force) return;
 
-  // allow force show via #/?ob=1
-  const q = (location.hash.split('?')[1] || '');
-  const params = new URLSearchParams(q);
-  const force = params.get('ob') === '1';
-  if (!seen || force){
-    currentOnboardingIndex = 0;
-    openModal({
-      title: '',
-      body: `<div class="ob"></div>`,
-      actions: [],
-      onOpen: () => {
-        modal.classList.add('blur-heavy');
-        renderOnboardingSlide(currentOnboardingIndex);
-      }
-    });
-  }
+  currentOnboardingIndex = 0;
+  openModal({
+    title: '',
+    body: `<div class="ob"></div>`,
+    actions: [],
+    onOpen: () => {
+      modal.classList.add('blur-heavy');
+      renderOnboardingSlide(currentOnboardingIndex);
+    }
+  });
 }
 
 function renderOnboardingSlide(i){
@@ -771,7 +803,6 @@ function renderOnboardingSlide(i){
 
   // Actions
   modalActions.innerHTML = '';
-  // Left (Skip) shows only if not last
   if (currentOnboardingIndex < slides.length - 1){
     const skip = document.createElement('button');
     skip.className = 'btn secondary';

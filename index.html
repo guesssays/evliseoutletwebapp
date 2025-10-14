@@ -33,10 +33,10 @@
       <nav id="drawerNav"></nav>
 
       <div class="drawer-dock">
-        <a class="dock-btn" href="https://t.me/evliseoutlet" target="_blank" aria-label="Telegram">
+        <a class="dock-btn" href="https://t.me/evliseoutlet" target="_blank" aria-label="Telegram" rel="noopener">
           <i data-lucide="send"></i>
         </a>
-        <a class="dock-btn" href="https://www.instagram.com/evliseoutlet/" target="_blank" aria-label="Instagram">
+        <a class="dock-btn" href="https://www.instagram.com/evliseoutlet/" target="_blank" aria-label="Instagram" rel="noopener">
           <i data-lucide="instagram"></i>
         </a>
         <a class="dock-btn" href="https://vk.com/" target="_blank" aria-label="VK" rel="noopener">
@@ -91,6 +91,6 @@
   <template id="filter-chip"><button class="chip" data-key="" data-value=""></button></template>
 
   <script src="app.js"></script>
-  <script>lucide.createIcons();</script>
+  <script>window.lucide && lucide.createIcons();</script>
 </body>
 </html>
