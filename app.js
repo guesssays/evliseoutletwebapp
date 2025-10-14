@@ -1,7 +1,7 @@
 // === Evlise Outlet WebApp ===
-// RU/UZ, цены в UZS. Мобильное меню с «Избранное», встроенный выдвижной список категорий,
+// RU/UZ, цены в UZS. Мобильное меню с «Избранное», встроенный аккордеон «Категории»,
 // мультигалерея, реальные фото в полноэкранной модалке, квадратные свотчи,
-// мини-подсказки для нижних кнопок (1 раз с чекбоксом), тосты сверху с отступом, улучшенная корзина.
+// модальное "онбординг"-окно с сильным блюром (1 раз + чекбокс), тосты сверху, улучшенная корзина.
 
 const tg = window.Telegram?.WebApp;
 if (tg) {
@@ -51,8 +51,9 @@ const i18n = {
     cancel: 'Отмена',
     emptyFav: 'Список избранного пуст.',
     cleared: 'Корзина очищена',
-    tipsTitle: 'Подсказки',
-    tipsText: 'Нажмите «сердце» — в избранное. Дом — на главную. «Плюс» — добавить в корзину.',
+    tipsTitle: 'Как пользоваться кнопками?',
+    tipsText:
+      '♥ — добавить в избранное. Домик — перейти на главную. Плюс — добавить товар в корзину. Подсказки показываются один раз.',
     tipsDontShow: 'Больше не показывать'
   },
   uz: {
@@ -87,8 +88,9 @@ const i18n = {
     cancel: 'Bekor qilish',
     emptyFav: 'Sevimlilar ro‘yxati bo‘sh.',
     cleared: 'Savat tozalandi',
-    tipsTitle: 'Maslahatlar',
-    tipsText: '«Yurak» — sevimlilarga. Uy — bosh sahifa. «Plus» — savatga qo‘shish.',
+    tipsTitle: 'Tugmalar qanday ishlaydi?',
+    tipsText:
+      '♥ — sevimlilarga qo‘shish. Uy — bosh sahifa. Plus — savatga qo‘shish. Maslahat bir marta ko‘rsatiladi.',
     tipsDontShow: 'Yana ko‘rsatmaslik'
   }
 };
@@ -185,11 +187,10 @@ function toggleLanguage(){
 function openDrawer(){ drawer.classList.add('open'); overlay.classList.add('show'); drawer.setAttribute('aria-hidden','false'); }
 function closeDrawer(){ drawer.classList.remove('open'); overlay.classList.remove('show'); drawer.setAttribute('aria-hidden','true'); }
 
-/* ---------- Drawer: встроенный выдвижной список «Категории» ---------- */
+/* ---------- Drawer: аккордеон «Категории» прямо в меню ---------- */
 function buildDrawer(){
   const nav = el('#drawerNav'); nav.innerHTML = '';
 
-  // Главные ссылки
   const mkLink = (label, href) => {
     const a = document.createElement('a');
     a.href = href; a.textContent = label;
@@ -198,20 +199,19 @@ function buildDrawer(){
   mkLink(t('home'), '#/');
   mkLink(t('favorites'), '#/favorites');
 
-  // Раздел «Категории» со стрелкой и скрывающимся списком
+  // Раздел «Категории» (одного размера/стиля с остальными пунктами)
   const sec = document.createElement('div');
   sec.className = 'nav-section';
 
   const header = document.createElement('button');
   header.className = 'nav-accordion';
   header.innerHTML = `
-    <span>${t('categories')}</span>
+    <span class="nav-accordion-title">${t('categories')}</span>
     <i data-lucide="chevron-down" class="chev"></i>
   `;
   const panel = document.createElement('div');
-  panel.className = 'nav-panel'; // изначально скрыт через CSS
+  panel.className = 'nav-panel';
 
-  // Наполняем списком категорий
   state.categories.forEach(c=>{
     const a = document.createElement('a');
     a.href = `#/category/${c.slug}`;
@@ -396,10 +396,18 @@ function renderProduct({id}){
 
         <div class="h2">${t('description')}</div>
         <div>${p.description}</div>
-        <div class="kv">
-          <div>${t('category')}</div><div>${getCategoryName(p.category)}</div>
-          <div>${t('material')}</div><div>${p.material || '—'}</div>
-          <div>${t('sku')}</div><div>${p.sku || p.id}</div>
+
+        <!-- Иконки у характеристик -->
+        <div class="kv-ico">
+          <div class="kv-row">
+            <i data-lucide="folder"></i><span>${t('category')}</span><b>${getCategoryName(p.category)}</b>
+          </div>
+          <div class="kv-row">
+            <i data-lucide="layers"></i><span>${t('material')}</span><b>${p.material || '—'}</b>
+          </div>
+          <div class="kv-row">
+            <i data-lucide="hash"></i><span>${t('sku')}</span><b>${p.sku || p.id}</b>
+          </div>
         </div>
 
         ${p.sizeChart ? `<div class="hr"></div><div class="h2">${t('sizeChart')}</div>${renderSizeChartHTML(p.sizeChart)}` : ''}
@@ -412,16 +420,6 @@ function renderProduct({id}){
       <a class="action-btn" id="homeBtn" data-tip="Главная" href="#/"><i data-lucide="home"></i></a>
       <button class="action-btn primary" id="cartBtn" data-tip="Добавить в корзину"><i data-lucide="plus"></i></button>
     </div>
-
-    <!-- однократные подсказки -->
-    <div id="tips" class="tips" aria-hidden="true">
-      <div class="tips-card">
-        <div class="tips-title">${t('tipsTitle')}</div>
-        <div class="tips-text">${t('tipsText')}</div>
-        <label class="tips-check"><input id="tipsNever" type="checkbox"> ${t('tipsDontShow')}</label>
-        <button id="tipsOk" class="btn">${t('apply')}</button>
-      </div>
-    </div>
   `;
 
   // миниатюры
@@ -433,7 +431,7 @@ function renderProduct({id}){
     strip.appendChild(im);
   });
 
-  // реальные фото
+  // реальные фото (клик — полноэкранно)
   const realStrip = el('#realStrip');
   (p.realPhotos || []).forEach((src) => {
     const im = new Image();
@@ -445,14 +443,14 @@ function renderProduct({id}){
   // Размеры
   const sg = el('#sizeGrid');
   let selectedSize = null;
-  (sizes || []).forEach(s => {
+  sizes.forEach(s => {
     const b = document.createElement('button');
     b.className='size'; b.textContent=s;
     b.onclick = () => { sg.querySelectorAll('.size').forEach(x=>x.classList.remove('active')); b.classList.add('active'); selectedSize = s; };
     sg.appendChild(b);
   });
 
-  // Цвета (квадратные свотчи с полной заливкой)
+  // Цвета — ЧИСТЫЕ КВАДРАТЫ (без внутренних элементов)
   let selectedColor = null;
   if (colors.length){
     const cg = el('#colorGrid');
@@ -460,7 +458,7 @@ function renderProduct({id}){
       const btn = document.createElement('button');
       btn.className = 'swatch';
       btn.title = c;
-      btn.innerHTML = `<span style="background:${colorToHex(c)}"></span>`;
+      btn.style.background = colorToHex(c);
       btn.onclick = () => { cg.querySelectorAll('.swatch').forEach(x=>x.classList.remove('active')); btn.classList.add('active'); selectedColor = c; };
       cg.appendChild(btn);
     });
@@ -484,26 +482,39 @@ function renderProduct({id}){
     favBtn.setAttribute('data-tip', isFav(p.id) ? 'В избранном' : 'В избранное');
   };
 
-  // Однократные подсказки
+  // Однократные подсказки — через заметную модалку с сильным блюром
   tryShowTipsOnce();
 
   lucide.createIcons();
 }
 
-/* ---------- Tips (show once per user unless disabled) ---------- */
+/* ---------- Tips via modal (once unless disabled) ---------- */
 function tryShowTipsOnce(){
   const never = localStorage.getItem('evlise_tips_never') === '1';
   const seen  = localStorage.getItem('evlise_tips_seen') === '1';
-  const tips  = el('#tips');
-  if (never || seen || !tips) return;
-  tips.setAttribute('aria-hidden','false');
-  tips.classList.add('show');
-  el('#tipsOk').onclick = () => {
-    if (el('#tipsNever').checked) localStorage.setItem('evlise_tips_never', '1');
-    localStorage.setItem('evlise_tips_seen','1');
-    tips.classList.remove('show');
-    tips.setAttribute('aria-hidden','true');
-  };
+  if (never || seen) return;
+
+  openModal({
+    title: t('tipsTitle'),
+    body: `
+      <div class="tips-modal-body">
+        <p class="tips-text">${t('tipsText')}</p>
+        <label class="tips-check"><input id="tipsNever" type="checkbox"> ${t('tipsDontShow')}</label>
+      </div>
+    `,
+    actions: [
+      { label: 'OK', onClick: () => {
+          if (el('#tipsNever')?.checked) localStorage.setItem('evlise_tips_never','1');
+          localStorage.setItem('evlise_tips_seen','1');
+          closeModal();
+        }
+      }
+    ],
+    onOpen: () => {
+      // усиливаем блюр под этим конкретным модальным окном
+      modal.classList.add('blur-heavy');
+    }
+  });
 }
 
 /* ---------- Fullscreen Image ---------- */
@@ -811,7 +822,7 @@ function colorToHex(name){
   };
   if (!name) return '#cccccc';
   const key = String(name).toLowerCase();
-  return map[key] || key;
+  return map[key] || key; // hex/rgba пройдут напрямую
 }
 
 /* ---------- Modal/Toast ---------- */
@@ -831,7 +842,9 @@ function openModal({title, body, actions=[], onOpen}){
   lucide.createIcons();
 }
 function closeModal(){
-  modal.classList.remove('show'); modal.setAttribute('aria-hidden','true');
+  modal.classList.remove('show');
+  modal.classList.remove('blur-heavy'); // снять усиленный блюр, если был
+  modal.setAttribute('aria-hidden','true');
 }
 function toast(msg){
   const n = document.createElement('div');

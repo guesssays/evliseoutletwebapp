@@ -137,20 +137,22 @@ body{
   border-radius:12px; margin-bottom:10px; text-decoration:none; color:var(--text); background:var(--paper); width:100%; text-align:left;
 }
 
-/* Категории-аккордеон внутри drawer */
+/* Категории-аккордеон в drawer: размер и стиль как у ссылок */
 .nav-section{ margin-bottom:10px }
 .nav-accordion{
   width:100%; display:flex; align-items:center; justify-content:space-between;
   padding:12px 10px; border:1px solid var(--stroke); border-radius:12px;
   background:var(--paper); color:var(--text); cursor:pointer;
+  font: inherit; /* тот же размер и гарнитура, что у ссылок */
 }
+.nav-accordion-title{ font-size:16px; line-height:1.25 }
 .nav-accordion .chev{ width:18px; height:18px; transition:transform .15s }
 .nav-accordion.open .chev{ transform:rotate(180deg) }
 .nav-panel{
   display:grid; gap:8px; padding:8px 4px 0 6px; margin-top:6px; border-left:2px solid var(--stroke); margin-left:6px;
   max-height:0; overflow:hidden; transition:max-height .2s ease;
 }
-.nav-panel.open{ max-height:50vh } /* плавное раскрытие */
+.nav-panel.open{ max-height:50vh }
 .nav-panel a{
   display:block; padding:10px 10px; border:1px solid var(--stroke); border-radius:10px; text-decoration:none; color:var(--text); background:var(--paper)
 }
@@ -190,17 +192,22 @@ body{
 .size{ padding:10px; border:1px solid var(--stroke); border-radius:12px; text-align:center; cursor:pointer; background:var(--paper); color:var(--text)}
 .size.active{ background:var(--accent); color:#fff; font-weight:800}
 
-/* color swatches (квадраты с плавными углами и полной заливкой) */
+/* color swatches — чистые квадраты с полной заливкой */
 .color-grid{ display:flex; gap:8px; flex-wrap:wrap }
 .swatch{
   width:36px; height:36px; border-radius:10px; border:1px solid var(--stroke);
-  cursor:pointer; position:relative; background:var(--paper);
+  cursor:pointer; background:transparent;
 }
-.swatch > span{ display:block; width:100%; height:100%; border-radius:9px }
 .swatch.active{ outline:2px solid var(--accent) }
 
-/* key-values */
-.kv{ display:grid; grid-template-columns: 1fr auto; gap:6px; margin:10px 0; color:var(--muted)}
+/* key-values с иконками */
+.kv-ico{ display:grid; gap:8px; margin:12px 0 4px }
+.kv-row{
+  display:grid; grid-template-columns:20px 1fr auto; gap:8px; align-items:center;
+  color:var(--muted);
+}
+.kv-row i{ width:18px; height:18px }
+.kv-row b{ color:var(--text); font-weight:700 }
 
 /* tables */
 .table{ width:100%; border-collapse:collapse; font-size:14px }
@@ -234,23 +241,22 @@ body{
 .action-btn:active[data-tip]::after,
 .action-btn:hover[data-tip]::after{ opacity:1 }
 
-/* === ONBOARDING TIPS (однократно) === */
-.tips{
-  position:fixed; left:0; right:0; bottom:88px; display:none; justify-content:center; z-index:60;
-  padding:0 12px;
-}
-.tips.show{ display:flex }
-.tips-card{
-  width:min(560px,100%); background:var(--paper); border:1px solid var(--stroke);
-  border-radius:14px; box-shadow:var(--shadow); padding:12px 14px;
-}
-.tips-title{ font-weight:800; margin-bottom:6px }
-.tips-text{ color:var(--muted); margin-bottom:10px; line-height:1.4 }
-.tips-check{ display:flex; align-items:center; gap:8px; margin-bottom:10px; font-size:14px; color:var(--muted) }
+/* === MODAL (в т.ч. онбординг) === */
+.modal{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.45); z-index:60; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px) }
+.modal.blur-heavy{ background:rgba(0,0,0,.6); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px) }
+.modal.show{ display:grid }
+.modal-dialog{ width:min(92vw,560px); background:var(--paper); border:1px solid var(--stroke); border-radius:16px; box-shadow:var(--shadow); overflow:hidden }
+.modal-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 14px; border-bottom:1px solid var(--stroke); font-weight:800}
+.modal-body{ padding:14px }
+.modal-actions{ display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--stroke); justify-content:flex-end}
 
-/* === CART (улучшено + адаптив + отступы) === */
-.cart-head{ margin-bottom:10px }
-.cart{ display:grid; gap:14px}
+/* Текст/чекбокс в онбординге */
+.tips-text{ color:var(--muted); line-height:1.5; margin:0 0 10px }
+.tips-check{ display:flex; align-items:center; gap:8px; color:var(--muted); font-size:14px }
+
+/* === CART (отступы и структурность) === */
+.cart-head{ margin-bottom:12px }
+.cart{ display:grid; gap:16px}
 .cart-item{
   display:grid; grid-template-columns:72px 1fr auto; gap:14px; align-items:center;
   border:1px solid var(--stroke); border-radius:14px; padding:12px; background:var(--paper)
@@ -272,10 +278,12 @@ body{
   .cart-right{ grid-column:1 / -1; justify-content:space-between; margin-top:8px }
 }
 
+.cart-note{ margin-top:16px }
 .note-input{
   width:100%; border-radius:12px; border:1px solid var(--stroke); background:var(--paper); color:var(--text); padding:10px; resize:vertical;
 }
-.cart-summary{ margin-top:8px }
+
+.cart-summary{ margin-top:12px }
 .cart-summary-actions{ margin-top:12px; width:100% }
 
 /* misc */
@@ -295,15 +303,7 @@ body{
 .btn.secondary{ background:var(--paper); color:var(--text) }
 .push-right{ margin-left:auto }
 
-/* === MODAL & TOAST === */
-.modal{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.55); z-index:60}
-.modal.show{ display:grid }
-.modal-dialog{ width:min(92vw,560px); background:var(--paper); border:1px solid var(--stroke); border-radius:16px; box-shadow:var(--shadow); overflow:hidden }
-.modal-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 14px; border-bottom:1px solid var(--stroke); font-weight:800}
-.modal-body{ padding:14px }
-.modal-actions{ display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--stroke); justify-content:flex-end}
-
-/* toasts: сверху с отступом = высота хедера */
+/* toasts: сверху с динамическим отступом от хедера */
 .toast-wrap{ position:fixed; top:var(--toastTop); right:16px; display:grid; gap:8px; z-index:70 }
 .toast{ background:var(--paper); color:var(--text); border:1px solid var(--stroke); padding:10px 12px; border-radius:12px; box-shadow:var(--shadow)}
 
