@@ -1,7 +1,7 @@
 // === Evlise Outlet WebApp ===
-// RU/UZ, цены в UZS. Мобильное меню с «Избранное», выдвижной список категорий,
-// мультигалерея, реальные фото в полноэкранной модалке, цветовые свотчи,
-// мини-подсказки для нижних кнопок, тосты сверху с отступом от хедера, улучшенная корзина.
+// RU/UZ, цены в UZS. Мобильное меню с «Избранное», встроенный выдвижной список категорий,
+// мультигалерея, реальные фото в полноэкранной модалке, квадратные свотчи,
+// мини-подсказки для нижних кнопок (1 раз с чекбоксом), тосты сверху с отступом, улучшенная корзина.
 
 const tg = window.Telegram?.WebApp;
 if (tg) {
@@ -21,7 +21,6 @@ const DEFAULT_THEME = localStorage.getItem('evlise_theme') || (matchMedia('(pref
 const i18n = {
   ru: {
     categories: 'Категории',
-    showCategories: 'Показать категории',
     newItems: 'Новинки',
     freshFromIg: 'Свежие позиции из Instagram',
     filters: 'Фильтры',
@@ -51,11 +50,13 @@ const i18n = {
     apply: 'Применить',
     cancel: 'Отмена',
     emptyFav: 'Список избранного пуст.',
-    cleared: 'Корзина очищена'
+    cleared: 'Корзина очищена',
+    tipsTitle: 'Подсказки',
+    tipsText: 'Нажмите «сердце» — в избранное. Дом — на главную. «Плюс» — добавить в корзину.',
+    tipsDontShow: 'Больше не показывать'
   },
   uz: {
     categories: 'Kategoriyalar',
-    showCategories: 'Kategoriyalarni ko‘rsatish',
     newItems: 'Yangi tovarlar',
     freshFromIg: 'Instagram’dan yangi pozitsiyalar',
     filters: 'Filtrlar',
@@ -85,7 +86,10 @@ const i18n = {
     apply: 'Qo‘llash',
     cancel: 'Bekor qilish',
     emptyFav: 'Sevimlilar ro‘yxati bo‘sh.',
-    cleared: 'Savat tozalandi'
+    cleared: 'Savat tozalandi',
+    tipsTitle: 'Maslahatlar',
+    tipsText: '«Yurak» — sevimlilarga. Uy — bosh sahifa. «Plus» — savatga qo‘shish.',
+    tipsDontShow: 'Yana ko‘rsatmaslik'
   }
 };
 let lang = DEFAULT_LANG;
@@ -113,13 +117,11 @@ const modalBody = el('#modalBody');
 const modalActions = el('#modalActions');
 const toastWrap = el('#toastWrap');
 const headerEl = el('#appHeader');
-const sheet = el('#sheet');
-const sheetBody = el('#sheetBody');
 
 // Theme init
 document.documentElement.setAttribute('data-theme', DEFAULT_THEME);
 updateHeaderToggles();
-updateToastTop(); // начальный отступ под высоту хедера
+updateToastTop();
 window.addEventListener('resize', updateToastTop);
 
 const routes = {
@@ -149,7 +151,7 @@ async function init(){
 function bindChrome(){
   el('#menuBtn').onclick = () => openDrawer();
   el('#closeDrawer').onclick = () => closeDrawer();
-  overlay.onclick = () => { closeDrawer(); closeSheet(); };
+  overlay.onclick = () => { closeDrawer(); closeModal(); };
   el('#modalClose').onclick = closeModal;
   el('#themeBtn').onclick = toggleTheme;
   el('#langBtn').onclick = toggleLanguage;
@@ -183,55 +185,54 @@ function toggleLanguage(){
 function openDrawer(){ drawer.classList.add('open'); overlay.classList.add('show'); drawer.setAttribute('aria-hidden','false'); }
 function closeDrawer(){ drawer.classList.remove('open'); overlay.classList.remove('show'); drawer.setAttribute('aria-hidden','true'); }
 
-/* ---------- Drawer: компактное меню с выдвижными категориями ---------- */
+/* ---------- Drawer: встроенный выдвижной список «Категории» ---------- */
 function buildDrawer(){
   const nav = el('#drawerNav'); nav.innerHTML = '';
-  const links = [
-    [t('home'), '#/'],
-    [t('favorites'), '#/favorites'],
-    // одна кнопка, которая открывает низовой лист с категориями
-    ['button', t('showCategories'), () => openCategoriesSheet()],
-    [t('faq'), '#/faq'],
-    [t('cart'), '#/cart']
-  ];
 
-  for (const entry of links){
-    if (entry[0] === 'button'){
-      const btn = document.createElement('button');
-      btn.className = 'as-link';
-      btn.textContent = entry[1];
-      btn.onclick = entry[2];
-      nav.appendChild(btn);
-    } else {
-      const [label, href] = entry;
-      const a = document.createElement('a'); a.href = href; a.textContent = label; nav.appendChild(a);
-    }
-  }
-}
+  // Главные ссылки
+  const mkLink = (label, href) => {
+    const a = document.createElement('a');
+    a.href = href; a.textContent = label;
+    nav.appendChild(a);
+  };
+  mkLink(t('home'), '#/');
+  mkLink(t('favorites'), '#/favorites');
 
-function openCategoriesSheet(){
-  // собираем список категорий
-  sheetBody.innerHTML = '';
+  // Раздел «Категории» со стрелкой и скрывающимся списком
+  const sec = document.createElement('div');
+  sec.className = 'nav-section';
+
+  const header = document.createElement('button');
+  header.className = 'nav-accordion';
+  header.innerHTML = `
+    <span>${t('categories')}</span>
+    <i data-lucide="chevron-down" class="chev"></i>
+  `;
+  const panel = document.createElement('div');
+  panel.className = 'nav-panel'; // изначально скрыт через CSS
+
+  // Наполняем списком категорий
   state.categories.forEach(c=>{
     const a = document.createElement('a');
     a.href = `#/category/${c.slug}`;
     a.textContent = c.name;
-    a.onclick = () => closeSheet();
-    sheetBody.appendChild(a);
+    panel.appendChild(a);
   });
-  openSheet(t('categories'));
-}
 
-function openSheet(title){
-  el('#sheetTitle').textContent = title || '';
-  sheet.classList.add('show');
-  overlay.classList.add('show');
-  sheet.setAttribute('aria-hidden','false');
-}
-function closeSheet(){
-  sheet.classList.remove('show');
-  sheet.setAttribute('aria-hidden','true');
-  overlay.classList.remove('show');
+  header.onclick = () => {
+    const opened = panel.classList.toggle('open');
+    header.classList.toggle('open', opened);
+    lucide.createIcons();
+  };
+
+  sec.appendChild(header);
+  sec.appendChild(panel);
+  nav.appendChild(sec);
+
+  mkLink(t('faq'), '#/faq');
+  mkLink(t('cart'), '#/cart');
+
+  lucide.createIcons();
 }
 
 /* ---------- Router ---------- */
@@ -258,7 +259,7 @@ function matchRoute(pattern, path){
 
 /* ---------- Home ---------- */
 function renderHome(){
-  closeDrawer(); closeSheet();
+  closeDrawer();
   view.innerHTML = `
     <section class="section">
       <div class="h1">${t('categories')}</div>
@@ -305,7 +306,7 @@ function renderHome(){
 
 /* ---------- Category ---------- */
 function renderCategory({slug}){
-  closeDrawer(); closeSheet();
+  closeDrawer();
   const cat = state.categories.find(c => c.slug === slug);
   if (!cat){ renderHome(); return; }
   const products = state.products.filter(p => p.category === slug);
@@ -329,7 +330,7 @@ function renderCategory({slug}){
 
 /* ---------- Favorites ---------- */
 function renderFavorites(){
-  closeDrawer(); closeSheet();
+  closeDrawer();
   const favSet = new Set(state.favorites);
   const list = state.products.filter(p => favSet.has(p.id));
   view.innerHTML = `
@@ -361,7 +362,7 @@ function drawProducts(list){
 
 /* ---------- Product page ---------- */
 function renderProduct({id}){
-  closeDrawer(); closeSheet();
+  closeDrawer();
   const p = state.products.find(x => String(x.id) === String(id));
   if (!p){ renderHome(); return; }
   const sizes  = p.sizes  || [];
@@ -411,6 +412,16 @@ function renderProduct({id}){
       <a class="action-btn" id="homeBtn" data-tip="Главная" href="#/"><i data-lucide="home"></i></a>
       <button class="action-btn primary" id="cartBtn" data-tip="Добавить в корзину"><i data-lucide="plus"></i></button>
     </div>
+
+    <!-- однократные подсказки -->
+    <div id="tips" class="tips" aria-hidden="true">
+      <div class="tips-card">
+        <div class="tips-title">${t('tipsTitle')}</div>
+        <div class="tips-text">${t('tipsText')}</div>
+        <label class="tips-check"><input id="tipsNever" type="checkbox"> ${t('tipsDontShow')}</label>
+        <button id="tipsOk" class="btn">${t('apply')}</button>
+      </div>
+    </div>
   `;
 
   // миниатюры
@@ -422,7 +433,7 @@ function renderProduct({id}){
     strip.appendChild(im);
   });
 
-  // реальные фото (клик — полноэкранно)
+  // реальные фото
   const realStrip = el('#realStrip');
   (p.realPhotos || []).forEach((src) => {
     const im = new Image();
@@ -434,14 +445,14 @@ function renderProduct({id}){
   // Размеры
   const sg = el('#sizeGrid');
   let selectedSize = null;
-  sizes.forEach(s => {
+  (sizes || []).forEach(s => {
     const b = document.createElement('button');
     b.className='size'; b.textContent=s;
     b.onclick = () => { sg.querySelectorAll('.size').forEach(x=>x.classList.remove('active')); b.classList.add('active'); selectedSize = s; };
     sg.appendChild(b);
   });
 
-  // Цвета как свотчи
+  // Цвета (квадратные свотчи с полной заливкой)
   let selectedColor = null;
   if (colors.length){
     const cg = el('#colorGrid');
@@ -473,7 +484,26 @@ function renderProduct({id}){
     favBtn.setAttribute('data-tip', isFav(p.id) ? 'В избранном' : 'В избранное');
   };
 
+  // Однократные подсказки
+  tryShowTipsOnce();
+
   lucide.createIcons();
+}
+
+/* ---------- Tips (show once per user unless disabled) ---------- */
+function tryShowTipsOnce(){
+  const never = localStorage.getItem('evlise_tips_never') === '1';
+  const seen  = localStorage.getItem('evlise_tips_seen') === '1';
+  const tips  = el('#tips');
+  if (never || seen || !tips) return;
+  tips.setAttribute('aria-hidden','false');
+  tips.classList.add('show');
+  el('#tipsOk').onclick = () => {
+    if (el('#tipsNever').checked) localStorage.setItem('evlise_tips_never', '1');
+    localStorage.setItem('evlise_tips_seen','1');
+    tips.classList.remove('show');
+    tips.setAttribute('aria-hidden','true');
+  };
 }
 
 /* ---------- Fullscreen Image ---------- */
@@ -487,13 +517,13 @@ function openImageFullscreen(src){
 
 /* ---------- Cart ---------- */
 function renderCart(){
-  closeDrawer(); closeSheet();
+  closeDrawer();
   const items = state.cart.items;
   const enriched = items.map(it => ({ ...it, product: state.products.find(p=>p.id===it.productId) })).filter(x => x.product);
   let total = 0; enriched.forEach(x => total += x.qty * x.product.price);
 
   view.innerHTML = `
-    <div class="row" style="justify-content:space-between; align-items:center">
+    <div class="row cart-head">
       <div class="h1" style="margin:0">${t('cart')}</div>
       <button class="icon-btn" id="clearCart" title="${t('clear')}" aria-label="${t('clear')}">
         <i data-lucide="trash-2"></i>
@@ -502,17 +532,17 @@ function renderCart(){
 
     <div class="cart" id="cartList"></div>
 
-    <div class="p-panel" style="margin-top:4px">
+    <div class="p-panel cart-note">
       <div class="h2">${t('orderComment')}</div>
-      <textarea id="orderNote" rows="3" placeholder="${t('orderCommentPlaceholder')}" style="width:100%;border-radius:12px;border:1px solid var(--stroke);background:var(--paper);color:var(--text);padding:10px;"></textarea>
+      <textarea id="orderNote" rows="3" placeholder="${t('orderCommentPlaceholder')}" class="note-input"></textarea>
     </div>
 
-    <div class="p-panel" style="margin-top:8px">
+    <div class="p-panel cart-summary">
       <div class="row" style="justify-content:space-between">
         <div>${t('total')}</div><div><b>${priceFmt(total)}</b></div>
       </div>
       <div class="footer-note">Заказ отправится менеджеру в Telegram (WebApp).</div>
-      <div class="row" style="margin-top:10px; width:100%">
+      <div class="row cart-summary-actions">
         <button class="btn secondary" id="backBtn"><i data-lucide="arrow-left"></i>${t('back')}</button>
         <button class="btn push-right" id="checkoutBtn"><i data-lucide="send"></i>${t('proceed')}</button>
       </div>
@@ -529,20 +559,20 @@ function renderCart(){
       const sw = colorToHex(x.color || '');
       row.innerHTML = `
         <img src="${x.product.images[0]}" alt="${x.product.title}">
-        <div>
+        <div class="cart-mid">
           <div class="cart-title">${x.product.title}</div>
           <div class="cart-meta">
-            ${x.size ? `${t('size')}: ${x.size}` : ''}${x.color ? ` · ${t('color')}: <span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${sw};border:1px solid var(--stroke);vertical-align:middle"></span>` : ''}
+            ${x.size ? `${t('size')}: ${x.size}` : ''}${x.color ? ` · ${t('color')}: <span class="cm-swatch" style="background:${sw};"></span>` : ''}
           </div>
           <div class="cart-meta">${priceFmt(x.product.price)} × ${x.qty}</div>
         </div>
         <div class="cart-right">
           <div class="cart-price">${priceFmt(x.product.price * x.qty)}</div>
           <div class="qty">
-            <button data-act="dec">−</button>
+            <button data-act="dec" aria-label="Минус">−</button>
             <span>${x.qty}</span>
-            <button data-act="inc">+</button>
-            <button data-act="del" title="Удалить">✕</button>
+            <button data-act="inc" aria-label="Плюс">+</button>
+            <button data-act="del" class="qty-del" title="Удалить" aria-label="Удалить">✕</button>
           </div>
         </div>
       `;
@@ -581,7 +611,7 @@ function renderCart(){
 
 /* ---------- FAQ ---------- */
 function renderFAQ(){
-  closeDrawer(); closeSheet();
+  closeDrawer();
   view.innerHTML = `
     <section class="section">
       <div class="h1">${t('faq')}</div>
@@ -680,8 +710,8 @@ function renderActiveFilterChips(){
   const bar = el('#activeFilters'); if (!bar) return;
   bar.innerHTML = '';
   const addChip = (label) => {
-    const t = document.getElementById('filter-chip');
-    const n = t.content.firstElementChild.cloneNode(true);
+    const tNode = document.getElementById('filter-chip');
+    const n = tNode.content.firstElementChild.cloneNode(true);
     n.textContent = label; n.classList.add('active');
     bar.appendChild(n);
   };
@@ -781,7 +811,7 @@ function colorToHex(name){
   };
   if (!name) return '#cccccc';
   const key = String(name).toLowerCase();
-  return map[key] || key; // если пришел hex/rgba — используем напрямую
+  return map[key] || key;
 }
 
 /* ---------- Modal/Toast ---------- */
