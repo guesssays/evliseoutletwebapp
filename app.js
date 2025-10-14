@@ -544,6 +544,119 @@ function renderFAQ(){
   `;
 }
 
+/* ---------- Cart ---------- */
+function renderCart(){
+  closeDrawer();
+
+  // сопоставляем позиции корзины с объектами продуктов
+  const summary = state.cart.items
+    .map(it => ({
+      ...it,
+      product: state.products.find(p => String(p.id) === String(it.productId))
+    }))
+    .filter(x => x.product);
+
+  if (!summary.length){
+    view.innerHTML = `
+      <section class="section">
+        <div class="h1">${t('cart')}</div>
+        <p class="sub">${t('empty')}</p>
+        <div class="cart-actions">
+          <a href="#/" class="btn secondary">${t('back')}</a>
+        </div>
+      </section>
+    `;
+    return;
+  }
+
+  // сумма
+  const total = summary.reduce((s,x) => s + x.qty * x.product.price, 0);
+
+  // разметка
+  view.innerHTML = `
+    <section class="section cart-head">
+      <div class="h1">${t('cart')}</div>
+    </section>
+
+    <section class="section cart" id="cartList">
+      ${summary.map(x => `
+        <div class="cart-item" data-id="${x.product.id}" data-size="${x.size||''}" data-color="${x.color||''}">
+          <img src="${x.product.images?.[0] || ''}" alt="${x.product.title}">
+          <div class="cart-mid">
+            <div class="cart-title">${x.product.title}</div>
+            <div class="cart-meta">
+              ${x.size ? `${t('size')}: ${x.size} • ` : ''}
+              ${x.color ? `${t('color')}: ${x.color} <span class="cm-swatch" style="background:${colorToHex(x.color)}"></span>` : ''}
+            </div>
+          </div>
+          <div class="cart-price">${priceFmt(x.product.price * x.qty)}</div>
+
+          <div class="cart-right">
+            <div class="qty">
+              <button class="qty-dec" aria-label="-">–</button>
+              <span>${x.qty}</span>
+              <button class="qty-inc" aria-label="+">+</button>
+            </div>
+            <button class="qty-del" aria-label="Удалить"><i data-lucide="trash-2"></i></button>
+          </div>
+        </div>
+      `).join('')}
+    </section>
+
+    <section class="section cart-note">
+      <div class="h2">${t('orderComment')}</div>
+      <textarea id="orderNote" class="note-input" rows="3" placeholder="${t('orderCommentPlaceholder')}">${state.orderNote || ''}</textarea>
+    </section>
+
+    <section class="section cart-summary">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="h2">${t('total')}</div>
+        <div class="price">${priceFmt(total)}</div>
+      </div>
+      <div class="cart-actions">
+        <button id="clearCart" class="btn secondary">${t('clear')}</button>
+        <button id="proceedBtn" class="btn push-right">${t('proceed')}</button>
+      </div>
+      <div class="footer-note sub" style="margin-top:8px">
+        ${t('support')}: <a class="link" href="https://t.me/evliseoutlet" target="_blank" rel="noopener">t.me/evliseoutlet</a>
+      </div>
+    </section>
+  `;
+
+  // биндим плюс/минус/удалить
+  document.querySelectorAll('.cart-item').forEach(row => {
+    const id    = Number(row.getAttribute('data-id'));
+    const size  = row.getAttribute('data-size') || null;
+    const color = row.getAttribute('data-color') || null;
+
+    row.querySelector('.qty-inc').onclick = () => changeQty(id, size, color, +1);
+    row.querySelector('.qty-dec').onclick = () => changeQty(id, size, color, -1);
+    row.querySelector('.qty-del').onclick = () => removeFromCart(id, size, color);
+  });
+
+  // комментарий к заказу
+  const noteEl = document.getElementById('orderNote');
+  noteEl.oninput = () => {
+    state.orderNote = noteEl.value;
+    localStorage.setItem('evlise_note', state.orderNote);
+  };
+
+  // оформить заказ
+  document.getElementById('proceedBtn').onclick = () => checkoutInTelegram(summary);
+
+  // очистить корзину
+  document.getElementById('clearCart').onclick = () => {
+    state.cart.items = [];
+    persistCart(); updateCartBadge();
+    toast(t('cleared'));
+    renderCart();
+  };
+
+  // обновим иконки, если lucide подключён
+  if (window.lucide?.createIcons) lucide.createIcons();
+}
+
+
 /* ---------- Filters ---------- */
 function applyFilters(list){
   const f = state.filters;
