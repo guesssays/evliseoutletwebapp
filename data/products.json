@@ -16,15 +16,15 @@
       "title": "Худи Ford 🏎️",
       "price": 349000,
       "images": [
-        "data/telegram/14085517292716705/1.jpg",
-        "data/telegram/14085517292716705/2.jpg",
-        "data/telegram/14085517292716705/3.jpg",
-        "data/telegram/14085517292716705/4.jpg"
+        "/data/telegram/14085517292716705/1.jpg",
+        "/data/telegram/14085517292716705/2.jpg",
+        "/data/telegram/14085517292716705/3.jpg",
+        "/data/telegram/14085517292716705/4.jpg"
       ],
       "realPhotos": [
-        "data/telegram/14085517292716705/2.jpg",
-        "data/telegram/14085517292716705/3.jpg",
-        "data/telegram/14085517292716705/4.jpg"
+        "/data/telegram/14085517292716705/2.jpg",
+        "/data/telegram/14085517292716705/3.jpg",
+        "/data/telegram/14085517292716705/4.jpg"
       ],
       "description": "Худи Ford 🏎️\n\nВсе размеры доступны 💯\n\n💸Цена: 349.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
@@ -42,13 +42,13 @@
       "title": "Бомбер For Dream 🪽",
       "price": 599000,
       "images": [
-        "data/telegram/14085504877390129/1.jpg",
-        "data/telegram/14085504877390129/2.jpg",
-        "data/telegram/14085504877390129/3.jpg"
+        "/data/telegram/14085504877390129/1.jpg",
+        "/data/telegram/14085504877390129/2.jpg",
+        "/data/telegram/14085504877390129/3.jpg"
       ],
       "realPhotos": [
-        "data/telegram/14085504877390129/2.jpg",
-        "data/telegram/14085504877390129/3.jpg"
+        "/data/telegram/14085504877390129/2.jpg",
+        "/data/telegram/14085504877390129/3.jpg"
       ],
       "description": "Бомбер For Dream 🪽 \n\nВсе размеры доступны 💯\n\n💸Цена: 599.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
@@ -66,10 +66,10 @@
       "title": "Бомбер Meam 💫",
       "price": 499000,
       "images": [
-        "data/telegram/14085504705500801/1.jpg",
-        "data/telegram/14085504705500801/2.jpg"
+        "/data/telegram/14085504705500801/1.jpg",
+        "/data/telegram/14085504705500801/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14085504705500801/2.jpg"],
+      "realPhotos": ["/data/telegram/14085504705500801/2.jpg"],
       "description": "Бомбер Meam 💫\n\nВсе размеры доступны 💯\n\n💸Цена: 499.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -86,10 +86,10 @@
       "title": "Кастом кеды Venom 🖤",
       "price": 370000,
       "images": [
-        "data/telegram/14082839450665489/1.jpg",
-        "data/telegram/14082839450665489/2.jpg"
+        "/data/telegram/14082839450665489/1.jpg",
+        "/data/telegram/14082839450665489/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14082839450665489/2.jpg"],
+      "realPhotos": ["/data/telegram/14082839450665489/2.jpg"],
       "description": "Кастом кеды Venom 🖤\n\nВсе размеры доступны 💯\n\n💸Цена: 370.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -106,10 +106,10 @@
       "title": "Кожанка 💫",
       "price": 549000,
       "images": [
-        "data/telegram/14082839344588145/1.jpg",
-        "data/telegram/14082839344588145/2.jpg"
+        "/data/telegram/14082839344588145/1.jpg",
+        "/data/telegram/14082839344588145/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14082839344588145/2.jpg"],
+      "realPhotos": ["/data/telegram/14082839344588145/2.jpg"],
       "description": "Кожанка 💫 \n\nВсе размеры доступны 💯\n\n💸Цена: 549.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -126,15 +126,15 @@
       "title": "Утеплённый бомбер 🪽",
       "price": 700000,
       "images": [
-        "data/telegram/14082839327733609/1.jpg",
-        "data/telegram/14082839327733609/2.jpg",
-        "data/telegram/14082839327733609/3.jpg",
-        "data/telegram/14082839327733609/4.jpg"
+        "/data/telegram/14082839327733609/1.jpg",
+        "/data/telegram/14082839327733609/2.jpg",
+        "/data/telegram/14082839327733609/3.jpg",
+        "/data/telegram/14082839327733609/4.jpg"
       ],
       "realPhotos": [
-        "data/telegram/14082839327733609/2.jpg",
-        "data/telegram/14082839327733609/3.jpg",
-        "data/telegram/14082839327733609/4.jpg"
+        "/data/telegram/14082839327733609/2.jpg",
+        "/data/telegram/14082839327733609/3.jpg",
+        "/data/telegram/14082839327733609/4.jpg"
       ],
       "description": "Утеплённый бомбер 🪽 \n\nВсе размеры доступны 💯\n\n💸Цена: 700.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
@@ -152,10 +152,10 @@
       "title": "Штаны 🪽",
       "price": 329000,
       "images": [
-        "data/telegram/14080684574002353/1.jpg",
-        "data/telegram/14080684574002353/2.jpg"
+        "/data/telegram/14080684574002353/1.jpg",
+        "/data/telegram/14080684574002353/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14080684574002353/2.jpg"],
+      "realPhotos": ["/data/telegram/14080684574002353/2.jpg"],
       "description": "Штаны 🪽 \n\nВсе размеры доступны 💯\n\n💸Цена: 329.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -172,10 +172,10 @@
       "title": "Кроссовки STURSYN 🐈‍⬛",
       "price": 549000,
       "images": [
-        "data/telegram/14080684453012945/1.jpg",
-        "data/telegram/14080684453012945/2.jpg"
+        "/data/telegram/14080684453012945/1.jpg",
+        "/data/telegram/14080684453012945/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14080684453012945/2.jpg"],
+      "realPhotos": ["/data/telegram/14080684453012945/2.jpg"],
       "description": "Кроссовки STURSYN 🐈‍⬛\n\nВсе размеры доступны 💯\n\n💸Цена: 549.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -192,13 +192,13 @@
       "title": "Джинсы 🪽",
       "price": 369000,
       "images": [
-        "data/telegram/14080684219662305/1.jpg",
-        "data/telegram/14080684219662305/2.jpg",
-        "data/telegram/14080684219662305/3.jpg"
+        "/data/telegram/14080684219662305/1.jpg",
+        "/data/telegram/14080684219662305/2.jpg",
+        "/data/telegram/14080684219662305/3.jpg"
       ],
       "realPhotos": [
-        "data/telegram/14080684219662305/2.jpg",
-        "data/telegram/14080684219662305/3.jpg"
+        "/data/telegram/14080684219662305/2.jpg",
+        "/data/telegram/14080684219662305/3.jpg"
       ],
       "description": "Джинсы 🪽 \n\nВсе размеры доступны 💯\n\n💸Цена: 369.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
@@ -216,10 +216,10 @@
       "title": "Джинсы 🪽",
       "price": 389000,
       "images": [
-        "data/telegram/14079478202896961/1.jpg",
-        "data/telegram/14079478202896961/2.jpg"
+        "/data/telegram/14079478202896961/1.jpg",
+        "/data/telegram/14079478202896961/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14079478202896961/2.jpg"],
+      "realPhotos": ["/data/telegram/14079478202896961/2.jpg"],
       "description": "Джинсы 🪽 \n\nВсе размеры доступны 💯\n\n💸Цена: 389.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -236,10 +236,10 @@
       "title": "Поло 🦋",
       "price": 369000,
       "images": [
-        "data/telegram/14079478015776985/1.jpg",
-        "data/telegram/14079478015776985/2.jpg"
+        "/data/telegram/14079478015776985/1.jpg",
+        "/data/telegram/14079478015776985/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14079478015776985/2.jpg"],
+      "realPhotos": ["/data/telegram/14079478015776985/2.jpg"],
       "description": "Поло 🦋\n\nВсе размеры доступны 💯\n\n💸Цена: 369.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -256,10 +256,10 @@
       "title": "Пальто на осень 💫",
       "price": 569000,
       "images": [
-        "data/telegram/14079478004724521/1.jpg",
-        "data/telegram/14079478004724521/2.jpg"
+        "/data/telegram/14079478004724521/1.jpg",
+        "/data/telegram/14079478004724521/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14079478004724521/2.jpg"],
+      "realPhotos": ["/data/telegram/14079478004724521/2.jpg"],
       "description": "Пальто на осень 💫 \n\nВсе размеры доступны 💯\n\n💸Цена: 569.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -276,10 +276,10 @@
       "title": "Бомбер VETEMENTS 🔥",
       "price": 0,
       "images": [
-        "data/telegram/14079404893618297/1.jpg",
-        "data/telegram/14079404893618297/2.jpg"
+        "/data/telegram/14079404893618297/1.jpg",
+        "/data/telegram/14079404893618297/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14079404893618297/2.jpg"],
+      "realPhotos": ["/data/telegram/14079404893618297/2.jpg"],
       "description": "Бомбер VETEMENTS 🔥\n\nВ наличии, размер М\n\n📩Подробная информация:  @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -296,10 +296,10 @@
       "title": "Кожанка 🖤",
       "price": 469000,
       "images": [
-        "data/telegram/14078068166127521/1.jpg",
-        "data/telegram/14078068166127521/2.jpg"
+        "/data/telegram/14078068166127521/1.jpg",
+        "/data/telegram/14078068166127521/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14078068166127521/2.jpg"],
+      "realPhotos": ["/data/telegram/14078068166127521/2.jpg"],
       "description": "Кожанка 🖤 \n\nВсе размеры доступны 💯\n\n💸Цена: 469.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -316,10 +316,10 @@
       "title": "Лоферы 🍂",
       "price": 449000,
       "images": [
-        "data/telegram/14078067812425497/1.jpg",
-        "data/telegram/14078067812425497/2.jpg"
+        "/data/telegram/14078067812425497/1.jpg",
+        "/data/telegram/14078067812425497/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14078067812425497/2.jpg"],
+      "realPhotos": ["/data/telegram/14078067812425497/2.jpg"],
       "description": "Лоферы 🍂 \n\nВсе размеры доступны 💯\n\n💸Цена: 449.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -336,10 +336,10 @@
       "title": "Джинсы 🔥",
       "price": 349000,
       "images": [
-        "data/telegram/14077189334919817/1.jpg",
-        "data/telegram/14077189334919817/2.jpg"
+        "/data/telegram/14077189334919817/1.jpg",
+        "/data/telegram/14077189334919817/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14077189334919817/2.jpg"],
+      "realPhotos": ["/data/telegram/14077189334919817/2.jpg"],
       "description": "Джинсы 🔥\n\nВсе размеры доступны 💯\n\n💸Цена: 349.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -356,13 +356,13 @@
       "title": "Ботинки 🪽",
       "price": 849000,
       "images": [
-        "data/telegram/14077189143236233/1.jpg",
-        "data/telegram/14077189143236233/2.jpg",
-        "data/telegram/14077189143236233/3.jpg"
+        "/data/telegram/14077189143236233/1.jpg",
+        "/data/telegram/14077189143236233/2.jpg",
+        "/data/telegram/14077189143236233/3.jpg"
       ],
       "realPhotos": [
-        "data/telegram/14077189143236233/2.jpg",
-        "data/telegram/14077189143236233/3.jpg"
+        "/data/telegram/14077189143236233/2.jpg",
+        "/data/telegram/14077189143236233/3.jpg"
       ],
       "description": "Ботинки 🪽 \n\nВсе размеры доступны 💯\n\n💸Цена: 849.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
@@ -380,19 +380,19 @@
       "title": "Подборка футболок 🔥",
       "price": 200000,
       "images": [
-        "data/telegram/14075876508243473/1.jpg",
-        "data/telegram/14075876508243473/2.jpg",
-        "data/telegram/14075876508243473/3.jpg",
-        "data/telegram/14075876508243473/4.jpg",
-        "data/telegram/14075876508243473/5.jpg",
-        "data/telegram/14075876508243473/6.jpg"
+        "/data/telegram/14075876508243473/1.jpg",
+        "/data/telegram/14075876508243473/2.jpg",
+        "/data/telegram/14075876508243473/3.jpg",
+        "/data/telegram/14075876508243473/4.jpg",
+        "/data/telegram/14075876508243473/5.jpg",
+        "/data/telegram/14075876508243473/6.jpg"
       ],
       "realPhotos": [
-        "data/telegram/14075876508243473/2.jpg",
-        "data/telegram/14075876508243473/3.jpg",
-        "data/telegram/14075876508243473/4.jpg",
-        "data/telegram/14075876508243473/5.jpg",
-        "data/telegram/14075876508243473/6.jpg"
+        "/data/telegram/14075876508243473/2.jpg",
+        "/data/telegram/14075876508243473/3.jpg",
+        "/data/telegram/14075876508243473/4.jpg",
+        "/data/telegram/14075876508243473/5.jpg",
+        "/data/telegram/14075876508243473/6.jpg"
       ],
       "description": "Подборка футболок 🔥\n\nВсе размеры доступны 💯\n\n💸Цена: 200.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
@@ -410,10 +410,10 @@
       "title": "Товар",
       "price": 0,
       "images": [
-        "data/telegram/14075875962295849/1.jpg",
-        "data/telegram/14075875962295849/2.jpg"
+        "/data/telegram/14075875962295849/1.jpg",
+        "/data/telegram/14075875962295849/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14075875962295849/2.jpg"],
+      "realPhotos": ["/data/telegram/14075875962295849/2.jpg"],
       "description": "Описание скоро будет обновлено.",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -430,10 +430,10 @@
       "title": "Двухсторонняя куртка 🔥",
       "price": 649000,
       "images": [
-        "data/telegram/14073336182825265/1.jpg",
-        "data/telegram/14073336182825265/2.jpg"
+        "/data/telegram/14073336182825265/1.jpg",
+        "/data/telegram/14073336182825265/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14073336182825265/2.jpg"],
+      "realPhotos": ["/data/telegram/14073336182825265/2.jpg"],
       "description": "Двухсторонняя куртка 🔥\n\nВсе размеры доступны 💯\n\n💸Цена: 649.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -450,27 +450,27 @@
       "title": "Коллекция футболок DemonSlayer 😈",
       "price": 230000,
       "images": [
-        "data/telegram/14073335680346289/1.jpg",
-        "data/telegram/14073335680346289/2.jpg",
-        "data/telegram/14073335680346289/3.jpg",
-        "data/telegram/14073335680346289/4.jpg",
-        "data/telegram/14073335680346289/5.jpg",
-        "data/telegram/14073335680346289/6.jpg",
-        "data/telegram/14073335680346289/7.jpg",
-        "data/telegram/14073335680346289/8.jpg",
-        "data/telegram/14073335680346289/9.jpg",
-        "data/telegram/14073335680346289/10.jpg"
+        "/data/telegram/14073335680346289/1.jpg",
+        "/data/telegram/14073335680346289/2.jpg",
+        "/data/telegram/14073335680346289/3.jpg",
+        "/data/telegram/14073335680346289/4.jpg",
+        "/data/telegram/14073335680346289/5.jpg",
+        "/data/telegram/14073335680346289/6.jpg",
+        "/data/telegram/14073335680346289/7.jpg",
+        "/data/telegram/14073335680346289/8.jpg",
+        "/data/telegram/14073335680346289/9.jpg",
+        "/data/telegram/14073335680346289/10.jpg"
       ],
       "realPhotos": [
-        "data/telegram/14073335680346289/2.jpg",
-        "data/telegram/14073335680346289/3.jpg",
-        "data/telegram/14073335680346289/4.jpg",
-        "data/telegram/14073335680346289/5.jpg",
-        "data/telegram/14073335680346289/6.jpg",
-        "data/telegram/14073335680346289/7.jpg",
-        "data/telegram/14073335680346289/8.jpg",
-        "data/telegram/14073335680346289/9.jpg",
-        "data/telegram/14073335680346289/10.jpg"
+        "/data/telegram/14073335680346289/2.jpg",
+        "/data/telegram/14073335680346289/3.jpg",
+        "/data/telegram/14073335680346289/4.jpg",
+        "/data/telegram/14073335680346289/5.jpg",
+        "/data/telegram/14073335680346289/6.jpg",
+        "/data/telegram/14073335680346289/7.jpg",
+        "/data/telegram/14073335680346289/8.jpg",
+        "/data/telegram/14073335680346289/9.jpg",
+        "/data/telegram/14073335680346289/10.jpg"
       ],
       "description": "Коллекция футболок DemonSlayer 😈 \n\nВсе размеры доступны 💯\n\n💸Цена: 230.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
@@ -488,10 +488,10 @@
       "title": "Коллекция курток 🏎️",
       "price": 649000,
       "images": [
-        "data/telegram/14071685981116953/1.jpg",
-        "data/telegram/14071685981116953/2.jpg"
+        "/data/telegram/14071685981116953/1.jpg",
+        "/data/telegram/14071685981116953/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14071685981116953/2.jpg"],
+      "realPhotos": ["/data/telegram/14071685981116953/2.jpg"],
       "description": "Коллекция курток 🏎️ \n\nВсе размеры доступны 💯\n\n💸Цена: 649.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -508,10 +508,10 @@
       "title": "Штаны Y2K 💫",
       "price": 299000,
       "images": [
-        "data/telegram/14070286155063545/1.jpg",
-        "data/telegram/14070286155063545/2.jpg"
+        "/data/telegram/14070286155063545/1.jpg",
+        "/data/telegram/14070286155063545/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14070286155063545/2.jpg"],
+      "realPhotos": ["/data/telegram/14070286155063545/2.jpg"],
       "description": "Штаны Y2K 💫 \n\nВсе размеры доступны 💯\n\n💸Цена: 299.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -528,10 +528,10 @@
       "title": "Куртка MIXGORA 🪽",
       "price": 449000,
       "images": [
-        "data/telegram/14070286006093521/1.jpg",
-        "data/telegram/14070286006093521/2.jpg"
+        "/data/telegram/14070286006093521/1.jpg",
+        "/data/telegram/14070286006093521/2.jpg"
       ],
-      "realPhotos": ["data/telegram/14070286006093521/2.jpg"],
+      "realPhotos": ["/data/telegram/14070286006093521/2.jpg"],
       "description": "Куртка MIXGORA 🪽 \n\nВсе размеры доступны 💯\n\n💸Цена: 449.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
       "colors": [],
@@ -547,7 +547,7 @@
       "slug": "palto",
       "title": "Пальто 🔥",
       "price": 569000,
-      "images": ["data/telegram/1784/1.jpg"],
+      "images": ["/data/telegram/1784/1.jpg"],
       "realPhotos": [],
       "description": "Пальто 🔥\n\nВсе размеры доступны 💯\n\n💸Цена: 569.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
@@ -564,7 +564,7 @@
       "slug": "pukhovik-s-balaklavoi",
       "title": "Пуховик с балаклавой 🥷🏼",
       "price": 549000,
-      "images": ["data/telegram/1778/1.jpg"],
+      "images": ["/data/telegram/1778/1.jpg"],
       "realPhotos": [],
       "description": "Пуховик с балаклавой 🥷🏼 \n\nВсе размеры доступны 💯\n\n💸Цена: 549.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
@@ -581,7 +581,7 @@
       "slug": "sumka-deathnote",
       "title": "Сумка DeathNote ✍🏼",
       "price": 270000,
-      "images": ["data/telegram/1777/1.jpg"],
+      "images": ["/data/telegram/1777/1.jpg"],
       "realPhotos": [],
       "description": "Сумка DeathNote ✍🏼 \n\nВсе размеры доступны 💯\n\n💸Цена: 270.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
@@ -598,7 +598,7 @@
       "slug": "kedy-xavier3",
       "title": "Кеды Xavier3",
       "price": 499000,
-      "images": ["data/telegram/1766/1.jpg"],
+      "images": ["/data/telegram/1766/1.jpg"],
       "realPhotos": [],
       "description": "Кеды Xavier3 \n\nВсе размеры доступны 💯\n\n💸Цена: 499.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
@@ -615,7 +615,7 @@
       "slug": "kurtka-jeansstyle",
       "title": "Куртка JeansStyle 🦋",
       "price": 449000,
-      "images": ["data/telegram/1755/1.jpg"],
+      "images": ["/data/telegram/1755/1.jpg"],
       "realPhotos": [],
       "description": "Куртка JeansStyle 🦋 \n\nВсе размеры доступны 💯\n\n💸Цена: 449.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
@@ -632,7 +632,7 @@
       "slug": "svitshot-pushistik",
       "title": "Свитшот-пушистик 🪽",
       "price": 369000,
-      "images": ["data/telegram/1754/1.jpg"],
+      "images": ["/data/telegram/1754/1.jpg"],
       "realPhotos": [],
       "description": "Свитшот-пушистик 🪽 \n\nВсе размеры доступны 💯\n\n💸Цена: 369.000 сум\n\n📩Подробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
