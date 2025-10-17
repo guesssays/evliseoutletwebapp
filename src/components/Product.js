@@ -1,6 +1,6 @@
 import { state } from '../core/state.js';
 import { priceFmt, colorToHex } from '../core/utils.js';
-import { addToCart } from './cartActions.js';
+import { addToCart, removeLineFromCart, isInCart } from './cartActions.js';
 
 export function renderProduct({id}){
   const p = state.products.find(x=> String(x.id)===String(id));
@@ -97,6 +97,7 @@ export function renderProduct({id}){
       const b=e.target.closest('.size'); if(!b)return;
       sizes.querySelectorAll('.size').forEach(x=>x.classList.remove('active'));
       b.classList.add('active'); size=b.getAttribute('data-v');
+      refreshCTAByState();
     });
   }
   const colors=document.getElementById('colors');
@@ -105,6 +106,7 @@ export function renderProduct({id}){
       const b=e.target.closest('.sw'); if(!b)return;
       colors.querySelectorAll('.sw').forEach(x=>x.classList.remove('active'));
       b.classList.add('active'); color=b.getAttribute('data-v');
+      refreshCTAByState();
     });
     colors.querySelector('.sw')?.classList.add('active');
   }
@@ -153,12 +155,33 @@ export function renderProduct({id}){
     });
   }
 
-  /* -------- CTA в таббаре -------- */
-  window.setTabbarCTA(`
-    <i data-lucide="shopping-bag"></i>
-    <span>Добавить в корзину&nbsp;|&nbsp;${priceFmt(p.price)}</span>
-  `);
-  document.getElementById('ctaBtn').onclick = ()=> addToCart(p, size, color, qty);
+  /* -------- ДИНАМИЧЕСКИЙ CTA в таббаре -------- */
+  function showAddCTA(){
+    window.setTabbarCTA({
+      html: `<i data-lucide="shopping-bag"></i><span>Добавить в корзину&nbsp;|&nbsp;${priceFmt(p.price)}</span>`,
+      onClick(){
+        addToCart(p, size, color, qty);
+        showInCartCTAs();
+      }
+    });
+  }
+  function showInCartCTAs(){
+    window.setTabbarCTAs(
+      {
+        html:`<i data-lucide="x"></i><span>Убрать из корзины</span>`,
+        onClick(){ removeLineFromCart(p.id, size||null, color||null); showAddCTA(); }
+      },
+      {
+        html:`<i data-lucide="shopping-bag"></i><span>Перейти в корзину</span>`,
+        onClick(){ location.hash = '#/cart'; }
+      }
+    );
+  }
+  function refreshCTAByState(){
+    if (isInCart(p.id, size||null, color||null)) showInCartCTAs(); else showAddCTA();
+  }
+  // первичное включение CTA
+  refreshCTAByState();
 
   /* -------- ЗУМ/ПАНОРАМИРОВАНИЕ -------- */
   ensureZoomOverlay();                  // разово — создаём оверлей контейнер

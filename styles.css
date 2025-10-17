@@ -142,7 +142,7 @@ body{
 .real-photo{ border-radius:16px; overflow:hidden; background:#f6f6f6; }
 .real-photo img{ width:100%; height:auto; display:block; }
 
-.p-hero{ position:relative; margin:0 18px; border-radius:24px; overflow:hidden } /* оставлено для совместимости, если используется */
+.p-hero{ position:relative; margin:0 18px; border-radius:24px; overflow:hidden }
 .hero-btn{
   position:absolute; top:12px; width:48px; height:48px;
   border-radius:999px; display:grid; place-items:center; background:#fff; border:none; box-shadow:var(--shadow)
@@ -186,6 +186,13 @@ body{
 .btn:hover{ box-shadow:0 10px 28px rgba(0,0,0,.12) }
 .btn:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
 .btn:disabled{ opacity:.6; cursor:not-allowed; box-shadow:none; }
+/* outline-вариант для левого CTA */
+.btn.outline{
+  background:#fff;
+  color:#121111;
+  border:1px solid var(--stroke);
+  box-shadow:0 8px 24px rgba(0,0,0,.06);
+}
 
 /* ===== КОРЗИНА/ЧЕКАУТ ===== */
 .section-title{ font-size:24px; font-weight:800; margin:10px 18px }
@@ -282,6 +289,14 @@ body{
 }
 .dot{ display:none !important; } /* прежний индикатор — отключён */
 
+/* CTA-режим таббара (две кнопки) */
+.tabbar .btn { height:64px; }
+.tabbar-inner.is-cta{
+  justify-content:stretch;
+  gap:10px;
+  padding:8px;
+}
+
 /* ===== МОДАЛКИ / ТОСТЫ ===== */
 .modal{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.35) }
 .modal.show{ display:grid }
@@ -306,9 +321,6 @@ body{
   .tabbar-inner{ height:72px; }
   .tab{ height:50px; }
 }
-/* === CTA-режим таббара === */
-/* кнопка уже тянется на 100% через inline-style; оставим базовую высоту контейнера */
-.tabbar .btn { height:64px; }
 
 /* === Overlay для просмотра фото === */
 .zoom-overlay{

@@ -22,6 +22,7 @@ function mountIcons(){ window.lucide?.createIcons && lucide.createIcons(); }
 function setTabbarMenu(activeKey = 'home'){
   const inner = document.querySelector('.tabbar .tabbar-inner');
   if (!inner) return;
+  inner.classList.remove('is-cta');
   inner.innerHTML = `
     <a href="#/" data-tab="home" class="tab ${activeKey==='home'?'active':''}" role="tab" aria-selected="${activeKey==='home'}">
       <i data-lucide="home"></i><span>Главная</span>
@@ -41,20 +42,40 @@ function setTabbarMenu(activeKey = 'home'){
   updateCartBadge(); // бэйдж перерисовали — обновим
 }
 
-function setTabbarCTA(html){
+/** Универсальный: один CTA на всю ширину */
+function setTabbarCTA(arg){
   const inner = document.querySelector('.tabbar .tabbar-inner');
   if (!inner) return;
+  let id='ctaBtn', html='', onClick=null;
+  if (typeof arg==='string'){ html = arg; }
+  else { ({id='ctaBtn', html='', onClick=null} = arg||{}); }
+  inner.classList.add('is-cta');
+  inner.innerHTML = `<button id="${id}" class="btn" style="flex:1">${html}</button>`;
+  mountIcons();
+  if (onClick) document.getElementById(id).onclick = onClick;
+}
+
+/** Два CTA: левый (outline) и правый (primary) */
+function setTabbarCTAs(
+  left = { id:'ctaLeft', html:'', onClick:null },
+  right = { id:'ctaRight', html:'', onClick:null }
+){
+  const inner = document.querySelector('.tabbar .tabbar-inner');
+  if (!inner) return;
+  inner.classList.add('is-cta');
   inner.innerHTML = `
-    <button id="ctaBtn" class="btn" style="width:100%;">
-      ${html}
-    </button>
+    <button id="${left.id||'ctaLeft'}" class="btn outline" style="flex:1">${left.html||''}</button>
+    <button id="${right.id||'ctaRight'}" class="btn" style="flex:1">${right.html||''}</button>
   `;
   mountIcons();
+  if (left.onClick)  document.getElementById(left.id||'ctaLeft').onclick   = left.onClick;
+  if (right.onClick) document.getElementById(right.id||'ctaRight').onclick = right.onClick;
 }
 
 // делаем доступным из компонентов
 window.setTabbarMenu = setTabbarMenu;
 window.setTabbarCTA  = setTabbarCTA;
+window.setTabbarCTAs = setTabbarCTAs;
 
 /* ---------- Telegram авторизация ---------- */
 (function initTelegram(){
@@ -163,4 +184,4 @@ init();
 document.getElementById('openFilters').onclick=()=> openFilterModal(router);
 
 // экспорт если понадобится
-export { updateNotifBadge, getNotifications, setNotifications, setTabbarMenu, setTabbarCTA };
+export { updateNotifBadge, getNotifications, setNotifications, setTabbarMenu, setTabbarCTA, setTabbarCTAs };

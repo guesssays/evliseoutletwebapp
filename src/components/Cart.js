@@ -12,15 +12,25 @@ export function renderCart(){
   window.setTabbarMenu('cart');
 
   if (!items.length){
-    v.innerHTML = `<div class="section-title">Корзина</div>
+    v.innerHTML = `
+      <div class="section-title" style="display:flex;align-items:center;gap:10px">
+        <button class="square-btn" id="cartBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
+        Корзина
+      </div>
       <section class="checkout"><div class="cart-sub">Корзина пуста</div></section>`;
+    window.lucide?.createIcons && lucide.createIcons();
+    document.getElementById('cartBack')?.addEventListener('click', ()=>history.back());
     return;
   }
 
   const total = items.reduce((s,x)=> s + x.qty * x.product.price, 0);
   const ad = state.addresses.list.find(a=>a.id===state.addresses.defaultId) || null;
 
-  v.innerHTML = `<div class="section-title">Оформление</div>
+  v.innerHTML = `
+  <div class="section-title" style="display:flex;align-items:center;gap:10px">
+    <button class="square-btn" id="cartBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
+    Оформление
+  </div>
   <section class="checkout" id="cList">
     ${items.map(x=>`
       <div class="cart-row" data-id="${x.product.id}" data-size="${x.size||''}" data-color="${x.color||''}">
@@ -56,7 +66,10 @@ export function renderCart(){
   </section>`;
   window.lucide?.createIcons && lucide.createIcons();
 
-  // события +/-
+  // кнопка "назад"
+  document.getElementById('cartBack')?.addEventListener('click', ()=>history.back());
+
+  // события +/- по строкам
   document.querySelectorAll('.cart-row').forEach(row=>{
     const id=Number(row.getAttribute('data-id'));
     const size=row.getAttribute('data-size')||null; const color=row.getAttribute('data-color')||null;
@@ -64,20 +77,22 @@ export function renderCart(){
     row.querySelector('.dec').onclick=()=> changeQty(id,size,color, -1);
   });
 
-  // переключаем нижний бар на CTA «Оформить заказ»
-  window.setTabbarCTA(`<span>Оформить заказ</span>`);
-  document.getElementById('ctaBtn').onclick = ()=> checkout(items, ad);
+  // нижний бар → CTA «Оформить заказ»
+  window.setTabbarCTA({
+    html: `<i data-lucide="credit-card"></i><span>Оформить заказ</span>`,
+    onClick(){ checkout(items, ad); }
+  });
 }
 
 function changeQty(productId,size,color,delta){
-  const it = state.cart.items.find(a=>a.productId===productId && a.size===size && a.color===color);
+  const it = state.cart.items.find(a=>a.productId===productId && (a.size||null)===(size||null) && (a.color||null)===(color||null));
   if (!it) return;
   it.qty += delta;
   if (it.qty<=0) remove(productId,size,color);
   persistCart(); updateCartBadge(); renderCart();
 }
 function remove(productId,size,color){
-  state.cart.items = state.cart.items.filter(a=>!(a.productId===productId && a.size===size && a.color===color));
+  state.cart.items = state.cart.items.filter(a=>!(a.productId===productId && (a.size||null)===(size||null) && (a.color||null)===(color||null)));
   persistCart(); updateCartBadge(); toast('Удалено'); renderCart();
 }
 
