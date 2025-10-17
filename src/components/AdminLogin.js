@@ -18,8 +18,8 @@ export function renderAdminLogin(){
             <div class="note-title">Защищённый доступ</div>
             <div class="note-sub">${hint}</div>
           </div>
-          <div class="time" style="min-width:220px; display:grid; gap:8px; justify-items:end">
-            ${tgOk ? `<a href="#/admin" class="pill primary">Открыть админку</a>` : ''}
+          <div class="time" style="min-width:200px; display:grid; gap:8px; justify-items:end">
+            ${tgOk ? `<button id="goAdmin" class="pill primary">Открыть админку</button>` : ''}
             <button id="btnLogout" class="pill" title="Сбросить локальную разблокировку">Сбросить доступ</button>
           </div>
         </div>
@@ -27,7 +27,7 @@ export function renderAdminLogin(){
 
       ${tgOk ? '' : `
       <div class="section" style="margin-top:12px">
-        <div class="grid" style="grid-template-columns:1fr auto; gap:10px; align-items:center">
+        <div class="grid grid-compact">
           <input id="admCode" class="search" placeholder="Секретный код" type="password" />
           <button id="admEnter" class="pill primary">Войти</button>
         </div>
@@ -36,6 +36,11 @@ export function renderAdminLogin(){
     </section>
   `;
   window.lucide?.createIcons && lucide.createIcons();
+
+  // «Открыть админку» — просто джамп на #/admin, роутер покажет предупреждение и переведёт UI в админ режим
+  document.getElementById('goAdmin')?.addEventListener('click', ()=>{
+    location.hash = '#/admin';
+  });
 
   document.getElementById('btnLogout')?.addEventListener('click', ()=>{
     logoutAdmin();
@@ -52,7 +57,7 @@ export function renderAdminLogin(){
         if (e){ e.style.display='block'; }
         return;
       }
-      location.hash = '#/admin';
+      location.hash = '#/admin'; // роутер покажет предупреждение
     });
   }
 }

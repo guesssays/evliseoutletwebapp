@@ -22,6 +22,33 @@ import { canAccessAdmin, tryUnlockFromStartParam } from './core/auth.js';
 
 loadCart(); loadAddresses(); updateCartBadge(); initTelegramChrome();
 
+/* ---------- ADMIN MODE ---------- */
+function setAdminMode(on){
+  document.body.classList.toggle('admin-mode', !!on);
+  setTabbarMenu(on ? 'admin' : 'home');
+}
+function confirmAdminSwitch(onConfirm, onCancel){
+  const modal = document.getElementById('modal');
+  const mb = document.getElementById('modalBody');
+  const mt = document.getElementById('modalTitle');
+  const ma = document.getElementById('modalActions');
+
+  mt.textContent = 'Переключение интерфейса';
+  mb.innerHTML = `
+    <div style="font-size:15px;line-height:1.35">
+      Вы покидаете пользовательский интерфейс и переходите в режим администратора. Продолжить?
+    </div>
+  `;
+  ma.innerHTML = `
+    <button id="admCancel" class="pill">Отмена</button>
+    <button id="admOk" class="pill primary">Подтвердить</button>
+  `;
+  modal.classList.add('show');
+  document.getElementById('modalClose').onclick = close;
+  document.getElementById('admCancel').onclick = ()=>{ close(); onCancel && onCancel(); };
+  document.getElementById('admOk').onclick = ()=>{ close(); onConfirm && onConfirm(); };
+  function close(){ modal.classList.remove('show'); }
+}
 /* ---------- helpers для таббара ---------- */
 function mountIcons(){ window.lucide?.createIcons && lucide.createIcons(); }
 
@@ -36,9 +63,29 @@ function setTabbarMenu(activeKey = 'home'){
   killExternalCTA();
   inner.classList.remove('is-cta');
 
-  // Админ-вкладка — только если есть доступ
+  const inAdmin = document.body.classList.contains('admin-mode');
+
+  if (inAdmin){
+    inner.innerHTML = `
+      <a href="#/admin" data-tab="admin" class="tab ${activeKey==='admin'?'active':''}" role="tab" aria-selected="${String(activeKey==='admin')}">
+        <i data-lucide="shield-check"></i><span>Админка</span>
+      </a>
+      <a href="#/account" id="leaveAdmin" data-tab="leave" class="tab" role="tab" aria-selected="false">
+        <i data-lucide="log-out"></i><span>Выйти</span>
+      </a>
+    `;
+    mountIcons();
+    document.getElementById('leaveAdmin')?.addEventListener('click', (e)=>{
+      e.preventDefault();
+      setAdminMode(false);
+      location.hash = '#/account';
+    });
+    return;
+  }
+
+  // клиентский таббар
   const adminTab = canAccessAdmin() ? `
-    <a href="#/admin" data-tab="admin" class="tab ${activeKey==='admin'?'active':''}" role="tab" aria-selected="${String(activeKey==='admin')}">
+    <a href="#/admin" id="openAdminTab" data-tab="admin" class="tab ${activeKey==='admin'?'active':''}" role="tab" aria-selected="${String(activeKey==='admin')}">
       <i data-lucide="shield-check"></i><span>Админка</span>
     </a>` : '';
 
@@ -59,6 +106,15 @@ function setTabbarMenu(activeKey = 'home'){
     ${adminTab}
   `;
   mountIcons();
+
+  document.getElementById('openAdminTab')?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    confirmAdminSwitch(()=>{
+      setAdminMode(true);
+      location.hash = '#/admin';
+    });
+  });
+
   updateCartBadge();
 }
 
@@ -110,13 +166,9 @@ window.setTabbarCTAs = setTabbarCTAs;
     const u = tg.initDataUnsafe.user;
     if (u) state.user = u;
 
-    // deep-link из бота: t.me/<bot>?startapp=admin  или ...startapp=admin-login
     const sp = String(tg.initDataUnsafe.start_param || '').trim().toLowerCase();
-
-    // Опционально: авто-разблокировка доступа по start_param (если включено в auth.js)
     tryUnlockFromStartParam();
 
-    // Сохраняем желаемый маршрут — выполним позже, когда всё подтянется
     if (sp === 'admin' || sp === 'admin-login'){
       try{ sessionStorage.setItem('nas_start_route', `#/${sp}`); }catch{}
     }
@@ -180,6 +232,7 @@ function hideProductHeader(){
 function router(){
   const path=(location.hash||'#/').slice(1);
   const clean = path.replace(/#.*/,'');
+  const inAdmin = document.body.classList.contains('admin-mode');
 
   const parts = path.split('/').filter(Boolean);
   const map = {
@@ -197,11 +250,27 @@ function router(){
     return params;
   };
 
-  setTabbarMenu(map[clean] || 'home');
+  setTabbarMenu(map[clean] || (inAdmin ? 'admin' : 'home'));
 
   // Сбросить фикс-хедер товара при смене экрана
   hideProductHeader();
 
+  // Жёстко ограничиваем маршруты в админ-режиме
+  if (inAdmin){
+    if (parts.length===0 || parts[0] !== 'admin'){
+      location.hash = '#/admin';
+      return renderAdmin();
+    }
+    if (!canAccessAdmin()){
+      setAdminMode(false);
+      toast('Доступ в админ-панель ограничен');
+      location.hash = '#/admin-login';
+      return;
+    }
+    return renderAdmin();
+  }
+
+  // === обычный клиентский роутинг
   if (parts.length===0) return renderHome(router);
   const m1=match('category/:slug'); if (m1) return renderCategory(m1);
   const m2=match('product/:id');   if (m2) return renderProduct(m2);
@@ -217,18 +286,21 @@ function router(){
 
   if (match('notifications'))      return renderNotifications(updateNotifBadge);
 
-  // ======= Admin login / guard =======
-  if (match('admin-login'))        return renderAdminLogin();
-
+  // если жмём «Админка» в клиентском режиме — покажем предупреждение
   if (match('admin')){
     if (!canAccessAdmin()){
       toast('Доступ в админ-панель ограничен');
       location.hash = '#/admin-login';
       return;
     }
-    return renderAdmin();
+    confirmAdminSwitch(()=>{
+      setAdminMode(true);
+      location.hash = '#/admin';
+    }, ()=>{
+      location.hash = '#/account';
+    });
+    return;
   }
-  // ===================================
 
   if (match('faq'))                return renderFAQ();
 
@@ -251,7 +323,7 @@ async function init(){
   drawCategoriesChips(router);
   renderActiveFilterChips();
 
-  // ==== применяем маршрут из Telegram start_param, если есть
+  // применяем маршрут из start_param, если есть
   let startRoute = null;
   try{
     startRoute = sessionStorage.getItem('nas_start_route');
@@ -268,8 +340,14 @@ async function init(){
   });
   window.addEventListener('force:rerender', router);
 
-  // при смене прав (ввод кода / logout) — перерисовать таббар с «Админкой»
-  window.addEventListener('auth:updated', router);
+  // при смене прав — перерисовать таббар/выйти из админки при потере доступа
+  window.addEventListener('auth:updated', ()=>{
+    if (document.body.classList.contains('admin-mode') && !canAccessAdmin()){
+      setAdminMode(false);
+      location.hash = '#/admin-login';
+    }
+    router();
+  });
 
   window.lucide && lucide.createIcons?.();
 

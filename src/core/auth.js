@@ -82,11 +82,12 @@ export function tryUnlockFromStartParam(){
   try{
     const sp = String(window?.Telegram?.WebApp?.initDataUnsafe?.start_param || '').trim().toLowerCase();
 
-    // Можно отключить автро-разблокировку, если не нужна:
+    // Можно отключить авто-разблокировку, если не нужна:
     const ALLOW_AUTO_UNLOCK = true;
     if (!ALLOW_AUTO_UNLOCK) return false;
 
     if (sp === 'admin'){
+      // разблокируем локально тем же passcode
       return unlockAdminWithPasscode(PASSCODE);
     }
     return false;

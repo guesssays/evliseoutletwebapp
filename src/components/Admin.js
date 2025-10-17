@@ -27,18 +27,24 @@ export function renderAdmin(){
     });
 
     v.innerHTML = `
-      <section class="section">
-        <div class="section-title">Админ панель</div>
+      <section class="section admin-topbar">
+        <div class="admin-title">
+          <i data-lucide="shield-check"></i>
+          <span>Админ панель</span>
+        </div>
+        <button id="exitClientUi" class="pill outline small">Выйти</button>
+      </section>
 
-        <div class="chipbar" id="admTabs">
+      <section class="section">
+        <div class="chipbar scrollable" id="admTabs">
           ${filterTabs.map(t=>`
             <button class="chip ${current===t.key?'active':''}" data-k="${t.key}">${t.label}</button>
           `).join('')}
           <span style="flex:1"></span>
-          <button id="admAdd" class="pill primary"><i data-lucide="plus"></i> <span>+ Заказ</span></button>
+          <button id="admAdd" class="pill primary mobile-full"><i data-lucide="plus"></i><span>&nbsp;Новый заказ</span></button>
         </div>
 
-        <div class="notes" id="admList">
+        <div class="notes notes-mobile" id="admList">
           ${filtered.length ? filtered.map(renderOrderItem).join('') : `
             <div class="notes-empty">Пока нет заказов в этой категории.</div>
           `}
@@ -46,6 +52,12 @@ export function renderAdmin(){
       </section>
     `;
     window.lucide?.createIcons && lucide.createIcons();
+
+    // выйти из админ-режима
+    document.getElementById('exitClientUi')?.addEventListener('click', ()=>{
+      document.body.classList.remove('admin-mode');
+      location.hash = '#/account';
+    });
 
     document.getElementById('admTabs')?.addEventListener('click', (e)=>{
       const b = e.target.closest('.chip');
@@ -84,7 +96,7 @@ export function renderAdmin(){
     const isNew  = o.status === 'новый' && !o.accepted;
 
     return `
-      <div class="note">
+      <div class="note note-mobile">
         <i data-lucide="package"></i>
         <div>
           <div class="note-title">${escapeHtml(title)} ${price ? `· <span class="muted">${price}</span>`:''}</div>
@@ -97,15 +109,15 @@ export function renderAdmin(){
             ${o.link ? `<br><a href="${escapeHtml(o.link)}">Открыть товар</a>`:''}
           </div>
         </div>
-        <div class="time" style="min-width:190px; display:grid; gap:8px; justify-items:end">
+        <div class="time right-col">
           <span class="badge" style="position:static; background:${badgeColor(o)}">${escapeHtml(o.status)}</span>
-          ${isNew ? `<button class="pill primary adm-accept" data-id="${o.id}">Принять заказ</button>`:''}
-          <select class="pill adm-status" data-id="${o.id}" ${isNew?'disabled':''}>
+          ${isNew ? `<button class="pill primary mobile-full adm-accept" data-id="${o.id}">Принять заказ</button>`:''}
+          <select class="pill mobile-full adm-status" data-id="${o.id}" ${isNew?'disabled':''}>
             ${ORDER_STATUSES.filter(s=>s!=='новый').map(s=>`
               <option value="${s}" ${o.status===s?'selected':''}>${s}</option>
             `).join('')}
           </select>
-          ${isDone?'<span class="muted" style="font-size:12px">Заказ завершён</span>':''}
+          ${isDone?'<span class="muted mini">Заказ завершён</span>':''}
         </div>
       </div>
     `;
@@ -165,9 +177,7 @@ export function renderAdmin(){
   }
 
   function syncAndRerender(){
-    // обновим state.orders
     state.orders = getOrders();
-    // дёрнем роутер — клиентские страницы обновятся
     const ev = new CustomEvent('force:rerender');
     window.dispatchEvent(ev);
     ui();
@@ -176,7 +186,7 @@ export function renderAdmin(){
   ui();
 }
 
-// утилита на всякий
+// утилита
 function escapeHtml(s=''){
   return s.replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
