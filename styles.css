@@ -1,4 +1,6 @@
-/* === styles.css (актуальная) === */
+/* === styles.css (полная актуальная версия) === */
+
+/* Палитра и базовые переменные */
 :root{
   --c-01:#292526; --c-02:#787676; --c-03:#A3A1A2; --c-04:#F2F2F2; --c-05:#121111;
   --bg:#ffffff; --text:#121111; --muted:#787676; --paper:#ffffff; --stroke:#ececec;
@@ -17,9 +19,9 @@ body{
   padding-bottom:calc(var(--tabbar-h) + var(--safe) + 24px);
 }
 
-.lucide,[data-lucide]{ stroke:currentColor; fill:none }
+.lucide, [data-lucide]{ stroke:currentColor; fill:none }
 
-/* ===== ХЕДЕР ===== */
+/* ===== ШАПКА ===== */
 .app-header{
   position:sticky; top:0; z-index:30;
   backdrop-filter:saturate(1.2) blur(6px);
@@ -46,7 +48,7 @@ body{
 .hdr-circ i{ width:22px; height:22px }
 .hdr-circ.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none }
 
-/* на странице товара при лёгком скролле хедер «компактный» и показывает back/fav */
+/* компакт-режим на странице товара */
 .app-header.is-product-compact{
   padding:10px 18px 8px;
   background:rgba(255,255,255,.96);
@@ -59,13 +61,12 @@ body{
 .app-header.is-product-compact .notif-btn{
   opacity:0; transform:translateY(-6px); pointer-events:none;
 }
-/* показать круглые кнопки в компактном режиме */
 .app-header.is-product-compact #hdrBack,
 .app-header.is-product-compact #hdrFav{
   opacity:1; transform:translateY(0); pointer-events:auto;
 }
 
-/* стандартные квадратные кнопки (иконки, фильтры и т.п.) */
+/* стандартные квадратные кнопки (иконки, фильтры) */
 .icon-btn, .square-btn{
   display:inline-grid; place-items:center;
   width:44px; height:44px; border-radius:14px;
@@ -201,7 +202,7 @@ body{
 .pill i{ width:18px; height:18px }
 .pill:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
 
-/* ===== КОРЗИНА / ЧЕКАУТ ===== */
+/* ===== КОРЗИНА/ЧЕКАУТ ===== */
 .section-title{ font-size:24px; font-weight:800; margin:10px 18px }
 .checkout{ padding:0 18px calc(var(--tabbar-h) + var(--safe) + 24px); display:grid; gap:14px }
 .cart-row{
@@ -227,31 +228,43 @@ body{
 
 /* ===== УВЕДОМЛЕНИЯ ===== */
 .notes{ display:grid; gap:8px; margin:0 18px 18px; }
-.note{ display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:12px; border:1px solid var(--stroke); border-radius:14px; background:#fff; }
+.note{
+  display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center;
+  padding:12px; border:1px solid var(--stroke); border-radius:14px; background:#fff;
+}
 .note i{ width:22px; height:22px; opacity:.9; }
 .note-title{ font-weight:800; line-height:1.25; }
 .note-sub{ color:var(--muted); font-size:14px; margin-top:2px; }
 .note .time{ color:var(--muted); font-size:12px; white-space:nowrap; }
-.notes-empty{ margin:0 18px 18px; padding:14px; border:1px dashed var(--stroke); border-radius:14px; background:#fff; color:var(--muted); }
+.notes-empty{
+  margin:0 18px 18px; padding:14px;
+  border:1px dashed var(--stroke); border-radius:14px;
+  background:#fff; color:#muted;
+}
 
 /* ===== ТАББАР ===== */
 .tabbar{ position:fixed; left:0; right:0; bottom:0; z-index:50; padding-bottom:max(8px, var(--safe)); background:transparent; pointer-events:none; }
 .tabbar-inner{ pointer-events:auto; margin:0 18px; height:76px; border-radius:28px; background:#1f1e1e; box-shadow:0 10px 40px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:space-around; gap:6px; padding:0 8px; }
-.tab{ position:relative; min-width:64px; height:52px; padding:6px 12px; border-radius:16px; color:#fff; text-decoration:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-weight:700; opacity:.9; transition:background .18s, opacity .18s, transform .08s; }
+.tab{ position:relative; min-width:64px; height:52px; padding:6px 12px; border-radius:16px; color:#fff; text-decoration:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-weight:700; opacity:.9; transition:background .18s ease, opacity .18s ease, transform .08s ease; }
 .tab i{ width:26px; height:26px }
 .tab span{ font-size:12px; line-height:1; }
 .tab:hover{ opacity:1; }
 .tab:active{ transform:translateY(1px); }
 .tab.active{ background:rgba(255,255,255,.14); opacity:1; }
+
 .badge-wrap{ position:relative }
-.badge{ position:absolute; right:2px; top:-2px; background:#ff5966; color:#fff; font-size:11px; line-height:1; border-radius:999px; padding:3px 6px; box-shadow:0 2px 10px rgba(0,0,0,.18); }
+.badge{
+  position:absolute; right:2px; top:-2px;
+  background:#ff5966; color:#fff; font-size:11px; line-height:1;
+  border-radius:999px; padding:3px 6px; box-shadow:0 2px 10px rgba(0,0,0,.18);
+}
 .dot{ display:none !important; }
 
 /* CTA-режим */
 .tabbar .btn { height:64px; }
 .tabbar-inner.is-cta{ justify-content:stretch; gap:10px; padding:8px; }
 
-/* МОДАЛКИ/ТОСТЫ */
+/* ===== МОДАЛКИ / ТОСТЫ ===== */
 .modal{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.35) }
 .modal.show{ display:grid }
 .modal-dialog{ width:min(92vw,560px); background:#fff; border-radius:18px; overflow:hidden; box-shadow:var(--shadow) }
@@ -262,7 +275,7 @@ body{
 .toast-wrap{ position:fixed; top:var(--toastTop); right:16px; display:grid; gap:8px; z-index:70 }
 .toast{ background:#121111; color:#fff; padding:10px 12px; border-radius:12px; box-shadow:var(--shadow); transition:opacity .25s ease }
 
-/* АДАПТИВ */
+/* ===== АДАПТИВ ===== */
 @media (max-width: 380px){
   .grid{ grid-template-columns:1fr; }
   .p-title{ font-size:28px }
@@ -273,15 +286,20 @@ body{
   .tab{ height:50px; }
 }
 
-/* Overlay */
+/* === Overlay === */
 .zoom-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; z-index:1000; }
 .zoom-overlay.show{ display:block; }
 .zoom-stage{ position:absolute; inset:0; display:grid; place-items:center; }
 #zoomImg{ max-width:96vw; max-height:92vh; will-change:transform; touch-action:none; }
-.zoom-close{ position:absolute; right:14px; top:14px; width:44px; height:44px; border:none; border-radius:12px; display:grid; place-items:center; background:#fff; color:#121111; box-shadow:0 8px 24px rgba(0,0,0,.2); cursor:pointer; }
+.zoom-close{
+  position:absolute; right:14px; top:14px;
+  width:44px; height:44px; border:none; border-radius:12px;
+  display:grid; place-items:center; background:#fff; color:#121111;
+  box-shadow:0 8px 24px rgba(0,0,0,.2); cursor:pointer;
+}
 .zoom-close i{ width:22px; height:22px }
 
-/* SINGLE-FOOTER (CTA в таббаре) */
+/* ==== SINGLE-FOOTER MODE (CTA внутри таббара) ==== */
 .has-cta .cta{ display:none !important; }
 body.has-cta{ padding-bottom:calc(var(--safe) + 16px) !important; }
 .tabbar-inner.is-cta .tab{ display:none !important; }

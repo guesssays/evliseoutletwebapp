@@ -1,4 +1,3 @@
-// app.js (без изменений логики, но оставлен хедер + уведомления)
 import { state, loadCart, updateCartBadge, loadAddresses, pruneCartAgainstProducts } from './core/state.js';
 import { toast } from './core/toast.js';
 import { el } from './core/utils.js';
@@ -17,13 +16,20 @@ import { renderNotifications } from './components/Notifications.js';
 
 loadCart(); loadAddresses(); updateCartBadge(); initTelegramChrome();
 
+/* ---------- helpers для динамического таббара ---------- */
 function mountIcons(){ window.lucide?.createIcons && lucide.createIcons(); }
-function killExternalCTA(){ document.querySelectorAll('.cta, .paybtn').forEach(n=>n.remove()); document.body.classList.remove('has-cta'); }
 
-function setTabbarMenu(activeKey='home'){
-  const inner=document.querySelector('.tabbar .tabbar-inner'); if(!inner) return;
-  killExternalCTA(); inner.classList.remove('is-cta');
-  inner.innerHTML=`
+function killExternalCTA(){
+  document.querySelectorAll('.cta, .paybtn').forEach(n => n.remove());
+  document.body.classList.remove('has-cta');
+}
+
+function setTabbarMenu(activeKey = 'home'){
+  const inner = document.querySelector('.tabbar .tabbar-inner');
+  if (!inner) return;
+  killExternalCTA();
+  inner.classList.remove('is-cta');
+  inner.innerHTML = `
     <a href="#/" data-tab="home" class="tab ${activeKey==='home'?'active':''}" role="tab" aria-selected="${String(activeKey==='home')}">
       <i data-lucide="home"></i><span>Главная</span>
     </a>
@@ -38,94 +44,140 @@ function setTabbarMenu(activeKey='home'){
       <i data-lucide="user-round"></i><span>Аккаунт</span>
     </a>
   `;
-  mountIcons(); updateCartBadge();
-}
-
-function setTabbarCTA(arg){
-  const inner=document.querySelector('.tabbar .tabbar-inner'); if(!inner) return;
-  killExternalCTA(); document.body.classList.add('has-cta');
-  let id='ctaBtn', html='', onClick=null;
-  if(typeof arg==='string'){ html=arg; } else { ({id='ctaBtn', html='', onClick=null}=arg||{}); }
-  inner.classList.add('is-cta');
-  inner.innerHTML=`<button id="${id}" class="btn" style="flex:1">${html}</button>`;
-  mountIcons(); if(onClick) document.getElementById(id).onclick=onClick;
-}
-
-function setTabbarCTAs(left={id:'ctaLeft',html:'',onClick:null}, right={id:'ctaRight',html:'',onClick:null}){
-  const inner=document.querySelector('.tabbar .tabbar-inner'); if(!inner) return;
-  killExternalCTA(); document.body.classList.add('has-cta');
-  inner.classList.add('is-cta');
-  inner.innerHTML=`
-    <button id="${left.id||'ctaLeft'}" class="btn outline" style="flex:1">${left.html||''}</button>
-    <button id="${right.id||'ctaRight'}" class="btn" style="flex:1">${right.html||''}</button>`;
   mountIcons();
-  if(left.onClick) document.getElementById(left.id||'ctaLeft').onclick=left.onClick;
-  if(right.onClick) document.getElementById(right.id||'ctaRight').onclick=right.onClick;
+  updateCartBadge();
 }
-window.setTabbarMenu=setTabbarMenu; window.setTabbarCTA=setTabbarCTA; window.setTabbarCTAs=setTabbarCTAs;
 
-/* Telegram user */
-(function(){ const tg=window.Telegram?.WebApp; if(tg?.initDataUnsafe?.user){ state.user=tg.initDataUnsafe.user; } })();
+/** Один CTA внутри таббара */
+function setTabbarCTA(arg){
+  const inner = document.querySelector('.tabbar .tabbar-inner');
+  if (!inner) return;
+  killExternalCTA();
+  document.body.classList.add('has-cta');
 
-/* Поиск */
-el('#searchInput').addEventListener('input',(e)=>{ state.filters.query=e.target.value; renderHome(router); });
+  let id='ctaBtn', html='', onClick=null;
+  if (typeof arg==='string'){ html = arg; }
+  else { ({id='ctaBtn', html='', onClick=null} = arg||{}); }
 
-/* Уведомления */
-const NOTIF_KEY='nas_notifications';
+  inner.classList.add('is-cta');
+  inner.innerHTML = `<button id="${id}" class="btn" style="flex:1">${html}</button>`;
+  mountIcons();
+  if (onClick) document.getElementById(id).onclick = onClick;
+}
+
+/** Два CTA */
+function setTabbarCTAs(
+  left = { id:'ctaLeft', html:'', onClick:null },
+  right = { id:'ctaRight', html:'', onClick:null }
+){
+  const inner = document.querySelector('.tabbar .tabbar-inner');
+  if (!inner) return;
+  killExternalCTA();
+  document.body.classList.add('has-cta');
+
+  inner.classList.add('is-cta');
+  inner.innerHTML = `
+    <button id="${left.id||'ctaLeft'}" class="btn outline" style="flex:1">${left.html||''}</button>
+    <button id="${right.id||'ctaRight'}" class="btn" style="flex:1">${right.html||''}</button>
+  `;
+  mountIcons();
+  if (left.onClick)  document.getElementById(left.id||'ctaLeft').onclick   = left.onClick;
+  if (right.onClick) document.getElementById(right.id||'ctaRight').onclick = right.onClick;
+}
+
+window.setTabbarMenu = setTabbarMenu;
+window.setTabbarCTA  = setTabbarCTA;
+window.setTabbarCTAs = setTabbarCTAs;
+
+/* ---------- Telegram авторизация ---------- */
+(function initTelegram(){
+  const tg = window.Telegram?.WebApp;
+  if (tg?.initDataUnsafe?.user){
+    state.user = tg.initDataUnsafe.user;
+  }
+})();
+
+/* ---------- Поиск ---------- */
+el('#searchInput').addEventListener('input', (e)=>{
+  state.filters.query = e.target.value;
+  renderHome(router);
+});
+
+/* ---------- Уведомления (localStorage) ---------- */
+const NOTIF_KEY = 'nas_notifications';
+
 function seedNotificationsOnce(){
   try{
-    if(localStorage.getItem(NOTIF_KEY)) return;
-    const seed=[
-      { id:1, title:'Добро пожаловать в EVLISE OUTLET', sub:'Подборка новинок уже на главной.', ts:Date.now()-1000*60*60*6, read:false, icon:'bell' },
-      { id:2, title:'Скидки на худи', sub:'MANIA и DIRT — выгоднее на 15% до воскресенья.', ts:Date.now()-1000*60*50, read:false, icon:'percent' },
+    if (localStorage.getItem(NOTIF_KEY)) return;
+    const seed = [
+      { id: 1, title: 'Добро пожаловать в EVLISE OUTLET', sub: 'Подборка новинок уже на главной.', ts: Date.now()-1000*60*60*6, read:false, icon:'bell' },
+      { id: 2, title: 'Скидки на худи', sub: 'MANIA и DIRT — выгоднее на 15% до воскресенья.', ts: Date.now()-1000*60*50, read:false, icon:'percent' },
     ];
     localStorage.setItem(NOTIF_KEY, JSON.stringify(seed));
   }catch{}
 }
-function getNotifications(){ try{ return JSON.parse(localStorage.getItem(NOTIF_KEY)||'[]'); }catch{ return []; } }
-function updateNotifBadge(){ const unread=getNotifications().filter(n=>!n.read).length; const b=document.getElementById('notifBadge'); if(!b) return; if(unread>0){ b.textContent=String(unread); b.hidden=false; } else { b.hidden=true; } }
-document.addEventListener('click',(e)=>{ const btn=e.target.closest('#openNotifications'); if(!btn) return; location.hash='#/notifications'; });
+function getNotifications(){ try{ return JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]'); }catch{ return []; } }
+function setNotifications(list){ localStorage.setItem(NOTIF_KEY, JSON.stringify(list)); }
+function updateNotifBadge(){
+  const unread = getNotifications().filter(n=>!n.read).length;
+  const b = document.getElementById('notifBadge');
+  if (!b) return;
+  if (unread>0){ b.textContent = String(unread); b.hidden = false; } else { b.hidden = true; }
+}
 
-/* Роутер */
+document.addEventListener('click', (e)=>{
+  const btn = e.target.closest('#openNotifications');
+  if (!btn) return;
+  location.hash = '#/notifications';
+});
+
+/* ---------- Роутер ---------- */
 function router(){
   const path=(location.hash||'#/').slice(1);
-  const clean=path.replace(/#.*/,'');
-  const parts=path.split('/').filter(Boolean);
-  const map={ '':'home','/':'home','/favorites':'saved','/cart':'cart','/account':'account','/orders':'account' };
+  const clean = path.replace(/#.*/,'');
+  const parts = path.split('/').filter(Boolean);
 
-  const match=(pattern)=>{
+  const map = { '':'home','/':'home','/favorites':'saved','/cart':'cart','/account':'account','/orders':'account' };
+
+  const match = (pattern)=>{
     const p=pattern.split('/').filter(Boolean); if(p.length!==parts.length) return null;
-    const params={}; for(let i=0;i<p.length;i++){ if(p[i].startsWith(':')) params[p[i].slice(1)]=decodeURIComponent(parts[i]); else if(p[i]!==parts[i]) return null; }
+    const params={};
+    for(let i=0;i<p.length;i++){
+      if(p[i].startsWith(':')) params[p[i].slice(1)] = decodeURIComponent(parts[i]);
+      else if(p[i]!==parts[i]) return null;
+    }
     return params;
   };
 
-  setTabbarMenu(map[clean]||'home');
+  setTabbarMenu(map[clean] || 'home');
 
-  if(parts.length===0) return renderHome(router);
-  const m1=match('category/:slug'); if(m1) return renderCategory(m1);
-  const m2=match('product/:id');   if(m2) return renderProduct(m2);
-  const m3=match('track/:id');     if(m3) return renderTrack(m3);
+  if (parts.length===0) return renderHome(router);
+  const m1=match('category/:slug'); if (m1) return renderCategory(m1);
+  const m2=match('product/:id');   if (m2) return renderProduct(m2);
+  const m3=match('track/:id');     if (m3) return renderTrack(m3);
 
-  if(match('favorites')) return renderFavorites();
-  if(match('cart'))      return renderCart();
-  if(match('orders'))    return renderOrders();
+  if (match('favorites'))          return renderFavorites();
+  if (match('cart'))               return renderCart();
+  if (match('orders'))             return renderOrders();
 
-  if(match('account'))           return renderAccount();
-  if(match('account/addresses')) return renderAddresses();
-  if(match('account/settings'))  return renderSettings();
+  if (match('account'))            return renderAccount();
+  if (match('account/addresses'))  return renderAddresses();
+  if (match('account/settings'))   return renderSettings();
 
-  if(match('notifications'))     return renderNotifications(updateNotifBadge);
-  if(match('faq'))               return renderFAQ();
+  if (match('notifications'))      return renderNotifications(updateNotifBadge);
+
+  if (match('faq'))                return renderFAQ();
 
   renderHome(router);
 }
 
-/* Инициализация */
+/* ---------- Инициализация ---------- */
 async function init(){
-  const res=await fetch('data/products.json'); const data=await res.json();
-  state.products=data.products;
-  state.categories=data.categories.map(c=>({ ...c, name:c.name }));
+  const res = await fetch('data/products.json'); const data = await res.json();
+  state.products   = data.products;
+  state.categories = data.categories.map(c=>({ ...c, name: c.name }));
 
+  // САНИТИЗАЦИЯ КОРЗИНЫ
   pruneCartAgainstProducts(state.products);
   updateCartBadge();
 
@@ -141,7 +193,8 @@ async function init(){
 }
 init();
 
-/* Фильтры */
+/* ---------- Фильтры ---------- */
 document.getElementById('openFilters').onclick=()=> openFilterModal(router);
 
-export { /* named if needed */ };
+// экспорт если понадобится
+export { updateNotifBadge, getNotifications, setNotifications, setTabbarMenu, setTabbarCTA, setTabbarCTAs };
