@@ -1,12 +1,15 @@
 import { state, persistAddresses } from '../core/state.js';
+import { canAccessAdmin } from '../core/auth.js';
 
 export function renderAccount(){
   const v=document.getElementById('view');
   const u = state.user;
+
+  const isAdmin = canAccessAdmin();
+
   v.innerHTML = `
     <section class="section">
       <div class="section-title">Личный кабинет</div>
-
       <div class="account-card">
         <div class="avatar">${(u?.first_name||'Г')[0]}</div>
         <div class="info">
@@ -21,6 +24,7 @@ export function renderAccount(){
         <a class="menu-item" href="#/favorites"><i data-lucide="heart"></i><span>Избранное</span><i data-lucide="chevron-right" class="chev"></i></a>
         <a class="menu-item" href="#/faq"><i data-lucide="help-circle"></i><span>FAQ</span><i data-lucide="chevron-right" class="chev"></i></a>
         <a class="menu-item" href="#/account/settings"><i data-lucide="settings"></i><span>Настройки</span><i data-lucide="chevron-right" class="chev"></i></a>
+        ${isAdmin ? `<a class="menu-item" href="#/admin"><i data-lucide="shield-check"></i><span>Админка</span><i data-lucide="chevron-right" class="chev"></i></a>` : ''}
       </nav>
     </section>`;
   window.lucide?.createIcons && lucide.createIcons();

@@ -18,7 +18,7 @@ import { renderNotifications } from './components/Notifications.js';
 import { renderAdmin } from './components/Admin.js';
 import { renderAdminLogin } from './components/AdminLogin.js';
 import { getOrders } from './core/orders.js';
-import { canAccessAdmin } from './core/auth.js';
+import { canAccessAdmin, tryUnlockFromStartParam } from './core/auth.js';
 
 loadCart(); loadAddresses(); updateCartBadge(); initTelegramChrome();
 
@@ -35,6 +35,13 @@ function setTabbarMenu(activeKey = 'home'){
   if (!inner) return;
   killExternalCTA();
   inner.classList.remove('is-cta');
+
+  // Админ-вкладка — только если есть доступ
+  const adminTab = canAccessAdmin() ? `
+    <a href="#/admin" data-tab="admin" class="tab ${activeKey==='admin'?'active':''}" role="tab" aria-selected="${String(activeKey==='admin')}">
+      <i data-lucide="shield-check"></i><span>Админка</span>
+    </a>` : '';
+
   inner.innerHTML = `
     <a href="#/" data-tab="home" class="tab ${activeKey==='home'?'active':''}" role="tab" aria-selected="${String(activeKey==='home')}">
       <i data-lucide="home"></i><span>Главная</span>
@@ -49,6 +56,7 @@ function setTabbarMenu(activeKey = 'home'){
     <a href="#/account" data-tab="account" class="tab ${activeKey==='account'?'active':''}" role="tab" aria-selected="${String(activeKey==='account')}">
       <i data-lucide="user-round"></i><span>Аккаунт</span>
     </a>
+    ${adminTab}
   `;
   mountIcons();
   updateCartBadge();
@@ -95,11 +103,23 @@ window.setTabbarMenu = setTabbarMenu;
 window.setTabbarCTA  = setTabbarCTA;
 window.setTabbarCTAs = setTabbarCTAs;
 
-/* ---------- Telegram авторизация ---------- */
+/* ---------- Telegram авторизация + deep-link ---------- */
 (function initTelegram(){
   const tg = window.Telegram?.WebApp;
-  if (tg?.initDataUnsafe?.user){
-    state.user = tg.initDataUnsafe.user;
+  if (tg?.initDataUnsafe){
+    const u = tg.initDataUnsafe.user;
+    if (u) state.user = u;
+
+    // deep-link из бота: t.me/<bot>?startapp=admin  или ...startapp=admin-login
+    const sp = String(tg.initDataUnsafe.start_param || '').trim().toLowerCase();
+
+    // Опционально: авто-разблокировка доступа по start_param (если включено в auth.js)
+    tryUnlockFromStartParam();
+
+    // Сохраняем желаемый маршрут — выполним позже, когда всё подтянется
+    if (sp === 'admin' || sp === 'admin-login'){
+      try{ sessionStorage.setItem('nas_start_route', `#/${sp}`); }catch{}
+    }
   }
 })();
 
@@ -162,7 +182,10 @@ function router(){
   const clean = path.replace(/#.*/,'');
 
   const parts = path.split('/').filter(Boolean);
-  const map = { '':'home','/':'home','/favorites':'saved','/cart':'cart','/account':'account','/orders':'account' };
+  const map = {
+    '':'home','/':'home','/favorites':'saved','/cart':'cart','/account':'account','/orders':'account',
+    '/admin':'admin'
+  };
 
   const match = (pattern)=>{
     const p=pattern.split('/').filter(Boolean); if(p.length!==parts.length) return null;
@@ -199,7 +222,6 @@ function router(){
 
   if (match('admin')){
     if (!canAccessAdmin()){
-      // редиректим на форму логина
       toast('Доступ в админ-панель ограничен');
       location.hash = '#/admin-login';
       return;
@@ -228,6 +250,15 @@ async function init(){
 
   drawCategoriesChips(router);
   renderActiveFilterChips();
+
+  // ==== применяем маршрут из Telegram start_param, если есть
+  let startRoute = null;
+  try{
+    startRoute = sessionStorage.getItem('nas_start_route');
+    sessionStorage.removeItem('nas_start_route');
+  }catch{}
+  if (startRoute){ location.hash = startRoute; }
+
   router();
 
   window.addEventListener('hashchange', router);
@@ -236,6 +267,9 @@ async function init(){
     router();
   });
   window.addEventListener('force:rerender', router);
+
+  // при смене прав (ввод кода / logout) — перерисовать таббар с «Админкой»
+  window.addEventListener('auth:updated', router);
 
   window.lucide && lucide.createIcons?.();
 

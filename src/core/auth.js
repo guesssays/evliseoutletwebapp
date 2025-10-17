@@ -1,4 +1,5 @@
 // Простая клиентская авторизация админки (Telegram whitelist + passcode с TTL)
+// + опциональная авто-разблокировка через start_param из Telegram
 
 const KEY_UNLOCK = 'nas_admin_unlock';
 
@@ -61,9 +62,13 @@ export function unlockAdminWithPasscode(code){
   if (String(code) !== String(PASSCODE)) return false;
   const exp = now() + days(PASSCODE_TTL_DAYS);
   localStorage.setItem(KEY_UNLOCK, JSON.stringify({ ok:true, exp }));
+  // уведомим UI, чтобы показать кнопки «Админка»
+  window.dispatchEvent(new CustomEvent('auth:updated'));
   return true;
 }
 
 export function logoutAdmin(){
   localStorage.removeItem(KEY_UNLOCK);
+  window.dispatchEvent(new CustomEvent('auth:updated'));
 }
+
