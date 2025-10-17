@@ -1,13 +1,20 @@
+// простое хранилище состояния (русский интерфейс, Telegram user, корзина)
 export const state = {
   products: [],
   categories: [],
-  filters: { size: [], colors: [], materials: [], minPrice: null, maxPrice: null, inStock: false },
-  cart: JSON.parse(localStorage.getItem('evlise_cart') || '{"items":[]}'),
-  favorites: JSON.parse(localStorage.getItem('evlise_fav') || '[]'),
-  orderNote: localStorage.getItem('evlise_note') || ""
+  cart: { items: [] },
+  user: null,           // Telegram user
+  filters: { category: 'all', query: '' },
+  orders: []            // заказ + статусы (для ручного обновления админами)
 };
-export function persistCart(){ localStorage.setItem('evlise_cart', JSON.stringify(state.cart)); }
+
+export function persistCart(){
+  localStorage.setItem('nas_cart', JSON.stringify(state.cart));
+}
+export function loadCart(){
+  try{ state.cart = JSON.parse(localStorage.getItem('nas_cart')) || {items:[]}; }catch{ /* noop */ }
+}
 export function updateCartBadge(){
-  const count = state.cart.items.reduce((s,x)=>s+x.qty,0);
-  const el = document.querySelector('#cartCount'); if (el) el.textContent = count;
+  const n = state.cart.items.reduce((s,i)=>s+i.qty,0);
+  const b = document.getElementById('cartBadge'); if (b) b.textContent = n;
 }

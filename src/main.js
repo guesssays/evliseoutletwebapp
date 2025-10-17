@@ -1,97 +1,79 @@
-import { initTelegramChrome, DEFAULT_THEME } from './core/config.js';
-import { setLang, toggleLanguage } from './core/i18n.js';
-import { state, updateCartBadge } from './core/state.js';
-import { updateToastTop, toast } from './core/toast.js';
-
-import { buildDrawer, openDrawer, closeDrawer } from './components/Drawer.js';
-import { renderHome } from './components/Home.js';
-import { renderCategory } from './components/Category.js';
+import { state, loadCart, updateCartBadge } from './core/state.js';
+import { toast } from './core/toast.js';
+import { el } from './core/utils.js';
+import { renderHome, drawCategoriesChips } from './components/Home.js';
 import { renderProduct } from './components/Product.js';
 import { renderCart } from './components/Cart.js';
-import { renderFAQ } from './components/FAQ.js';
 import { renderFavorites } from './components/Favorites.js';
-import { showOnboardingOnce, renderOnboardingSlide } from './components/Onboarding.js';
-import { renderAccount, renderMyOrders, renderMyDetails, renderNewAddress } from './components/Account.js';
+import { renderCategory } from './components/Category.js';
+import { renderOrders, renderTrack } from './components/Orders.js';
 
-initTelegramChrome();
+loadCart(); updateCartBadge();
 
-// Telegram auth only
-const tg = window.Telegram?.WebApp;
-if (tg?.ready) { tg.ready(); tg.expand(); }
-state.tgUser = tg?.initDataUnsafe?.user ?? null;
-if (!state.tgUser) {
-  console.warn('Запуск вне Telegram: регистрация завязана на Telegram user.');
+// Telegram авторизация (аккаунт, не по номеру)
+function initTelegram(){
+  const tg = window.Telegram?.WebApp;
+  const btn = document.getElementById('tgAuthBtn');
+  if (tg?.initDataUnsafe?.user){
+    state.user = tg.initDataUnsafe.user;
+    document.getElementById('userName').textContent = `${state.user.first_name || ''} ${state.user.last_name || ''}`.trim() || state.user.username || 'Пользователь';
+    btn.style.display='none';
+  }else{
+    btn.onclick = ()=>{
+      toast('Если открыть это приложение внутри Telegram, авторизация произойдёт автоматически.');
+      // для web-версии просто прячем кнопку после клика
+      btn.style.display='none';
+    };
+  }
 }
+initTelegram();
 
-document.documentElement.setAttribute('data-theme', DEFAULT_THEME);
-updateToastTop();
-window.addEventListener('resize', updateToastTop);
+// поиск
+el('#searchInput').addEventListener('input', (e)=>{ state.filters.query = e.target.value; renderHome(router); });
 
-// header bindings
-function bindChrome(){
-  // меню убрал — оставил back + brand
-  document.querySelector('#overlay').onclick=()=>{ closeDrawer(); document.querySelector('#modal').classList.remove('show'); };
-  document.querySelector('#modalClose').onclick=()=>{ document.querySelector('#modal').classList.remove('show'); };
-
-  document.querySelector('#themeBtn').onclick=()=>{
-    const cur=document.documentElement.getAttribute('data-theme'); const next=cur==='light'?'dark':'light';
-    document.documentElement.setAttribute('data-theme', next); localStorage.setItem('evlise_theme', next);
-    const isLight = document.documentElement.getAttribute('data-theme')==='light';
-    document.querySelector('#themeBtn').innerHTML = `<i data-lucide="${isLight ? 'moon' : 'sun'}"></i>`;
-    window.lucide?.createIcons && lucide.createIcons();
-  };
-  document.querySelector('#langBtn').onclick=()=>{
-    toggleLanguage(); buildDrawer(); router();
-    if (document.querySelector('#modal').classList.contains('show') && document.querySelector('#modalBody').querySelector('.ob')){
-      renderOnboardingSlide(0);
-    }
-  };
-}
-
-function setTabActive(name){
-  document.querySelectorAll('.tabbar .tab').forEach(a=>{
-    a.classList.toggle('active', a.dataset.tab===name);
-  });
-}
-
+// маршрутизация
 function router(){
-  const backBtn = document.getElementById('backBtn');
-  let hash=location.hash.replace(/^#/, '') || '/'; const path=hash.split('?')[0];
+  // активность табов
+  const path=(location.hash||'#/').slice(1);
+  document.querySelectorAll('.tabbar .tab').forEach(t=> t.classList.remove('active'));
+  const map = { '':'home','/':'home','/search':'search','/favorites':'saved','/cart':'cart','/account':'account','/orders':'account' };
+  const tab = map[path.replace(/#.*/,'')] || (path.startsWith('/product')? 'home' : 'home');
+  document.querySelector(`.tabbar .tab[data-tab="${tab}"]`)?.classList.add('active');
 
+  const parts = path.split('/').filter(Boolean);
   const match = (pattern)=>{
-    const p=pattern.split('/').filter(Boolean); const a=path.split('/').filter(Boolean); if (p.length!==a.length) return null;
-    const params={}; for (let i=0;i<p.length;i++){ if(p[i].startsWith(':')) params[p[i].slice(1)] = decodeURIComponent(a[i]); else if(p[i]!==a[i]) return null; }
+    const p=pattern.split('/').filter(Boolean); if(p.length!==parts.length) return null;
+    const params={}; for(let i=0;i<p.length;i++){ if(p[i].startsWith(':')) params[p[i].slice(1)] = decodeURIComponent(parts[i]); else if(p[i]!==parts[i]) return null; }
     return params;
   };
 
-  backBtn.style.display = path !== '/' ? 'inline-grid' : 'none';
-  backBtn.onclick = ()=>history.back();
-
-  if (match('/')){ setTabActive('home'); return renderHome(router); }
-  const m1=match('/category/:slug'); if (m1){ setTabActive('home'); return renderCategory(m1, router); }
-  const m2=match('/product/:id'); if (m2){ setTabActive('home'); return renderProduct(m2); }
-  if (match('/cart')){ setTabActive('cart'); return renderCart(); }
-  if (match('/faq')){ setTabActive('home'); return renderFAQ(); }
-  if (match('/favorites')){ setTabActive('saved'); return renderFavorites(); }
-  if (match('/account')){ setTabActive('account'); return renderAccount(router); }
-  if (match('/account/orders')){ setTabActive('account'); return renderMyOrders(); }
-  if (match('/account/details')){ setTabActive('account'); return renderMyDetails(); }
-  if (match('/account/address/new')){ setTabActive('account'); return renderNewAddress(); }
-
-  setTabActive('home'); renderHome(router);
+  if (parts.length===0) return renderHome(router);
+  const m1=match('category/:slug'); if (m1) return renderCategory(m1);
+  const m2=match('product/:id'); if (m2) return renderProduct(m2);
+  const m3=match('track/:id'); if (m3) return renderTrack(m3);
+  if (match('favorites')) return renderFavorites();
+  if (match('cart')) return renderCart();
+  if (match('orders')) return renderOrders();
+  if (match('account')){ document.getElementById('view').innerHTML = `
+      <div class="section-title">Аккаунт</div>
+      <section class="checkout">
+        <a class="pill primary" href="#/orders"><i data-lucide="package-open"></i>Мои заказы</a>
+      </section>`; window.lucide?.createIcons(); return; }
+  renderHome(router);
 }
 
 async function init(){
+  // загрузка данных
   const res = await fetch('data/products.json'); const data = await res.json();
-  state.products = data.products; state.categories = data.categories;
-
-  buildDrawer(); updateCartBadge(); bindChrome(); showOnboardingOnce(); router();
+  state.products = data.products;
+  state.categories = data.categories.map(c=>({ ...c, name: c.name }));
+  // приветствие и чипы
+  drawCategoriesChips(router);
+  router();
   window.addEventListener('hashchange', router);
   window.lucide?.createIcons && lucide.createIcons();
-
-  // отрисовка бейджа в таббаре
-  const updateTabBadge = ()=> document.getElementById('tabCartCount').textContent = String(state.cart.items.reduce((s,x)=>s+x.qty,0));
-  updateTabBadge();
-  state._onCartChange = updateTabBadge;
 }
 init();
+
+// фильтры кнопка (плейсхолдер)
+document.getElementById('openFilters').onclick=()=> toast('Фильтры скоро здесь 🙂');

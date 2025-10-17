@@ -1,19 +1,15 @@
-import { modalEls } from './dom.js';
-export function openModal({title, body, actions=[], onOpen}){
-  const {modal, title:mt, body:mb, actions:ma} = modalEls();
-  mt.textContent = title || '';
-  mb.innerHTML = body || '';
-  ma.innerHTML = '';
+export function openModal({title='', body='', actions=[]}){
+  const m = document.getElementById('modal');
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = body;
+  const act = document.getElementById('modalActions'); act.innerHTML='';
   actions.forEach(a=>{
-    const b=document.createElement('button');
-    b.className='btn' + (a.variant==='secondary'?' secondary':''); b.textContent=a.label;
-    b.onclick = a.onClick || closeModal; ma.appendChild(b);
+    const b=document.createElement('button'); b.className='pill'; b.textContent=a.label;
+    if(a.variant==='primary'){ b.classList.add('primary'); }
+    b.onclick = ()=>{ a.onClick && a.onClick(); };
+    act.appendChild(b);
   });
-  modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
-  if (onOpen) onOpen();
-  if (window.lucide?.createIcons) lucide.createIcons();
+  m.classList.add('show');
+  document.getElementById('modalClose').onclick=()=> closeModal();
 }
-export function closeModal(){
-  const {modal} = modalEls();
-  modal.classList.remove('show'); modal.classList.remove('blur-heavy'); modal.setAttribute('aria-hidden','true');
-}
+export function closeModal(){ document.getElementById('modal').classList.remove('show'); }

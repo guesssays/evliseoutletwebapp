@@ -1,9 +1,7 @@
+let idx=0;
 export function toast(msg){
-  const wrap = document.querySelector('#toastWrap'); if (!wrap) return;
-  const n = document.createElement('div'); n.className='toast'; n.textContent=msg;
-  wrap.appendChild(n); setTimeout(()=>n.remove(), 2500);
-}
-export function updateToastTop(){
-  const h = document.querySelector('#appHeader')?.offsetHeight || 56;
-  document.documentElement.style.setProperty('--toastTop', `${h + 8}px`);
+  const w=document.getElementById('toastWrap');
+  const id='t'+(++idx); const n=document.createElement('div');
+  n.className='toast'; n.id=id; n.textContent=msg; w.appendChild(n);
+  setTimeout(()=>{ n.style.opacity='0'; setTimeout(()=>n.remove(),300); }, 2200);
 }
