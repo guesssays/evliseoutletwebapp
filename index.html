@@ -17,11 +17,21 @@
   <div class="brand">
     <span class="app-title" aria-label="EVLISE OUTLET">EVLISE OUTLET</span>
   </div>
-  <button id="openNotifications" class="icon-btn notif-btn" aria-label="Уведомления">
-    <i data-lucide="bell"></i>
-    <b id="notifBadge" class="badge" hidden>0</b>
-  </button>
+
+  <div class="hdr-right">
+    <button id="openNotifications" class="icon-btn notif-btn" aria-label="Уведомления">
+      <i data-lucide="bell"></i>
+      <b id="notifBadge" class="badge" hidden>0</b>
+    </button>
+
+    <!-- продуктовые контролы: появятся при скролле на карточке -->
+    <div id="prdHeaderCtrls" class="prd-ctrls" aria-hidden="true">
+      <button id="hdrBack" class="hdr-circ" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
+      <button id="hdrFav"  class="hdr-circ" aria-label="В избранное" aria-pressed="false"><i data-lucide="heart"></i></button>
+    </div>
+  </div>
 </header>
+
 
       <!-- Поиск + фильтры -->
       <section class="section section-search">

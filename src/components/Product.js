@@ -35,7 +35,7 @@ export function renderProduct({id}){
         </div>
       </div>
 
-      <div class="p-body">
+      <div class="p-body home-bottom-pad">
         <div class="p-title">${escapeHtml(p.title)}</div>
         <div class="p-desc">${p.description ? escapeHtml(p.description) : 'Описание скоро будет обновлено.'}</div>
         <div class="specs"><b>Материал:</b> ${p.material ? escapeHtml(p.material) : '—'}</div>
@@ -101,10 +101,10 @@ export function renderProduct({id}){
     colors.querySelector('.sw')?.classList.add('active');
   }
 
-  // Навигация назад
+  // Навигация назад (кнопка на герое)
   document.getElementById('goBack').onclick=()=> history.back();
 
-  // Избранное
+  // Избранное (кнопка на герое)
   const favBtn = document.getElementById('favBtn');
   favBtn.onclick = ()=>{
     let list = JSON.parse(localStorage.getItem('nas_fav')||'[]');
@@ -114,6 +114,8 @@ export function renderProduct({id}){
     localStorage.setItem('nas_fav', JSON.stringify(list));
     favBtn.classList.toggle('active', nowFav);
     favBtn.setAttribute('aria-pressed', String(nowFav));
+    // синхронизируем кнопку в хедере, если есть
+    syncHeaderFav(nowFav);
   };
 
   // Галерея: миниатюры -> главное фото
@@ -150,7 +152,7 @@ export function renderProduct({id}){
     window.setTabbarCTA({
       html: `<i data-lucide="shopping-bag"></i><span>Добавить в корзину&nbsp;|&nbsp;${priceFmt(p.price)}</span>`,
       onClick(){
-        addToCart(p, size, color, 1); // всегда 1 штука
+        addToCart(p, size, color, 1);
         showInCartCTAs();
       }
     });
@@ -186,6 +188,16 @@ export function renderProduct({id}){
     mainImg.style.transform = '';
     mainImg.dataset.zoom = '1';
   }
+
+  /* --------- MORPHING HEADER (скролл -> компакт с back/fav) --------- */
+  setupProductHeaderMorph({ isFav: !!isFav, onFavToggle: (active)=> {
+    // чтобы состояние оставалось единым, переключаем «геро»-кнопку
+    if (favBtn) {
+      // если состояние уже совпадает — ничего не делаем
+      const now = favBtn.classList.contains('active');
+      if (now !== active) favBtn.click();
+    }
+  }});
 }
 
 /* утилита экранирования */
@@ -330,4 +342,101 @@ function openZoomOverlay(src){
   }
   close.onclick = closeOv;
   ov.onclick = (e)=>{ if(e.target===ov) closeOv(); };
+}
+
+/* ====== Хедер: морфинг в компактный режим на странице товара ====== */
+function setupProductHeaderMorph({ isFav=false, onFavToggle } = {}){
+  const header = document.querySelector('.app-header');
+  if (!header) return;
+
+  // создаём контейнер с кнопками, если его нет
+  let prdCtrls = document.getElementById('prdHeaderCtrls');
+  if (!prdCtrls){
+    prdCtrls = document.createElement('div');
+    prdCtrls.id = 'prdHeaderCtrls';
+    prdCtrls.className = 'prd-ctrls';
+    prdCtrls.setAttribute('aria-hidden','true');
+
+    // кнопка Назад
+    const back = document.createElement('button');
+    back.id = 'hdrBack';
+    back.className = 'hdr-circ';
+    back.setAttribute('aria-label','Назад');
+    back.innerHTML = `<i data-lucide="chevron-left"></i>`;
+    back.onclick = ()=> history.back();
+
+    // кнопка Избранное
+    const fav = document.createElement('button');
+    fav.id = 'hdrFav';
+    fav.className = 'hdr-circ';
+    fav.setAttribute('aria-label','В избранное');
+    fav.setAttribute('aria-pressed', String(!!isFav));
+    if (isFav) fav.classList.add('active');
+    fav.innerHTML = `<i data-lucide="heart"></i>`;
+    fav.onclick = ()=>{
+      const active = !fav.classList.contains('active');
+      fav.classList.toggle('active', active);
+      fav.setAttribute('aria-pressed', String(active));
+      try{ onFavToggle && onFavToggle(active); }catch(e){}
+    };
+
+    prdCtrls.appendChild(back);
+    prdCtrls.appendChild(fav);
+
+    // куда вставлять: предпочтительно рядом с колокольчиком, иначе в конец header
+    const notifBtn = document.getElementById('openNotifications');
+    if (notifBtn && notifBtn.parentElement === header){
+      header.appendChild(prdCtrls);
+    }else{
+      header.appendChild(prdCtrls);
+    }
+    window.lucide?.createIcons && lucide.createIcons();
+  }
+
+  // актуализируем состояние «сердца» в хедере при входе
+  const hdrFav = document.getElementById('hdrFav');
+  if (hdrFav){
+    hdrFav.classList.toggle('active', !!isFav);
+    hdrFav.setAttribute('aria-pressed', String(!!isFav));
+  }
+
+  // показать контролы (снимем aria-hidden → для доступности)
+  prdCtrls?.setAttribute('aria-hidden','false');
+
+  // обработчик скролла (лёгкий порог)
+  const THRESHOLD = 24;
+  const onScrollMorph = ()=>{
+    const sc = window.scrollY || document.documentElement.scrollTop || 0;
+    header.classList.toggle('is-product-compact', sc > THRESHOLD);
+  };
+
+  // очистка предыдущего листенера, если был
+  if (window._prdHeaderScrollHandler){
+    window.removeEventListener('scroll', window._prdHeaderScrollHandler, {passive:true});
+  }
+  window._prdHeaderScrollHandler = onScrollMorph;
+  window.addEventListener('scroll', onScrollMorph, {passive:true});
+  onScrollMorph(); // сразу привести к актуальному виду
+
+  // при смене маршрута можно сбросить (если у тебя есть централизованный роутер — вынеси туда)
+  if (!window._prdHeaderUnloadBound){
+    window.addEventListener('hashchange', ()=>{
+      header.classList.remove('is-product-compact');
+    });
+    window._prdHeaderUnloadBound = true;
+  }
+
+  // вспомогательная функция для внешней синхронизации «избранного»
+  function sync(active){
+    const f = document.getElementById('hdrFav');
+    if (!f) return;
+    f.classList.toggle('active', !!active);
+    f.setAttribute('aria-pressed', String(!!active));
+  }
+  // запомним на window, чтобы дергать из renderProduct -> favBtn.onclick
+  window._syncHeaderFav = sync;
+}
+
+function syncHeaderFav(active){
+  try{ window._syncHeaderFav && window._syncHeaderFav(active); }catch(e){}
 }
