@@ -15,12 +15,11 @@ export function renderProduct({id}){
   const v=document.getElementById('view');
   v.innerHTML = `
     <div class="product">
-      <!-- ГАЛЕРЕЯ -->
       <div class="p-hero">
         <div class="gallery" role="region" aria-label="Галерея товара">
           <div class="gallery-main">
             <img id="mainImg" class="zoomable" src="${images[0]||''}" alt="${escapeHtml(p.title)}">
-            <!-- круглые кнопки поверх фото: стрелка слева, сердце справа -->
+            <!-- круглые кнопки только на фото -->
             <button class="hero-btn hero-back" id="goBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
             <button class="hero-btn hero-fav ${isFav?'active':''}" id="favBtn" aria-pressed="${isFav?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
           </div>
@@ -30,8 +29,7 @@ export function renderProduct({id}){
             ${images.map((src, i)=>`
               <button class="thumb ${i===0?'active':''}" role="tab" aria-selected="${i===0?'true':'false'}" data-index="${i}" aria-controls="mainImg">
                 <img loading="lazy" src="${src}" alt="Фото ${i+1}">
-              </button>
-            `).join('')}
+              </button>`).join('')}
           </div>` : '' }
         </div>
       </div>
@@ -58,9 +56,7 @@ export function renderProduct({id}){
         <div class="table-wrap">
           <table class="size-table">
             <thead><tr>${p.sizeChart.headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
-            <tbody>
-              ${p.sizeChart.rows.map(r=>`<tr>${r.map(c=>`<td>${escapeHtml(String(c))}</td>`).join('')}</tr>`).join('')}
-            </tbody>
+            <tbody>${p.sizeChart.rows.map(r=>`<tr>${r.map(c=>`<td>${escapeHtml(String(c))}</td>`).join('')}</tr>`).join('')}</tbody>
           </table>
         </div>`:''}
 
@@ -70,8 +66,7 @@ export function renderProduct({id}){
           ${realPhotos.map((src,i)=>`
             <div class="real-photo">
               <img loading="lazy" class="zoomable" src="${src}" alt="Реальное фото ${i+1}">
-            </div>
-          `).join('')}
+            </div>`).join('')}
         </div>` : ''}
 
       </div>
@@ -79,9 +74,8 @@ export function renderProduct({id}){
 
   window.lucide?.createIcons && lucide.createIcons();
 
-  // опции (без количества)
+  // выбор опций
   let size=null, color=(p.colors||[])[0]||null;
-
   const sizes=document.getElementById('sizes');
   if (sizes){
     sizes.addEventListener('click', e=>{
@@ -102,10 +96,9 @@ export function renderProduct({id}){
     colors.querySelector('.sw')?.classList.add('active');
   }
 
-  // Навигация назад (кнопка на герое)
+  // overlay-кнопки
   document.getElementById('goBack').onclick=()=> history.back();
 
-  // Избранное (кнопка на герое)
   const favBtn = document.getElementById('favBtn');
   favBtn.onclick = ()=>{
     let list = JSON.parse(localStorage.getItem('nas_fav')||'[]');
@@ -115,220 +108,168 @@ export function renderProduct({id}){
     localStorage.setItem('nas_fav', JSON.stringify(list));
     favBtn.classList.toggle('active', nowFav);
     favBtn.setAttribute('aria-pressed', String(nowFav));
+    syncHeaderFav(nowFav);
   };
 
-  // Галерея: миниатюры -> главное фото
-  const thumbs = document.getElementById('thumbs');
-  const mainImg = document.getElementById('mainImg');
+  // thumbs -> main
+  const thumbs=document.getElementById('thumbs');
+  const mainImg=document.getElementById('mainImg');
   if (thumbs && mainImg){
-    thumbs.addEventListener('click', (e)=>{
-      const t = e.target.closest('.thumb'); if (!t) return;
-      const idx = Number(t.getAttribute('data-index'))||0;
-      mainImg.src = images[idx] || images[0] || '';
+    thumbs.addEventListener('click',(e)=>{
+      const t=e.target.closest('.thumb'); if(!t) return;
+      const idx=Number(t.getAttribute('data-index'))||0;
+      mainImg.src=images[idx]||images[0]||'';
       thumbs.querySelectorAll('.thumb').forEach(x=>{
         x.classList.toggle('active', x===t);
-        x.setAttribute('aria-selected', x===t ? 'true':'false');
+        x.setAttribute('aria-selected', x===t ? 'true' : 'false');
       });
       resetZoom();
     });
-
-    // keyboard навигация
-    thumbs.addEventListener('keydown', (e)=>{
-      const all = Array.from(thumbs.querySelectorAll('.thumb'));
-      const curr = all.findIndex(x=> x.classList.contains('active'));
-      if (e.key==='ArrowRight' || e.key==='ArrowDown'){
-        const n = all[Math.min(all.length-1, curr+1)];
-        n?.focus(); n?.click(); e.preventDefault();
-      }else if (e.key==='ArrowLeft' || e.key==='ArrowUp'){
-        const pbtn = all[Math.max(0, curr-1)];
-        pbtn?.focus(); pbtn?.click(); e.preventDefault();
-      }
-    });
   }
 
-  /* -------- ДИНАМИЧЕСКИЙ CTA в таббаре -------- */
+  /* CTA в таббаре */
   function showAddCTA(){
     window.setTabbarCTA({
-      html: `<i data-lucide="shopping-bag"></i><span>Добавить в корзину&nbsp;|&nbsp;${priceFmt(p.price)}</span>`,
-      onClick(){
-        addToCart(p, size, color, 1);
-        showInCartCTAs();
-      }
+      html:`<i data-lucide="shopping-bag"></i><span>Добавить в корзину&nbsp;|&nbsp;${priceFmt(p.price)}</span>`,
+      onClick(){ addToCart(p, size, color, 1); showInCartCTAs(); }
     });
   }
   function showInCartCTAs(){
     window.setTabbarCTAs(
-      {
-        html:`<i data-lucide="x"></i><span>Убрать из корзины</span>`,
-        onClick(){ removeLineFromCart(p.id, size||null, color||null); showAddCTA(); }
-      },
-      {
-        html:`<i data-lucide="shopping-bag"></i><span>Перейти в корзину</span>`,
-        onClick(){ location.hash = '#/cart'; }
-      }
+      { html:`<i data-lucide="x"></i><span>Убрать из корзины</span>`, onClick(){ removeLineFromCart(p.id, size||null, color||null); showAddCTA(); } },
+      { html:`<i data-lucide="shopping-bag"></i><span>Перейти в корзину</span>`, onClick(){ location.hash='#/cart'; } }
     );
   }
-  function refreshCTAByState(){
-    if (isInCart(p.id, size||null, color||null)) showInCartCTAs(); else showAddCTA();
-  }
+  function refreshCTAByState(){ if (isInCart(p.id, size||null, color||null)) showInCartCTAs(); else showAddCTA(); }
   refreshCTAByState();
 
-  /* -------- ЗУМ/ПАНОРАМИРОВАНИЕ -------- */
+  /* ЗУМ */
   ensureZoomOverlay();
   initZoomableInPlace(mainImg);
   document.querySelectorAll('.real-photos img.zoomable').forEach(initZoomableInPlace);
+  document.querySelectorAll('img.zoomable').forEach(img=> img.addEventListener('click', ()=> openZoomOverlay(img.src)));
 
-  document.querySelectorAll('img.zoomable').forEach(img=>{
-    img.addEventListener('click', ()=> openZoomOverlay(img.src));
+  function resetZoom(){ if(!mainImg) return; mainImg.style.transform=''; mainImg.dataset.zoom='1'; }
+
+  /* Фикс-хедер: показываем круглые back/fav внутри шапки при скролле (без сдвигов) */
+  setupProductHeaderMorph({
+    isFav: !!isFav,
+    onFavToggle: (active)=>{ const now=favBtn.classList.contains('active'); if(now!==active) favBtn.click(); }
   });
-
-  function resetZoom(){
-    if (!mainImg) return;
-    mainImg.style.transform = '';
-    mainImg.dataset.zoom = '1';
-  }
 }
 
-/* утилита экранирования */
-function escapeHtml(s=''){
-  return s.replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
+/* --- утилиты, зум и overlay (без изменений) --- */
+function escapeHtml(s=''){ return s.replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-/* ===== ЗУМ ВНУТРИ БЛОКА (без фуллскрина) ===== */
 function initZoomableInPlace(img){
   if (!img) return;
-  let scale = 1, originX = 0, originY = 0, startDist = 0, startScale = 1, dragging=false, lastX=0, lastY=0, tx=0, ty=0, lastTap=0;
-
-  img.addEventListener('wheel', (e)=>{
-    e.preventDefault();
-    const rect = img.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    const delta = -Math.sign(e.deltaY) * 0.2;
-    zoomAt(mx, my, delta);
-  }, {passive:false});
-
-  img.addEventListener('click', (e)=>{
-    const now = Date.now();
-    if (now - lastTap < 300){
-      const rect = img.getBoundingClientRect();
-      zoomAt(e.clientX - rect.left, e.clientY - rect.top, scale>1 ? -999 : 1.5);
-      e.preventDefault();
-    }
-    lastTap = now;
-  });
-
-  img.addEventListener('mousedown', (e)=>{ if (scale<=1) return;
-    dragging=true; lastX=e.clientX; lastY=e.clientY; e.preventDefault();
-  });
-  window.addEventListener('mousemove', (e)=>{ if(!dragging) return;
-    const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; tx+=dx; ty+=dy; apply();
-  });
+  let scale=1, startDist=0, startScale=1, dragging=false, lastX=0, lastY=0, tx=0, ty=0, lastTap=0;
+  img.addEventListener('wheel', (e)=>{ e.preventDefault(); const rect=img.getBoundingClientRect(); const mx=e.clientX-rect.left; const my=e.clientY-rect.top; const delta=-Math.sign(e.deltaY)*0.2; zoomAt(mx,my,delta); }, {passive:false});
+  img.addEventListener('click', (e)=>{ const now=Date.now(); if(now-lastTap<300){ const r=img.getBoundingClientRect(); zoomAt(e.clientX-r.left, e.clientY-r.top, scale>1 ? -999 : 1.5); e.preventDefault(); } lastTap=now; });
+  img.addEventListener('mousedown', (e)=>{ if(scale<=1) return; dragging=true; lastX=e.clientX; lastY=e.clientY; e.preventDefault(); });
+  window.addEventListener('mousemove', (e)=>{ if(!dragging) return; const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; tx+=dx; ty+=dy; apply(); });
   window.addEventListener('mouseup', ()=> dragging=false);
-
-  img.addEventListener('touchstart', (e)=>{
-    if (e.touches.length===2){
-      startDist = dist(e.touches[0], e.touches[1]);
-      startScale = scale;
-      const rect = img.getBoundingClientRect();
-      originX = ((e.touches[0].clientX + e.touches[1].clientX)/2) - rect.left;
-      originY = ((e.touches[0].clientY + e.touches[1].clientY)/2) - rect.top;
-    }else if (e.touches.length===1 && scale>1){
-      dragging=true; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY;
-    }
-  }, {passive:true});
-
-  img.addEventListener('touchmove', (e)=>{
-    if (e.touches.length===2){
-      e.preventDefault();
-      const d = dist(e.touches[0], e.touches[1]);
-      const deltaScale = (d/startDist) - 1;
-      scale = clamp(startScale*(1+deltaScale), 1, 5);
-      apply();
-    }else if (e.touches.length===1 && dragging){
-      e.preventDefault();
-      const dx=e.touches[0].clientX-lastX, dy=e.touches[0].clientY-lastY;
-      lastX=e.touches[0].clientX; lastY=e.touches[0].clientY;
-      tx+=dx; ty+=dy; apply();
-    }
-  }, {passive:false});
-
+  img.addEventListener('touchstart', (e)=>{ if(e.touches.length===2){ startDist=dist(e.touches[0],e.touches[1]); startScale=scale; } else if(e.touches.length===1 && scale>1){ dragging=true; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; } }, {passive:true});
+  img.addEventListener('touchmove', (e)=>{ if(e.touches.length===2){ e.preventDefault(); const d=dist(e.touches[0],e.touches[1]); const ds=(d/startDist)-1; scale=clamp(startScale*(1+ds),1,5); apply(); } else if(e.touches.length===1 && dragging){ e.preventDefault(); const dx=e.touches[0].clientX-lastX, dy=e.touches[0].clientY-lastY; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; tx+=dx; ty+=dy; apply(); } }, {passive:false});
   img.addEventListener('touchend', ()=>{ dragging=false; });
-
-  function zoomAt(x,y, delta){
-    const old = scale;
-    scale = clamp(scale + delta, 1, 5);
-    tx -= (x - (x - tx)) * (scale/old - 1);
-    ty -= (y - (y - ty)) * (scale/old - 1);
-    apply();
-  }
-  function apply(){
-    if (scale<=1){ scale=1; tx=0; ty=0; }
-    img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
-  }
+  function zoomAt(x,y,delta){ const old=scale; scale=clamp(scale+delta,1,5); tx-=(x-(x-tx))*(scale/old-1); ty-=(y-(y-ty))*(scale/old-1); apply(); }
+  function apply(){ if(scale<=1){ scale=1; tx=0; ty=0; } img.style.transform=`translate(${tx}px, ${ty}px) scale(${scale})`; }
   function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
   function dist(a,b){ const dx=a.clientX-b.clientX, dy=a.clientY-b.clientY; return Math.hypot(dx,dy); }
 }
 
-/* ===== ФУЛЛСКРИН-ОВЕРЛЕЙ ДЛЯ ФОТО ===== */
 function ensureZoomOverlay(){
   if (document.getElementById('zoomOverlay')) return;
-  const wrap = document.createElement('div');
-  wrap.id='zoomOverlay';
-  wrap.className='zoom-overlay';
-  wrap.innerHTML = `
-    <div class="zoom-stage">
-      <img id="zoomImg" alt="">
-      <button class="zoom-close" id="zoomClose" aria-label="Закрыть"><i data-lucide="x"></i></button>
-    </div>
-  `;
-  document.body.appendChild(wrap);
-  window.lucide?.createIcons && lucide.createIcons();
+  const wrap=document.createElement('div'); wrap.id='zoomOverlay'; wrap.className='zoom-overlay';
+  wrap.innerHTML=`<div class="zoom-stage"><img id="zoomImg" alt=""><button class="zoom-close" id="zoomClose" aria-label="Закрыть"><i data-lucide="x"></i></button></div>`;
+  document.body.appendChild(wrap); window.lucide?.createIcons && lucide.createIcons();
 }
-
 function openZoomOverlay(src){
-  const ov = document.getElementById('zoomOverlay');
-  const img = document.getElementById('zoomImg');
-  const close = document.getElementById('zoomClose');
-  if (!ov || !img) return;
-  img.src = src; ov.classList.add('show');
-
+  const ov=document.getElementById('zoomOverlay'); const img=document.getElementById('zoomImg'); const close=document.getElementById('zoomClose');
+  if(!ov||!img) return; img.src=src; ov.classList.add('show');
   let scale=1, startScale=1, startDist=0, tx=0, ty=0, dragging=false, lastX=0, lastY=0, lastTap=0;
-
-  function apply(){ img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; }
+  function apply(){ img.style.transform=`translate(${tx}px, ${ty}px) scale(${scale})`; }
   function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
   function dist(a,b){ const dx=a.clientX-b.clientX, dy=a.clientY-b.clientY; return Math.hypot(dx,dy); }
+  img.onwheel=(e)=>{ e.preventDefault(); const d=-Math.sign(e.deltaY)*0.2; scale=clamp(scale+d,1,6); apply(); };
+  img.onmousedown=(e)=>{ if(scale<=1) return; dragging=true; lastX=e.clientX; lastY=e.clientY; e.preventDefault(); };
+  window.onmousemove=(e)=>{ if(!dragging) return; const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; tx+=dx; ty+=dy; apply(); };
+  window.onmouseup=()=> dragging=false;
+  img.ontouchstart=(e)=>{ if(e.touches.length===2){ startDist=dist(e.touches[0],e.touches[1]); startScale=scale; } else if(e.touches.length===1 && scale>1){ dragging=true; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; } };
+  img.ontouchmove=(e)=>{ if(e.touches.length===2){ e.preventDefault(); const d=dist(e.touches[0],e.touches[1]); const ds=(d/startDist)-1; scale=clamp(startScale*(1+ds),1,6); apply(); } else if(e.touches.length===1 && dragging){ e.preventDefault(); const dx=e.touches[0].clientX-lastX, dy=e.touches[0].clientY-lastY; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; tx+=dx; ty+=dy; apply(); } };
+  img.ontouchend=()=>{ dragging=false; };
+  img.onclick=(e)=>{ const now=Date.now(); if(now-lastTap<300){ scale = scale>1 ? 1 : 2; tx=0; ty=0; apply(); } lastTap=now; };
+  function closeOv(){ ov.classList.remove('show'); img.onwheel=img.onmousedown=window.onmousemove=window.onmouseup=null; img.ontouchstart=img.ontouchmove=img.ontouchend=null; img.onclick=null; close.onclick=null; }
+  close.onclick=closeOv; ov.onclick=(e)=>{ if(e.target===ov) closeOv(); };
+}
 
-  img.onwheel = (e)=>{ e.preventDefault(); const delta=-Math.sign(e.deltaY)*0.2; scale=clamp(scale+delta,1,6); apply(); };
-  img.onmousedown = (e)=>{ if(scale<=1) return; dragging=true; lastX=e.clientX; lastY=e.clientY; e.preventDefault(); };
-  window.onmousemove = (e)=>{ if(!dragging) return; const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; tx+=dx; ty+=dy; apply(); };
-  window.onmouseup = ()=> dragging=false;
+/* === Хедер: компактный режим на товаре === */
+function setupProductHeaderMorph({ isFav=false, onFavToggle } = {}){
+  const header = document.querySelector('.app-header');
+  if (!header) return;
 
-  img.ontouchstart = (e)=>{
-    if(e.touches.length===2){
-      startDist = dist(e.touches[0], e.touches[1]); startScale=scale;
-    }else if(e.touches.length===1 && scale>1){
-      dragging=true; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY;
-    }
-  };
-  img.ontouchmove = (e)=>{
-    if(e.touches.length===2){ e.preventDefault(); const d=dist(e.touches[0], e.touches[1]); const ds=(d/startDist)-1; scale=clamp(startScale*(1+ds),1,6); apply(); }
-    else if(e.touches.length===1 && dragging){ e.preventDefault(); const dx=e.touches[0].clientX-lastX, dy=e.touches[0].clientY-lastY; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; tx+=dx; ty+=dy; apply(); }
-  };
-  img.ontouchend = ()=>{ dragging=false; };
-
-  img.onclick = (e)=>{
-    const now=Date.now();
-    if(now-lastTap<300){ scale = scale>1 ? 1 : 2; tx=0; ty=0; apply(); }
-    lastTap=now;
-  };
-
-  function closeOv(){
-    ov.classList.remove('show');
-    img.onwheel = img.onmousedown = window.onmousemove = window.onmouseup = null;
-    img.ontouchstart = img.ontouchmove = img.ontouchend = null;
-    img.onclick = null; close.onclick = null;
+  // создать/получить кнопки
+  let back = document.getElementById('hdrBack');
+  if (!back){
+    back = document.createElement('button');
+    back.id = 'hdrBack';
+    back.className = 'hdr-circ';
+    back.setAttribute('aria-label','Назад');
+    back.innerHTML = `<i data-lucide="chevron-left"></i>`;
+    header.querySelector('.hdr-left')?.prepend(back);
   }
-  close.onclick = closeOv;
-  ov.onclick = (e)=>{ if(e.target===ov) closeOv(); };
+  let fav = document.getElementById('hdrFav');
+  if (!fav){
+    fav = document.createElement('button');
+    fav.id = 'hdrFav';
+    fav.className = 'hdr-circ';
+    fav.setAttribute('aria-label','В избранное');
+    fav.innerHTML = `<i data-lucide="heart"></i>`;
+    header.querySelector('.hdr-right')?.appendChild(fav);
+  }
+
+  // обработчики
+  back.onclick = ()=> history.back();
+  fav.classList.toggle('active', !!isFav);
+  fav.setAttribute('aria-pressed', String(!!isFav));
+  fav.onclick = ()=>{
+    const active = !fav.classList.contains('active');
+    fav.classList.toggle('active', active);
+    fav.setAttribute('aria-pressed', String(active));
+    try{ onFavToggle && onFavToggle(active); }catch(e){}
+  };
+
+  window.lucide?.createIcons && lucide.createIcons();
+
+  // порог морфинга
+  const THRESHOLD = 24;
+  const onScrollMorph = ()=>{
+    const sc = window.scrollY || document.documentElement.scrollTop || 0;
+    header.classList.toggle('is-product-compact', sc > THRESHOLD);
+  };
+
+  // переустановка слушателя, если уже был
+  if (window._prdHeaderScrollHandler){
+    window.removeEventListener('scroll', window._prdHeaderScrollHandler, {passive:true});
+  }
+  window._prdHeaderScrollHandler = onScrollMorph;
+  window.addEventListener('scroll', onScrollMorph, {passive:true});
+  onScrollMorph();
+
+  // сброс класса при уходе со страницы
+  if (!window._prdHeaderUnloadBound){
+    window.addEventListener('hashchange', ()=>{
+      header.classList.remove('is-product-compact');
+    });
+    window._prdHeaderUnloadBound = true;
+  }
+
+  // синхронизация избранного
+  window._syncHeaderFav = (active)=>{
+    fav.classList.toggle('active', !!active);
+    fav.setAttribute('aria-pressed', String(!!active));
+  };
+}
+function syncHeaderFav(active){
+  try{ window._syncHeaderFav && window._syncHeaderFav(active); }catch(e){}
 }

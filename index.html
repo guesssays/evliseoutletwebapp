@@ -13,16 +13,22 @@
   </head>
   <body>
     <div id="app">
-      <!-- Обычный фикс-хедер: бренд слева, уведомления справа -->
+
+      <!-- ХЕДЕР: бренд слева, уведомления справа.
+           Круглые #hdrBack / #hdrFav подставляются скриптом и показываются только на карточке товара -->
       <header class="app-header" role="banner">
-        <div class="brand">
-          <span class="app-title" aria-label="EVLISE OUTLET">EVLISE OUTLET</span>
+        <div class="hdr-left">
+          <!-- сюда скрипт при необходимости вставит #hdrBack -->
+          <div class="brand">
+            <span class="app-title" aria-label="EVLISE OUTLET">EVLISE OUTLET</span>
+          </div>
         </div>
         <div class="hdr-right">
           <button id="openNotifications" class="icon-btn notif-btn" aria-label="Уведомления">
             <i data-lucide="bell"></i>
             <b id="notifBadge" class="badge" hidden>0</b>
           </button>
+          <!-- сюда скрипт при необходимости вставит #hdrFav -->
         </div>
       </header>
 
