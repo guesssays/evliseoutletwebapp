@@ -14,10 +14,10 @@ export const state = {
 };
 
 export function persistCart(){ localStorage.setItem('nas_cart', JSON.stringify(state.cart)); }
+
 export function loadCart(){
   try{
     const parsed = JSON.parse(localStorage.getItem('nas_cart') || '{"items":[]}');
-    // нормализуем структуру
     const items = Array.isArray(parsed?.items) ? parsed.items : [];
     state.cart = { items: items.map(it => ({
       productId: String(it.productId),
@@ -30,31 +30,43 @@ export function loadCart(){
   }
 }
 
+/**
+ * Бейдж корзины — всегда синхронизируем видимость.
+ * Если позиций 0 → полностью скрываем (display:none + hidden + aria-hidden),
+ * иначе показываем и выводим количество.
+ */
 export function updateCartBadge(){
-  const n = state.cart.items.reduce((s,i)=>s + (Number(i.qty)||0), 0);
+  const n = state.cart.items.reduce((s,i)=> s + (Number(i.qty) || 0), 0);
 
-  // поддерживаем несколько вариантов селекторов бейджа, чтобы не зависеть от id
   const badges = [...document.querySelectorAll('#cartBadge, [data-cart-badge], .cart-badge')];
-  if (!badges.length) return; // нет бейджа в DOM — просто выходим
+  if (!badges.length) return;
 
   badges.forEach(b=>{
     if (n > 0){
       b.textContent = String(n);
       b.style.display = 'inline-block';
+      b.hidden = false;
+      b.setAttribute('aria-hidden','false');
     }else{
       b.textContent = '';
       b.style.display = 'none';
+      b.hidden = true;
+      b.setAttribute('aria-hidden','true');
     }
   });
 }
 
 const ADDR_KEY = 'nas_addresses';
+
 export function loadAddresses(){
   try{
     const data = JSON.parse(localStorage.getItem(ADDR_KEY) || '{}');
     state.addresses = { list: data.list || [], defaultId: data.defaultId || null };
-  }catch{}
+  }catch{
+    state.addresses = { list: [], defaultId: null };
+  }
 }
+
 export function persistAddresses(){
   localStorage.setItem(ADDR_KEY, JSON.stringify(state.addresses));
 }

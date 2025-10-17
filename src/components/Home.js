@@ -9,15 +9,23 @@ export function renderHome(router){
   drawProducts(state.products);
 }
 
+/**
+ * Рендер чипов категорий + единоразовый обработчик.
+ * Главная правка: фильтрация теперь по p.categoryId.
+ */
 export function drawCategoriesChips(router){
   const wrap = document.getElementById('catChips');
   if (!wrap) return;
 
-  // чипы рендерим, но обработчик клика вешаем только один раз
   const mk=(slug, name, active)=>`<button class="chip ${active?'active':''}" data-slug="${slug}">${name}</button>`;
+
   wrap.innerHTML='';
   wrap.insertAdjacentHTML('beforeend', mk('all','Все товары', state.filters.category==='all'));
+  // «Новинки» как отдельная логическая категория
+  wrap.insertAdjacentHTML('beforeend', mk('new','Новинки', state.filters.category==='new'));
   state.categories.forEach(c=>{
+    // не дублируем «Новинки», она уже добавлена вручную
+    if (c.slug === 'new') return;
     wrap.insertAdjacentHTML('beforeend', mk(c.slug,c.name, state.filters.category===c.slug));
   });
 
@@ -26,20 +34,34 @@ export function drawCategoriesChips(router){
       const b = e.target.closest('.chip'); if (!b) return;
 
       const slug = b.getAttribute('data-slug');
-      if (slug === state.filters.category) return; // ничего не делаем
+      if (slug === state.filters.category) return;
 
       // переключаем активный чип без полного перерендера
       wrap.querySelector('.chip.active')?.classList.remove('active');
       b.classList.add('active');
 
       state.filters.category = slug;
-      const list = slug==='all' ? state.products : state.products.filter(p=>p.category===slug);
+
+      let list;
+      if (slug === 'all') {
+        list = state.products;
+      } else if (slug === 'new') {
+        // «Новинки»: просто первые N товаров (можно заменить на сортировку по дате, если появится)
+        list = state.products.slice(0, 24);
+      } else {
+        list = state.products.filter(p => p.categoryId === slug);
+      }
+
       drawProducts(list);
     });
     wrap.dataset.bound = '1';
   }
 }
 
+/**
+ * Рисуем карточки товаров.
+ * Главная правка: подпись категории берётся по p.categoryId.
+ */
 export function drawProducts(list){
   const grid = document.getElementById('productGrid');
   if (!grid) return;
@@ -53,7 +75,6 @@ export function drawProducts(list){
 
   const fav = new Set(JSON.parse(localStorage.getItem('nas_fav')||'[]'));
 
-  // создаём фрагмент — меньше перепаковок DOM
   const frag = document.createDocumentFragment();
   for (const p of filtered){
     const t = document.getElementById('product-card');
@@ -68,9 +89,12 @@ export function drawProducts(list){
     const titleEl = node.querySelector('.title');
     if (titleEl) titleEl.textContent = p.title;
 
+    // подпись категории → из state.categories по slug=categoryId
     const subEl = node.querySelector('.subtitle');
-    if (subEl) subEl.textContent = p.categoryLabel ||
-      (p.category ? (state.categories.find(c=>c.slug===p.category)?.name || '') : '');
+    if (subEl) {
+      const labelById = state.categories.find(c => c.slug === p.categoryId)?.name || '';
+      subEl.textContent = p.categoryLabel || labelById;
+    }
 
     const priceEl = node.querySelector('.price');
     if (priceEl) priceEl.textContent = priceFmt(p.price);
@@ -79,7 +103,7 @@ export function drawProducts(list){
     if (favBtn){
       const isFav = fav.has(p.id);
       favBtn.classList.toggle('active', isFav);
-      if (isFav) favBtn.setAttribute('aria-pressed','true');
+      favBtn.setAttribute('aria-pressed', String(isFav));
       favBtn.onclick = (ev)=>{
         ev.preventDefault();
         toggleFav(p.id, favBtn);
@@ -90,7 +114,6 @@ export function drawProducts(list){
   }
 
   grid.appendChild(frag);
-  // иконки для карточек
   window.lucide?.createIcons && lucide.createIcons();
 }
 
