@@ -23,7 +23,6 @@ export function renderProduct({id}){
 
         <div class="p-title">${p.title}</div>
         <div class="p-desc">${p.description || 'Описание скоро будет обновлено.'}</div>
-
         <div class="specs"><b>Материал:</b> ${p.material || '—'}</div>
 
         <div class="p-options">
@@ -53,7 +52,6 @@ export function renderProduct({id}){
       <div class="cta">
         <button id="addBtn" class="btn"><i data-lucide="shopping-bag"></i>
           <span>Добавить в корзину | ${priceFmt(p.price)}</span>
-          ${p.oldPrice ? `<span class="muted-old">${priceFmt(p.oldPrice)}</span>`:''}
         </button>
       </div>
     </div>`;

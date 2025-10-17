@@ -1,133 +1,103 @@
-import { state } from '../core/state.js';
-import { t } from '../core/i18n.js';
-import { priceFmt } from '../core/utils.js';
+import { state, persistAddresses } from '../core/state.js';
 import { openModal, closeModal } from '../core/modal.js';
+import { toast } from '../core/toast.js';
 
 export function renderAccount(){
   const view = document.querySelector('#view');
-  const u = state.tgUser;
+  const u = state.user;
   view.innerHTML = `
     <section class="section">
-      <div class="h1">Account</div>
-      <div class="row">
-        <div class="sub">Вход: ${u ? '@'+(u.username ?? u.id) : 'Гость (зайдите из Telegram)'}</div>
-      </div>
-    </section>
-    <section class="section">
+      <div class="section-title">Профиль</div>
       <div class="grid" style="grid-template-columns:1fr 1fr; gap:12px">
-        <a class="card" href="#/account/orders"><div class="card-body"><div class="card-title">My Orders</div><div class="sub">Отслеживание</div></div></a>
-        <a class="card" href="#/account/details"><div class="card-body"><div class="card-title">My Details</div><div class="sub">Профиль</div></div></a>
-        <a class="card" href="#/favorites"><div class="card-body"><div class="card-title">Saved</div><div class="sub">Избранное</div></div></a>
-        <a class="card" href="#/account/address/new"><div class="card-body"><div class="card-title">New Address</div><div class="sub">Доставка</div></div></a>
+        <a class="card" href="#/orders"><div class="card-body"><div class="title">Мои заказы</div><div class="subtitle">Статусы</div></div></a>
+        <a class="card" href="#/account/addresses"><div class="card-body"><div class="title">Адреса</div><div class="subtitle">Доставка</div></div></a>
+        <a class="card" href="#/favorites"><div class="card-body"><div class="title">Избранное</div><div class="subtitle">Ваши товары</div></div></a>
+        <a class="card" href="#/account/settings"><div class="card-body"><div class="title">Настройки</div><div class="subtitle">Тема/о приложении</div></div></a>
+        <a class="card" href="#/faq"><div class="card-body"><div class="title">FAQ</div><div class="subtitle">Ответы на вопросы</div></div></a>
       </div>
     </section>`;
+  window.lucide?.createIcons();
 }
 
-function ordersKey(){ return `ev_orders_${state.tgUser?.id ?? 'demo'}`; }
-
-export function renderMyOrders(){
-  const view = document.querySelector('#view');
-  const list = JSON.parse(localStorage.getItem(ordersKey()) || '[]');
-  const ongoing = list.filter(o=>o.status!=='Completed');
-  const completed = list.filter(o=>o.status==='Completed');
-
-  const orderCard = (o)=>`
-    <div class="card" style="overflow:visible">
-      <div class="card-body">
-        <div class="row" style="justify-content:space-between">
-          <div class="card-title">#${o.id}</div>
-          <span class="chip ${o.status==='Completed'?'active':''}">${o.status}</span>
-        </div>
-        <div class="sub" style="margin-top:6px">${new Date(o.ts).toLocaleString()}</div>
-        <div class="hr"></div>
-        ${o.cart.slice(0,2).map(i=>`
-          <div class="row" style="justify-content:space-between; align-items:center">
-            <div class="row" style="gap:10px">
-              <img src="${i.image}" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid #E7E7E7">
-              <div><div style="font-weight:800">${i.title}</div><div class="sub">${i.qty} × ${priceFmt(i.price)}</div></div>
-            </div>
-            <div style="font-weight:900">${priceFmt(i.price*i.qty)}</div>
+export function renderAddresses(){
+  const v=document.getElementById('view');
+  const list = state.addresses.list;
+  v.innerHTML = `
+    <div class="section-title">Адреса</div>
+    <section class="checkout">
+      ${list.map(a=>`
+        <div class="cart-row">
+          <div class="cart-img"><img src="assets/map-pin.png" alt=""></div>
+          <div>
+            <div class="cart-title">${a.nickname}${a.id===state.addresses.defaultId ? ' • по умолчанию' : ''}</div>
+            <div class="cart-sub">${a.address}</div>
           </div>
-        `).join('')}
-        ${o.cart.length>2?`<div class="sub" style="margin-top:6px">…и ещё ${o.cart.length-2} поз.</div>`:''}
-        <div class="hr"></div>
-        <div class="row" style="justify-content:space-between">
-          <div class="sub">Итого</div><div style="font-weight:900">${priceFmt(o.total)}</div>
-        </div>
-        ${o.status==='Completed'? `<div class="row" style="margin-top:10px"><button class="btn" data-review="${o.id}">Leave Review</button></div>`:''}
-      </div>
-    </div>`;
+          <div class="qty-mini">
+            <button class="pill" data-def="${a.id}">${a.id===state.addresses.defaultId?'Выбрано':'Сделать осн.'}</button>
+            <button class="pill" data-del="${a.id}">Удалить</button>
+          </div>
+        </div>`).join('')}
+      <div><a class="pill primary" id="addAddr">Добавить адрес</a></div>
+    </section>`;
 
-  view.innerHTML = `
-    <section class="section">
-      <div class="h1">My Orders</div>
-      <div class="toolbar" role="tablist">
-        <a href="#/account/orders" class="chip active">Ongoing</a>
-        <a href="#/account/orders?tab=completed" class="chip">Completed</a>
-      </div>
-    </section>
-    <section class="section" id="ordersWrap">${ongoing.map(orderCard).join('') || `<div class="sub">Нет активных заказов</div>`}</section>`;
-
-  view.querySelectorAll('[data-review]').forEach(btn=>{
-    btn.onclick = ()=> openReviewModal(btn.getAttribute('data-review'));
+  v.querySelectorAll('[data-def]').forEach(b=> b.onclick=()=>{ state.addresses.defaultId=b.getAttribute('data-def'); persistAddresses(); renderAddresses(); });
+  v.querySelectorAll('[data-del]').forEach(b=> b.onclick=()=>{
+    const id=b.getAttribute('data-del');
+    state.addresses.list = state.addresses.list.filter(x=>x.id!==id);
+    if (state.addresses.defaultId===id) state.addresses.defaultId = state.addresses.list[0]?.id || null;
+    persistAddresses(); renderAddresses();
   });
-
-  if (window.lucide?.createIcons) lucide.createIcons();
-
-  // если в урле ?tab=completed — показать вторую вкладку
-  const tab = new URLSearchParams((location.hash.split('?')[1]||'')).get('tab');
-  if (tab==='completed'){
-    const wrap = document.getElementById('ordersWrap');
-    wrap.innerHTML = completed.map(orderCard).join('') || `<div class="sub">Пусто</div>`;
-  }
+  document.getElementById('addAddr').onclick=()=> openAddrModal();
 }
 
-function openReviewModal(orderId){
+function openAddrModal(){
+  let nickname='Дом', address='';
   openModal({
-    title:'Leave a Review',
-    body: `
-      <div class="h2">Как был заказ?</div>
-      <div style="font-size:28px">⭐⭐⭐⭐⭐</div>
-      <textarea id="revText" class="note-input" rows="4" placeholder="Write your review..."></textarea>
-    `,
-    actions: [
-      { label: 'Cancel', variant:'secondary', onClick: closeModal },
-      { label: 'Submit', onClick: ()=>{ closeModal(); } }
+    title:'Новый адрес',
+    body:`<label class="sub">Название</label>
+          <input id="an" class="search" value="${nickname}">
+          <div class="hr" style="margin:8px 0"></div>
+          <label class="sub">Полный адрес</label>
+          <textarea id="aa" class="search" rows="3" placeholder="Введите адрес..."></textarea>`,
+    actions:[
+      {label:'Отмена', onClick: closeModal},
+      {label:'Добавить', variant:'primary', onClick: ()=>{
+        nickname = document.getElementById('an').value.trim() || 'Адрес';
+        address = document.getElementById('aa').value.trim();
+        if (!address){ toast('Введите адрес'); return; }
+        const id=String(Date.now());
+        state.addresses.list.push({id, nickname, address});
+        if (!state.addresses.defaultId) state.addresses.defaultId=id;
+        persistAddresses(); closeModal(); renderAddresses();
+      }}
     ]
   });
 }
 
-export function renderMyDetails(){
-  const u = state.tgUser;
-  const view = document.querySelector('#view');
-  view.innerHTML = `
-    <section class="section">
-      <div class="h1">My Details</div>
-      <div class="card">
-        <div class="card-body">
-          <label class="sub">Full Name</label>
-          <input class="note-input" value="${(u?.first_name||'')+' '+(u?.last_name||'')}" />
-          <div class="row" style="gap:12px; margin-top:12px">
-            <button class="btn">Submit</button>
-          </div>
+export function renderSettings(){
+  const v=document.getElementById('view');
+  v.innerHTML = `
+    <div class="section-title">Настройки</div>
+    <section class="checkout">
+      <div class="cart-row">
+        <div class="cart-img"><img src="assets/info.png" alt=""></div>
+        <div>
+          <div class="cart-title">Версия</div>
+          <div class="cart-sub">WebApp 1.0</div>
         </div>
       </div>
-    </section>`;
-}
-
-export function renderNewAddress(){
-  const view = document.querySelector('#view');
-  view.innerHTML = `
-    <section class="section">
-      <div class="h1">New Address</div>
-      <div class="card">
-        <div class="card-body">
-          <label class="sub">Address Nickname</label>
-          <select class="note-input"><option>Home</option><option>Office</option></select>
-          <div class="hr"></div>
-          <label class="sub">Full Address</label>
-          <textarea class="note-input" rows="3" placeholder="Enter your full address..."></textarea>
-          <div class="row" style="margin-top:12px"><button class="btn">Add</button></div>
+      <div class="cart-row">
+        <div class="cart-img"><img src="assets/brush.png" alt=""></div>
+        <div>
+          <div class="cart-title">Тема интерфейса</div>
+          <div class="cart-sub">Светлая (по умолчанию)</div>
+        </div>
+      </div>
+      <div class="cart-row">
+        <div class="cart-img"><img src="assets/help.png" alt=""></div>
+        <div>
+          <div class="cart-title">Поддержка</div>
+          <div class="cart-sub">Напишите менеджеру в Telegram после оформления заказа</div>
         </div>
       </div>
     </section>`;

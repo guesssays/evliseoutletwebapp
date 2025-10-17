@@ -59,7 +59,7 @@ export function openFilterModal(router){
 export function renderActiveFilterChips(){
   const bar = el('#activeFilters'); if (!bar) return; bar.innerHTML='';
   const addChip=(label)=>{ const tNode=document.getElementById('filter-chip'); const n=tNode.content.firstElementChild.cloneNode(true); n.textContent=label; n.classList.add('active'); bar.appendChild(n); };
-  if (state.filters.size.length) addChip('Размер: ' + state.filters.size.join(','));
-  if (state.filters.colors.length) addChip('Цвет: ' + state.filters.colors.join(','));
-  if (state.filters.materials.length) addChip('Материал: ' + state.filters.materials.join(','));
+  if (state.filters.size.length) addChip('Размер: ' + state.filters.size.join(', '));
+  if (state.filters.colors.length) addChip('Цвет: ' + state.filters.colors.join(', '));
+  if (state.filters.materials.length) addChip('Материал: ' + state.filters.materials.join(', '));
 }

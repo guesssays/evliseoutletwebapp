@@ -2,11 +2,13 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>Nasledstvo — магазин</title>
     <meta name="theme-color" content="#121111" />
     <link rel="icon" href="assets/favicon.png" />
-    <!-- Encode (как в референсе) -->
     <link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -19,10 +21,12 @@
           <div class="hello">Привет, добро пожаловать 👋</div>
           <div class="name" id="userName">Гость</div>
         </div>
-        <button id="tgAuthBtn" class="pill primary small"><i data-lucide="send"></i><span>Войти через Telegram</span></button>
+        <button id="tgAuthBtn" class="pill primary small">
+          <i data-lucide="send"></i><span>Войти через Telegram</span>
+        </button>
       </header>
 
-      <!-- Поиск и фильтр -->
+      <!-- Поиск + фильтры -->
       <section class="section section-search">
         <div class="search-wrap">
           <i data-lucide="search" class="search-ico"></i>
@@ -31,7 +35,7 @@
         <button id="openFilters" class="square-btn" aria-label="Открыть фильтры"><i data-lucide="sliders-horizontal"></i></button>
       </section>
 
-      <!-- Категории чипами -->
+      <!-- Категории -->
       <section class="section">
         <div class="chipbar" id="catChips"></div>
       </section>
@@ -39,10 +43,10 @@
       <!-- Активные фильтры -->
       <section class="section" id="activeFilters" aria-live="polite"></section>
 
-      <!-- Сетка карточек -->
+      <!-- Контент -->
       <main id="view" class="view"></main>
 
-      <!-- модалка/тосты -->
+      <!-- Модалка -->
       <div id="modal" class="modal" aria-hidden="true">
         <div class="modal-dialog">
           <div class="modal-head">
@@ -80,7 +84,9 @@
       <a class="card" href="#">
         <div class="card-img">
           <img loading="lazy" alt="">
-          <button class="fav" aria-label="В избранное"><i data-lucide="heart"></i></button>
+          <button class="fav" aria-label="В избранное" aria-pressed="false">
+            <i data-lucide="heart"></i>
+          </button>
         </div>
         <div class="card-body">
           <div class="title"></div>

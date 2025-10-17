@@ -38,7 +38,7 @@ export function drawProducts(list){
     node.querySelector('.subtitle').textContent=p.categoryLabel || (p.category? state.categories.find(c=>c.slug===p.category)?.name || '' : '');
     node.querySelector('.price').textContent=priceFmt(p.price);
     const favBtn=node.querySelector('.fav');
-    if (fav.has(p.id)) favBtn.classList.add('active');
+    if (fav.has(p.id)) { favBtn.classList.add('active'); favBtn.setAttribute('aria-pressed','true'); }
     favBtn.onclick=(ev)=>{ ev.preventDefault(); toggleFav(p.id, favBtn); };
     grid.appendChild(node);
   }
@@ -47,7 +47,9 @@ export function drawProducts(list){
 
 function toggleFav(id, btn){
   let list = JSON.parse(localStorage.getItem('nas_fav')||'[]');
-  if (list.includes(id)) list=list.filter(x=>x!==id); else list.push(id);
+  const was = list.includes(id);
+  if (was) list=list.filter(x=>x!==id); else list.push(id);
   localStorage.setItem('nas_fav', JSON.stringify(list));
-  btn.classList.toggle('active');
+  btn.classList.toggle('active', !was);
+  btn.setAttribute('aria-pressed', String(!was));
 }

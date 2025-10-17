@@ -19,10 +19,10 @@ export function renderOrders(){
     <section class="checkout">
       ${state.orders.map(o=>`
         <div class="cart-row">
-          <div class="cart-img"><img src="${o.cart?.[0]?.image || o.cart?.[0]?.images?.[0] || o.cart?.[0]?.img || o.cart?.[0]?.imageUrl || 'assets/placeholder.jpg'}"></div>
+          <div class="cart-img"><img src="${o.cart?.[0]?.image || o.cart?.[0]?.images?.[0] || 'assets/placeholder.jpg'}"></div>
           <div>
             <div class="cart-title">Заказ #${o.id}</div>
-            <div class="cart-sub">${o.statusText || statusToText(o.status)}</div>
+            <div class="cart-sub">${statusToText(o.status)}</div>
             <div class="cart-price">${priceFmt(o.total)}</div>
           </div>
           <a class="pill primary" href="#/track/${o.id}">Отследить</a>
@@ -49,10 +49,6 @@ export function renderTrack({id}){
       <a class="pill primary" href="#/orders">Назад к заказам</a>
     </section>`;
 }
-
 function statusToText(s){
-  return s==='packing'?'Упаковка':
-         s==='picked'?'Передан курьеру':
-         s==='in_transit'?'В пути':
-         s==='delivered'?'Доставлен': s;
+  return s==='packing'?'Упаковка': s==='picked'?'Передан курьеру': s==='in_transit'?'В пути': s==='delivered'?'Доставлен': s;
 }

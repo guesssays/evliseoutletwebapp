@@ -6,10 +6,15 @@ export function renderCart(){
   const v=document.getElementById('view');
   const items = state.cart.items.map(it=>({...it, product: state.products.find(p=>String(p.id)===String(it.productId))})).filter(x=>x.product);
   if (!items.length){
-    v.innerHTML = `<div class="section-title">Корзина</div><section class="checkout"><div class="cart-sub">Корзина пуста</div></section>`;
+    v.innerHTML = `<div class="section-title">Корзина</div>
+      <section class="checkout"><div class="cart-sub">Корзина пуста</div></section>`;
     return;
   }
   const total = items.reduce((s,x)=> s + x.qty * x.product.price, 0);
+
+  // адрес по умолчанию
+  const ad = state.addresses.list.find(a=>a.id===state.addresses.defaultId) || null;
+
   v.innerHTML = `<div class="section-title">Оформление</div>
   <section class="checkout" id="cList">
     ${items.map(x=>`
@@ -26,17 +31,23 @@ export function renderCart(){
           <button class="ctrl inc"><i data-lucide="plus"></i></button>
         </div>
       </div>`).join('')}
+
     <div class="shipping">
-      <div class="cart-title">Данные для доставки</div>
-      <div class="cart-sub">Определим в чате Telegram после оформления</div>
+      <div class="cart-title">Адрес доставки</div>
+      ${ad ? `<div class="cart-sub">${ad.nickname} — ${ad.address}</div>` :
+        `<div class="cart-sub">Адрес не указан</div>`}
+      <div style="margin-top:8px">
+        <a class="pill" href="#/account/addresses">${ad ? 'Изменить адрес' : 'Добавить адрес'}</a>
+      </div>
     </div>
+
     <div class="payline">
       <div class="payrow"><span>Итого (${items.reduce((s,i)=>s+i.qty,0)} шт.)</span><b>${priceFmt(total)}</b></div>
-      <div class="payrow"><span>Доставка</span><b>$0.00</b></div>
-      <div class="payrow"><span>Скидка</span><b>$0.00</b></div>
+      <div class="payrow"><span>Доставка</span><b>${priceFmt(0)}</b></div>
+      <div class="payrow"><span>Скидка</span><b>${priceFmt(0)}</b></div>
     </div>
   </section>
-  <div class="paybtn"><button id="payBtn" class="btn">Оплатить в Telegram</button></div>`;
+  <div class="paybtn"><button id="payBtn" class="btn">Оформить заказ</button></div>`;
   window.lucide?.createIcons();
 
   // qty handlers
@@ -46,7 +57,7 @@ export function renderCart(){
     row.querySelector('.inc').onclick=()=> changeQty(id,size,color, +1);
     row.querySelector('.dec').onclick=()=> changeQty(id,size,color, -1);
   });
-  document.getElementById('payBtn').onclick=()=> checkoutInTelegram(items);
+  document.getElementById('payBtn').onclick=()=> checkout(items, ad);
 }
 
 function changeQty(productId,size,color,delta){
@@ -59,17 +70,14 @@ function remove(productId,size,color){
   persistCart(); updateCartBadge(); toast('Удалено'); renderCart();
 }
 
-export function checkoutInTelegram(items){
-  const tg=window.Telegram?.WebApp;
-  const tgUser = tg?.initDataUnsafe?.user ? {
-    id: tg.initDataUnsafe.user.id, username: tg.initDataUnsafe.user.username || null,
-    first_name: tg.initDataUnsafe.user.first_name || null, last_name: tg.initDataUnsafe.user.last_name || null
-  } : null;
+function checkout(items, addr){
+  if (!addr){ toast('Укажите адрес доставки'); location.hash='#/account/addresses'; return; }
   const order = {
     cart: items.map(x=>({id:x.product.id,title:x.product.title,price:x.product.price,qty:x.qty,size:x.size||null,color:x.color||null})),
     total: items.reduce((s,x)=> s + x.qty * x.product.price, 0),
-    currency:'USD', comment:'', user: tgUser, ts: Date.now()
+    currency:'UZS', comment:'', address: addr, ts: Date.now()
   };
+  const tg=window.Telegram?.WebApp;
   const payload = JSON.stringify(order);
   if (tg?.sendData){ tg.sendData(payload); toast('Заказ отправлен менеджеру в Telegram'); }
   else { navigator.clipboard.writeText(payload); toast('WebApp вне Telegram: заказ (JSON) скопирован'); }

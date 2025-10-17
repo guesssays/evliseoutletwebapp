@@ -1,6 +1,7 @@
-import { state, loadCart, updateCartBadge } from './core/state.js';
+import { state, loadCart, updateCartBadge, loadAddresses } from './core/state.js';
 import { toast } from './core/toast.js';
 import { el } from './core/utils.js';
+
 import { renderHome, drawCategoriesChips } from './components/Home.js';
 import { renderProduct } from './components/Product.js';
 import { renderCart } from './components/Cart.js';
@@ -8,11 +9,13 @@ import { renderFavorites } from './components/Favorites.js';
 import { renderCategory } from './components/Category.js';
 import { renderOrders, renderTrack } from './components/Orders.js';
 import { openFilterModal, renderActiveFilterChips } from './components/Filters.js';
+import { renderAccount, renderAddresses, renderSettings } from './components/Account.js';
+import { renderFAQ } from './components/FAQ.js';
 
-loadCart(); updateCartBadge();
+loadCart(); loadAddresses(); updateCartBadge();
 
-// Telegram авторизация (аккаунт)
-function initTelegram(){
+// Telegram авторизация (если внутри Telegram)
+(function initTelegram(){
   const tg = window.Telegram?.WebApp;
   const btn = document.getElementById('tgAuthBtn');
   if (tg?.initDataUnsafe?.user){
@@ -25,13 +28,12 @@ function initTelegram(){
       btn.style.display='none';
     };
   }
-}
-initTelegram();
+})();
 
 // поиск
 el('#searchInput').addEventListener('input', (e)=>{ state.filters.query = e.target.value; renderHome(router); });
 
-// маршрутизация
+// роутер
 function router(){
   const path=(location.hash||'#/').slice(1);
   document.querySelectorAll('.tabbar .tab').forEach(t=> t.classList.remove('active'));
@@ -50,14 +52,17 @@ function router(){
   const m1=match('category/:slug'); if (m1) return renderCategory(m1);
   const m2=match('product/:id'); if (m2) return renderProduct(m2);
   const m3=match('track/:id'); if (m3) return renderTrack(m3);
+
   if (match('favorites')) return renderFavorites();
   if (match('cart')) return renderCart();
   if (match('orders')) return renderOrders();
-  if (match('account')){ document.getElementById('view').innerHTML = `
-      <div class="section-title">Аккаунт</div>
-      <section class="checkout">
-        <a class="pill primary" href="#/orders"><i data-lucide="package-open"></i>Мои заказы</a>
-      </section>`; window.lucide?.createIcons(); return; }
+
+  if (match('account')) return renderAccount();
+  if (match('account/addresses')) return renderAddresses();
+  if (match('account/settings')) return renderSettings();
+
+  if (match('faq')) return renderFAQ();
+
   renderHome(router);
 }
 
@@ -74,5 +79,5 @@ async function init(){
 }
 init();
 
-// Фильтры — рабочая модалка
+// Фильтры
 document.getElementById('openFilters').onclick=()=> openFilterModal(router);
