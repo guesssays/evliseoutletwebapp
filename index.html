@@ -13,15 +13,16 @@
   </head>
   <body>
     <div id="app">
-      <header class="app-header" role="banner">
-        <div class="h-welcome">
-          <div class="hello">Привет, добро пожаловать 👋</div>
-          <div class="name" id="userName">Гость</div>
-        </div>
-        <button id="tgAuthBtn" class="pill primary small">
-          <i data-lucide="send"></i><span>Войти через Telegram</span>
-        </button>
-      </header>
+<header class="app-header" role="banner">
+  <div class="brand">
+    <span class="app-title" aria-label="EVLISE OUTLET">EVLISE OUTLET</span>
+  </div>
+  <button id="openNotifications" class="icon-btn notif-btn" aria-label="Уведомления">
+    <i data-lucide="bell"></i>
+    <b id="notifBadge" class="badge" hidden>0</b>
+  </button>
+</header>
+
 
       <!-- Поиск + фильтры -->
       <section class="section section-search">
@@ -57,21 +58,24 @@
       <div id="toastWrap" class="toast-wrap"></div>
 
       <!-- Нижний таббар -->
-      <nav class="tabbar" role="tablist" aria-label="Основная навигация">
-        <a href="#/" data-tab="home" class="tab active" role="tab" aria-selected="true">
-          <i data-lucide="home"></i><span>Главная</span><b class="dot"></b>
-        </a>
-        <a href="#/favorites" data-tab="saved" class="tab" role="tab" aria-selected="false">
-          <i data-lucide="heart"></i><span>Избранное</span><b class="dot"></b>
-        </a>
-        <a href="#/cart" data-tab="cart" class="tab badge-wrap" role="tab" aria-selected="false">
-          <i data-lucide="shopping-bag"></i><span>Корзина</span><b id="cartBadge" class="badge">0</b><b class="dot"></b>
-        </a>
-        <a href="#/account" data-tab="account" class="tab" role="tab" aria-selected="false">
-          <i data-lucide="user-round"></i><span>Аккаунт</span><b class="dot"></b>
-        </a>
-      </nav>
-    </div>
+<nav class="tabbar" role="tablist" aria-label="Основная навигация">
+  <div class="tabbar-inner">
+    <a href="#/" data-tab="home" class="tab active" role="tab" aria-selected="true">
+      <i data-lucide="home"></i><span>Главная</span>
+    </a>
+    <a href="#/favorites" data-tab="saved" class="tab" role="tab" aria-selected="false">
+      <i data-lucide="heart"></i><span>Избранное</span>
+    </a>
+    <a href="#/cart" data-tab="cart" class="tab badge-wrap" role="tab" aria-selected="false">
+      <i data-lucide="shopping-bag"></i><span>Корзина</span>
+      <b id="cartBadge" class="badge">0</b>
+    </a>
+    <a href="#/account" data-tab="account" class="tab" role="tab" aria-selected="false">
+      <i data-lucide="user-round"></i><span>Аккаунт</span>
+    </a>
+  </div>
+</nav>
+
 
     <!-- Шаблоны -->
     <template id="product-card">
