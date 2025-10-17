@@ -4,20 +4,23 @@ import { addToCart } from './cartActions.js';
 
 export function renderProduct({id}){
   const p = state.products.find(x=> String(x.id)===String(id)); if (!p){ location.hash='#/'; return; }
+  const favSet = new Set(JSON.parse(localStorage.getItem('nas_fav')||'[]'));
+  const isFav = favSet.has(p.id);
+
   const v=document.getElementById('view');
   v.innerHTML = `
     <div class="product">
       <div class="p-hero">
         <img src="${p.images[0]}" alt="${p.title}">
-        <button class="hero-btn hero-back" id="goBack"><i data-lucide="chevron-left"></i></button>
-        <button class="hero-btn hero-fav" id="favBtn"><i data-lucide="heart"></i></button>
+        <button class="hero-btn hero-back" id="goBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
+        <button class="hero-btn hero-fav ${isFav?'active':''}" id="favBtn" aria-pressed="${isFav?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
       </div>
       <div class="p-body">
         <div class="qty-row" style="justify-content:flex-end">
           <div class="qty-ctrl">
-            <button class="ctrl" id="dec"><i data-lucide="minus"></i></button>
+            <button class="ctrl" id="dec" aria-label="Уменьшить"><i data-lucide="minus"></i></button>
             <span id="qty">1</span>
-            <button class="ctrl" id="inc"><i data-lucide="plus"></i></button>
+            <button class="ctrl" id="inc" aria-label="Увеличить"><i data-lucide="plus"></i></button>
           </div>
         </div>
 
@@ -55,7 +58,7 @@ export function renderProduct({id}){
         </button>
       </div>
     </div>`;
-  window.lucide?.createIcons();
+  window.lucide?.createIcons && lucide.createIcons();
 
   // qty + опции
   let qty=1, size=null, color=(p.colors||[])[0]||null;
@@ -66,5 +69,18 @@ export function renderProduct({id}){
   const colors=document.getElementById('colors'); if (colors){ colors.addEventListener('click', e=>{ const b=e.target.closest('.sw'); if(!b)return; colors.querySelectorAll('.sw').forEach(x=>x.classList.remove('active')); b.classList.add('active'); color=b.getAttribute('data-v'); }); colors.querySelector('.sw')?.classList.add('active'); }
 
   document.getElementById('goBack').onclick=()=> history.back();
+
+  // fav toggle (индикатор теперь живой)
+  const favBtn = document.getElementById('favBtn');
+  favBtn.onclick = ()=>{
+    let list = JSON.parse(localStorage.getItem('nas_fav')||'[]');
+    const i = list.indexOf(p.id);
+    const nowFav = i===-1;
+    if (nowFav) list.push(p.id); else list.splice(i,1);
+    localStorage.setItem('nas_fav', JSON.stringify(list));
+    favBtn.classList.toggle('active', nowFav);
+    favBtn.setAttribute('aria-pressed', String(nowFav));
+  };
+
   document.getElementById('addBtn').onclick=()=> addToCart(p, size, color, qty);
 }

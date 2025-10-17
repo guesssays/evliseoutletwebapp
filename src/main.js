@@ -1,6 +1,7 @@
 import { state, loadCart, updateCartBadge, loadAddresses } from './core/state.js';
 import { toast } from './core/toast.js';
 import { el } from './core/utils.js';
+import { initTelegramChrome } from './core/utils.js';
 
 import { renderHome, drawCategoriesChips } from './components/Home.js';
 import { renderProduct } from './components/Product.js';
@@ -12,9 +13,9 @@ import { openFilterModal, renderActiveFilterChips } from './components/Filters.j
 import { renderAccount, renderAddresses, renderSettings } from './components/Account.js';
 import { renderFAQ } from './components/FAQ.js';
 
-loadCart(); loadAddresses(); updateCartBadge();
+loadCart(); loadAddresses(); updateCartBadge(); initTelegramChrome();
 
-// Telegram авторизация (если внутри Telegram)
+// Telegram авторизация
 (function initTelegram(){
   const tg = window.Telegram?.WebApp;
   const btn = document.getElementById('tgAuthBtn');
@@ -33,11 +34,11 @@ loadCart(); loadAddresses(); updateCartBadge();
 // поиск
 el('#searchInput').addEventListener('input', (e)=>{ state.filters.query = e.target.value; renderHome(router); });
 
-// роутер
+// роутер (страницы поиска нет)
 function router(){
   const path=(location.hash||'#/').slice(1);
   document.querySelectorAll('.tabbar .tab').forEach(t=> t.classList.remove('active'));
-  const map = { '':'home','/':'home','/search':'search','/favorites':'saved','/cart':'cart','/account':'account','/orders':'account' };
+  const map = { '':'home','/':'home','/favorites':'saved','/cart':'cart','/account':'account','/orders':'account' };
   const tab = map[path.replace(/#.*/,'')] || (path.startsWith('/product')? 'home' : 'home');
   document.querySelector(`.tabbar .tab[data-tab="${tab}"]`)?.classList.add('active');
 

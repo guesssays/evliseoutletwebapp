@@ -9,11 +9,12 @@ export function renderHome(router){
 }
 
 export function drawCategoriesChips(router){
-  const wrap = document.getElementById('catChips'); wrap.innerHTML='';
-  const mk=(slug, name, ico, active)=>`<button class="chip ${active?'active':''}" data-slug="${slug}"><i data-lucide="${ico}"></i>${name}</button>`;
-  wrap.insertAdjacentHTML('beforeend', mk('all','Все товары','grid', state.filters.category==='all'));
-  state.categories.forEach((c,i)=>{
-    wrap.insertAdjacentHTML('beforeend', mk(c.slug,c.name, i===0?'dress':(i===1?'shirt':(i===2?'shirt':'tshirt')), state.filters.category===c.slug));
+  const wrap = document.getElementById('catChips'); if (!wrap) return;
+  wrap.innerHTML='';
+  const mk=(slug, name, active)=>`<button class="chip ${active?'active':''}" data-slug="${slug}">${name}</button>`;
+  wrap.insertAdjacentHTML('beforeend', mk('all','Все товары', state.filters.category==='all'));
+  state.categories.forEach(c=>{
+    wrap.insertAdjacentHTML('beforeend', mk(c.slug,c.name, state.filters.category===c.slug));
   });
   wrap.addEventListener('click', (e)=>{
     const b=e.target.closest('.chip'); if(!b)return;
@@ -22,7 +23,6 @@ export function drawCategoriesChips(router){
     const list = state.filters.category==='all' ? state.products : state.products.filter(p=>p.category===state.filters.category);
     drawProducts(list);
   });
-  window.lucide?.createIcons();
 }
 
 export function drawProducts(list){
@@ -42,7 +42,7 @@ export function drawProducts(list){
     favBtn.onclick=(ev)=>{ ev.preventDefault(); toggleFav(p.id, favBtn); };
     grid.appendChild(node);
   }
-  window.lucide?.createIcons();
+  window.lucide?.createIcons && lucide.createIcons();
 }
 
 function toggleFav(id, btn){

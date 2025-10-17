@@ -12,7 +12,6 @@ export function renderCart(){
   }
   const total = items.reduce((s,x)=> s + x.qty * x.product.price, 0);
 
-  // адрес по умолчанию
   const ad = state.addresses.list.find(a=>a.id===state.addresses.defaultId) || null;
 
   v.innerHTML = `<div class="section-title">Оформление</div>
@@ -26,18 +25,20 @@ export function renderCart(){
           <div class="cart-price">${priceFmt(x.product.price)}</div>
         </div>
         <div class="qty-mini">
-          <button class="ctrl dec"><i data-lucide="minus"></i></button>
+          <button class="ctrl dec" aria-label="Минус"><i data-lucide="minus"></i></button>
           <span>${x.qty}</span>
-          <button class="ctrl inc"><i data-lucide="plus"></i></button>
+          <button class="ctrl inc" aria-label="Плюс"><i data-lucide="plus"></i></button>
         </div>
       </div>`).join('')}
 
     <div class="shipping">
-      <div class="cart-title">Адрес доставки</div>
-      ${ad ? `<div class="cart-sub">${ad.nickname} — ${ad.address}</div>` :
-        `<div class="cart-sub">Адрес не указан</div>`}
-      <div style="margin-top:8px">
-        <a class="pill" href="#/account/addresses">${ad ? 'Изменить адрес' : 'Добавить адрес'}</a>
+      <div class="address-row">
+        <div>
+          <div class="cart-title">Адрес доставки</div>
+          ${ad ? `<div class="cart-sub">${ad.nickname} — ${ad.address}</div>` :
+            `<div class="cart-sub">Адрес не указан</div>`}
+        </div>
+        <a class="pill" href="#/account/addresses" style="white-space:nowrap">${ad ? 'Изменить адрес' : 'Добавить адрес'}</a>
       </div>
     </div>
 
@@ -48,9 +49,8 @@ export function renderCart(){
     </div>
   </section>
   <div class="paybtn"><button id="payBtn" class="btn">Оформить заказ</button></div>`;
-  window.lucide?.createIcons();
+  window.lucide?.createIcons && lucide.createIcons();
 
-  // qty handlers
   document.querySelectorAll('.cart-row').forEach(row=>{
     const id=Number(row.getAttribute('data-id'));
     const size=row.getAttribute('data-size')||null; const color=row.getAttribute('data-color')||null;

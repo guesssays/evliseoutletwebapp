@@ -12,7 +12,7 @@ export function renderOrders(){
           <div class="cart-sub">Оформите первый заказ — и он появится здесь</div>
         </div>
       </section>`;
-    window.lucide?.createIcons();
+    window.lucide?.createIcons && lucide.createIcons();
     return;
   }
   v.innerHTML = `<div class="section-title">Мои заказы</div>
