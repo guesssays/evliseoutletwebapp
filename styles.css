@@ -1,4 +1,4 @@
-/* === styles.css (полная обновлённая версия) === */
+/* === styles.css (полная актуальная версия) === */
 
 /* Палитра и базовые переменные */
 :root{
@@ -21,7 +21,7 @@ body{
 
 .lucide, [data-lucide]{ stroke:currentColor; fill:none }
 
-/* ===== ШАПКА ===== */
+/* ===== ШАПКА (обычная, без морфинга) ===== */
 .app-header{
   position:sticky; top:0; z-index:30;
   backdrop-filter:saturate(1.2) blur(6px);
@@ -29,58 +29,27 @@ body{
   padding:14px 18px 10px;
   display:flex; justify-content:space-between; align-items:center; gap:10px;
   border-bottom:1px solid var(--stroke);
-  transition: padding .22s ease, background-color .22s ease, backdrop-filter .22s ease, box-shadow .22s ease;
 }
-.hdr-left{ display:flex; align-items:center; gap:10px; }
-.hdr-right{ display:flex; align-items:center; gap:10px; }
 .brand{ display:flex; align-items:center; gap:10px; }
 .app-title{ font-weight:800; font-size:22px; letter-spacing:.8px; text-transform:uppercase; }
+.hdr-right{ display:flex; align-items:center; gap:10px; }
 
 .icon-btn, .square-btn{
   display:inline-grid; place-items:center;
   width:44px; height:44px; border-radius:14px;
-  border:1px solid var(--stroke); background:#f6f6f6; color:var(--text)
+  border:1px solid var(--stroke); background:#f6f6f6; color:var(--text);
+  cursor:pointer;
 }
 .icon-btn i, .square-btn i{ width:22px;height:22px }
 .notif-btn{ position:relative; }
 .notif-btn .lucide{ width:22px; height:22px; }
 
-/* плавное исчезновение бренда и колокольчика при морфинге */
-.app-header .brand,
-.app-header .notif-btn{
-  transition: opacity .18s ease, transform .18s ease;
-}
-
-/* КНОПКИ ХЕДЕРА (прозрачные, без подложки) */
-.hdr-circ{
-  display:grid; place-items:center;
-  width:44px; height:44px; border-radius:999px;
-  background:transparent; border:none; box-shadow:none;
-  color:var(--text); cursor:pointer;
-  opacity:0; transform:translateY(-6px); pointer-events:none;
-  transition: opacity .18s ease, transform .18s ease;
-}
-.hdr-circ i{ width:22px; height:22px }
-.hdr-circ:active{ transform:translateY(-5px) scale(0.98); }
-
-/* активное состояние «сердца» */
-.hdr-circ.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none }
-
-/* компакт-режим хедера на карточке товара */
-.app-header.is-product-compact{
-  padding:10px 18px 8px;
-  background:rgba(255,255,255,.96);
-  backdrop-filter:saturate(1.2) blur(10px);
-  box-shadow:0 6px 20px rgba(0,0,0,.06);
-}
-.app-header.is-product-compact .brand,
-.app-header.is-product-compact .notif-btn{
-  opacity:0; transform:translateY(-6px); pointer-events:none;
-}
-/* показать back слева и fav справа */
-.app-header.is-product-compact #hdrBack,
-.app-header.is-product-compact #hdrFav{
-  opacity:1; transform:translateY(0); pointer-events:auto;
+#notifBadge.badge{
+  position:absolute; right:-6px; top:-6px;
+  background:#ff5966; color:#fff;
+  font-size:11px; line-height:1;
+  border-radius:999px; padding:3px 6px;
+  box-shadow:0 2px 10px rgba(0,0,0,.18);
 }
 
 /* ===== ПОИСК/ФИЛЬТРЫ/ЧИПЫ ===== */
@@ -154,14 +123,22 @@ body{
 .real-photo img{ width:100%; height:auto; display:block; }
 
 .p-hero{ position:relative; margin:0 18px; border-radius:24px; overflow:hidden }
+
+/* Круглые кнопки поверх героя */
 .hero-btn{
   position:absolute; top:12px; width:48px; height:48px;
-  border-radius:999px; display:grid; place-items:center; background:#fff; border:none; box-shadow:var(--shadow)
+  border-radius:999px; display:grid; place-items:center;
+  background:#fff; border:1px solid var(--stroke); box-shadow:var(--shadow);
+  cursor:pointer;
 }
+.hero-btn i{ width:22px; height:22px }
 .hero-back{ left:12px } .hero-fav{ right:12px }
 .hero-fav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none }
 
 .p-body{ padding:16px 18px }
+/* дополнительная страховка, чтобы на товаре точно не прилипало к таббару */
+.product .p-body.home-bottom-pad{ padding-bottom:calc(var(--tabbar-h) + var(--safe) + 8px); }
+
 .p-title{ font-size:34px; font-weight:800; line-height:1.15; margin:8px 0 6px }
 .p-desc{ color:var(--muted) }
 .qty-row{ display:flex; gap:10px; align-items:center }
@@ -184,7 +161,7 @@ body{
 .size-table thead th{ background:#f8f8f8; text-align:left; font-weight:800 }
 .size-table tbody tr:not(:last-child) td{ border-bottom:1px solid var(--stroke) }
 
-.cta{ position:sticky; bottom:calc(var(--tabbar-h) + var(--safe) - 6px); padding:12px 18px; z-index:3 }
+/* Button primitives */
 .btn{
   width:100%; height:64px; border:none; border-radius:999px;
   display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer;
@@ -196,7 +173,25 @@ body{
 .btn:hover{ box-shadow:0 10px 28px rgba(0,0,0,.12) }
 .btn:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
 .btn:disabled{ opacity:.6; cursor:not-allowed; box-shadow:none; }
-.btn.outline{ background:#fff; color:#121111; border:1px solid var(--stroke); box-shadow:0 8px 24px rgba(0,0,0,.06); }
+.btn.outline{
+  background:#fff; color:#121111; border:1px solid var(--stroke);
+  box-shadow:0 8px 24px rgba(0,0,0,.06);
+}
+
+/* «Пилюли» (например Изменить адрес) */
+.pill{
+  display:inline-flex; gap:8px; align-items:center;
+  border-radius:999px; border:1px solid var(--stroke);
+  padding:10px 14px; font-weight:700; background:#fff;
+  text-decoration:none; color:var(--text);
+  white-space:nowrap; cursor:pointer;
+}
+.pill.small{ padding:8px 12px }
+.pill.primary{ background:#121111; color:#fff; border-color:#121111 }
+.pill i{ width:18px; height:18px }
+.pill:link, .pill:visited{ text-decoration:none; color:var(--text); }
+.pill:hover{ background:#f8f8f8; }
+.pill:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
 
 /* ===== КОРЗИНА/ЧЕКАУТ ===== */
 .section-title{ font-size:24px; font-weight:800; margin:10px 18px }
@@ -214,18 +209,15 @@ body{
 .qty-mini .ctrl{ width:36px; height:36px; border-radius:12px }
 .shipping{ margin:4px 0 12px }
 
-/* Главное изменение: всё в одну строку, без переноса */
+/* Адрес в одну строку */
 .address-row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  flex-wrap:nowrap;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; flex-wrap:nowrap;
 }
 .address-left{ min-width:0 }
 .address-left .cart-title{ margin-bottom:2px }
 
-/* итог */
+/* Итог */
 .payline{ display:grid; gap:10px; border-top:1px solid var(--stroke); padding:12px 0 }
 .payrow{ display:flex; justify-content:space-between; align-items:center }
 .paybtn{ position:sticky; bottom:calc(var(--tabbar-h) + var(--safe)); padding:0 18px 12px; z-index:3 }
@@ -332,7 +324,7 @@ body{
 
 /* ==== SINGLE-FOOTER MODE (CTA внутри таббара) ==== */
 .has-cta .cta{ display:none !important; }
-.has-cta body, body.has-cta{ padding-bottom:calc(var(--safe) + 16px) !important; }
+body.has-cta{ padding-bottom:calc(var(--safe) + 16px) !important; }
 .tabbar{ background:transparent; }
 .tabbar-inner{ background:#121111; box-shadow:0 10px 40px rgba(0,0,0,.18); }
 .tabbar-inner.is-cta .tab{ display:none !important; }

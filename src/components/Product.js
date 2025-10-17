@@ -20,6 +20,7 @@ export function renderProduct({id}){
         <div class="gallery" role="region" aria-label="Галерея товара">
           <div class="gallery-main">
             <img id="mainImg" class="zoomable" src="${images[0]||''}" alt="${escapeHtml(p.title)}">
+            <!-- круглые кнопки поверх фото: стрелка слева, сердце справа -->
             <button class="hero-btn hero-back" id="goBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
             <button class="hero-btn hero-fav ${isFav?'active':''}" id="favBtn" aria-pressed="${isFav?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
           </div>
@@ -114,8 +115,6 @@ export function renderProduct({id}){
     localStorage.setItem('nas_fav', JSON.stringify(list));
     favBtn.classList.toggle('active', nowFav);
     favBtn.setAttribute('aria-pressed', String(nowFav));
-    // синхронизируем кнопку в хедере
-    syncHeaderFav(nowFav);
   };
 
   // Галерея: миниатюры -> главное фото
@@ -188,16 +187,6 @@ export function renderProduct({id}){
     mainImg.style.transform = '';
     mainImg.dataset.zoom = '1';
   }
-
-  /* --------- MORPHING HEADER (скролл -> компакт с back/fav) --------- */
-  setupProductHeaderMorph({
-    isFav: !!isFav,
-    onFavToggle: (active)=> {
-      // чтобы состояние оставалось единым, переключаем «геро»-кнопку при расхождении
-      const now = favBtn.classList.contains('active');
-      if (now !== active) favBtn.click();
-    }
-  });
 }
 
 /* утилита экранирования */
@@ -342,76 +331,4 @@ function openZoomOverlay(src){
   }
   close.onclick = closeOv;
   ov.onclick = (e)=>{ if(e.target===ov) closeOv(); };
-}
-
-/* ====== Хедер: морфинг в компактный режим на странице товара ====== */
-function setupProductHeaderMorph({ isFav=false, onFavToggle } = {}){
-  const header = document.querySelector('.app-header');
-  if (!header) return;
-
-  // получить/создать кнопки в нужных местах
-  let back = document.getElementById('hdrBack');
-  if (!back){
-    back = document.createElement('button');
-    back.id = 'hdrBack';
-    back.className = 'hdr-circ';
-    back.setAttribute('aria-label','Назад');
-    back.innerHTML = `<i data-lucide="chevron-left"></i>`;
-    header.querySelector('.hdr-left')?.prepend(back);
-  }
-
-  let fav = document.getElementById('hdrFav');
-  if (!fav){
-    fav = document.createElement('button');
-    fav.id = 'hdrFav';
-    fav.className = 'hdr-circ';
-    fav.setAttribute('aria-label','В избранное');
-    fav.innerHTML = `<i data-lucide="heart"></i>`;
-    header.querySelector('.hdr-right')?.appendChild(fav);
-  }
-
-  // обработчики — навешиваются всегда
-  back.onclick = ()=> history.back();
-
-  fav.classList.toggle('active', !!isFav);
-  fav.setAttribute('aria-pressed', String(!!isFav));
-  fav.onclick = ()=>{
-    const active = !fav.classList.contains('active');
-    fav.classList.toggle('active', active);
-    fav.setAttribute('aria-pressed', String(active));
-    try{ onFavToggle && onFavToggle(active); }catch(e){}
-  };
-
-  window.lucide?.createIcons && lucide.createIcons();
-
-  // скролл-порог морфинга
-  const THRESHOLD = 24;
-  const onScrollMorph = ()=>{
-    const sc = window.scrollY || document.documentElement.scrollTop || 0;
-    header.classList.toggle('is-product-compact', sc > THRESHOLD);
-  };
-
-  if (window._prdHeaderScrollHandler){
-    window.removeEventListener('scroll', window._prdHeaderScrollHandler, {passive:true});
-  }
-  window._prdHeaderScrollHandler = onScrollMorph;
-  window.addEventListener('scroll', onScrollMorph, {passive:true});
-  onScrollMorph();
-
-  if (!window._prdHeaderUnloadBound){
-    window.addEventListener('hashchange', ()=>{
-      header.classList.remove('is-product-compact');
-    });
-    window._prdHeaderUnloadBound = true;
-  }
-
-  // синхронизатор для внешних изменений избранного
-  window._syncHeaderFav = (active)=>{
-    fav.classList.toggle('active', !!active);
-    fav.setAttribute('aria-pressed', String(!!active));
-  };
-}
-
-function syncHeaderFav(active){
-  try{ window._syncHeaderFav && window._syncHeaderFav(active); }catch(e){}
 }

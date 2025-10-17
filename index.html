@@ -13,26 +13,18 @@
   </head>
   <body>
     <div id="app">
-<header class="app-header" role="banner">
-  <!-- ЛЕВО: back + бренд -->
-  <div class="hdr-left">
-    <button id="hdrBack" class="hdr-circ" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
-    <div class="brand">
-      <span class="app-title" aria-label="EVLISE OUTLET">EVLISE OUTLET</span>
-    </div>
-  </div>
-
-  <!-- ПРАВО: уведомления + избранное -->
-  <div class="hdr-right">
-    <button id="openNotifications" class="icon-btn notif-btn" aria-label="Уведомления">
-      <i data-lucide="bell"></i>
-      <b id="notifBadge" class="badge" hidden>0</b>
-    </button>
-    <button id="hdrFav" class="hdr-circ" aria-label="В избранное" aria-pressed="false">
-      <i data-lucide="heart"></i>
-    </button>
-  </div>
-</header>
+      <!-- Обычный фикс-хедер: бренд слева, уведомления справа -->
+      <header class="app-header" role="banner">
+        <div class="brand">
+          <span class="app-title" aria-label="EVLISE OUTLET">EVLISE OUTLET</span>
+        </div>
+        <div class="hdr-right">
+          <button id="openNotifications" class="icon-btn notif-btn" aria-label="Уведомления">
+            <i data-lucide="bell"></i>
+            <b id="notifBadge" class="badge" hidden>0</b>
+          </button>
+        </div>
+      </header>
 
       <!-- Поиск + фильтры -->
       <section class="section section-search">
@@ -40,7 +32,9 @@
           <i data-lucide="search" class="search-ico"></i>
           <input id="searchInput" class="search" placeholder="Поиск одежды…" />
         </div>
-        <button id="openFilters" class="square-btn" aria-label="Открыть фильтры"><i data-lucide="sliders-horizontal"></i></button>
+        <button id="openFilters" class="square-btn" aria-label="Открыть фильтры">
+          <i data-lucide="sliders-horizontal"></i>
+        </button>
       </section>
 
       <!-- Категории -->
@@ -65,49 +59,51 @@
           <div id="modalActions" class="modal-actions"></div>
         </div>
       </div>
+
       <div id="toastWrap" class="toast-wrap"></div>
 
       <!-- Нижний таббар -->
-<nav class="tabbar" role="tablist" aria-label="Основная навигация">
-  <div class="tabbar-inner">
-    <a href="#/" data-tab="home" class="tab active" role="tab" aria-selected="true">
-      <i data-lucide="home"></i><span>Главная</span>
-    </a>
-    <a href="#/favorites" data-tab="saved" class="tab" role="tab" aria-selected="false">
-      <i data-lucide="heart"></i><span>Избранное</span>
-    </a>
-    <a href="#/cart" data-tab="cart" class="tab badge-wrap" role="tab" aria-selected="false">
-      <i data-lucide="shopping-bag"></i><span>Корзина</span>
-      <b id="cartBadge" class="badge" hidden></b>
-    </a>
-    <a href="#/account" data-tab="account" class="tab" role="tab" aria-selected="false">
-      <i data-lucide="user-round"></i><span>Аккаунт</span>
-    </a>
-  </div>
-</nav>
-
-    <!-- Шаблоны -->
-    <template id="product-card">
-      <a class="card" href="#">
-        <div class="card-img">
-          <img loading="lazy" alt="">
-          <button class="fav" aria-label="В избранное" aria-pressed="false">
-            <i data-lucide="heart"></i>
-          </button>
+      <nav class="tabbar" role="tablist" aria-label="Основная навигация">
+        <div class="tabbar-inner">
+          <a href="#/" data-tab="home" class="tab active" role="tab" aria-selected="true">
+            <i data-lucide="home"></i><span>Главная</span>
+          </a>
+          <a href="#/favorites" data-tab="saved" class="tab" role="tab" aria-selected="false">
+            <i data-lucide="heart"></i><span>Избранное</span>
+          </a>
+          <a href="#/cart" data-tab="cart" class="tab badge-wrap" role="tab" aria-selected="false">
+            <i data-lucide="shopping-bag"></i><span>Корзина</span>
+            <b id="cartBadge" class="badge" hidden></b>
+          </a>
+          <a href="#/account" data-tab="account" class="tab" role="tab" aria-selected="false">
+            <i data-lucide="user-round"></i><span>Аккаунт</span>
+          </a>
         </div>
-        <div class="card-body">
-          <div class="title"></div>
-          <div class="subtitle"></div>
-          <div class="price-row">
-            <div class="price"></div>
+      </nav>
+
+      <!-- Шаблоны -->
+      <template id="product-card">
+        <a class="card" href="#">
+          <div class="card-img">
+            <img loading="lazy" alt="">
+            <button class="fav" aria-label="В избранное" aria-pressed="false">
+              <i data-lucide="heart"></i>
+            </button>
           </div>
-        </div>
-      </a>
-    </template>
+          <div class="card-body">
+            <div class="title"></div>
+            <div class="subtitle"></div>
+            <div class="price-row">
+              <div class="price"></div>
+            </div>
+          </div>
+        </a>
+      </template>
 
-    <template id="filter-chip">
-      <span class="chip chip-mini"></span>
-    </template>
+      <template id="filter-chip">
+        <span class="chip chip-mini"></span>
+      </template>
+    </div>
 
     <script type="module" src="src/main.js"></script>
     <script>window.lucide && lucide.createIcons();</script>

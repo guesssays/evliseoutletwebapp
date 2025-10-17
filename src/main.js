@@ -1,4 +1,4 @@
-// app.js (обновлённая версия)
+// app.js (обновлённая стабильная версия)
 
 import { state, loadCart, updateCartBadge, loadAddresses, pruneCartAgainstProducts } from './core/state.js';
 import { toast } from './core/toast.js';
@@ -179,7 +179,7 @@ async function init(){
   state.products   = data.products;
   state.categories = data.categories.map(c=>({ ...c, name: c.name }));
 
-  // САНИТИЗАЦИЯ КОРЗИНЫ: убираем несуществующие товары и qty<=0
+  // САНИТИЗАЦИЯ КОРЗИНЫ
   pruneCartAgainstProducts(state.products);
   updateCartBadge();
 
