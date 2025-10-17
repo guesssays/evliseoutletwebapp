@@ -1,4 +1,3 @@
-// src/core/state.js  (полная версия — обновлён updateCartBadge)
 export const PRICE_CURRENCY = 'UZS';
 export const RUB_TO_UZS = 1;
 export const DEFAULT_LANG  = localStorage.getItem('evlise_lang')  || 'ru';
@@ -15,18 +14,38 @@ export const state = {
 };
 
 export function persistCart(){ localStorage.setItem('nas_cart', JSON.stringify(state.cart)); }
-export function loadCart(){ try{ state.cart = JSON.parse(localStorage.getItem('nas_cart')) || {items:[]}; }catch{} }
-export function updateCartBadge(){
-  const n = state.cart.items.reduce((s,i)=>s+i.qty,0);
-  const b = document.getElementById('cartBadge');
-  if (!b) return;
-  if (n > 0){
-    b.textContent = n;
-    b.style.display = 'inline-block';
-  }else{
-    b.textContent = '';            // убираем цифру
-    b.style.display = 'none';      // скрываем бейдж полностью
+export function loadCart(){
+  try{
+    const parsed = JSON.parse(localStorage.getItem('nas_cart') || '{"items":[]}');
+    // нормализуем структуру
+    const items = Array.isArray(parsed?.items) ? parsed.items : [];
+    state.cart = { items: items.map(it => ({
+      productId: String(it.productId),
+      size: it.size ?? null,
+      color: it.color ?? null,
+      qty: Number(it.qty) || 0
+    }))};
+  }catch{
+    state.cart = { items: [] };
   }
+}
+
+export function updateCartBadge(){
+  const n = state.cart.items.reduce((s,i)=>s + (Number(i.qty)||0), 0);
+
+  // поддерживаем несколько вариантов селекторов бейджа, чтобы не зависеть от id
+  const badges = [...document.querySelectorAll('#cartBadge, [data-cart-badge], .cart-badge')];
+  if (!badges.length) return; // нет бейджа в DOM — просто выходим
+
+  badges.forEach(b=>{
+    if (n > 0){
+      b.textContent = String(n);
+      b.style.display = 'inline-block';
+    }else{
+      b.textContent = '';
+      b.style.display = 'none';
+    }
+  });
 }
 
 const ADDR_KEY = 'nas_addresses';

@@ -1,16 +1,15 @@
-// src/views/Cart.js  (полная версия)
 import { state, persistCart, updateCartBadge } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function renderCart(){
-  const v=document.getElementById('view');
+  const v = document.getElementById('view');
   const items = state.cart.items
-    .map(it=>({...it, product: state.products.find(p=>String(p.id)===String(it.productId))}))
-    .filter(x=>x.product);
+    .map(it => ({ ...it, product: state.products.find(p => String(p.id) === String(it.productId)) }))
+    .filter(x => x.product);
 
-  // таббар: по умолчанию поставим меню, ниже — переключим на CTA если есть товары
-  window.setTabbarMenu('cart');
+  // таббар: по умолчанию — обычное меню
+  window.setTabbarMenu?.('cart');
 
   if (!items.length){
     v.innerHTML = `
@@ -21,6 +20,8 @@ export function renderCart(){
       <section class="checkout"><div class="cart-sub">Корзина пуста</div></section>`;
     window.lucide?.createIcons && lucide.createIcons();
     document.getElementById('cartBack')?.addEventListener('click', ()=>history.back());
+    // убираем CTA-режим, если он был
+    window.setTabbarMenu?.('cart');
     return;
   }
 
@@ -34,7 +35,7 @@ export function renderCart(){
   </div>
   <section class="checkout" id="cList">
     ${items.map(x=>`
-      <div class="cart-row" data-id="${x.product.id}" data-size="${x.size||''}" data-color="${x.color||''}">
+      <div class="cart-row" data-id="${String(x.product.id)}" data-size="${x.size||''}" data-color="${x.color||''}">
         <div class="cart-img"><img src="${x.product.images?.[0]||''}" alt=""></div>
         <div>
           <div class="cart-title">${x.product.title}</div>
@@ -72,28 +73,40 @@ export function renderCart(){
 
   // события +/- по строкам
   document.querySelectorAll('.cart-row').forEach(row=>{
-    const id=Number(row.getAttribute('data-id'));
-    const size=row.getAttribute('data-size')||null; const color=row.getAttribute('data-color')||null;
-    row.querySelector('.inc').onclick=()=> changeQty(id,size,color, +1);
-    row.querySelector('.dec').onclick=()=> changeQty(id,size,color, -1);
+    // берём id как СТРОКУ, чтобы совпадало с productId в state
+    const id   = row.getAttribute('data-id');
+    const size = row.getAttribute('data-size') || null;
+    const color= row.getAttribute('data-color') || null;
+
+    row.querySelector('.inc')?.addEventListener('click', ()=> changeQty(id,size,color, +1));
+    row.querySelector('.dec')?.addEventListener('click', ()=> changeQty(id,size,color, -1));
   });
 
   // нижний бар → CTA «Оформить заказ»
-  window.setTabbarCTA({
+  window.setTabbarCTA?.({
     html: `<i data-lucide="credit-card"></i><span>Оформить заказ</span>`,
     onClick(){ checkout(items, ad); }
   });
 }
 
 function changeQty(productId,size,color,delta){
-  const it = state.cart.items.find(a=>a.productId===productId && (a.size||null)===(size||null) && (a.color||null)===(color||null));
+  const it = state.cart.items.find(a =>
+    String(a.productId)===String(productId) &&
+    (a.size||null)===(size||null) &&
+    (a.color||null)===(color||null)
+  );
   if (!it) return;
   it.qty += delta;
-  if (it.qty<=0) remove(productId,size,color);
+  if (it.qty <= 0) return remove(productId,size,color);
   persistCart(); updateCartBadge(); renderCart();
 }
+
 function remove(productId,size,color){
-  state.cart.items = state.cart.items.filter(a=>!(a.productId===productId && (a.size||null)===(size||null) && (a.color||null)===(color||null)));
+  state.cart.items = state.cart.items.filter(a => !(
+    String(a.productId)===String(productId) &&
+    (a.size||null)===(size||null) &&
+    (a.color||null)===(color||null)
+  ));
   persistCart(); updateCartBadge(); toast('Удалено'); renderCart();
 }
 

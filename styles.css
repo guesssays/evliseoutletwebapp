@@ -1,5 +1,3 @@
-/* styles.css  (полная версия — изменён блок .address-row; остальное оставлено как у тебя) */
-
 /* === styles.css (полная обновлённая версия) === */
 
 /* Палитра и базовые переменные */
@@ -91,6 +89,9 @@ body{
 /* ===== ГЛАВНЫЙ КОНТЕНТ / КАРТОЧКИ ===== */
 .view{ padding:0 18px 24px }
 .grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px }
+
+/* утилита для нижнего отступа на страницах, где контент упирается в таббар */
+.home-bottom-pad{ padding-bottom:calc(var(--tabbar-h) + var(--safe)); }
 
 .card{
   display:flex; flex-direction:column; text-decoration:none; color:inherit;
@@ -200,9 +201,9 @@ body{
   align-items:center;
   justify-content:space-between;
   gap:12px;
-  flex-wrap:nowrap;         /* не переносим кнопку под заголовок */
+  flex-wrap:nowrap;
 }
-.address-left{ min-width:0 } /* чтобы текст нормально ужимался */
+.address-left{ min-width:0 }
 .address-left .cart-title{ margin-bottom:2px }
 
 /* итог */
@@ -236,6 +237,22 @@ body{
 .addr-title{ font-weight:800 }
 .addr-sub{ color:var(--muted) }
 .addr-actions{ display:flex; gap:10px; margin-top:12px }
+
+/* ===== УВЕДОМЛЕНИЯ ===== */
+.notes{ display:grid; gap:8px; margin:0 18px 18px; }
+.note{
+  display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center;
+  padding:12px; border:1px solid var(--stroke); border-radius:14px; background:#fff;
+}
+.note i{ width:22px; height:22px; opacity:.9; }
+.note-title{ font-weight:800; line-height:1.25; }
+.note-sub{ color:var(--muted); font-size:14px; margin-top:2px; }
+.note .time{ color:var(--muted); font-size:12px; white-space:nowrap; }
+.notes-empty{
+  margin:0 18px 18px; padding:14px;
+  border:1px dashed var(--stroke); border-radius:14px;
+  background:#fff; color:var(--muted);
+}
 
 /* ===== ТАББАР ===== */
 .tabbar{ position:fixed; left:0; right:0; bottom:0; z-index:50; padding-bottom:max(8px, var(--safe)); background:transparent; pointer-events:none; }

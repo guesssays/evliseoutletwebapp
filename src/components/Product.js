@@ -36,14 +36,6 @@ export function renderProduct({id}){
       </div>
 
       <div class="p-body">
-        <div class="qty-row" style="justify-content:flex-end">
-          <div class="qty-ctrl">
-            <button class="ctrl" id="dec" aria-label="Уменьшить"><i data-lucide="minus"></i></button>
-            <span id="qty">1</span>
-            <button class="ctrl" id="inc" aria-label="Увеличить"><i data-lucide="plus"></i></button>
-          </div>
-        </div>
-
         <div class="p-title">${escapeHtml(p.title)}</div>
         <div class="p-desc">${p.description ? escapeHtml(p.description) : 'Описание скоро будет обновлено.'}</div>
         <div class="specs"><b>Материал:</b> ${p.material ? escapeHtml(p.material) : '—'}</div>
@@ -86,11 +78,9 @@ export function renderProduct({id}){
 
   window.lucide?.createIcons && lucide.createIcons();
 
-  // qty + опции
-  let qty=1, size=null, color=(p.colors||[])[0]||null;
-  const qtyEl=document.getElementById('qty');
-  document.getElementById('inc').onclick = ()=>{ qty++; qtyEl.textContent=qty; };
-  document.getElementById('dec').onclick = ()=>{ qty=Math.max(1,qty-1); qtyEl.textContent=qty; };
+  // опции (без количества)
+  let size=null, color=(p.colors||[])[0]||null;
+
   const sizes=document.getElementById('sizes');
   if (sizes){
     sizes.addEventListener('click', e=>{
@@ -138,7 +128,7 @@ export function renderProduct({id}){
         x.classList.toggle('active', x===t);
         x.setAttribute('aria-selected', x===t ? 'true':'false');
       });
-      resetZoom(); // сбросить зум при смене фото
+      resetZoom();
     });
 
     // keyboard навигация
@@ -160,7 +150,7 @@ export function renderProduct({id}){
     window.setTabbarCTA({
       html: `<i data-lucide="shopping-bag"></i><span>Добавить в корзину&nbsp;|&nbsp;${priceFmt(p.price)}</span>`,
       onClick(){
-        addToCart(p, size, color, qty);
+        addToCart(p, size, color, 1); // всегда 1 штука
         showInCartCTAs();
       }
     });
@@ -180,15 +170,13 @@ export function renderProduct({id}){
   function refreshCTAByState(){
     if (isInCart(p.id, size||null, color||null)) showInCartCTAs(); else showAddCTA();
   }
-  // первичное включение CTA
   refreshCTAByState();
 
   /* -------- ЗУМ/ПАНОРАМИРОВАНИЕ -------- */
-  ensureZoomOverlay();                  // разово — создаём оверлей контейнер
-  initZoomableInPlace(mainImg);         // даём зум по двойному тапу/колёсику прямо в карточке
+  ensureZoomOverlay();
+  initZoomableInPlace(mainImg);
   document.querySelectorAll('.real-photos img.zoomable').forEach(initZoomableInPlace);
 
-  // кликом — открыть fullscreen overlay для детального просмотра
   document.querySelectorAll('img.zoomable').forEach(img=>{
     img.addEventListener('click', ()=> openZoomOverlay(img.src));
   });
@@ -210,7 +198,6 @@ function initZoomableInPlace(img){
   if (!img) return;
   let scale = 1, originX = 0, originY = 0, startDist = 0, startScale = 1, dragging=false, lastX=0, lastY=0, tx=0, ty=0, lastTap=0;
 
-  // колесо мыши
   img.addEventListener('wheel', (e)=>{
     e.preventDefault();
     const rect = img.getBoundingClientRect();
@@ -220,7 +207,6 @@ function initZoomableInPlace(img){
     zoomAt(mx, my, delta);
   }, {passive:false});
 
-  // двойной тап/клик
   img.addEventListener('click', (e)=>{
     const now = Date.now();
     if (now - lastTap < 300){
@@ -231,7 +217,6 @@ function initZoomableInPlace(img){
     lastTap = now;
   });
 
-  // панорамирование (мышь)
   img.addEventListener('mousedown', (e)=>{ if (scale<=1) return;
     dragging=true; lastX=e.clientX; lastY=e.clientY; e.preventDefault();
   });
@@ -240,7 +225,6 @@ function initZoomableInPlace(img){
   });
   window.addEventListener('mouseup', ()=> dragging=false);
 
-  // touch: pinch + pan
   img.addEventListener('touchstart', (e)=>{
     if (e.touches.length===2){
       startDist = dist(e.touches[0], e.touches[1]);
@@ -273,13 +257,11 @@ function initZoomableInPlace(img){
   function zoomAt(x,y, delta){
     const old = scale;
     scale = clamp(scale + delta, 1, 5);
-    // сдвигаем так, чтобы точка зума оставалась под пальцем
     tx -= (x - (x - tx)) * (scale/old - 1);
     ty -= (y - (y - ty)) * (scale/old - 1);
     apply();
   }
   function apply(){
-    // легкие ограничители, чтобы не «улетало» далеко
     if (scale<=1){ scale=1; tx=0; ty=0; }
     img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
   }
@@ -310,7 +292,6 @@ function openZoomOverlay(src){
   if (!ov || !img) return;
   img.src = src; ov.classList.add('show');
 
-  // жесты для оверлея — независимые
   let scale=1, startScale=1, startDist=0, tx=0, ty=0, dragging=false, lastX=0, lastY=0, lastTap=0;
 
   function apply(){ img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; }
