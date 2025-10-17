@@ -131,6 +131,23 @@ document.addEventListener('click', (e)=>{
   location.hash = '#/notifications';
 });
 
+/* ---------- Фикс-хедер товара: универсальное скрытие вне карточки ---------- */
+function hideProductHeader(){
+  const stat = document.querySelector('.app-header');
+  const fix  = document.getElementById('productFixHdr');
+  if (fix){
+    fix.classList.remove('show');
+    fix.setAttribute('aria-hidden','true');
+  }
+  if (stat){
+    stat.classList.remove('hidden');
+  }
+  if (window._productFixHdrHandler){
+    window.removeEventListener('scroll', window._productFixHdrHandler, { passive:true });
+    window._productFixHdrHandler = null;
+  }
+}
+
 /* ---------- Роутер ---------- */
 function router(){
   const path=(location.hash||'#/').slice(1);
@@ -150,6 +167,9 @@ function router(){
   };
 
   setTabbarMenu(map[clean] || 'home');
+
+  // Сначала скрываем фикс-хедер везде, затем карточка сама его активирует
+  hideProductHeader();
 
   if (parts.length===0) return renderHome(router);
   const m1=match('category/:slug'); if (m1) return renderCategory(m1);

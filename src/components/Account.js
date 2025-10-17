@@ -6,6 +6,7 @@ export function renderAccount(){
   v.innerHTML = `
     <section class="section">
       <div class="section-title">Личный кабинет</div>
+
       <div class="account-card">
         <div class="avatar">${(u?.first_name||'Г')[0]}</div>
         <div class="info">

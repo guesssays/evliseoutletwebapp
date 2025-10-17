@@ -207,7 +207,7 @@ export function renderProduct({id}){
       fix.setAttribute('aria-hidden', String(!showFix));
     };
 
-    // повесили/сняли при уходе со страницы
+    // снять предыдущий хендлер, затем поставить
     if (window._productFixHdrHandler){
       window.removeEventListener('scroll', window._productFixHdrHandler, { passive:true });
     }
@@ -215,11 +215,15 @@ export function renderProduct({id}){
     window.addEventListener('scroll', onScroll, { passive:true });
     onScroll();
 
+    // подстраховка: при уходе со страницы скрыть фикс-хедер и снять хендлер
     if (!window._productFixHdrUnload){
       window.addEventListener('hashchange', ()=>{
         fix.classList.remove('show'); fix.setAttribute('aria-hidden','true');
         stat.classList.remove('hidden');
-        window.removeEventListener('scroll', onScroll, { passive:true });
+        if (window._productFixHdrHandler){
+          window.removeEventListener('scroll', window._productFixHdrHandler, { passive:true });
+          window._productFixHdrHandler = null;
+        }
       });
       window._productFixHdrUnload = true;
     }

@@ -263,6 +263,45 @@ body{
 .toast-wrap{ position:fixed; top:var(--toastTop); right:16px; display:grid; gap:8px; z-index:70 }
 .toast{ background:#121111; color:#fff; padding:10px 12px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.2); transition:opacity .25s ease }
 
+/* ===== ПРОФИЛЬ / АККАУНТ ===== */
+.account-card{
+  margin:10px 18px 16px;
+  display:flex; align-items:center; gap:12px;
+  padding:12px; border:1px solid var(--stroke); border-radius:16px; background:#fff;
+}
+.avatar{
+  width:56px; height:56px; border-radius:999px;
+  display:grid; place-items:center;
+  background:#121111; color:#fff; font-weight:800; font-size:20px;
+}
+.account-card .info .name{ font-weight:800; font-size:18px; }
+.account-card .info .muted{ color:var(--muted); font-size:14px; margin-top:2px; }
+
+.menu{
+  display:grid; gap:8px; margin:0 18px 18px;
+}
+.menu-item{
+  display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:12px;
+  padding:12px; border:1px solid var(--stroke); border-radius:14px; background:#fff;
+  text-decoration:none; color:inherit;
+}
+.menu-item i{ width:22px; height:22px; }
+.menu-item .chev{ opacity:.7; }
+
+.addr-list{ display:grid; gap:10px; margin:0 18px 12px; }
+.addr{
+  display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:center;
+  padding:12px; border:1px solid var(--stroke); border-radius:14px; background:#fff;
+}
+.addr input[type="radio"]{ width:18px; height:18px; accent-color:#121111; }
+.addr-title{ font-weight:800; }
+.addr-sub{ color:var(--muted); font-size:14px; margin-top:2px; }
+
+.addr-actions{
+  display:flex; gap:8px; justify-content:flex-start; align-items:center;
+  margin:0 18px 18px;
+}
+
 /* ===== АДАПТИВ ===== */
 @media (max-width: 380px){
   .grid{ grid-template-columns:1fr; }
