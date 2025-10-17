@@ -104,7 +104,7 @@ window.setTabbarCTAs = setTabbarCTAs;
 })();
 
 /* ---------- Поиск ---------- */
-el('#searchInput').addEventListener('input', (e)=>{
+el('#searchInput')?.addEventListener('input', (e)=>{
   state.filters.query = e.target.value;
   renderHome(router);
 });
