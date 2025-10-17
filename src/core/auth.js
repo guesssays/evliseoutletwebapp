@@ -8,7 +8,7 @@ const ADMIN_IDS = [
   5422089180,
 ];
 
-// Telegram username админов БЕЗ @ и В КАВЫЧКАХ
+// Telegram username админов БЕЗ @ и в кавычках
 const ADMIN_USERNAMES = [
   'dcoredanil',
 ];
@@ -72,3 +72,25 @@ export function logoutAdmin(){
   window.dispatchEvent(new CustomEvent('auth:updated'));
 }
 
+/**
+ * Авто-разблокировка по start_param из Telegram mini app:
+ * deep link вида t.me/<bot>?startapp=admin
+ * ВНИМАНИЕ: это клиентская логика, для продакшена проверяйте подпись initData на сервере.
+ * Возвращает true, если разблокировка произошла.
+ */
+export function tryUnlockFromStartParam(){
+  try{
+    const sp = String(window?.Telegram?.WebApp?.initDataUnsafe?.start_param || '').trim().toLowerCase();
+
+    // Можно отключить автро-разблокировку, если не нужна:
+    const ALLOW_AUTO_UNLOCK = true;
+    if (!ALLOW_AUTO_UNLOCK) return false;
+
+    if (sp === 'admin'){
+      return unlockAdminWithPasscode(PASSCODE);
+    }
+    return false;
+  }catch{
+    return false;
+  }
+}
