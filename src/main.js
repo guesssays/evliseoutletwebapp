@@ -135,16 +135,19 @@ document.addEventListener('click', (e)=>{
 function hideProductHeader(){
   const stat = document.querySelector('.app-header');
   const fix  = document.getElementById('productFixHdr');
+
+  // снять любые предыдущие обработчики через AbortController
+  if (window._productHdrAbort){
+    try{ window._productHdrAbort.abort(); }catch{}
+    window._productHdrAbort = null;
+  }
+
   if (fix){
     fix.classList.remove('show');
     fix.setAttribute('aria-hidden','true');
   }
   if (stat){
     stat.classList.remove('hidden');
-  }
-  if (window._productFixHdrHandler){
-    window.removeEventListener('scroll', window._productFixHdrHandler, { passive:true });
-    window._productFixHdrHandler = null;
   }
 }
 
@@ -168,7 +171,8 @@ function router(){
 
   setTabbarMenu(map[clean] || 'home');
 
-  // Сначала скрываем фикс-хедер везде, затем карточка сама его активирует
+  // Сначала скрываем/обнуляем фикс-хедер и обработчики везде,
+  // затем карточка товара сама заново инициализирует своё состояние
   hideProductHeader();
 
   if (parts.length===0) return renderHome(router);

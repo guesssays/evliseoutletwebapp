@@ -181,23 +181,30 @@ export function renderProduct({id}){
     const btnFav  = document.getElementById('btnFixFav');
     if (!stat || !fix || !btnBack || !btnFav) return;
 
-    // исходное состояние: статичный виден, фикс спрятан
+    // 1) Сначала убиваем все старые обработчики фикс-хедера (если были)
+    if (window._productHdrAbort){
+      try{ window._productHdrAbort.abort(); }catch{}
+    }
+    const ctrl = new AbortController();
+    window._productHdrAbort = ctrl;
+
+    // 2) Исходное состояние
     stat.classList.remove('hidden');
     fix.classList.remove('show');
     fix.setAttribute('aria-hidden','true');
 
-    // кнопки фикс-хедера
-    btnBack.onclick = ()=> history.back();
+    // 3) Кнопки фикс-хедера
+    btnBack.addEventListener('click', ()=> history.back(), { signal: ctrl.signal });
     setFixFavActive(isFav);
-    btnFav.onclick = ()=>{
+    btnFav.addEventListener('click', ()=>{
       const active = !btnFav.classList.contains('active');
       setFixFavActive(active);
       // синхронизируем «геро»-кнопку
       const now = favBtn.classList.contains('active');
       if (now !== active) favBtn.click();
-    };
+    }, { signal: ctrl.signal });
 
-    // скролл-порог
+    // 4) Скролл-порог и обработчик (всегда вешаем заново)
     const THRESHOLD = 24;
     const onScroll = ()=>{
       const sc = window.scrollY || document.documentElement.scrollTop || 0;
@@ -206,27 +213,20 @@ export function renderProduct({id}){
       fix.classList.toggle('show', showFix);
       fix.setAttribute('aria-hidden', String(!showFix));
     };
-
-    // снять предыдущий хендлер, затем поставить
-    if (window._productFixHdrHandler){
-      window.removeEventListener('scroll', window._productFixHdrHandler, { passive:true });
-    }
-    window._productFixHdrHandler = onScroll;
-    window.addEventListener('scroll', onScroll, { passive:true });
+    window.addEventListener('scroll', onScroll, { passive:true, signal: ctrl.signal });
+    // первичная проверка
     onScroll();
 
-    // подстраховка: при уходе со страницы скрыть фикс-хедер и снять хендлер
-    if (!window._productFixHdrUnload){
-      window.addEventListener('hashchange', ()=>{
-        fix.classList.remove('show'); fix.setAttribute('aria-hidden','true');
-        stat.classList.remove('hidden');
-        if (window._productFixHdrHandler){
-          window.removeEventListener('scroll', window._productFixHdrHandler, { passive:true });
-          window._productFixHdrHandler = null;
-        }
-      });
-      window._productFixHdrUnload = true;
-    }
+    // 5) На любой уход со страницы — скрыть и зачистить (hashchange, popstate, beforeunload)
+    const cleanup = ()=>{
+      fix.classList.remove('show'); fix.setAttribute('aria-hidden','true');
+      stat.classList.remove('hidden');
+      try{ ctrl.abort(); }catch{}
+      if (window._productHdrAbort === ctrl) window._productHdrAbort = null;
+    };
+    window.addEventListener('hashchange', cleanup, { signal: ctrl.signal });
+    window.addEventListener('popstate',  cleanup, { signal: ctrl.signal });
+    window.addEventListener('beforeunload', cleanup, { signal: ctrl.signal });
   }
 
   function setFixFavActive(active){
