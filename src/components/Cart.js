@@ -4,14 +4,20 @@ import { toast } from '../core/toast.js';
 
 export function renderCart(){
   const v=document.getElementById('view');
-  const items = state.cart.items.map(it=>({...it, product: state.products.find(p=>String(p.id)===String(it.productId))})).filter(x=>x.product);
+  const items = state.cart.items
+    .map(it=>({...it, product: state.products.find(p=>String(p.id)===String(it.productId))}))
+    .filter(x=>x.product);
+
+  // таббар: по умолчанию поставим меню, ниже — переключим на CTA если есть товары
+  window.setTabbarMenu('cart');
+
   if (!items.length){
     v.innerHTML = `<div class="section-title">Корзина</div>
       <section class="checkout"><div class="cart-sub">Корзина пуста</div></section>`;
     return;
   }
-  const total = items.reduce((s,x)=> s + x.qty * x.product.price, 0);
 
+  const total = items.reduce((s,x)=> s + x.qty * x.product.price, 0);
   const ad = state.addresses.list.find(a=>a.id===state.addresses.defaultId) || null;
 
   v.innerHTML = `<div class="section-title">Оформление</div>
@@ -47,22 +53,27 @@ export function renderCart(){
       <div class="payrow"><span>Доставка</span><b>${priceFmt(0)}</b></div>
       <div class="payrow"><span>Скидка</span><b>${priceFmt(0)}</b></div>
     </div>
-  </section>
-  <div class="paybtn"><button id="payBtn" class="btn">Оформить заказ</button></div>`;
+  </section>`;
   window.lucide?.createIcons && lucide.createIcons();
 
+  // события +/-
   document.querySelectorAll('.cart-row').forEach(row=>{
     const id=Number(row.getAttribute('data-id'));
     const size=row.getAttribute('data-size')||null; const color=row.getAttribute('data-color')||null;
     row.querySelector('.inc').onclick=()=> changeQty(id,size,color, +1);
     row.querySelector('.dec').onclick=()=> changeQty(id,size,color, -1);
   });
-  document.getElementById('payBtn').onclick=()=> checkout(items, ad);
+
+  // переключаем нижний бар на CTA «Оформить заказ»
+  window.setTabbarCTA(`<span>Оформить заказ</span>`);
+  document.getElementById('ctaBtn').onclick = ()=> checkout(items, ad);
 }
 
 function changeQty(productId,size,color,delta){
   const it = state.cart.items.find(a=>a.productId===productId && a.size===size && a.color===color);
-  if (!it) return; it.qty += delta; if (it.qty<=0) remove(productId,size,color);
+  if (!it) return;
+  it.qty += delta;
+  if (it.qty<=0) remove(productId,size,color);
   persistCart(); updateCartBadge(); renderCart();
 }
 function remove(productId,size,color){

@@ -16,7 +16,47 @@ import { renderNotifications } from './components/Notifications.js';
 
 loadCart(); loadAddresses(); updateCartBadge(); initTelegramChrome();
 
-/* ---------- Telegram авторизация (без UI в шапке) ---------- */
+/* ---------- helpers для динамического таббара ---------- */
+function mountIcons(){ window.lucide?.createIcons && lucide.createIcons(); }
+
+function setTabbarMenu(activeKey = 'home'){
+  const inner = document.querySelector('.tabbar .tabbar-inner');
+  if (!inner) return;
+  inner.innerHTML = `
+    <a href="#/" data-tab="home" class="tab ${activeKey==='home'?'active':''}" role="tab" aria-selected="${activeKey==='home'}">
+      <i data-lucide="home"></i><span>Главная</span>
+    </a>
+    <a href="#/favorites" data-tab="saved" class="tab ${activeKey==='saved'?'active':''}" role="tab" aria-selected="${activeKey==='saved'}">
+      <i data-lucide="heart"></i><span>Избранное</span>
+    </a>
+    <a href="#/cart" data-tab="cart" class="tab badge-wrap ${activeKey==='cart'?'active':''}" role="tab" aria-selected="${activeKey==='cart'}">
+      <i data-lucide="shopping-bag"></i><span>Корзина</span>
+      <b id="cartBadge" class="badge">0</b>
+    </a>
+    <a href="#/account" data-tab="account" class="tab ${activeKey==='account'?'active':''}" role="tab" aria-selected="${activeKey==='account'}">
+      <i data-lucide="user-round"></i><span>Аккаунт</span>
+    </a>
+  `;
+  mountIcons();
+  updateCartBadge(); // бэйдж перерисовали — обновим
+}
+
+function setTabbarCTA(html){
+  const inner = document.querySelector('.tabbar .tabbar-inner');
+  if (!inner) return;
+  inner.innerHTML = `
+    <button id="ctaBtn" class="btn" style="width:100%;">
+      ${html}
+    </button>
+  `;
+  mountIcons();
+}
+
+// делаем доступным из компонентов
+window.setTabbarMenu = setTabbarMenu;
+window.setTabbarCTA  = setTabbarCTA;
+
+/* ---------- Telegram авторизация ---------- */
 (function initTelegram(){
   const tg = window.Telegram?.WebApp;
   if (tg?.initDataUnsafe?.user){
@@ -43,17 +83,13 @@ function seedNotificationsOnce(){
     localStorage.setItem(NOTIF_KEY, JSON.stringify(seed));
   }catch{}
 }
-function getNotifications(){
-  try{ return JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]'); }catch{ return []; }
-}
-function setNotifications(list){
-  localStorage.setItem(NOTIF_KEY, JSON.stringify(list));
-}
+function getNotifications(){ try{ return JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]'); }catch{ return []; } }
+function setNotifications(list){ localStorage.setItem(NOTIF_KEY, JSON.stringify(list)); }
 function updateNotifBadge(){
   const unread = getNotifications().filter(n=>!n.read).length;
   const b = document.getElementById('notifBadge');
   if (!b) return;
-  if (unread>0){ b.textContent = unread; b.hidden = false; } else { b.hidden = true; }
+  if (unread>0){ b.textContent = String(unread); b.hidden = false; } else { b.hidden = true; }
 }
 
 /* Клик по колокольчику в шапке */
@@ -63,17 +99,15 @@ document.addEventListener('click', (e)=>{
   location.hash = '#/notifications';
 });
 
-/* ---------- Роутер (без отдельной страницы поиска) ---------- */
+/* ---------- Роутер ---------- */
 function router(){
   const path=(location.hash||'#/').slice(1);
-  document.querySelectorAll('.tabbar .tab').forEach(t=> t.classList.remove('active'));
-
-  // какие пути подсвечивают таббар
-  const map = { '':'home','/':'home','/favorites':'saved','/cart':'cart','/account':'account','/orders':'account' };
   const clean = path.replace(/#.*/,'');
-  if (map[clean]) document.querySelector(`.tabbar .tab[data-tab="${map[clean]}"]`)?.classList.add('active');
-
   const parts = path.split('/').filter(Boolean);
+
+  // карта для подсветки табов (меню)
+  const map = { '':'home','/':'home','/favorites':'saved','/cart':'cart','/account':'account','/orders':'account' };
+
   const match = (pattern)=>{
     const p=pattern.split('/').filter(Boolean); if(p.length!==parts.length) return null;
     const params={};
@@ -84,13 +118,16 @@ function router(){
     return params;
   };
 
+  // по умолчанию — меню-таббар
+  setTabbarMenu(map[clean] || 'home');
+
   if (parts.length===0) return renderHome(router);
   const m1=match('category/:slug'); if (m1) return renderCategory(m1);
-  const m2=match('product/:id');   if (m2) return renderProduct(m2);
+  const m2=match('product/:id');   if (m2) return renderProduct(m2);     // сам компонент переключит таббар на CTA
   const m3=match('track/:id');     if (m3) return renderTrack(m3);
 
   if (match('favorites'))          return renderFavorites();
-  if (match('cart'))               return renderCart();
+  if (match('cart'))               return renderCart();                   // сам компонент переключит таббар на CTA
   if (match('orders'))             return renderOrders();
 
   if (match('account'))            return renderAccount();
@@ -115,9 +152,8 @@ async function init(){
   router();
 
   window.addEventListener('hashchange', router);
-  window.lucide?.createIcons && lucide.createIcons();
+  mountIcons();
 
-  // уведомления
   seedNotificationsOnce();
   updateNotifBadge();
 }
@@ -126,5 +162,5 @@ init();
 /* ---------- Фильтры ---------- */
 document.getElementById('openFilters').onclick=()=> openFilterModal(router);
 
-/* Экспорт если где-то понадобится */
-export { updateNotifBadge, getNotifications, setNotifications };
+// экспорт если понадобится
+export { updateNotifBadge, getNotifications, setNotifications, setTabbarMenu, setTabbarCTA };

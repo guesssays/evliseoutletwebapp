@@ -306,3 +306,27 @@ body{
   .tabbar-inner{ height:72px; }
   .tab{ height:50px; }
 }
+/* === CTA-режим таббара === */
+/* кнопка уже тянется на 100% через inline-style; оставим базовую высоту контейнера */
+.tabbar .btn { height:64px; }
+
+/* === Overlay для просмотра фото === */
+.zoom-overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.85);
+  display:none; z-index:1000;
+}
+.zoom-overlay.show{ display:block; }
+.zoom-stage{
+  position:absolute; inset:0; display:grid; place-items:center;
+}
+#zoomImg{
+  max-width:96vw; max-height:92vh; will-change:transform;
+  touch-action:none; /* чтобы жесты работали предсказуемо */
+}
+.zoom-close{
+  position:absolute; right:14px; top:14px;
+  width:44px; height:44px; border:none; border-radius:12px;
+  display:grid; place-items:center; background:#fff; color:#121111;
+  box-shadow:0 8px 24px rgba(0,0,0,.2); cursor:pointer;
+}
+.zoom-close i{ width:22px; height:22px }
