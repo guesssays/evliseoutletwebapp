@@ -29,7 +29,10 @@ body{
   padding:14px 18px 10px;
   display:flex; justify-content:space-between; align-items:center; gap:10px;
   border-bottom:1px solid var(--stroke);
+  transition: padding .22s ease, background-color .22s ease, backdrop-filter .22s ease, box-shadow .22s ease;
 }
+.hdr-left{ display:flex; align-items:center; gap:10px; }
+.hdr-right{ display:flex; align-items:center; gap:10px; }
 .brand{ display:flex; align-items:center; gap:10px; }
 .app-title{ font-weight:800; font-size:22px; letter-spacing:.8px; text-transform:uppercase; }
 
@@ -42,27 +45,43 @@ body{
 .notif-btn{ position:relative; }
 .notif-btn .lucide{ width:22px; height:22px; }
 
-#notifBadge.badge{
-  position:absolute; right:-6px; top:-6px;
-  background:#ff5966; color:#fff;
-  font-size:11px; line-height:1;
-  border-radius:999px; padding:3px 6px;
-  box-shadow:0 2px 10px rgba(0,0,0,.18);
+/* плавное исчезновение бренда и колокольчика при морфинге */
+.app-header .brand,
+.app-header .notif-btn{
+  transition: opacity .18s ease, transform .18s ease;
 }
 
-.pill{
-  display:inline-flex; gap:8px; align-items:center;
-  border-radius:999px; border:1px solid var(--stroke);
-  padding:10px 14px; font-weight:700; background:#fff;
-  text-decoration:none; color:var(--text);
-  white-space:nowrap;
+/* КНОПКИ ХЕДЕРА (прозрачные, без подложки) */
+.hdr-circ{
+  display:grid; place-items:center;
+  width:44px; height:44px; border-radius:999px;
+  background:transparent; border:none; box-shadow:none;
+  color:var(--text); cursor:pointer;
+  opacity:0; transform:translateY(-6px); pointer-events:none;
+  transition: opacity .18s ease, transform .18s ease;
 }
-.pill.small{ padding:8px 12px }
-.pill.primary{ background:#121111; color:#fff; border-color:#121111 }
-.pill i{ width:18px; height:18px }
-.pill:link, .pill:visited{ text-decoration:none; color:var(--text); }
-.pill:hover{ background:#f8f8f8; }
-.pill:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
+.hdr-circ i{ width:22px; height:22px }
+.hdr-circ:active{ transform:translateY(-5px) scale(0.98); }
+
+/* активное состояние «сердца» */
+.hdr-circ.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none }
+
+/* компакт-режим хедера на карточке товара */
+.app-header.is-product-compact{
+  padding:10px 18px 8px;
+  background:rgba(255,255,255,.96);
+  backdrop-filter:saturate(1.2) blur(10px);
+  box-shadow:0 6px 20px rgba(0,0,0,.06);
+}
+.app-header.is-product-compact .brand,
+.app-header.is-product-compact .notif-btn{
+  opacity:0; transform:translateY(-6px); pointer-events:none;
+}
+/* показать back слева и fav справа */
+.app-header.is-product-compact #hdrBack,
+.app-header.is-product-compact #hdrFav{
+  opacity:1; transform:translateY(0); pointer-events:auto;
+}
 
 /* ===== ПОИСК/ФИЛЬТРЫ/ЧИПЫ ===== */
 .section{ padding:0 18px; margin:10px 0 }
@@ -326,55 +345,4 @@ body{
 @media (max-width:380px){
   .tabbar-inner.is-cta{ height:68px; padding:8px; }
   .tabbar-inner.is-cta .btn{ height:44px !important; font-size:14px !important; }
-}
-/* === Morphing header on product === */
-.app-header {
-  transition: padding .22s ease, background-color .22s ease, backdrop-filter .22s ease, box-shadow .22s ease;
-}
-
-/* справа в хедере — контейнер для колокольчика и продуктовых кнопок */
-.hdr-right{ display:flex; align-items:center; gap:10px; }
-
-/* плавное исчезновение бренда/уведомлений */
-.app-header .brand,
-.app-header .notif-btn{
-  transition: opacity .18s ease, transform .18s ease;
-}
-
-/* круглые кнопки «назад/сердце» */
-.prd-ctrls{
-  display:flex; gap:10px; align-items:center;
-  opacity:0; pointer-events:none; transform:translateY(-4px);
-  transition: opacity .18s ease, transform .18s ease;
-}
-.hdr-circ{
-  display:grid; place-items:center;
-  width:44px; height:44px; border-radius:999px;
-  background:#fff; border:1px solid var(--stroke); box-shadow:var(--shadow);
-  color:var(--text);
-}
-.hdr-circ i{ width:22px; height:22px }
-
-/* активное состояние «сердца» */
-.hdr-circ.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none }
-
-/* когда шапка в «продуктовом» компакт-режиме */
-.app-header.is-product-compact{
-  padding:10px 18px 8px;
-  background:rgba(255,255,255,.96);
-  backdrop-filter:saturate(1.2) blur(10px);
-  box-shadow:0 6px 20px rgba(0,0,0,.06);
-}
-.app-header.is-product-compact .brand,
-.app-header.is-product-compact .notif-btn{
-  opacity:0; transform:translateY(-6px); pointer-events:none;
-}
-.app-header.is-product-compact .prd-ctrls{
-  opacity:1; transform:translateY(0); pointer-events:auto;
-}
-
-/* чуть меньше на сверх-узких */
-@media (max-width:380px){
-  .hdr-circ{ width:40px; height:40px; }
-  .hdr-circ i{ width:20px; height:20px }
 }

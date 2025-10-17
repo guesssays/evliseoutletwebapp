@@ -114,7 +114,7 @@ export function renderProduct({id}){
     localStorage.setItem('nas_fav', JSON.stringify(list));
     favBtn.classList.toggle('active', nowFav);
     favBtn.setAttribute('aria-pressed', String(nowFav));
-    // синхронизируем кнопку в хедере, если есть
+    // синхронизируем кнопку в хедере
     syncHeaderFav(nowFav);
   };
 
@@ -190,14 +190,14 @@ export function renderProduct({id}){
   }
 
   /* --------- MORPHING HEADER (скролл -> компакт с back/fav) --------- */
-  setupProductHeaderMorph({ isFav: !!isFav, onFavToggle: (active)=> {
-    // чтобы состояние оставалось единым, переключаем «геро»-кнопку
-    if (favBtn) {
-      // если состояние уже совпадает — ничего не делаем
+  setupProductHeaderMorph({
+    isFav: !!isFav,
+    onFavToggle: (active)=> {
+      // чтобы состояние оставалось единым, переключаем «геро»-кнопку при расхождении
       const now = favBtn.classList.contains('active');
       if (now !== active) favBtn.click();
     }
-  }});
+  });
 }
 
 /* утилита экранирования */
@@ -349,76 +349,55 @@ function setupProductHeaderMorph({ isFav=false, onFavToggle } = {}){
   const header = document.querySelector('.app-header');
   if (!header) return;
 
-  // создаём контейнер с кнопками, если его нет
-  let prdCtrls = document.getElementById('prdHeaderCtrls');
-  if (!prdCtrls){
-    prdCtrls = document.createElement('div');
-    prdCtrls.id = 'prdHeaderCtrls';
-    prdCtrls.className = 'prd-ctrls';
-    prdCtrls.setAttribute('aria-hidden','true');
-
-    // кнопка Назад
-    const back = document.createElement('button');
+  // получить/создать кнопки в нужных местах
+  let back = document.getElementById('hdrBack');
+  if (!back){
+    back = document.createElement('button');
     back.id = 'hdrBack';
     back.className = 'hdr-circ';
     back.setAttribute('aria-label','Назад');
     back.innerHTML = `<i data-lucide="chevron-left"></i>`;
-    back.onclick = ()=> history.back();
+    header.querySelector('.hdr-left')?.prepend(back);
+  }
 
-    // кнопка Избранное
-    const fav = document.createElement('button');
+  let fav = document.getElementById('hdrFav');
+  if (!fav){
+    fav = document.createElement('button');
     fav.id = 'hdrFav';
     fav.className = 'hdr-circ';
     fav.setAttribute('aria-label','В избранное');
-    fav.setAttribute('aria-pressed', String(!!isFav));
-    if (isFav) fav.classList.add('active');
     fav.innerHTML = `<i data-lucide="heart"></i>`;
-    fav.onclick = ()=>{
-      const active = !fav.classList.contains('active');
-      fav.classList.toggle('active', active);
-      fav.setAttribute('aria-pressed', String(active));
-      try{ onFavToggle && onFavToggle(active); }catch(e){}
-    };
-
-    prdCtrls.appendChild(back);
-    prdCtrls.appendChild(fav);
-
-    // куда вставлять: предпочтительно рядом с колокольчиком, иначе в конец header
-    const notifBtn = document.getElementById('openNotifications');
-    if (notifBtn && notifBtn.parentElement === header){
-      header.appendChild(prdCtrls);
-    }else{
-      header.appendChild(prdCtrls);
-    }
-    window.lucide?.createIcons && lucide.createIcons();
+    header.querySelector('.hdr-right')?.appendChild(fav);
   }
 
-  // актуализируем состояние «сердца» в хедере при входе
-  const hdrFav = document.getElementById('hdrFav');
-  if (hdrFav){
-    hdrFav.classList.toggle('active', !!isFav);
-    hdrFav.setAttribute('aria-pressed', String(!!isFav));
-  }
+  // обработчики — навешиваются всегда
+  back.onclick = ()=> history.back();
 
-  // показать контролы (снимем aria-hidden → для доступности)
-  prdCtrls?.setAttribute('aria-hidden','false');
+  fav.classList.toggle('active', !!isFav);
+  fav.setAttribute('aria-pressed', String(!!isFav));
+  fav.onclick = ()=>{
+    const active = !fav.classList.contains('active');
+    fav.classList.toggle('active', active);
+    fav.setAttribute('aria-pressed', String(active));
+    try{ onFavToggle && onFavToggle(active); }catch(e){}
+  };
 
-  // обработчик скролла (лёгкий порог)
+  window.lucide?.createIcons && lucide.createIcons();
+
+  // скролл-порог морфинга
   const THRESHOLD = 24;
   const onScrollMorph = ()=>{
     const sc = window.scrollY || document.documentElement.scrollTop || 0;
     header.classList.toggle('is-product-compact', sc > THRESHOLD);
   };
 
-  // очистка предыдущего листенера, если был
   if (window._prdHeaderScrollHandler){
     window.removeEventListener('scroll', window._prdHeaderScrollHandler, {passive:true});
   }
   window._prdHeaderScrollHandler = onScrollMorph;
   window.addEventListener('scroll', onScrollMorph, {passive:true});
-  onScrollMorph(); // сразу привести к актуальному виду
+  onScrollMorph();
 
-  // при смене маршрута можно сбросить (если у тебя есть централизованный роутер — вынеси туда)
   if (!window._prdHeaderUnloadBound){
     window.addEventListener('hashchange', ()=>{
       header.classList.remove('is-product-compact');
@@ -426,15 +405,11 @@ function setupProductHeaderMorph({ isFav=false, onFavToggle } = {}){
     window._prdHeaderUnloadBound = true;
   }
 
-  // вспомогательная функция для внешней синхронизации «избранного»
-  function sync(active){
-    const f = document.getElementById('hdrFav');
-    if (!f) return;
-    f.classList.toggle('active', !!active);
-    f.setAttribute('aria-pressed', String(!!active));
-  }
-  // запомним на window, чтобы дергать из renderProduct -> favBtn.onclick
-  window._syncHeaderFav = sync;
+  // синхронизатор для внешних изменений избранного
+  window._syncHeaderFav = (active)=>{
+    fav.classList.toggle('active', !!active);
+    fav.setAttribute('aria-pressed', String(!!active));
+  };
 }
 
 function syncHeaderFav(active){
