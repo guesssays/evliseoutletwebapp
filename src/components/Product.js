@@ -78,7 +78,10 @@ export function renderProduct({id}){
 
   window.lucide?.createIcons && lucide.createIcons();
 
-  // опции (без количества)
+  // Требуется ли выбор размера
+  const needSize = Array.isArray(p.sizes) && p.sizes.length>0;
+
+  // выбранные опции (без количества)
   let size=null, color=(p.colors||[])[0]||null;
 
   const sizes=document.getElementById('sizes');
@@ -136,14 +139,25 @@ export function renderProduct({id}){
 
   /* -------- CTA в таббаре -------- */
   function showAddCTA(){
+    const needPick = needSize && !size;
     window.setTabbarCTA({
-      html: `<i data-lucide="shopping-bag"></i><span>Добавить в корзину&nbsp;|&nbsp;${priceFmt(p.price)}</span>`,
+      id: 'ctaAdd',
+      html: `<i data-lucide="shopping-bag"></i><span>${needPick ? 'Выберите размер' : 'Добавить в корзину&nbsp;|&nbsp;'+priceFmt(p.price)}</span>`,
       onClick(){
+        // блокируем добавление, если нужен размер, а он не выбран
+        if (needSize && !size){
+          document.getElementById('sizes')?.scrollIntoView({ behavior:'smooth', block:'center' });
+          return;
+        }
         addToCart(p, size, color, 1);
         showInCartCTAs();
       }
     });
+    // деактивируем кнопку до выбора размера
+    const btn = document.getElementById('ctaAdd');
+    if (btn) btn.disabled = needPick;
   }
+
   function showInCartCTAs(){
     window.setTabbarCTAs(
       {
@@ -156,7 +170,10 @@ export function renderProduct({id}){
       }
     );
   }
+
   function refreshCTAByState(){
+    // если требуется размер и он не выбран — всегда показываем заблокированный CTA
+    if (needSize && !size){ showAddCTA(); return; }
     if (isInCart(p.id, size||null, color||null)) showInCartCTAs(); else showAddCTA();
   }
   refreshCTAByState();
@@ -217,7 +234,7 @@ export function renderProduct({id}){
     // первичная проверка
     onScroll();
 
-    // 5) На любой уход со страницы — скрыть и зачистить (hashchange, popstate, beforeunload)
+    // 5) На любой уход со страницы — скрыть и зачистить
     const cleanup = ()=>{
       fix.classList.remove('show'); fix.setAttribute('aria-hidden','true');
       stat.classList.remove('hidden');

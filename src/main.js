@@ -14,6 +14,12 @@ import { renderAccount, renderAddresses, renderSettings } from './components/Acc
 import { renderFAQ } from './components/FAQ.js';
 import { renderNotifications } from './components/Notifications.js';
 
+// Админка
+import { renderAdmin } from './components/Admin.js';
+import { renderAdminLogin } from './components/AdminLogin.js';
+import { getOrders } from './core/orders.js';
+import { canAccessAdmin } from './core/auth.js';
+
 loadCart(); loadAddresses(); updateCartBadge(); initTelegramChrome();
 
 /* ---------- helpers для таббара ---------- */
@@ -136,7 +142,6 @@ function hideProductHeader(){
   const stat = document.querySelector('.app-header');
   const fix  = document.getElementById('productFixHdr');
 
-  // снять любые предыдущие обработчики через AbortController
   if (window._productHdrAbort){
     try{ window._productHdrAbort.abort(); }catch{}
     window._productHdrAbort = null;
@@ -171,8 +176,7 @@ function router(){
 
   setTabbarMenu(map[clean] || 'home');
 
-  // Сначала скрываем/обнуляем фикс-хедер и обработчики везде,
-  // затем карточка товара сама заново инициализирует своё состояние
+  // Сбросить фикс-хедер товара при смене экрана
   hideProductHeader();
 
   if (parts.length===0) return renderHome(router);
@@ -190,6 +194,20 @@ function router(){
 
   if (match('notifications'))      return renderNotifications(updateNotifBadge);
 
+  // ======= Admin login / guard =======
+  if (match('admin-login'))        return renderAdminLogin();
+
+  if (match('admin')){
+    if (!canAccessAdmin()){
+      // редиректим на форму логина
+      toast('Доступ в админ-панель ограничен');
+      location.hash = '#/admin-login';
+      return;
+    }
+    return renderAdmin();
+  }
+  // ===================================
+
   if (match('faq'))                return renderFAQ();
 
   renderHome(router);
@@ -201,6 +219,9 @@ async function init(){
   state.products   = data.products;
   state.categories = data.categories.map(c=>({ ...c, name: c.name }));
 
+  // Заказы (общая синхронизация с localStorage)
+  state.orders = getOrders();
+
   // САНИТИЗАЦИЯ КОРЗИНЫ
   pruneCartAgainstProducts(state.products);
   updateCartBadge();
@@ -210,6 +231,12 @@ async function init(){
   router();
 
   window.addEventListener('hashchange', router);
+  window.addEventListener('orders:updated', ()=>{
+    state.orders = getOrders();
+    router();
+  });
+  window.addEventListener('force:rerender', router);
+
   window.lucide && lucide.createIcons?.();
 
   seedNotificationsOnce();
