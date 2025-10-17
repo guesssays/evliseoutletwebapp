@@ -114,8 +114,8 @@ export function renderProduct({id}){
     localStorage.setItem('nas_fav', JSON.stringify(list));
     favBtn.classList.toggle('active', nowFav);
     favBtn.setAttribute('aria-pressed', String(nowFav));
-    // синхронизируем кнопку в хедере
-    syncHeaderFav(nowFav);
+    // синхронизируем фикс-хедер
+    setFixFavActive(nowFav);
   };
 
   // Галерея: миниатюры -> главное фото
@@ -134,7 +134,7 @@ export function renderProduct({id}){
     });
   }
 
-  /* -------- ДИНАМИЧЕСКИЙ CTA в таббаре -------- */
+  /* -------- CTA в таббаре -------- */
   function showAddCTA(){
     window.setTabbarCTA({
       html: `<i data-lucide="shopping-bag"></i><span>Добавить в корзину&nbsp;|&nbsp;${priceFmt(p.price)}</span>`,
@@ -161,38 +161,84 @@ export function renderProduct({id}){
   }
   refreshCTAByState();
 
-  /* -------- ЗУМ/ПАНОРАМИРОВАНИЕ -------- */
+  /* -------- Зум/панорамирование -------- */
   ensureZoomOverlay();
   initZoomableInPlace(mainImg);
   document.querySelectorAll('.real-photos img.zoomable').forEach(initZoomableInPlace);
-
   document.querySelectorAll('img.zoomable').forEach(img=>{
     img.addEventListener('click', ()=> openZoomOverlay(img.src));
   });
+  function resetZoom(){ if (!mainImg) return; mainImg.style.transform=''; mainImg.dataset.zoom='1'; }
 
-  function resetZoom(){
-    if (!mainImg) return;
-    mainImg.style.transform = '';
-    mainImg.dataset.zoom = '1';
-  }
+  /* -------- ДВА РАЗНЫХ ХЕДЕРА: показ/скрытие -------- */
+  setupTwoHeaders({ isFav });
 
-  /* --------- MORPHING HEADER (скролл -> компакт с back/fav) --------- */
-  setupProductHeaderMorph({
-    isFav: !!isFav,
-    onFavToggle: (active)=> {
-      // чтобы состояние оставалось единым, переключаем «геро»-кнопку при расхождении
+  /* ==== ВНУТРЕННЕЕ: управление двумя хедерами ==== */
+  function setupTwoHeaders({ isFav }){
+    const stat = document.querySelector('.app-header');
+    const fix  = document.getElementById('productFixHdr');
+    const btnBack = document.getElementById('btnFixBack');
+    const btnFav  = document.getElementById('btnFixFav');
+    if (!stat || !fix || !btnBack || !btnFav) return;
+
+    // исходное состояние: статичный виден, фикс спрятан
+    stat.classList.remove('hidden');
+    fix.classList.remove('show');
+    fix.setAttribute('aria-hidden','true');
+
+    // кнопки фикс-хедера
+    btnBack.onclick = ()=> history.back();
+    setFixFavActive(isFav);
+    btnFav.onclick = ()=>{
+      const active = !btnFav.classList.contains('active');
+      setFixFavActive(active);
+      // синхронизируем «геро»-кнопку
       const now = favBtn.classList.contains('active');
       if (now !== active) favBtn.click();
+    };
+
+    // скролл-порог
+    const THRESHOLD = 24;
+    const onScroll = ()=>{
+      const sc = window.scrollY || document.documentElement.scrollTop || 0;
+      const showFix = sc > THRESHOLD;
+      stat.classList.toggle('hidden', showFix);
+      fix.classList.toggle('show', showFix);
+      fix.setAttribute('aria-hidden', String(!showFix));
+    };
+
+    // повесили/сняли при уходе со страницы
+    if (window._productFixHdrHandler){
+      window.removeEventListener('scroll', window._productFixHdrHandler, { passive:true });
     }
-  });
+    window._productFixHdrHandler = onScroll;
+    window.addEventListener('scroll', onScroll, { passive:true });
+    onScroll();
+
+    if (!window._productFixHdrUnload){
+      window.addEventListener('hashchange', ()=>{
+        fix.classList.remove('show'); fix.setAttribute('aria-hidden','true');
+        stat.classList.remove('hidden');
+        window.removeEventListener('scroll', onScroll, { passive:true });
+      });
+      window._productFixHdrUnload = true;
+    }
+  }
+
+  function setFixFavActive(active){
+    const btnFav  = document.getElementById('btnFixFav');
+    if (!btnFav) return;
+    btnFav.classList.toggle('active', !!active);
+    btnFav.setAttribute('aria-pressed', String(!!active));
+  }
 }
 
-/* утилита экранирования */
+/* ==== вспомогалки ==== */
 function escapeHtml(s=''){
   return s.replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
-/* ===== ЗУМ ВНУТРИ БЛОКА (без фуллскрина) ===== */
+/* ===== ЗУМ ВНУТРИ БЛОКА ===== */
 function initZoomableInPlace(img){
   if (!img) return;
   let scale = 1, startDist = 0, startScale = 1, dragging=false, lastX=0, lastY=0, tx=0, ty=0, lastTap=0;
@@ -326,75 +372,4 @@ function openZoomOverlay(src){
   }
   close.onclick = closeOv;
   ov.onclick = (e)=>{ if(e.target===ov) closeOv(); };
-}
-
-/* ====== Хедер: морфинг в компактный режим на странице товара ====== */
-function setupProductHeaderMorph({ isFav=false, onFavToggle } = {}){
-  const header = document.querySelector('.app-header');
-  if (!header) return;
-
-  // получить/создать кнопки
-  let back = document.getElementById('hdrBack');
-  if (!back){
-    back = document.createElement('button');
-    back.id = 'hdrBack';
-    back.className = 'hdr-circ';
-    back.setAttribute('aria-label','Назад');
-    back.innerHTML = `<i data-lucide="chevron-left"></i>`;
-    header.querySelector('.hdr-left')?.prepend(back);
-  }
-
-  let fav = document.getElementById('hdrFav');
-  if (!fav){
-    fav = document.createElement('button');
-    fav.id = 'hdrFav';
-    fav.className = 'hdr-circ';
-    fav.setAttribute('aria-label','В избранное');
-    fav.innerHTML = `<i data-lucide="heart"></i>`;
-    header.querySelector('.hdr-right')?.appendChild(fav);
-  }
-
-  // обработчики
-  back.onclick = ()=> history.back();
-
-  fav.classList.toggle('active', !!isFav);
-  fav.setAttribute('aria-pressed', String(!!isFav));
-  fav.onclick = ()=>{
-    const active = !fav.classList.contains('active');
-    fav.classList.toggle('active', active);
-    fav.setAttribute('aria-pressed', String(active));
-    try{ onFavToggle && onFavToggle(active); }catch(e){}
-  };
-
-  window.lucide?.createIcons && lucide.createIcons();
-
-  // скролл-порог морфинга
-  const THRESHOLD = 24;
-  const onScrollMorph = ()=>{
-    const sc = window.scrollY || document.documentElement.scrollTop || 0;
-    header.classList.toggle('is-product-compact', sc > THRESHOLD);
-  };
-
-  if (window._prdHeaderScrollHandler){
-    window.removeEventListener('scroll', window._prdHeaderScrollHandler, {passive:true});
-  }
-  window._prdHeaderScrollHandler = onScrollMorph;
-  window.addEventListener('scroll', onScrollMorph, {passive:true});
-  onScrollMorph();
-
-  if (!window._prdHeaderUnloadBound){
-    window.addEventListener('hashchange', ()=>{
-      header.classList.remove('is-product-compact');
-    });
-    window._prdHeaderUnloadBound = true;
-  }
-
-  // синхронизатор для внешних изменений избранного
-  window._syncHeaderFav = (active)=>{
-    fav.classList.toggle('active', !!active);
-    fav.setAttribute('aria-pressed', String(!!active));
-  };
-}
-function syncHeaderFav(active){
-  try{ window._syncHeaderFav && window._syncHeaderFav(active); }catch(e){}
 }

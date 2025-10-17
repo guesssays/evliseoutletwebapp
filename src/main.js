@@ -16,7 +16,7 @@ import { renderNotifications } from './components/Notifications.js';
 
 loadCart(); loadAddresses(); updateCartBadge(); initTelegramChrome();
 
-/* ---------- helpers для динамического таббара ---------- */
+/* ---------- helpers для таббара ---------- */
 function mountIcons(){ window.lucide?.createIcons && lucide.createIcons(); }
 
 function killExternalCTA(){
@@ -135,8 +135,8 @@ document.addEventListener('click', (e)=>{
 function router(){
   const path=(location.hash||'#/').slice(1);
   const clean = path.replace(/#.*/,'');
-  const parts = path.split('/').filter(Boolean);
 
+  const parts = path.split('/').filter(Boolean);
   const map = { '':'home','/':'home','/favorites':'saved','/cart':'cart','/account':'account','/orders':'account' };
 
   const match = (pattern)=>{

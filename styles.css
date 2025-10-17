@@ -1,12 +1,11 @@
-/* === styles.css (полная актуальная версия) === */
-
-/* Палитра и базовые переменные */
+/* === styles.css (полная версия) === */
 :root{
   --c-01:#292526; --c-02:#787676; --c-03:#A3A1A2; --c-04:#F2F2F2; --c-05:#121111;
   --bg:#ffffff; --text:#121111; --muted:#787676; --paper:#ffffff; --stroke:#ececec;
   --radius:22px; --r-sm:14px; --shadow:0 8px 24px rgba(0,0,0,.08);
   --tabbar-h:92px;
   --safe: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
   --toastTop:16px;
 }
 
@@ -19,9 +18,9 @@ body{
   padding-bottom:calc(var(--tabbar-h) + var(--safe) + 24px);
 }
 
-.lucide, [data-lucide]{ stroke:currentColor; fill:none }
+.lucide,[data-lucide]{ stroke:currentColor; fill:none }
 
-/* ===== ШАПКА ===== */
+/* ===== СТАТИЧНЫЙ ХЕДЕР ===== */
 .app-header{
   position:sticky; top:0; z-index:30;
   backdrop-filter:saturate(1.2) blur(6px);
@@ -29,57 +28,48 @@ body{
   padding:14px 18px 10px;
   display:flex; justify-content:space-between; align-items:center; gap:10px;
   border-bottom:1px solid var(--stroke);
-  transition: padding .22s ease, background-color .22s ease, backdrop-filter .22s ease, box-shadow .22s ease;
+  transition: opacity .18s ease, transform .18s ease;
 }
-.hdr-left{ display:flex; align-items:center; gap:10px; }
-.hdr-right{ display:flex; align-items:center; gap:10px; }
+.app-header.hidden{ opacity:0; transform:translateY(-8px); pointer-events:none; }
+
+.hdr-left,.hdr-right{ display:flex; align-items:center; gap:10px; }
 .brand{ display:flex; align-items:center; gap:10px; }
 .app-title{ font-weight:800; font-size:22px; letter-spacing:.8px; text-transform:uppercase; }
 
-/* прозрачные круглые кнопки для хедера (появляются только на товаре) */
-.hdr-circ{
-  display:grid; place-items:center;
-  width:44px; height:44px; border-radius:999px;
-  background:#fff; border:1px solid var(--stroke); box-shadow:var(--shadow);
-  color:var(--text); cursor:pointer;
-  opacity:0; transform:translateY(-6px); pointer-events:none;
-  transition: opacity .18s ease, transform .18s ease;
-}
-.hdr-circ i{ width:22px; height:22px }
-.hdr-circ.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none }
-
-/* компакт-режим на странице товара */
-.app-header.is-product-compact{
-  padding:10px 18px 8px;
-  background:rgba(255,255,255,.96);
-  backdrop-filter:saturate(1.2) blur(10px);
-  box-shadow:0 6px 20px rgba(0,0,0,.06);
-}
-.app-header .brand,
-.app-header .notif-btn{ transition: opacity .18s ease, transform .18s ease; }
-.app-header.is-product-compact .brand,
-.app-header.is-product-compact .notif-btn{
-  opacity:0; transform:translateY(-6px); pointer-events:none;
-}
-.app-header.is-product-compact #hdrBack,
-.app-header.is-product-compact #hdrFav{
-  opacity:1; transform:translateY(0); pointer-events:auto;
-}
-
-/* стандартные квадратные кнопки (иконки, фильтры) */
-.icon-btn, .square-btn{
+/* Стандартные квадратные иконки (уведомления/фильтры) */
+.icon-btn,.square-btn{
   display:inline-grid; place-items:center;
   width:44px; height:44px; border-radius:14px;
   border:1px solid var(--stroke); background:#f6f6f6; color:var(--text);
   cursor:pointer;
 }
-.icon-btn i, .square-btn i{ width:22px;height:22px }
+.icon-btn i,.square-btn i{ width:22px;height:22px }
 .notif-btn{ position:relative; }
 #notifBadge.badge{
   position:absolute; right:-6px; top:-6px;
   background:#ff5966; color:#fff; font-size:11px; line-height:1;
   border-radius:999px; padding:3px 6px; box-shadow:0 2px 10px rgba(0,0,0,.18);
 }
+
+/* ===== ФИКС-ХЕДЕР ДЛЯ ТОВАРА ===== */
+.product-fixhdr{
+  position:fixed; left:0; right:0; top:calc(6px + var(--safe-top));
+  padding:0 12px; z-index:40; display:none; /* без фона! */
+  pointer-events:none; /* кликабельны только кнопки */
+}
+.product-fixhdr.show{ display:block; }
+.product-fixhdr .fixbtn{
+  pointer-events:auto;
+  width:48px; height:48px; border-radius:999px;
+  display:grid; place-items:center;
+  background:#fff; border:1px solid var(--stroke); box-shadow:var(--shadow);
+  color:var(--text); cursor:pointer;
+  position:absolute; top:0;
+}
+#btnFixBack{ left:12px; }
+#btnFixFav{ right:12px; }
+.product-fixhdr .fixbtn i{ width:22px; height:22px }
+#btnFixFav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none }
 
 /* ===== ПОИСК/ФИЛЬТРЫ/ЧИПЫ ===== */
 .section{ padding:0 18px; margin:10px 0 }
@@ -100,12 +90,11 @@ body{
 .chip i{ width:18px; height:18px }
 .chip-mini{ padding:8px 12px; font-size:13px }
 
-/* ===== ГЛАВНЫЙ КОНТЕНТ ===== */
+/* ===== КОНТЕНТ/КАРТОЧКИ ===== */
 .view{ padding:0 18px 24px }
 .grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px }
 .home-bottom-pad{ padding-bottom:calc(var(--tabbar-h) + var(--safe)); }
 
-/* Карточка списка */
 .card{ display:flex; flex-direction:column; text-decoration:none; color:inherit; background:#fff; border-radius:20px; overflow:hidden }
 .card-img{ position:relative; aspect-ratio:3/4; border-radius:22px; overflow:hidden }
 .card-img img{ width:100%; height:100%; object-fit:cover; display:block }
@@ -130,7 +119,7 @@ body{
 .gallery-main img{ width:100%; height:auto; display:block; }
 
 .p-hero{ position:relative; margin:0 18px; border-radius:24px; overflow:hidden }
-/* Круглые кнопки поверх фото (не в хедере) */
+/* Кнопки поверх геро-фото */
 .hero-btn{
   position:absolute; top:12px; width:48px; height:48px;
   border-radius:999px; display:grid; place-items:center;
@@ -151,7 +140,7 @@ body{
 .real-photo img{ width:100%; height:auto; display:block; }
 
 .p-body{ padding:16px 18px }
-/* страховка от прилипания к таббару */
+/* нижний отступ на странице товара, чтобы не залипало под таббар */
 .product .p-body.home-bottom-pad{ padding-bottom:calc(var(--tabbar-h) + var(--safe) + 8px); }
 
 .p-title{ font-size:34px; font-weight:800; line-height:1.15; margin:8px 0 6px }
@@ -172,11 +161,11 @@ body{
 
 .table-wrap{ overflow:auto; -webkit-overflow-scrolling:touch; margin-top:10px; border:1px solid var(--stroke); border-radius:16px }
 .size-table{ width:100%; border-collapse:separate; border-spacing:0 }
-.size-table th, .size-table td{ padding:10px 12px; white-space:nowrap; font-size:14px }
+.size-table th,.size-table td{ padding:10px 12px; white-space:nowrap; font-size:14px }
 .size-table thead th{ background:#f8f8f8; text-align:left; font-weight:800 }
 .size-table tbody tr:not(:last-child) td{ border-bottom:1px solid var(--stroke) }
 
-/* Кнопки */
+/* ===== КНОПКИ ===== */
 .btn{
   width:100%; height:64px; border:none; border-radius:999px;
   display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer;
@@ -260,7 +249,6 @@ body{
 }
 .dot{ display:none !important; }
 
-/* CTA-режим */
 .tabbar .btn { height:64px; }
 .tabbar-inner.is-cta{ justify-content:stretch; gap:10px; padding:8px; }
 
@@ -273,7 +261,7 @@ body{
 .modal-actions{ display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--stroke); justify-content:flex-end }
 
 .toast-wrap{ position:fixed; top:var(--toastTop); right:16px; display:grid; gap:8px; z-index:70 }
-.toast{ background:#121111; color:#fff; padding:10px 12px; border-radius:12px; box-shadow:var(--shadow); transition:opacity .25s ease }
+.toast{ background:#121111; color:#fff; padding:10px 12px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.2); transition:opacity .25s ease }
 
 /* ===== АДАПТИВ ===== */
 @media (max-width: 380px){
@@ -286,7 +274,7 @@ body{
   .tab{ height:50px; }
 }
 
-/* === Overlay === */
+/* === Overlay (zoom) === */
 .zoom-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; z-index:1000; }
 .zoom-overlay.show{ display:block; }
 .zoom-stage{ position:absolute; inset:0; display:grid; place-items:center; }

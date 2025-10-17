@@ -13,11 +13,9 @@
   </head>
   <body>
     <div id="app">
-      <!-- ШАПКА: бренд слева, уведомления справа.
-           Круглые #hdrBack / #hdrFav добавляются скриптом и показываются только на странице товара -->
+      <!-- Статичный хедер (всегда существует) -->
       <header class="app-header" role="banner">
         <div class="hdr-left">
-          <!-- сюда при необходимости вставится #hdrBack -->
           <div class="brand">
             <span class="app-title" aria-label="EVLISE OUTLET">EVLISE OUTLET</span>
           </div>
@@ -27,9 +25,14 @@
             <i data-lucide="bell"></i>
             <b id="notifBadge" class="badge" hidden>0</b>
           </button>
-          <!-- сюда при необходимости вставится #hdrFav -->
         </div>
       </header>
+
+      <!-- Фиксированный хедер для страницы товара (по умолчанию скрыт) -->
+      <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
+        <button id="btnFixBack" class="fixbtn" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
+        <button id="btnFixFav" class="fixbtn" aria-label="В избранное" aria-pressed="false"><i data-lucide="heart"></i></button>
+      </div>
 
       <!-- Поиск + фильтры -->
       <section class="section section-search">
