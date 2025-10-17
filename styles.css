@@ -388,135 +388,136 @@ body.admin-mode .tabbar .tabbar-inner a[data-tab="account"]{
   }
 }
 /* =========================
-   ADMIN UI — ADD/OVERRIDE
+   ADMIN UI — SCOPED STYLES
+   Никаких глобальных переопределений, только классы админки
    ========================= */
 
-/* Прячем клиентский UI в режиме админа */
-body.admin-mode .app-header,
-body.admin-mode .section-search,
-body.admin-mode #catChips,
-body.admin-mode #activeFilters{
-  display:none !important;
-}
-
-/* Прячем клиентские вкладки в таббаре (оставь свою админ-вкладку, если есть) */
-body.admin-mode .tabbar .tabbar-inner a[data-tab="home"],
-body.admin-mode .tabbar .tabbar-inner a[data-tab="saved"],
-body.admin-mode .tabbar .tabbar-inner a[data-tab="cart"],
-body.admin-mode .tabbar .tabbar-inner a[data-tab="account"]{
-  display:none !important;
-}
-
-/* Верхняя панель админки */
-.admin-topbar{
+/* Контейнеры тулбара/фильтров */
+.admin-toolbar{
   display:flex; align-items:center; justify-content:space-between;
-  gap:10px; padding:8px 18px 6px; margin:6px 0 0;
+  gap:12px; padding:10px 0 6px; margin:0 18px;
   border-bottom:1px solid var(--stroke);
 }
 .admin-title{ display:flex; align-items:center; gap:8px; font-weight:800; font-size:18px; }
 .admin-title i{ width:22px; height:22px; }
 
-/* Чипы фильтра в админке — горизонтальный скролл + плотность */
-.chipbar.scrollable{
-  display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;
-  padding:10px 0 6px;
+.admin-filters{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; padding:8px 18px 0;
+  flex-wrap:nowrap;
 }
-.chipbar.scrollable::-webkit-scrollbar{ display:none; }
 
-/* Список записей с нормальными отступами */
-.notes.notes-mobile{ margin:10px 18px 18px; display:grid; gap:10px; }
-.note.note-mobile{
+.admin-chips{
+  flex:1 1 auto; min-width:0;
+  display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;
+  padding-bottom:6px;
+}
+.admin-chips::-webkit-scrollbar{ display:none; }
+
+.admin-actions{ flex:0 0 auto; display:flex; gap:8px; }
+
+/* Кнопки в админке — размеры */
+.btn--sm{ height:44px; font-size:15px; padding:0 14px; border-radius:999px; }
+.btn--xs{ height:36px; font-size:13px; padding:0 12px; border-radius:999px; }
+.btn--primary{ background:#121111; color:#fff; border:1px solid #121111; }
+.btn--outline{ background:#fff; color:#121111; border:1px solid var(--stroke); }
+
+/* Список карточек (заказов) */
+.admin-list{
+  display:grid; gap:10px; margin:10px 18px 18px;
+}
+
+/* Карточка заказа */
+.order-card{
   display:grid;
-  grid-template-columns:28px 1fr 200px;
+  grid-template-columns:28px 1fr auto;
   gap:12px; align-items:start;
   padding:12px; border:1px solid var(--stroke); border-radius:14px; background:#fff;
 }
+.order-card__icon i{ width:22px; height:22px; opacity:.9; }
+.order-card__title{ font-weight:800; line-height:1.25; margin-bottom:6px; }
+.order-card__main{ min-width:0; } /* чтобы не расползалась */
+.ellipsis{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.break{ word-break:break-word; overflow-wrap:anywhere; }
 
-/* Левая колонка (иконка) */
-.note.note-mobile > i{ width:22px; height:22px; opacity:.9; }
+/* key-value список */
+.kv{ display:grid; gap:6px; }
+.kv__row{ display:grid; grid-template-columns:110px 1fr; gap:8px; align-items:start; }
+.kv__row dt{ color:var(--muted); font-size:13px; line-height:1.4; }
+.kv__row dd{ margin:0; font-size:14px; line-height:1.45; }
 
-/* Средняя колонка (контент) */
-.note.note-mobile .note-title{ font-weight:800; line-height:1.25; margin-bottom:6px; }
-.note.note-mobile .note-sub{ color:var(--muted); font-size:14px; line-height:1.45; }
-
-/* Правая колонка (статус/кнопки/селект) */
-.note .time.right-col{
-  min-width:0;
-  display:grid; gap:8px;
-  justify-items:end; align-content:start;
+/* Правая колонка действий */
+.order-card__actions{
+  display:grid; gap:8px; justify-items:end; align-content:start; min-width:200px;
 }
-
-/* Бейдж статуса (унифицированный размер) */
-.note .time.right-col .badge{
-  position:static;
-  display:inline-flex; align-items:center; justify-content:center;
+.order-card__actions .badge{
+  position:static; display:inline-flex; align-items:center; justify-content:center;
   height:26px; padding:0 10px; border-radius:999px; font-size:12px; font-weight:800; color:#fff;
   box-shadow:0 2px 10px rgba(0,0,0,.06);
 }
 
-/* Цвета статусов на всякий случай (если уберёшь inline-цвета) */
-.badge.--new{ background:#ff9f43; }
-.badge.--accept{ background:#34c759; }
-.badge.--done{ background:#5856d6; }
-.badge.--progress{ background:#1e90ff; }
-
-/* Кнопка «Принять заказ» — ужатая на десктопе */
-.adm-accept.pill{ padding:10px 14px; }
-
-/* Селект, стилизованный «под pill» (чтобы не ломал сетку) */
-select.pill{
+/* Селект под pill */
+.select-wrap{ position:relative; width:100%; }
+.select{
   appearance:none; -webkit-appearance:none; -moz-appearance:none;
-  height:40px; padding:0 36px 0 14px; border-radius:999px;
-  border:1px solid var(--stroke); background:#fff; font-weight:700; font-size:14px;
-  line-height:1; cursor:pointer; min-width:180px;
+  height:40px; padding:0 34px 0 12px; border-radius:999px;
+  border:1px solid var(--stroke); background:#fff; font-weight:700; font-size:14px; line-height:1;
+  cursor:pointer; width:100%;
   background-image:
     linear-gradient(45deg, transparent 50%, #999 50%),
     linear-gradient(135deg, #999 50%, transparent 50%);
-  background-position:
-    calc(100% - 16px) 50%, calc(100% - 10px) 50%;
-  background-size:6px 6px, 6px 6px;
-  background-repeat:no-repeat;
+  background-position: calc(100% - 16px) 50%, calc(100% - 10px) 50%;
+  background-size:6px 6px, 6px 6px; background-repeat:no-repeat;
 }
-select.pill:disabled{ opacity:.6; cursor:not-allowed; }
+.select:disabled{ opacity:.6; cursor:not-allowed; }
 
-/* Мобильные хелперы */
-.mobile-full{ width:100%; }
-.mini{ font-size:12px; }
+/* Пустое состояние */
+.empty{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:8px; padding:24px; border:1px dashed var(--stroke); border-radius:14px; background:#fff; color:var(--muted);
+}
+.empty i{ width:24px; height:24px; }
 
-/* ====== АДАПТИВ АДМИНКИ ====== */
+/* Ссылки */
+.link{ color:#121111; font-weight:700; text-decoration:underline; text-underline-offset:2px; }
 
-/* Узкие планшеты */
+/* ====== Модалка предпросмотра чека ====== */
+.receipt-view{
+  display:grid; gap:10px;
+}
+.receipt-img-wrap{
+  max-height:70vh; overflow:auto; -webkit-overflow-scrolling:touch;
+  border:1px solid var(--stroke); border-radius:12px; background:#f8f8f8;
+}
+.receipt-img{ display:block; width:100%; height:auto; }
+
+/* ====== АДАПТИВ ====== */
 @media (max-width: 920px){
-  .note.note-mobile{ grid-template-columns:28px 1fr 180px; }
+  .order-card{ grid-template-columns:28px 1fr 180px; }
+  .kv__row{ grid-template-columns:96px 1fr; }
 }
 
-/* Планшеты/широкие телефоны — переносим правую колонку вниз в 2 колонки */
 @media (max-width: 720px){
-  .note.note-mobile{
-    grid-template-columns:28px 1fr;
-  }
-  .note .time.right-col{
+  .order-card{ grid-template-columns:24px 1fr; }
+  .order-card__actions{
     grid-column:1 / -1;
     width:100%; justify-items:stretch; align-content:start;
     grid-template-columns:1fr 1fr; gap:8px;
   }
-  .note .time.right-col .badge{ justify-self:start; }
-  select.pill{ min-width:0; }
+  .order-card__actions .badge{ justify-self:start; }
 }
 
-/* Телефоны — всё в одну колонку, элементы на всю ширину */
 @media (max-width: 480px){
-  .admin-topbar{ padding:8px 12px 6px; }
-  .notes.notes-mobile{ margin:10px 12px 16px; }
-  .note.note-mobile{ grid-template-columns:24px 1fr; gap:10px; }
-  .note .time.right-col{ grid-template-columns:1fr; }
-  .adm-accept.pill, select.pill{ width:100%; }
-  .chipbar.scrollable{ padding:8px 0 4px; }
+  .admin-toolbar{ margin:0 12px; }
+  .admin-filters{ padding:8px 12px 0; }
+  .admin-list{ margin:10px 12px 16px; }
+  .kv__row{ grid-template-columns:88px 1fr; }
+  .btn--sm{ height:42px; font-size:14px; }
+  .btn--xs{ height:34px; font-size:12px; }
 }
 
-/* Очень узкие экраны */
 @media (max-width: 360px){
   .admin-title{ font-size:16px; }
-  .note.note-mobile{ gap:8px; }
-  .note .time.right-col .badge{ height:24px; font-size:11px; }
+  .order-card{ gap:10px; }
+  .order-card__actions .badge{ height:24px; font-size:11px; }
 }

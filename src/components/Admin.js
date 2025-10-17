@@ -99,6 +99,14 @@ export function renderAdmin(){
         ui();
       });
     });
+
+    // просмотр чека
+    document.querySelectorAll('[data-receipt-url]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const url = btn.getAttribute('data-receipt-url');
+        openReceiptPreview(url);
+      });
+    });
   }
 
   function renderOrderCard(o){
@@ -108,6 +116,27 @@ export function renderAdmin(){
 
     const isDone = o.status === 'готов к отправке';
     const isNew  = o.status === 'новый' && !o.accepted;
+
+    const receipt = o.paymentScreenshot ? `
+      <div class="kv__row">
+        <dt>Оплата</dt>
+        <dd class="break">
+          <button class="btn btn--xs btn--outline" data-receipt-url="${escapeHtml(o.paymentScreenshot)}">
+            <i data-lucide="image"></i><span>&nbsp;Показать чек</span>
+          </button>
+          <a class="btn btn--xs btn--primary" href="${escapeHtml(o.paymentScreenshot)}" target="_blank" rel="noopener" download>
+            <i data-lucide="download"></i><span>&nbsp;Скачать</span>
+          </a>
+        </dd>
+      </div>
+    ` : '';
+
+    const productLink = o.link ? `
+      <div class="kv__row">
+        <dt>Товар</dt>
+        <dd class="break"><a class="link" href="${escapeHtml(o.link)}">Открыть</a></dd>
+      </div>
+    ` : '';
 
     return `
       <article class="order-card">
@@ -135,16 +164,8 @@ export function renderAdmin(){
               <dt>Плательщик</dt>
               <dd class="break">${escapeHtml(o.payerFullName||'—')}</dd>
             </div>
-            ${o.paymentScreenshot ? `
-              <div class="kv__row">
-                <dt>Оплата</dt>
-                <dd class="break"><a class="link" href="${escapeHtml(o.paymentScreenshot)}" target="_blank" rel="noopener">Скрин об оплате</a></dd>
-              </div>` : '' }
-            ${o.link ? `
-              <div class="kv__row">
-                <dt>Товар</dt>
-                <dd class="break"><a class="link" href="${escapeHtml(o.link)}">Открыть</a></dd>
-              </div>` : '' }
+            ${receipt}
+            ${productLink}
           </dl>
         </div>
 
@@ -171,7 +192,7 @@ export function renderAdmin(){
     const ma = document.getElementById('modalActions');
     mt.textContent = 'Новый заказ';
     mb.innerHTML = `
-      <div class="form-grid">
+      <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
         <label class="field"><span>Product ID</span><input id="fProd" class="input" placeholder="например 101"></label>
         <label class="field"><span>Размер</span><input id="fSize" class="input" placeholder="например M"></label>
         <label class="field"><span>Цвет</span><input id="fColor" class="input" placeholder="например Черный"></label>
@@ -208,6 +229,29 @@ export function renderAdmin(){
     };
     function value(sel){ return (document.querySelector(sel)?.value || '').trim(); }
     function closeModal(){ modal.classList.remove('show'); }
+  }
+
+  function openReceiptPreview(url){
+    if(!url) return;
+    const modal = document.getElementById('modal');
+    const mb = document.getElementById('modalBody');
+    const mt = document.getElementById('modalTitle');
+    const ma = document.getElementById('modalActions');
+    mt.textContent = 'Чек оплаты';
+    mb.innerHTML = `
+      <div class="receipt-view">
+        <div class="receipt-img-wrap">
+          <img class="receipt-img" src="${escapeHtml(url)}" alt="Чек оплаты">
+        </div>
+        <div class="muted" style="font-size:12px">Если изображение не открылось — возможно, ссылка требует авторизацию или недоступна по CORS.</div>
+      </div>
+    `;
+    ma.innerHTML = `
+      <a class="btn btn--outline" href="${escapeHtml(url)}" target="_blank" rel="noopener">Открыть в новой вкладке</a>
+      <a class="btn btn--primary" href="${escapeHtml(url)}" download>Скачать</a>
+    `;
+    modal.classList.add('show');
+    document.getElementById('modalClose').onclick = ()=> modal.classList.remove('show');
   }
 
   function badgeColor(o){
