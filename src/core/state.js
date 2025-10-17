@@ -30,11 +30,19 @@ export function loadCart(){
   }
 }
 
-/**
- * Бейдж корзины — всегда синхронизируем видимость.
- * Если позиций 0 → полностью скрываем (display:none + hidden + aria-hidden),
- * иначе показываем и выводим количество.
- */
+/** Удаляем «осиротевшие» строки и строки с qty<=0 после загрузки каталога */
+export function pruneCartAgainstProducts(products){
+  const ids = new Set(products.map(p => String(p.id)));
+  const before = state.cart.items.length;
+  state.cart.items = state.cart.items.filter(it => {
+    const okId = ids.has(String(it.productId));
+    const okQty = Number(it.qty) > 0;
+    return okId && okQty;
+  });
+  if (state.cart.items.length !== before) persistCart();
+}
+
+/** Обновляем бейдж корзины. Если 0 — полностью прячем. */
 export function updateCartBadge(){
   const n = state.cart.items.reduce((s,i)=> s + (Number(i.qty) || 0), 0);
 
@@ -57,7 +65,6 @@ export function updateCartBadge(){
 }
 
 const ADDR_KEY = 'nas_addresses';
-
 export function loadAddresses(){
   try{
     const data = JSON.parse(localStorage.getItem(ADDR_KEY) || '{}');
@@ -66,7 +73,6 @@ export function loadAddresses(){
     state.addresses = { list: [], defaultId: null };
   }
 }
-
 export function persistAddresses(){
   localStorage.setItem(ADDR_KEY, JSON.stringify(state.addresses));
 }

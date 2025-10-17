@@ -23,7 +23,6 @@
   </button>
 </header>
 
-
       <!-- Поиск + фильтры -->
       <section class="section section-search">
         <div class="search-wrap">
@@ -68,14 +67,14 @@
     </a>
     <a href="#/cart" data-tab="cart" class="tab badge-wrap" role="tab" aria-selected="false">
       <i data-lucide="shopping-bag"></i><span>Корзина</span>
-      <b id="cartBadge" class="badge">0</b>
+      <!-- изначально пусто и скрыто -->
+      <b id="cartBadge" class="badge" hidden></b>
     </a>
     <a href="#/account" data-tab="account" class="tab" role="tab" aria-selected="false">
       <i data-lucide="user-round"></i><span>Аккаунт</span>
     </a>
   </div>
 </nav>
-
 
     <!-- Шаблоны -->
     <template id="product-card">
