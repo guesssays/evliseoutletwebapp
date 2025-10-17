@@ -1,3 +1,4 @@
+// src/views/Cart.js  (полная версия)
 import { state, persistCart, updateCartBadge } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { toast } from '../core/toast.js';
@@ -49,12 +50,12 @@ export function renderCart(){
 
     <div class="shipping">
       <div class="address-row">
-        <div>
+        <div class="address-left">
           <div class="cart-title">Адрес доставки</div>
           ${ad ? `<div class="cart-sub">${ad.nickname} — ${ad.address}</div>` :
             `<div class="cart-sub">Адрес не указан</div>`}
         </div>
-        <a class="pill" href="#/account/addresses" style="white-space:nowrap">${ad ? 'Изменить адрес' : 'Добавить адрес'}</a>
+        <a class="pill" href="#/account/addresses">${ad ? 'Изменить адрес' : 'Добавить адрес'}</a>
       </div>
     </div>
 

@@ -1,3 +1,4 @@
+// src/core/state.js  (полная версия — обновлён updateCartBadge)
 export const PRICE_CURRENCY = 'UZS';
 export const RUB_TO_UZS = 1;
 export const DEFAULT_LANG  = localStorage.getItem('evlise_lang')  || 'ru';
@@ -17,7 +18,15 @@ export function persistCart(){ localStorage.setItem('nas_cart', JSON.stringify(s
 export function loadCart(){ try{ state.cart = JSON.parse(localStorage.getItem('nas_cart')) || {items:[]}; }catch{} }
 export function updateCartBadge(){
   const n = state.cart.items.reduce((s,i)=>s+i.qty,0);
-  const b = document.getElementById('cartBadge'); if (b) b.textContent = n;
+  const b = document.getElementById('cartBadge');
+  if (!b) return;
+  if (n > 0){
+    b.textContent = n;
+    b.style.display = 'inline-block';
+  }else{
+    b.textContent = '';            // убираем цифру
+    b.style.display = 'none';      // скрываем бейдж полностью
+  }
 }
 
 const ADDR_KEY = 'nas_addresses';

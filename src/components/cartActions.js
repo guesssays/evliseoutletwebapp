@@ -1,3 +1,4 @@
+// src/core/cart.js  (полная версия — без изменений в логике)
 import { state, persistCart, updateCartBadge } from '../core/state.js';
 import { toast } from '../core/toast.js';
 

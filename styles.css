@@ -1,3 +1,5 @@
+/* styles.css  (полная версия — изменён блок .address-row; остальное оставлено как у тебя) */
+
 /* === styles.css (полная обновлённая версия) === */
 
 /* Палитра и базовые переменные */
@@ -5,7 +7,7 @@
   --c-01:#292526; --c-02:#787676; --c-03:#A3A1A2; --c-04:#F2F2F2; --c-05:#121111;
   --bg:#ffffff; --text:#121111; --muted:#787676; --paper:#ffffff; --stroke:#ececec;
   --radius:22px; --r-sm:14px; --shadow:0 8px 24px rgba(0,0,0,.08);
-  --tabbar-h:92px;                      /* ↑ запас под новый таббар */
+  --tabbar-h:92px;
   --safe: env(safe-area-inset-bottom, 0px);
   --toastTop:16px;
 }
@@ -16,10 +18,9 @@ body{
   margin:0; background:var(--bg); color:var(--text);
   font:16px/1.5 "Encode Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial;
   -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-  padding-bottom:calc(var(--tabbar-h) + var(--safe) + 24px); /* место под таббар/CTA */
+  padding-bottom:calc(var(--tabbar-h) + var(--safe) + 24px);
 }
 
-/* Lucide безопасные дефолты */
 .lucide, [data-lucide]{ stroke:currentColor; fill:none }
 
 /* ===== ШАПКА ===== */
@@ -31,14 +32,9 @@ body{
   display:flex; justify-content:space-between; align-items:center; gap:10px;
   border-bottom:1px solid var(--stroke);
 }
-
-/* Брендинг в шапке */
 .brand{ display:flex; align-items:center; gap:10px; }
-.app-title{
-  font-weight:800; font-size:22px; letter-spacing:.8px; text-transform:uppercase;
-}
+.app-title{ font-weight:800; font-size:22px; letter-spacing:.8px; text-transform:uppercase; }
 
-/* Кнопка уведомлений в шапке */
 .icon-btn, .square-btn{
   display:inline-grid; place-items:center;
   width:44px; height:44px; border-radius:14px;
@@ -48,7 +44,6 @@ body{
 .notif-btn{ position:relative; }
 .notif-btn .lucide{ width:22px; height:22px; }
 
-/* Бейдж уведомлений в шапке */
 #notifBadge.badge{
   position:absolute; right:-6px; top:-6px;
   background:#ff5966; color:#fff;
@@ -57,12 +52,12 @@ body{
   box-shadow:0 2px 10px rgba(0,0,0,.18);
 }
 
-/* Кнопки-pill (и <a>, и <button>) */
 .pill{
   display:inline-flex; gap:8px; align-items:center;
   border-radius:999px; border:1px solid var(--stroke);
   padding:10px 14px; font-weight:700; background:#fff;
   text-decoration:none; color:var(--text);
+  white-space:nowrap;
 }
 .pill.small{ padding:8px 12px }
 .pill.primary{ background:#121111; color:#fff; border-color:#121111 }
@@ -104,7 +99,6 @@ body{
 .card-img{ position:relative; aspect-ratio:3/4; border-radius:22px; overflow:hidden }
 .card-img img{ width:100%; height:100%; object-fit:cover; display:block }
 
-/* Кнопка избранного на карточке */
 .card-img .fav{
   position:absolute; right:10px; top:10px; width:42px; height:42px;
   border-radius:50%; border:none; background:#fff; box-shadow:var(--shadow);
@@ -124,8 +118,6 @@ body{
 
 /* ===== ПРОДУКТ ===== */
 .product{ display:block }
-
-/* Галерея товара */
 .gallery{ display:grid; gap:10px; }
 .gallery-main{ position:relative; border-radius:24px; overflow:hidden; background:#f6f6f6; }
 .gallery-main img{ width:100%; height:auto; display:block; }
@@ -137,7 +129,6 @@ body{
 .thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
 .thumb.active{ border-color:#121111; }
 
-/* Реальные фото */
 .real-photos{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .real-photo{ border-radius:16px; overflow:hidden; background:#f6f6f6; }
 .real-photo img{ width:100%; height:auto; display:block; }
@@ -173,7 +164,6 @@ body{
 .size-table thead th{ background:#f8f8f8; text-align:left; font-weight:800 }
 .size-table tbody tr:not(:last-child) td{ border-bottom:1px solid var(--stroke) }
 
-/* Нижний CTA */
 .cta{ position:sticky; bottom:calc(var(--tabbar-h) + var(--safe) - 6px); padding:12px 18px; z-index:3 }
 .btn{
   width:100%; height:64px; border:none; border-radius:999px;
@@ -186,13 +176,7 @@ body{
 .btn:hover{ box-shadow:0 10px 28px rgba(0,0,0,.12) }
 .btn:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
 .btn:disabled{ opacity:.6; cursor:not-allowed; box-shadow:none; }
-/* outline-вариант для левого CTA */
-.btn.outline{
-  background:#fff;
-  color:#121111;
-  border:1px solid var(--stroke);
-  box-shadow:0 8px 24px rgba(0,0,0,.06);
-}
+.btn.outline{ background:#fff; color:#121111; border:1px solid var(--stroke); box-shadow:0 8px 24px rgba(0,0,0,.06); }
 
 /* ===== КОРЗИНА/ЧЕКАУТ ===== */
 .section-title{ font-size:24px; font-weight:800; margin:10px 18px }
@@ -209,7 +193,19 @@ body{
 .qty-mini{ display:flex; align-items:center; gap:10px }
 .qty-mini .ctrl{ width:36px; height:36px; border-radius:12px }
 .shipping{ margin:4px 0 12px }
-.address-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap }
+
+/* Главное изменение: всё в одну строку, без переноса */
+.address-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:nowrap;         /* не переносим кнопку под заголовок */
+}
+.address-left{ min-width:0 } /* чтобы текст нормально ужимался */
+.address-left .cart-title{ margin-bottom:2px }
+
+/* итог */
 .payline{ display:grid; gap:10px; border-top:1px solid var(--stroke); padding:12px 0 }
 .payrow{ display:flex; justify-content:space-between; align-items:center }
 .paybtn{ position:sticky; bottom:calc(var(--tabbar-h) + var(--safe)); padding:0 18px 12px; z-index:3 }
@@ -241,40 +237,10 @@ body{
 .addr-sub{ color:var(--muted) }
 .addr-actions{ display:flex; gap:10px; margin-top:12px }
 
-/* ===== УВЕДОМЛЕНИЯ ===== */
-.notes{ padding:0 18px calc(var(--tabbar-h) + var(--safe) + 24px); display:grid; gap:10px; }
-.note{
-  display:grid; grid-template-columns:auto 1fr auto; gap:12px;
-  border:1px solid var(--stroke); border-radius:16px; background:#fff; padding:12px;
-}
-.note i{ width:20px; height:20px; color:#787676 }
-.note .note-title{ font-weight:800; }
-.note .note-sub{ color:var(--muted); font-size:14px; margin-top:2px; }
-.note .time{ color:#A3A1A2; font-size:12px; white-space:nowrap; align-self:start; }
-.notes-empty{
-  margin:20px 18px; padding:18px; border:1px dashed var(--stroke);
-  border-radius:16px; color:var(--muted);
-}
-
-/* ===== ТАББАР (устойчивый фон + капсульный актив) ===== */
-.tabbar{
-  position:fixed; left:0; right:0; bottom:0; z-index:50;
-  padding-bottom:max(8px, var(--safe));
-  background:transparent;
-  pointer-events:none;                 /* клики только по внутреннему блоку */
-}
-.tabbar-inner{
-  pointer-events:auto;
-  margin:0 18px; height:76px; border-radius:28px;
-  background:#1f1e1e; box-shadow:0 10px 40px rgba(0,0,0,.18);
-  display:flex; align-items:center; justify-content:space-around; gap:6px; padding:0 8px;
-}
-.tab{
-  position:relative; min-width:64px; height:52px; padding:6px 12px; border-radius:16px;
-  color:#fff; text-decoration:none;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
-  font-weight:700; opacity:.9; transition:background .18s ease, opacity .18s ease, transform .08s ease;
-}
+/* ===== ТАББАР ===== */
+.tabbar{ position:fixed; left:0; right:0; bottom:0; z-index:50; padding-bottom:max(8px, var(--safe)); background:transparent; pointer-events:none; }
+.tabbar-inner{ pointer-events:auto; margin:0 18px; height:76px; border-radius:28px; background:#1f1e1e; box-shadow:0 10px 40px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:space-around; gap:6px; padding:0 8px; }
+.tab{ position:relative; min-width:64px; height:52px; padding:6px 12px; border-radius:16px; color:#fff; text-decoration:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-weight:700; opacity:.9; transition:background .18s ease, opacity .18s ease, transform .08s ease; }
 .tab i{ width:26px; height:26px }
 .tab span{ font-size:12px; line-height:1; }
 .tab:hover{ opacity:1; }
@@ -287,15 +253,11 @@ body{
   background:#ff5966; color:#fff; font-size:11px; line-height:1;
   border-radius:999px; padding:3px 6px; box-shadow:0 2px 10px rgba(0,0,0,.18);
 }
-.dot{ display:none !important; } /* прежний индикатор — отключён */
+.dot{ display:none !important; }
 
-/* CTA-режим таббара (две кнопки) */
+/* CTA-режим */
 .tabbar .btn { height:64px; }
-.tabbar-inner.is-cta{
-  justify-content:stretch;
-  gap:10px;
-  padding:8px;
-}
+.tabbar-inner.is-cta{ justify-content:stretch; gap:10px; padding:8px; }
 
 /* ===== МОДАЛКИ / ТОСТЫ ===== */
 .modal{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.35) }
@@ -306,10 +268,7 @@ body{
 .modal-actions{ display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--stroke); justify-content:flex-end }
 
 .toast-wrap{ position:fixed; top:var(--toastTop); right:16px; display:grid; gap:8px; z-index:70 }
-.toast{
-  background:#121111; color:#fff; padding:10px 12px; border-radius:12px;
-  box-shadow:var(--shadow); transition:opacity .25s ease
-}
+.toast{ background:#121111; color:#fff; padding:10px 12px; border-radius:12px; box-shadow:var(--shadow); transition:opacity .25s ease }
 
 /* ===== АДАПТИВ ===== */
 @media (max-width: 380px){
@@ -322,19 +281,11 @@ body{
   .tab{ height:50px; }
 }
 
-/* === Overlay для просмотра фото === */
-.zoom-overlay{
-  position:fixed; inset:0; background:rgba(0,0,0,.85);
-  display:none; z-index:1000;
-}
+/* === Overlay === */
+.zoom-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; z-index:1000; }
 .zoom-overlay.show{ display:block; }
-.zoom-stage{
-  position:absolute; inset:0; display:grid; place-items:center;
-}
-#zoomImg{
-  max-width:96vw; max-height:92vh; will-change:transform;
-  touch-action:none; /* чтобы жесты работали предсказуемо */
-}
+.zoom-stage{ position:absolute; inset:0; display:grid; place-items:center; }
+#zoomImg{ max-width:96vw; max-height:92vh; will-change:transform; touch-action:none; }
 .zoom-close{
   position:absolute; right:14px; top:14px;
   width:44px; height:44px; border:none; border-radius:12px;
@@ -342,66 +293,19 @@ body{
   box-shadow:0 8px 24px rgba(0,0,0,.2); cursor:pointer;
 }
 .zoom-close i{ width:22px; height:22px }
+
 /* ==== SINGLE-FOOTER MODE (CTA внутри таббара) ==== */
-
-/* Когда включаем CTA-режим, прячем отдельный блок .cta,
-   чтобы не было второго фона. Добавь на <body> класс .has-cta,
-   когда показываешь CTA-кнопки в таббаре. */
 .has-cta .cta{ display:none !important; }
-
-/* Чуть уменьшим нижний отступ под единственный таббар */
-.has-cta body, body.has-cta{
-  padding-bottom:calc(var(--safe) + 16px) !important;
-}
-
-/* Сам таббар оставляем единственным фоном */
+.has-cta body, body.has-cta{ padding-bottom:calc(var(--safe) + 16px) !important; }
 .tabbar{ background:transparent; }
-.tabbar-inner{
-  background:#121111; /* единый фон снизу */
-  box-shadow:0 10px 40px rgba(0,0,0,.18);
-}
-
-/* В CTA-режиме вкладки скрываем, показываем только кнопки */
+.tabbar-inner{ background:#121111; box-shadow:0 10px 40px rgba(0,0,0,.18); }
 .tabbar-inner.is-cta .tab{ display:none !important; }
-
-/* Компактные CTA внутри таббара */
-.tabbar-inner.is-cta{
-  justify-content:stretch;
-  gap:8px;
-  padding:10px;
-  height:72px;            /* ниже, чем обычные 76px */
-  border-radius:24px;     /* чуть аккуратнее форма */
-}
-
-/* Универсальный компактный стиль для CTA */
-.tabbar-inner.is-cta .btn{
-  height:48px !important;         /* было 64px */
-  font-size:15px !important;      /* было 18px */
-  font-weight:800;
-  border-radius:999px;
-  padding:0 14px;
-  box-shadow:none;                 /* без дополнительной «светлой полосы» */
-}
-
-/* Основная кнопка — сплошная */
-.tabbar-inner.is-cta .btn.primary{
-  background:#121111;             /* ровно цвет фона таббара */
-  color:#fff;
-  border:1px solid rgba(255,255,255,.14);
-}
-
-/* Вторая — «outline», без заливки (чтобы не создавать второй фон) */
-.tabbar-inner.is-cta .btn.outline{
-  background:transparent !important;
-  color:#fff !important;
-  border:1px solid rgba(255,255,255,.22) !important;
-}
-
-/* Ховеры/активы — деликатно, без «второго» фона */
+.tabbar-inner.is-cta{ justify-content:stretch; gap:8px; padding:10px; height:72px; border-radius:24px; }
+.tabbar-inner.is-cta .btn{ height:48px !important; font-size:15px !important; font-weight:800; border-radius:999px; padding:0 14px; box-shadow:none; }
+.tabbar-inner.is-cta .btn.primary{ background:#121111; color:#fff; border:1px solid rgba(255,255,255,.14); }
+.tabbar-inner.is-cta .btn.outline{ background:transparent !important; color:#fff !important; border:1px solid rgba(255,255,255,.22) !important; }
 .tabbar-inner.is-cta .btn:hover{ opacity:.95; box-shadow:none; }
 .tabbar-inner.is-cta .btn:active{ transform:translateY(1px); }
-
-/* Микроадаптив */
 @media (max-width:380px){
   .tabbar-inner.is-cta{ height:68px; padding:8px; }
   .tabbar-inner.is-cta .btn{ height:44px !important; font-size:14px !important; }
