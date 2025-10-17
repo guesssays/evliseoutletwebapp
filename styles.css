@@ -342,3 +342,67 @@ body{
   box-shadow:0 8px 24px rgba(0,0,0,.2); cursor:pointer;
 }
 .zoom-close i{ width:22px; height:22px }
+/* ==== SINGLE-FOOTER MODE (CTA внутри таббара) ==== */
+
+/* Когда включаем CTA-режим, прячем отдельный блок .cta,
+   чтобы не было второго фона. Добавь на <body> класс .has-cta,
+   когда показываешь CTA-кнопки в таббаре. */
+.has-cta .cta{ display:none !important; }
+
+/* Чуть уменьшим нижний отступ под единственный таббар */
+.has-cta body, body.has-cta{
+  padding-bottom:calc(var(--safe) + 16px) !important;
+}
+
+/* Сам таббар оставляем единственным фоном */
+.tabbar{ background:transparent; }
+.tabbar-inner{
+  background:#121111; /* единый фон снизу */
+  box-shadow:0 10px 40px rgba(0,0,0,.18);
+}
+
+/* В CTA-режиме вкладки скрываем, показываем только кнопки */
+.tabbar-inner.is-cta .tab{ display:none !important; }
+
+/* Компактные CTA внутри таббара */
+.tabbar-inner.is-cta{
+  justify-content:stretch;
+  gap:8px;
+  padding:10px;
+  height:72px;            /* ниже, чем обычные 76px */
+  border-radius:24px;     /* чуть аккуратнее форма */
+}
+
+/* Универсальный компактный стиль для CTA */
+.tabbar-inner.is-cta .btn{
+  height:48px !important;         /* было 64px */
+  font-size:15px !important;      /* было 18px */
+  font-weight:800;
+  border-radius:999px;
+  padding:0 14px;
+  box-shadow:none;                 /* без дополнительной «светлой полосы» */
+}
+
+/* Основная кнопка — сплошная */
+.tabbar-inner.is-cta .btn.primary{
+  background:#121111;             /* ровно цвет фона таббара */
+  color:#fff;
+  border:1px solid rgba(255,255,255,.14);
+}
+
+/* Вторая — «outline», без заливки (чтобы не создавать второй фон) */
+.tabbar-inner.is-cta .btn.outline{
+  background:transparent !important;
+  color:#fff !important;
+  border:1px solid rgba(255,255,255,.22) !important;
+}
+
+/* Ховеры/активы — деликатно, без «второго» фона */
+.tabbar-inner.is-cta .btn:hover{ opacity:.95; box-shadow:none; }
+.tabbar-inner.is-cta .btn:active{ transform:translateY(1px); }
+
+/* Микроадаптив */
+@media (max-width:380px){
+  .tabbar-inner.is-cta{ height:68px; padding:8px; }
+  .tabbar-inner.is-cta .btn{ height:44px !important; font-size:14px !important; }
+}
