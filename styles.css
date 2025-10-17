@@ -47,8 +47,9 @@ body{
 }
 .chip.active{ background:#121111; color:#fff; border-color:#121111 }
 .chip i{width:18px;height:18px}
+.chip-mini{ padding:8px 12px; font-size:13px }
 
-/* сетка карточек как в референсе */
+/* сетка карточек (референс) */
 .view{ padding:0 18px 24px }
 .grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px }
 .card{
@@ -61,6 +62,7 @@ body{
   display:grid; place-items:center; cursor:pointer;
 }
 .card-img .fav i{ width:22px; height:22px }
+.card-img .fav.active i{ fill:#ff4d5a; color:#ff4d5a }
 .card-body{ padding:10px 6px }
 .card-body .title{ font-weight:800; font-size:20px; margin-bottom:2px }
 .card-body .subtitle{ color:var(--muted) }
@@ -86,9 +88,15 @@ body{
 .sizes{ display:flex; gap:10px; flex-wrap:wrap }
 .size{ padding:10px 14px; border:1px solid var(--stroke); border-radius:999px; background:#fff; font-weight:700; cursor:pointer }
 .size.active{ background:#121111; color:#fff; border-color:#121111 }
-.colors{ display:flex; gap:12px; align-items:center }
+.colors{ display:flex; gap:12px; align-items:center; flex-wrap:wrap }
 .sw{ width:34px; height:34px; border-radius:50%; border:2px solid #fff; outline:1px solid #e5e5e5; cursor:pointer }
 .sw.active{ outline-color:#121111 }
+.specs{ margin-top:10px; color:var(--muted) }
+.table-wrap{ overflow:auto; -webkit-overflow-scrolling:touch; margin-top:10px; border:1px solid var(--stroke); border-radius:16px }
+.size-table{ width:100%; border-collapse:separate; border-spacing:0 }
+.size-table th, .size-table td{ padding:10px 12px; white-space:nowrap; font-size:14px }
+.size-table thead th{ background:#f8f8f8; text-align:left; font-weight:800 }
+.size-table tbody tr:not(:last-child) td{ border-bottom:1px solid var(--stroke) }
 
 /* нижний CTA как в референсе */
 .cta{
@@ -143,7 +151,7 @@ body{
 }
 .tab.active .dot{ opacity:1 }
 
-/* modal/toast (минимально) */
+/* modal/toast */
 .modal{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.35) }
 .modal.show{ display:grid }
 .modal-dialog{ width:min(92vw,560px); background:#fff; border-radius:18px; overflow:hidden; box-shadow:var(--shadow) }
@@ -151,4 +159,12 @@ body{
 .modal-body{ padding:14px }
 .modal-actions{ display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--stroke); justify-content:flex-end }
 .toast-wrap{ position:fixed; top:var(--toastTop); right:16px; display:grid; gap:8px; z-index:70 }
-.toast{ background:#121111; color:#fff; padding:10px 12px; border-radius:12px; box-shadow:var(--shadow)}
+.toast{ background:#121111; color:#fff; padding:10px 12px; border-radius:12px; box-shadow:var(--shadow) }
+
+/* адаптив */
+@media (max-width: 380px){
+  .grid{ grid-template-columns:1fr; }
+  .p-title{ font-size:28px }
+  .btn{ height:58px; font-size:16px }
+  .tabbar::before{ height:72px }
+}

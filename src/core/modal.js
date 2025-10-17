@@ -1,4 +1,4 @@
-export function openModal({title='', body='', actions=[]}){
+export function openModal({title='', body='', actions=[], onOpen}){
   const m = document.getElementById('modal');
   document.getElementById('modalTitle').textContent = title;
   document.getElementById('modalBody').innerHTML = body;
@@ -11,5 +11,6 @@ export function openModal({title='', body='', actions=[]}){
   });
   m.classList.add('show');
   document.getElementById('modalClose').onclick=()=> closeModal();
+  onOpen && onOpen();
 }
 export function closeModal(){ document.getElementById('modal').classList.remove('show'); }

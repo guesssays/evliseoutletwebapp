@@ -18,7 +18,7 @@ export function drawCategoriesChips(router){
   wrap.addEventListener('click', (e)=>{
     const b=e.target.closest('.chip'); if(!b)return;
     state.filters.category = b.getAttribute('data-slug');
-    drawCategoriesChips(router); // обновить активность
+    drawCategoriesChips(router);
     const list = state.filters.category==='all' ? state.products : state.products.filter(p=>p.category===state.filters.category);
     drawProducts(list);
   });
@@ -29,6 +29,7 @@ export function drawProducts(list){
   const grid = document.getElementById('productGrid'); grid.innerHTML='';
   const q = (state.filters.query||'').trim().toLowerCase();
   const filtered = list.filter(p=> p.title.toLowerCase().includes(q) || (p.subtitle||'').toLowerCase().includes(q));
+  const fav = new Set(JSON.parse(localStorage.getItem('nas_fav')||'[]'));
   for (const p of filtered){
     const t=document.getElementById('product-card'); const node=t.content.firstElementChild.cloneNode(true);
     node.href=`#/product/${p.id}`;
@@ -36,7 +37,9 @@ export function drawProducts(list){
     node.querySelector('.title').textContent=p.title;
     node.querySelector('.subtitle').textContent=p.categoryLabel || (p.category? state.categories.find(c=>c.slug===p.category)?.name || '' : '');
     node.querySelector('.price').textContent=priceFmt(p.price);
-    node.querySelector('.fav').onclick=(ev)=>{ ev.preventDefault(); toggleFav(p.id, node.querySelector('.fav')); };
+    const favBtn=node.querySelector('.fav');
+    if (fav.has(p.id)) favBtn.classList.add('active');
+    favBtn.onclick=(ev)=>{ ev.preventDefault(); toggleFav(p.id, favBtn); };
     grid.appendChild(node);
   }
   window.lucide?.createIcons();

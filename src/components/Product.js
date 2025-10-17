@@ -22,10 +22,12 @@ export function renderProduct({id}){
         </div>
 
         <div class="p-title">${p.title}</div>
-        <div class="p-desc">Его простой и элегантный силуэт подходит тем, кто любит минимализм. <b>Подробнее…</b></div>
+        <div class="p-desc">${p.description || 'Описание скоро будет обновлено.'}</div>
+
+        <div class="specs"><b>Материал:</b> ${p.material || '—'}</div>
 
         <div class="p-options">
-          ${ (p.sizes?.length||0) ? `
+          ${(p.sizes?.length||0) ? `
           <div>
             <div class="opt-title">Размер</div>
             <div class="sizes" id="sizes">${p.sizes.map(s=>`<button class="size" data-v="${s}">${s}</button>`).join('')}</div>
@@ -35,6 +37,17 @@ export function renderProduct({id}){
             <div class="colors" id="colors">${(p.colors||[]).map(c=>`<button class="sw" title="${c}" data-v="${c}" style="background:${colorToHex(c)}"></button>`).join('')}</div>
           </div>
         </div>
+
+        ${p.sizeChart ? `
+        <div class="opt-title" style="margin-top:8px">Размерная сетка</div>
+        <div class="table-wrap">
+          <table class="size-table">
+            <thead><tr>${p.sizeChart.headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${p.sizeChart.rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`:''}
       </div>
 
       <div class="cta">
@@ -46,6 +59,7 @@ export function renderProduct({id}){
     </div>`;
   window.lucide?.createIcons();
 
+  // qty + опции
   let qty=1, size=null, color=(p.colors||[])[0]||null;
   const qtyEl=document.getElementById('qty');
   document.getElementById('inc').onclick = ()=>{ qty++; qtyEl.textContent=qty; };

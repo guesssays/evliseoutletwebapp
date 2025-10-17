@@ -22,19 +22,22 @@
         <button id="tgAuthBtn" class="pill primary small"><i data-lucide="send"></i><span>Войти через Telegram</span></button>
       </header>
 
-      <!-- Поиск и фильтр как в референсах -->
+      <!-- Поиск и фильтр -->
       <section class="section section-search">
         <div class="search-wrap">
           <i data-lucide="search" class="search-ico"></i>
           <input id="searchInput" class="search" placeholder="Поиск одежды…" />
         </div>
-        <button id="openFilters" class="square-btn"><i data-lucide="sliders-horizontal"></i></button>
+        <button id="openFilters" class="square-btn" aria-label="Открыть фильтры"><i data-lucide="sliders-horizontal"></i></button>
       </section>
 
       <!-- Категории чипами -->
       <section class="section">
         <div class="chipbar" id="catChips"></div>
       </section>
+
+      <!-- Активные фильтры -->
+      <section class="section" id="activeFilters" aria-live="polite"></section>
 
       <!-- Сетка карточек -->
       <main id="view" class="view"></main>
@@ -44,7 +47,7 @@
         <div class="modal-dialog">
           <div class="modal-head">
             <div id="modalTitle"></div>
-            <button id="modalClose" class="icon-btn"><i data-lucide="x"></i></button>
+            <button id="modalClose" class="icon-btn" aria-label="Закрыть"><i data-lucide="x"></i></button>
           </div>
           <div id="modalBody" class="modal-body"></div>
           <div id="modalActions" class="modal-actions"></div>
@@ -52,21 +55,21 @@
       </div>
       <div id="toastWrap" class="toast-wrap"></div>
 
-      <!-- Нижний таббар (как на референсе) -->
-      <nav class="tabbar">
-        <a href="#/" data-tab="home" class="tab active">
+      <!-- Нижний таббар -->
+      <nav class="tabbar" role="tablist" aria-label="Основная навигация">
+        <a href="#/" data-tab="home" class="tab active" role="tab" aria-selected="true">
           <i data-lucide="home"></i><span>Главная</span><b class="dot"></b>
         </a>
-        <a href="#/search" data-tab="search" class="tab">
+        <a href="#/search" data-tab="search" class="tab" role="tab" aria-selected="false">
           <i data-lucide="search"></i><span>Поиск</span><b class="dot"></b>
         </a>
-        <a href="#/favorites" data-tab="saved" class="tab">
+        <a href="#/favorites" data-tab="saved" class="tab" role="tab" aria-selected="false">
           <i data-lucide="heart"></i><span>Избранное</span><b class="dot"></b>
         </a>
-        <a href="#/cart" data-tab="cart" class="tab badge-wrap">
+        <a href="#/cart" data-tab="cart" class="tab badge-wrap" role="tab" aria-selected="false">
           <i data-lucide="shopping-bag"></i><span>Корзина</span><b id="cartBadge" class="badge">0</b><b class="dot"></b>
         </a>
-        <a href="#/account" data-tab="account" class="tab">
+        <a href="#/account" data-tab="account" class="tab" role="tab" aria-selected="false">
           <i data-lucide="user-round"></i><span>Аккаунт</span><b class="dot"></b>
         </a>
       </nav>
@@ -77,7 +80,7 @@
       <a class="card" href="#">
         <div class="card-img">
           <img loading="lazy" alt="">
-          <button class="fav"><i data-lucide="heart"></i></button>
+          <button class="fav" aria-label="В избранное"><i data-lucide="heart"></i></button>
         </div>
         <div class="card-body">
           <div class="title"></div>
@@ -88,6 +91,10 @@
           </div>
         </div>
       </a>
+    </template>
+
+    <template id="filter-chip">
+      <span class="chip chip-mini"></span>
     </template>
 
     <script type="module" src="src/main.js"></script>

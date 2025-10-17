@@ -1,7 +1,6 @@
 import { state } from '../core/state.js';
 import { openModal, closeModal } from '../core/modal.js';
-import { el } from '../core/dom.js';
-import { t } from '../core/i18n.js';
+import { el } from '../core/utils.js';
 
 export function applyFilters(list){
   const f = state.filters;
@@ -22,21 +21,21 @@ export function openFilterModal(router){
   const allMaterials = Array.from(new Set(state.products.map(p=>p.material).filter(Boolean)));
   const chipGroup = (items, selected, key)=> items.map(v=>`<button class="chip ${selected.includes(v)?'active':''}" data-${key}="${v}">${v}</button>`).join('');
   openModal({
-    title: t('filters'),
+    title: 'Фильтры',
     body: `
-      <div class="h2">${t('size')}</div>
-      <div class="toolbar" id="fSizes">${chipGroup(allSizes, state.filters.size, 'size')}</div>
-      <div class="h2">${t('color')}</div>
-      <div class="toolbar" id="fColors">${chipGroup(allColors, state.filters.colors, 'color')}</div>
-      <div class="h2">${t('material')}</div>
-      <div class="toolbar" id="fMaterials">${chipGroup(allMaterials, state.filters.materials, 'mat')}</div>
-      <div class="row" style="margin-top:8px">
-        <label class="chip"><input id="fStock" type="checkbox" ${state.filters.inStock?'checked':''} style="margin-right:8px"> ${t('inStockOnly')}</label>
-        <button id="clearBtn" class="chip">${t('clear')}</button>
+      <div class="h2">Размер</div>
+      <div class="chipbar" id="fSizes">${chipGroup(allSizes, state.filters.size, 'size')}</div>
+      <div class="h2">Цвет</div>
+      <div class="chipbar" id="fColors">${chipGroup(allColors, state.filters.colors, 'color')}</div>
+      <div class="h2">Материал</div>
+      <div class="chipbar" id="fMaterials">${chipGroup(allMaterials, state.filters.materials, 'mat')}</div>
+      <div class="chipbar" style="margin-top:8px">
+        <label class="chip"><input id="fStock" type="checkbox" ${state.filters.inStock?'checked':''} style="margin-right:8px"> Только в наличии</label>
+        <button id="clearBtn" class="chip">Сбросить</button>
       </div>`,
     actions: [
-      { label: t('cancel'), variant: 'secondary', onClick: closeModal },
-      { label: t('apply'), onClick: ()=>{
+      { label: 'Отмена', variant: 'secondary', onClick: closeModal },
+      { label: 'Применить', onClick: ()=>{
         state.filters.inStock = el('#fStock').checked;
         const pick=(sel,attr)=> Array.from(el(sel).querySelectorAll('.chip.active')).map(b=>b.getAttribute(attr));
         state.filters.size = pick('#fSizes','data-size');
@@ -50,7 +49,7 @@ export function openFilterModal(router){
         el(s).addEventListener('click', e=>{ const btn=e.target.closest('.chip'); if(!btn)return; btn.classList.toggle('active'); });
       });
       el('#clearBtn').onclick = ()=>{
-        state.filters = { size:[], colors:[], materials:[], minPrice:null, maxPrice:null, inStock:false };
+        state.filters = { ...state.filters, size:[], colors:[], materials:[], minPrice:null, maxPrice:null, inStock:false };
         closeModal(); router(); renderActiveFilterChips();
       };
     }
@@ -60,7 +59,7 @@ export function openFilterModal(router){
 export function renderActiveFilterChips(){
   const bar = el('#activeFilters'); if (!bar) return; bar.innerHTML='';
   const addChip=(label)=>{ const tNode=document.getElementById('filter-chip'); const n=tNode.content.firstElementChild.cloneNode(true); n.textContent=label; n.classList.add('active'); bar.appendChild(n); };
-  if (state.filters.size.length) addChip(t('size') + ': ' + state.filters.size.join(','));
-  if (state.filters.colors.length) addChip(t('color') + ': ' + state.filters.colors.join(','));
-  if (state.filters.materials.length) addChip(t('material') + ': ' + state.filters.materials.join(','));
+  if (state.filters.size.length) addChip('Размер: ' + state.filters.size.join(','));
+  if (state.filters.colors.length) addChip('Цвет: ' + state.filters.colors.join(','));
+  if (state.filters.materials.length) addChip('Материал: ' + state.filters.materials.join(','));
 }

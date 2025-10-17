@@ -1,11 +1,11 @@
-// простое хранилище состояния (русский интерфейс, Telegram user, корзина)
+// простое хранилище состояния
 export const state = {
   products: [],
   categories: [],
   cart: { items: [] },
-  user: null,           // Telegram user
-  filters: { category: 'all', query: '' },
-  orders: []            // заказ + статусы (для ручного обновления админами)
+  user: null,
+  filters: { category: 'all', query: '', size:[], colors:[], materials:[], minPrice:null, maxPrice:null, inStock:false },
+  orders: []
 };
 
 export function persistCart(){

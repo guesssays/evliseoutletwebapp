@@ -7,10 +7,11 @@ import { renderCart } from './components/Cart.js';
 import { renderFavorites } from './components/Favorites.js';
 import { renderCategory } from './components/Category.js';
 import { renderOrders, renderTrack } from './components/Orders.js';
+import { openFilterModal, renderActiveFilterChips } from './components/Filters.js';
 
 loadCart(); updateCartBadge();
 
-// Telegram авторизация (аккаунт, не по номеру)
+// Telegram авторизация (аккаунт)
 function initTelegram(){
   const tg = window.Telegram?.WebApp;
   const btn = document.getElementById('tgAuthBtn');
@@ -21,7 +22,6 @@ function initTelegram(){
   }else{
     btn.onclick = ()=>{
       toast('Если открыть это приложение внутри Telegram, авторизация произойдёт автоматически.');
-      // для web-версии просто прячем кнопку после клика
       btn.style.display='none';
     };
   }
@@ -33,7 +33,6 @@ el('#searchInput').addEventListener('input', (e)=>{ state.filters.query = e.targ
 
 // маршрутизация
 function router(){
-  // активность табов
   const path=(location.hash||'#/').slice(1);
   document.querySelectorAll('.tabbar .tab').forEach(t=> t.classList.remove('active'));
   const map = { '':'home','/':'home','/search':'search','/favorites':'saved','/cart':'cart','/account':'account','/orders':'account' };
@@ -63,17 +62,17 @@ function router(){
 }
 
 async function init(){
-  // загрузка данных
   const res = await fetch('data/products.json'); const data = await res.json();
   state.products = data.products;
   state.categories = data.categories.map(c=>({ ...c, name: c.name }));
-  // приветствие и чипы
+
   drawCategoriesChips(router);
+  renderActiveFilterChips();
   router();
   window.addEventListener('hashchange', router);
   window.lucide?.createIcons && lucide.createIcons();
 }
 init();
 
-// фильтры кнопка (плейсхолдер)
-document.getElementById('openFilters').onclick=()=> toast('Фильтры скоро здесь 🙂');
+// Фильтры — рабочая модалка
+document.getElementById('openFilters').onclick=()=> openFilterModal(router);
