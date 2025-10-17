@@ -8,16 +8,16 @@ export function addToCart(product, size, color){
   const same=(a)=> a.productId===product.id && a.size===size && a.color===color;
   const existing = state.cart.items.find(same);
   if (existing) existing.qty+=1; else state.cart.items.push({productId:product.id, size, color, qty:1});
-  persistCart(); updateCartBadge(); toast('Добавлено в корзину');
+  persistCart(); updateCartBadge(); if (state._onCartChange) state._onCartChange(); toast('Добавлено в корзину');
 }
 export function removeFromCart(productId, size, color){
   state.cart.items = state.cart.items.filter(a=>!(a.productId===productId && a.size===size && a.color===color));
-  persistCart(); updateCartBadge(); renderCart();
+  persistCart(); updateCartBadge(); if (state._onCartChange) state._onCartChange(); renderCart();
 }
 export function changeQty(productId, size, color, delta){
   const it = state.cart.items.find(a=>a.productId===productId && a.size===size && a.color===color);
   if (!it) return; it.qty += delta; if (it.qty<=0) removeFromCart(productId, size, color);
-  persistCart(); updateCartBadge(); renderCart();
+  persistCart(); updateCartBadge(); if (state._onCartChange) state._onCartChange(); renderCart();
 }
 
 export function renderCart(){
@@ -64,7 +64,7 @@ export function renderCart(){
   });
   const noteEl=document.getElementById('orderNote'); noteEl.oninput=()=>{ state.orderNote = noteEl.value; localStorage.setItem('evlise_note', state.orderNote); };
   document.getElementById('proceedBtn').onclick=()=> checkoutInTelegram(summary);
-  document.getElementById('clearCart').onclick=()=>{ state.cart.items=[]; persistCart(); updateCartBadge(); toast(t('cleared')); renderCart(); };
+  document.getElementById('clearCart').onclick=()=>{ state.cart.items=[]; persistCart(); updateCartBadge(); if (state._onCartChange) state._onCartChange(); toast(t('cleared')); renderCart(); };
   if (window.lucide?.createIcons) lucide.createIcons();
 }
 
@@ -74,13 +74,27 @@ export function checkoutInTelegram(summary){
     first_name: tg.initDataUnsafe.user.first_name || null, last_name: tg.initDataUnsafe.user.last_name || null,
     language_code: tg.initDataUnsafe.user.language_code || null } : null;
   const order = {
-    cart: summary.map(x=>({id:x.product.id, title:x.product.title, price:x.product.price, qty:x.qty, size:x.size||null, color:x.color||null})),
+    id: 'ORD-' + Math.random().toString(36).slice(2,8).toUpperCase(),
+    cart: summary.map(x=>({id:x.product.id, title:x.product.title, price:x.product.price, qty:x.qty, size:x.size||null, color:x.color||null, image:x.product.images?.[0]||""})),
     total: summary.reduce((s,x)=> s + x.qty * x.product.price, 0),
-    currency: 'UZS', comment: state.orderNote || "", user: tgUser, ts: Date.now()
+    currency: 'UZS', comment: state.orderNote || "", user: tgUser, ts: Date.now(),
+    status: 'Picked' // стартовый статус
   };
+
+  // 1) Отправка в Telegram
   const payload = JSON.stringify(order);
   if (tg?.sendData){ tg.sendData(payload); toast('Заказ отправлен менеджеру в Telegram'); }
   else { navigator.clipboard.writeText(payload); toast('WebApp вне Telegram: заказ (JSON) скопирован'); }
+
+  // 2) Локальное добавление в «реальный трекинг» (админы меняют статус вручную в JSON/админке)
+  const key = `ev_orders_${tgUser?.id ?? 'demo'}`;
+  const list = JSON.parse(localStorage.getItem(key) || '[]');
+  list.unshift(order);
+  localStorage.setItem(key, JSON.stringify(list));
+
+  // 3) Очистка корзины и переход к заказам
+  state.cart.items = []; persistCart(); updateCartBadge(); if (state._onCartChange) state._onCartChange();
+  location.hash = '#/account/orders';
 }
 
 function closeDrawerIfNeeded(){ const d=document.querySelector('#drawer'); const o=document.querySelector('#overlay'); d.classList.remove('open'); o.classList.remove('show'); }

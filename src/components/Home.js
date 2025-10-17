@@ -8,33 +8,34 @@ export function renderHome(router){
   closeDrawerIfNeeded();
   const view=document.querySelector('#view');
   view.innerHTML = `
-    <section class="section"><div class="h1">${t('categories')}</div><div class="grid" id="catGrid"></div></section>
     <section class="section">
-      <div class="showcase">
-        <div class="slide"><div class="title">-20% на худи</div><div class="text">Только до конца недели, промокод: EV20</div></div>
-        <div class="slide" style="background:linear-gradient(120deg,#22c55e,#14b8a6)"><div class="title">Бесплатная доставка</div><div class="text">при заказе от 700 000 сумов</div></div>
-      </div>
+      <div class="h1">Browse</div>
+      <div class="grid" id="catGrid"></div>
     </section>
+
     <section class="section">
       <div class="row" style="justify-content:space-between; align-items:end">
-        <div><div class="h1">${t('newItems')}</div><div class="sub">${t('freshFromIg')}</div></div>
+        <div><div class="h1">${t('newItems')}</div><div class="sub">Из Instagram и складов</div></div>
         <button class="chip" id="openFilter">${t('filters')}</button>
       </div>
       <div class="toolbar" id="activeFilters"></div>
       <div class="grid" id="productGrid"></div>
     </section>`;
+
   const catGrid=el('#catGrid');
   state.categories.forEach(c=>{
     const a=document.createElement('a'); a.className='card'; a.href=`#/category/${c.slug}`;
     a.innerHTML=`<div class="card-img-wrap"><img src="${c.image}" alt="${c.name}"></div><div class="card-body"><div class="card-title">${c.name}</div></div>`;
     catGrid.appendChild(a);
   });
+
   drawProducts(state.products.slice(0,12));
   el('#openFilter').onclick=()=>openFilterModal(router);
   renderActiveFilterChips();
   if (window.lucide?.createIcons) lucide.createIcons();
 }
 function closeDrawerIfNeeded(){ const d=document.querySelector('#drawer'); const o=document.querySelector('#overlay'); d.classList.remove('open'); o.classList.remove('show'); }
+
 export function drawProducts(list){
   const grid = el('#productGrid'); grid.innerHTML='';
   const filtered = applyFilters(list);

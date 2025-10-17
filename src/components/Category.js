@@ -1,6 +1,6 @@
+import { el } from '../core/dom.js';
 import { state } from '../core/state.js';
 import { t } from '../core/i18n.js';
-import { el } from '../core/dom.js';
 import { drawProducts } from './Home.js';
 import { openFilterModal, renderActiveFilterChips } from './Filters.js';
 

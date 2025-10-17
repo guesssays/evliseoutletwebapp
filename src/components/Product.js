@@ -35,7 +35,6 @@ export function renderProduct({id}){
       </div>
     </div>
     <div class="action-bar" id="actionBar">
-      <button class="action-btn ${isFav(p.id)?'heart-active':''}" id="favBtn" data-tip="${isFav(p.id)?'В избранном':'В избранное'}"><i data-lucide="heart"></i></button>
       <a class="action-btn" id="homeBtn" data-tip="Главная" href="#/"><i data-lucide="home"></i></a>
       <button class="action-btn primary" id="cartBtn" data-tip="Добавить в корзину"><i data-lucide="plus"></i></button>
     </div>`;
@@ -47,17 +46,9 @@ export function renderProduct({id}){
   (sizes||[]).forEach(s=>{ const b=document.createElement('button'); b.className='size'; b.textContent=s; b.onclick=()=>{ sg.querySelectorAll('.size').forEach(x=>x.classList.remove('active')); b.classList.add('active'); selectedSize=s; }; sg.appendChild(b); });
   let selectedColor=null; if (colors.length){ const cg=el('#colorGrid'); colors.forEach(c=>{ const btn=document.createElement('button'); btn.className='swatch'; btn.title=c; btn.style.background=colorToHex(c); btn.onclick=()=>{ cg.querySelectorAll('.swatch').forEach(x=>x.classList.remove('active')); btn.classList.add('active'); selectedColor=c; }; cg.appendChild(btn); }); }
 
-  const cartBtn=el('#cartBtn'); const favBtn=el('#favBtn');
+  const cartBtn=el('#cartBtn');
   cartBtn.onclick=()=>{ addToCart(p, selectedSize, selectedColor); cartBtn.innerHTML='<i data-lucide="shopping-bag"></i>'; cartBtn.setAttribute('data-tip','Перейти в корзину'); cartBtn.onclick=()=> location.hash='#/cart'; if (window.lucide?.createIcons) lucide.createIcons(); };
-  favBtn.onclick=()=>{ toggleFav(p.id); favBtn.classList.toggle('heart-active'); favBtn.setAttribute('data-tip', isFav(p.id) ? 'В избранном' : 'В избранное'); };
   if (window.lucide?.createIcons) lucide.createIcons();
-}
-
-function isFav(id){ const list = JSON.parse(localStorage.getItem('evlise_fav') || '[]'); return list.includes(id); }
-function toggleFav(id){
-  let list = JSON.parse(localStorage.getItem('evlise_fav') || '[]');
-  if (list.includes(id)) list = list.filter(x=>x!==id); else list.push(id);
-  localStorage.setItem('evlise_fav', JSON.stringify(list));
 }
 
 export function openImageFullscreen(src){
