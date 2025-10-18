@@ -14,6 +14,16 @@ export function renderProduct({id}){
 
   const v=document.getElementById('view');
   v.innerHTML = `
+    <!-- Фикс-хедер карточки (показывается при прокрутке) -->
+    <div id="productFixHdr" class="product-fix-hdr" aria-hidden="true">
+      <button id="btnFixBack" class="fix-btn" aria-label="Назад"><i data-lucide="arrow-left"></i></button>
+      <div class="fix-title">
+        <div class="fix-title__name">${escapeHtml(p.title)}</div>
+        <div class="fix-title__price">${priceFmt(p.price)}</div>
+      </div>
+      <button id="btnFixFav" class="fix-btn ${favActive?'active':''}" aria-pressed="${favActive?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
+    </div>
+
     <div class="product">
       <!-- ГАЛЕРЕЯ -->
       <div class="p-hero">
@@ -191,8 +201,8 @@ export function renderProduct({id}){
 
   /* ==== ВНУТРЕННЕЕ: управление двумя хедерами ==== */
   function setupTwoHeaders({ isFav: favAtStart }){
-    const stat = document.querySelector('.app-header');
-    const fix  = document.getElementById('productFixHdr');
+    const stat = document.querySelector('.app-header');           // статичный системный хедер
+    const fix  = document.getElementById('productFixHdr');        // наш фикс-хедер карточки
     const btnBack = document.getElementById('btnFixBack');
     const btnFav  = document.getElementById('btnFixFav');
     if (!stat || !fix || !btnBack || !btnFav) return;
@@ -252,7 +262,7 @@ export function renderProduct({id}){
 
 /* ==== вспомогалки ==== */
 function escapeHtml(s=''){
-  return s.replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
 /* ===== ЗУМ ВНУТРИ БЛОКА ===== */
