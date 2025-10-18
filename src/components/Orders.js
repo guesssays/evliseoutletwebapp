@@ -1,6 +1,7 @@
+// src/components/Orders.js
 import { state, getUID } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
-import { getOrdersForUser } from '../core/orders.js';
+import { getOrdersForUser, ORDER_STATUSES, getStatusLabel } from '../core/orders.js';
 
 export function renderOrders(){
   const v=document.getElementById('view');
@@ -27,7 +28,7 @@ export function renderOrders(){
           <div class="cart-img"><img src="${o.cart?.[0]?.images?.[0] || 'assets/placeholder.jpg'}" alt=""></div>
           <div>
             <div class="cart-title">Заказ #${o.id}</div>
-            <div class="cart-sub">${statusTextClient(o.status)}</div>
+            <div class="cart-sub">${getStatusLabel(o.status)}</div>
             <div class="cart-price">${priceFmt(o.total || 0)}</div>
           </div>
           <a class="pill primary" href="#/track/${o.id}">Отследить</a>
@@ -48,16 +49,19 @@ export function renderTrack({id}){
     return;
   }
 
-  const steps = [
-    { key:'новый', label:'В обработке' },
-    { key:'принят', label:'Подтверждён' },
-    { key:'собирается в китае', label:'Сборка' },
-    { key:'вылетел в узб', label:'В пути' },
-    { key:'на таможне', label:'Таможня' },
-    { key:'на почте', label:'На почте' },
-    { key:'забран с почты', label:'Забран' },
-    { key:'выдан', label:'Выдан' }
+  // последовательность шагов для визуализации прогресса
+  const stepsKeys = [
+    'новый',
+    'принят',
+    'собирается в китае',
+    'вылетел в узб',
+    'на таможне',
+    'на почте',
+    'забран с почты',
+    'выдан'
   ];
+  const steps = stepsKeys.map(k => ({ key:k, label:getStatusLabel(k) }));
+
   const curIdx = Math.max(steps.findIndex(s=>s.key===o.status), 0);
   const progress = Math.max(0, Math.min(100, Math.round(curIdx * 100 / (steps.length - 1))));
 
@@ -65,7 +69,7 @@ export function renderTrack({id}){
     <section class="checkout">
       <div class="track-head">
         <div class="track-caption">Этап ${curIdx+1} из ${steps.length}</div>
-        <div style="min-width:120px; text-align:right; font-weight:800">${statusTextClient(o.status)}</div>
+        <div style="min-width:120px; text-align:right; font-weight:800">${getStatusLabel(o.status)}</div>
       </div>
       <div class="progress-bar" aria-label="Прогресс заказа"><b style="width:${progress}%"></b></div>
 
@@ -80,11 +84,4 @@ export function renderTrack({id}){
 
       <a class="pill primary" href="#/orders" style="margin-top:10px">Назад к заказам</a>
     </section>`;
-}
-
-function statusTextClient(s){
-  if (s==='новый') return 'В обработке';
-  if (s==='принят') return 'Подтверждён';
-  if (s==='выдан') return 'Выдан';
-  return String(s||'').charAt(0).toUpperCase() + String(s||'').slice(1);
 }

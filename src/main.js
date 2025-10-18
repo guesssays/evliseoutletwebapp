@@ -32,7 +32,7 @@ import { renderNotifications } from './components/Notifications.js';
 // Админка
 import { renderAdmin } from './components/Admin.js';
 import { renderAdminLogin } from './components/AdminLogin.js';
-import { getOrders, clearAllOrders } from './core/orders.js';
+import { getOrders, clearAllOrders, getStatusLabel } from './core/orders.js';
 import { canAccessAdmin, tryUnlockFromStartParam } from './core/auth.js';
 
 /* ---------- Ранняя фиксация UID до загрузки персональных данных ---------- */
@@ -419,7 +419,7 @@ async function init(){
       pushNotificationFor(userId, {
         icon: 'refresh-ccw',
         title: 'Статус заказа обновлён',
-        sub: `#${id}: ${status}`,
+        sub: `#${id}: ${getStatusLabel(status)}`,
       });
       if (String(userId) === String(getUID?.())) updateNotifBadge?.();
     }catch{}

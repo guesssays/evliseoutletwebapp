@@ -5,7 +5,8 @@ import {
   acceptOrder,
   cancelOrder,
   updateOrderStatus,
-  seedOrdersOnce
+  seedOrdersOnce,
+  getStatusLabel,      // ← единая функция названий
 } from '../core/orders.js';
 import { state } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
@@ -123,7 +124,7 @@ export function renderAdmin(){
                 <div class="order-mini__meta">
                   <span class="chip-id">#${escapeHtml(o.id)}</span>
                   <span class="chip-user">@${escapeHtml(o.username||'—')}</span>
-                  <span class="muted mini">· ${escapeHtml(humanStatus(o.status))}</span>
+                  <span class="muted mini">· ${escapeHtml(getStatusLabel(o.status))}</span>
                 </div>
               </div>
               <div class="order-mini__right">
@@ -213,7 +214,7 @@ export function renderAdmin(){
             </div>
             <div class="kv__row">
               <dt>Статус</dt>
-              <dd>${escapeHtml(humanStatus(o.status))}</dd>
+              <dd>${escapeHtml(getStatusLabel(o.status))}</dd>
             </div>
             ${o.status==='отменён' ? `
               <div class="kv__row">
@@ -245,8 +246,8 @@ export function renderAdmin(){
 
             ${(!isNew && !isDone) ? `
               <div class="stage-list" id="stageList" role="group" aria-label="Этапы заказа">
-                ${ACTIVE_STAGES.map(s=>`
-                  <button class="stage-btn ${o.status===s?'is-active':''}" data-st="${s}">${stageLabel(s)}</button>
+                ${ORDER_STATUSES.filter(s=>!['новый','отменён'].includes(s)).map(s=>`
+                  <button class="stage-btn ${o.status===s?'is-active':''}" data-st="${s}">${getStatusLabel(s)}</button>
                 `).join('')}
               </div>
             ` : ''}
@@ -271,8 +272,7 @@ export function renderAdmin(){
     // Новый: принять
     document.getElementById('btnAccept')?.addEventListener('click', ()=>{
       acceptOrder(o.id);
-      // событий здесь НЕ шлём: их отправляет core/orders.js
-      render();
+      render(); // события отработают в core/orders.js
     });
 
     // Новый: отменить с комментарием
@@ -280,18 +280,16 @@ export function renderAdmin(){
       const reason = prompt('Укажите причину отмены (видно будет только админам):');
       saveCancelReason(o.id, reason||'');
       cancelOrder(o.id, reason||'');
-      // событий здесь НЕ шлём: их отправляет core/orders.js
       mode='list'; tab='done'; render();
     });
 
-    // В процессе: выбор этапа (в т.ч. «выдан»)
+    // В процессе: выбор этапа
     document.getElementById('stageList')?.addEventListener('click', (e)=>{
       const btn = e.target.closest('.stage-btn');
       if (!btn) return;
       const st = btn.getAttribute('data-st');
       if (!st) return;
       updateOrderStatus(o.id, st);
-      // событий здесь НЕ шлём: их отправляет core/orders.js
       if (st === 'выдан'){ mode='list'; tab='done'; }
       render();
     });
@@ -331,21 +329,6 @@ export function renderAdmin(){
 
   render();
 }
-
-function humanStatus(s){
-  if (s==='новый') return 'Новый';
-  if (s==='принят') return 'Принят';
-  if (s==='собирается в китае') return 'Сборка';
-  if (s==='вылетел в узб') return 'В пути';
-  if (s==='на таможне') return 'Таможня';
-  if (s==='на почте') return 'На почте';
-  if (s==='забран с почты') return 'Забран';
-  if (s==='выдан') return 'Выдан';
-  if (s==='готов к отправке') return 'Готов к отправке';
-  if (s==='отменён') return 'Отменён';
-  return String(s||'');
-}
-function stageLabel(s){ return humanStatus(s); }
 
 function escapeHtml(s=''){
   return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
