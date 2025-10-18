@@ -19,7 +19,7 @@ export function renderOrders(){
     <section class="checkout">
       ${state.orders.map(o=>`
         <div class="cart-row">
-          <div class="cart-img"><img src="${o.cart?.[0]?.images?.[0] || 'assets/placeholder.jpg'}"></div>
+          <div class="cart-img"><img src="${o.cart?.[0]?.images?.[0] || 'assets/placeholder.jpg'}" alt=""></div>
           <div>
             <div class="cart-title">Заказ #${o.id}</div>
             <div class="cart-sub">${statusTextClient(o.status)}</div>
@@ -37,34 +37,50 @@ export function renderTrack({id}){
   if(!o){ v.innerHTML='<div class="section-title">Трекинг</div><section class="checkout">Не найдено</section>'; return; }
 
   const steps = [
-    { key:'новый', label:'В обработке' },
-    { key:'принят', label:'Принят администратором' },
-    { key:'собирается в китае', label:'Собирается в Китае' },
-    { key:'вылетел в узб', label:'Вылетел в Узбекистан' },
-    { key:'на таможне', label:'На таможне' },
-    { key:'на почте', label:'На почте' },
-    { key:'забран с почты', label:'Забран с почты' },
-    { key:'готов к отправке', label:'Готов к отправке' },
+    { key:'новый', label:'В обработке', sub:'Мы получили заказ и проверяем детали', icon:'clock' },
+    { key:'принят', label:'Принят администратором', sub:'Заказ подтверждён, готовим к сборке', icon:'shield-check' },
+    { key:'собирается в китае', label:'Собирается в Китае', sub:'Комплектуем посылку', icon:'boxes' },
+    { key:'вылетел в узб', label:'Вылетел в Узбекистан', sub:'Посылка в авиадоставке', icon:'plane' },
+    { key:'на таможне', label:'На таможне', sub:'Проходит таможенный контроль', icon:'badge-check' },
+    { key:'на почте', label:'На почте', sub:'Готовится к выдаче', icon:'mail' },
+    { key:'забран с почты', label:'Забран с почты', sub:'Заказ получен со склада', icon:'package-check' },
+    { key:'готов к отправке', label:'Готов к отправке', sub:'Ожидает финальной доставки', icon:'truck' },
   ];
   const curIdx = Math.max(steps.findIndex(s=>s.key===o.status), 0);
 
   v.innerHTML = `<div class="section-title">Трекинг заказа #${o.id}</div>
     <section class="checkout">
-      <div style="border:1px dashed #ddd;border-radius:16px;padding:14px">
+      <div class="timeline">
         ${steps.map((s,i)=>`
-          <div style="display:flex;align-items:center;gap:10px;margin:10px 0">
-            <div style="width:12px;height:12px;border-radius:50%;${i<=curIdx?'background:#121111':'background:#ddd'}"></div>
-            <div class="cart-title" style="font-size:16px">${s.label}</div>
+          <div class="timeline-step ${i<curIdx?'is-done':''} ${i===curIdx?'is-current':''}">
+            <span class="dot"></span>
+            <div class="timeline-title">
+              ${s.label}
+              ${i===curIdx ? `<span class="pill small" style="margin-left:6px">текущий этап</span>` : ''}
+            </div>
+            <div class="timeline-sub">
+              <i data-lucide="${s.icon}" style="width:14px;height:14px;vertical-align:-2px"></i>
+              <span style="margin-left:6px">${s.sub}</span>
+            </div>
           </div>`).join('')}
       </div>
+
+      <div class="note" style="grid-template-columns:auto 1fr">
+        <i data-lucide="info"></i>
+        <div>
+          <div class="note-title">Статусы обновляются администратором</div>
+          <div class="note-sub">Как только этап изменится — вы получите уведомление в профиле.</div>
+        </div>
+      </div>
+
       <a class="pill primary" href="#/orders">Назад к заказам</a>
     </section>`;
+  window.lucide?.createIcons && lucide.createIcons();
 }
 
 function statusTextClient(s){
   if (s==='новый') return 'В обработке';
   if (s==='принят') return 'Принят администратором';
   if (s==='готов к отправке') return 'Готов к отправке';
-  // остальное — просто нормализуем регистр
   return String(s||'').charAt(0).toUpperCase() + String(s||'').slice(1);
 }

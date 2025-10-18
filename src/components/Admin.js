@@ -1,4 +1,3 @@
-// components/Admin.js
 import {
   ORDER_STATUSES,
   getOrders,
@@ -55,7 +54,6 @@ export function renderAdmin(){
   const getById = (id)=> getAll().find(o=>String(o.id)===String(id));
 
   const currentProductsMap = ()=>{
-    // Ускоряем доступ к цене
     const map = new Map();
     (state.products || []).forEach(p => map.set(String(p.id), p));
     return map;
@@ -80,7 +78,6 @@ export function renderAdmin(){
     `;
     window.lucide?.createIcons && lucide.createIcons();
 
-    // обработка вкладок
     document.getElementById('adminTabs')?.addEventListener('click', (e)=>{
       const b = e.target.closest('.admin-tab');
       if(!b) return;
@@ -126,7 +123,6 @@ export function renderAdmin(){
 
     shell(html);
 
-    // переход к деталям
     document.getElementById('adminListMini')?.addEventListener('click', (e)=>{
       const card = e.target.closest('.order-mini');
       if(!card) return;
@@ -134,7 +130,6 @@ export function renderAdmin(){
       mode = 'detail';
       render();
     });
-    // поддержка клавиатуры
     document.getElementById('adminListMini')?.addEventListener('keydown', (e)=>{
       if (e.key === 'Enter' || e.key === ' ') {
         const card = e.target.closest('.order-mini');
@@ -167,7 +162,7 @@ export function renderAdmin(){
             <i data-lucide="arrow-left"></i><span>Назад</span>
           </button>
           <div class="order-detail__title">${escapeHtml(title)}</div>
-          <span class="badge ${badgeMod(o)}">${escapeHtml(o.status)}</span>
+          <!-- Бейдж статуса сверху справа удалён по просьбе -->
         </div>
 
         <div class="order-detail__body">
@@ -238,28 +233,23 @@ export function renderAdmin(){
 
     window.lucide?.createIcons && lucide.createIcons();
 
-    // Назад
     document.getElementById('backToList')?.addEventListener('click', ()=>{
       mode='list'; selectedId=null; render();
     });
 
-    // Предпросмотр чека
     document.querySelector('[data-preview]')?.addEventListener('click', (e)=>{
       const url = e.currentTarget.getAttribute('data-preview');
       openReceiptPreview(url);
     });
 
-    // Принять заказ
     document.getElementById('btnAccept')?.addEventListener('click', ()=>{
       acceptOrder(o.id);
       try {
         window.dispatchEvent(new CustomEvent('admin:orderAccepted',{ detail:{ id:o.id } }));
       }catch{}
-      // После принятия — включим селект, обновим экран
       render();
     });
 
-    // Смена статуса
     document.getElementById('statusSelect')?.addEventListener('change', (e)=>{
       const st = e.target.value;
       updateOrderStatus(o.id, st);
@@ -275,7 +265,6 @@ export function renderAdmin(){
     else listView();
   }
 
-  // ---------- чек: предпросмотр в системной модалке ----------
   function openReceiptPreview(url){
     if(!url) return;
     const modal = document.getElementById('modal');
@@ -283,7 +272,6 @@ export function renderAdmin(){
     const mt = document.getElementById('modalTitle');
     const ma = document.getElementById('modalActions');
     if (!modal || !mb || !mt || !ma){
-      // если по какой-то причине нет общей модалки — откроем в новой вкладке
       window.open(url, '_blank', 'noopener');
       return;
     }
@@ -314,7 +302,6 @@ export function renderAdmin(){
   render();
 }
 
-// утилита
 function escapeHtml(s=''){
   return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }

@@ -191,6 +191,18 @@ body{
 .pill i{ width:18px; height:18px }
 .pill:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
 
+/* ===== ФОРМА (для модалок подтверждения/оплаты) ===== */
+.form-grid{ display:grid; gap:10px; }
+.field{ display:grid; gap:6px; }
+.field > span{ font-weight:800; font-size:14px; }
+.input{
+  width:100%; height:44px; border-radius:12px; border:1px solid var(--stroke);
+  padding:0 12px; font:600 15px "Encode Sans";
+  background:#fff; color:var(--text);
+}
+.input[type="file"]{ padding:8px 10px; height:auto; }
+.field .helper{ color:var(--muted); font-size:12px; }
+
 /* ===== КОРЗИНА/ЧЕКАУТ ===== */
 .section-title{ font-size:24px; font-weight:800; margin:10px 18px }
 .checkout{ padding:0 18px calc(var(--tabbar-h) + var(--safe) + 24px); display:grid; gap:14px }
@@ -200,20 +212,24 @@ body{
 }
 .cart-img{ width:72px; height:72px; border-radius:16px; overflow:hidden }
 .cart-img img{ width:100%; height:100%; object-fit:cover }
-.cart-title{ font-weight:800; font-size:18px }
-.cart-sub{ color:var(--muted); font-size:14px; margin-top:2px }
-.cart-price{ font-weight:800 }
-.qty-mini{ display:flex; align-items:center; gap:10px }
-.qty-mini .ctrl{ width:36px; height:36px; border-radius:12px }
-.shipping{ margin:4px 0 12px }
+.cart-title{ font-weight:800; font-size:18px; }
+.cart-sub{ color:var(--muted); font-size:14px; margin-top:2px; }
+.cart-price{ font-weight:800; }
+.qty-mini{ display:flex; align-items:center; gap:10px; }
+.qty-mini .ctrl{ width:36px; height:36px; border-radius:12px; }
+.shipping{ margin:4px 0 12px; }
 
-.address-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:nowrap; }
-.address-left{ min-width:0 }
-.address-left .cart-title{ margin-bottom:2px }
+.address-row{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+}
+.address-left{ min-width:0; flex:1; }
+.address-left .cart-title{ margin-bottom:2px; }
+.address-left .cart-sub{ overflow-wrap:anywhere; }
 
+/* Итого */
 .payline{ display:grid; gap:10px; border-top:1px solid var(--stroke); padding:12px 0 }
-.payrow{ display:flex; justify-content:space-between; align-items:center }
-.paybtn{ position:sticky; bottom:calc(var(--tabbar-h) + var(--safe)); padding:0 18px 12px; z-index:3 }
+.payrow{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.payrow span{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
 
 /* ===== УВЕДОМЛЕНИЯ ===== */
 .notes{ display:grid; gap:8px; margin:0 18px 18px; }
@@ -252,12 +268,12 @@ body{
 .tabbar .btn { height:64px; }
 .tabbar-inner.is-cta{ justify-content:stretch; gap:10px; padding:8px; }
 
- /* ===== МОДАЛКИ / ТОСТЫ ===== */
-.modal{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.35) }
+/* ===== МОДАЛКИ / ТОСТЫ ===== */
+.modal{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.35); padding:12px; }
 .modal.show{ display:grid }
 .modal-dialog{ width:min(92vw,560px); background:#fff; border-radius:18px; overflow:hidden; box-shadow:var(--shadow) }
 .modal-head{ display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--stroke); font-weight:800 }
-.modal-body{ padding:14px }
+.modal-body{ padding:14px; max-height:70vh; overflow:auto; }
 .modal-actions{ display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--stroke); justify-content:flex-end }
 
 .toast-wrap{ position:fixed; top:var(--toastTop); right:16px; display:grid; gap:8px; z-index:70 }
@@ -295,14 +311,42 @@ body{
 }
 .addr input[type="radio"]{ width:18px; height:18px; accent-color:#121111; }
 .addr-title{ font-weight:800; }
-.addr-sub{ color:var(--muted); font-size:14px; margin-top:2px; }
+.addr-sub{ color:var(--muted); font-size:14px; margin-top:2px; overflow-wrap:anywhere; }
 
 .addr-actions{
   display:flex; gap:8px; justify-content:flex-start; align-items:center;
   margin:0 18px 18px;
 }
 
+/* ====== КРАСИВЫЙ ТРЕКИНГ ЗАКАЗА ====== */
+.timeline{
+  position:relative; margin:12px 0; padding-left:10px;
+}
+.timeline::before{
+  content:""; position:absolute; left:16px; top:0; bottom:0;
+  width:2px; background:#eee;
+}
+.timeline-step{
+  position:relative; padding:8px 8px 8px 42px; border-radius:12px; margin:4px 0;
+  background:#fff; border:1px solid var(--stroke);
+  display:grid; gap:2px;
+}
+.timeline-step .dot{
+  position:absolute; left:8px; top:14px; width:16px; height:16px; border-radius:50%;
+  background:#ddd; border:2px solid #fff; box-shadow:0 0 0 2px #eee;
+}
+.timeline-step.is-done{ border-color:#dfece1; background:#f7fbf8; }
+.timeline-step.is-done .dot{ background:#34c759; box-shadow:0 0 0 2px #dff3e6; }
+.timeline-step.is-current{ border-color:#cfe3ff; background:#f6faff; }
+.timeline-step.is-current .dot{ background:#1e90ff; box-shadow:0 0 0 2px #d7e9ff; }
+.timeline-title{ font-weight:800; font-size:15px; }
+.timeline-sub{ color:var(--muted); font-size:12px; }
+
 /* ===== АДАПТИВ ===== */
+@media (max-width: 420px){
+  .cart-row{ grid-template-columns:64px 1fr; }
+  .qty-mini{ grid-column:1 / -1; justify-self:end; }
+}
 @media (max-width: 380px){
   .grid{ grid-template-columns:1fr; }
   .p-title{ font-size:28px }
@@ -410,7 +454,7 @@ body.admin-mode .tabbar{ display:none !important; }
 }
 .admin-tabs::-webkit-scrollbar{ display:none; }
 .admin-tab{
-  border:1px solid var(--stroke); background:#fff; color:var(--text);
+  border:1px solid var(--stroke); background:#fff; color:#000;
   border-radius:999px; padding:10px 14px; font-weight:800; white-space:nowrap; cursor:pointer;
 }
 .admin-tab.is-active{ background:#121111; color:#fff; border-color:#121111; }
@@ -434,7 +478,7 @@ body.admin-mode .tabbar{ display:none !important; }
 .order-mini:focus{ box-shadow:0 0 0 2px rgba(18,17,17,.12) inset; }
 .order-mini__left{ min-width:0; }
 .order-mini__sum{ font-weight:800; font-size:18px; line-height:1.2; }
-.order-mini__meta{ display:flex; gap:8px; margin-top:6px; color:var(--muted); font-size:13px; }
+.order-mini__meta{ display:flex; gap:8px; margin-top:6px; color:var(--muted); font-size:13px; flex-wrap:wrap; }
 .chip-id,.chip-user{
   display:inline-flex; align-items:center; padding:6px 10px; border-radius:999px;
   background:#f6f6f6; border:1px solid var(--stroke);
@@ -457,7 +501,7 @@ body.admin-mode .tabbar{ display:none !important; }
 /* ====== Детальная карточка ====== */
 .order-detail{ padding:10px 18px 0; display:grid; gap:14px; }
 .order-detail__top{
-  display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;
+  display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:center; /* убрали правый бейдж статуса */
 }
 .btn-ghost{
   height:40px; display:inline-flex; align-items:center; gap:8px; padding:0 12px;
@@ -471,7 +515,7 @@ body.admin-mode .tabbar{ display:none !important; }
 .kv{ display:grid; gap:6px; }
 .kv__row{ display:grid; grid-template-columns:140px 1fr; gap:8px; align-items:start; }
 .kv__row dt{ color:var(--muted); font-size:13px; line-height:1.4; }
-.kv__row dd{ margin:0; font-size:14px; line-height:1.45; }
+.kv__row dd{ margin:0; font-size:14px; line-height:1.45; overflow-wrap:anywhere; }
 .kv--detail .receipt-actions{ display:flex; gap:8px; flex-wrap:wrap; }
 
 /* селект */

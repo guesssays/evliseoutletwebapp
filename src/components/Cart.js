@@ -39,7 +39,7 @@ export function renderCart(){
       <div class="cart-row" data-id="${String(x.product.id)}" data-size="${x.size||''}" data-color="${x.color||''}">
         <div class="cart-img"><img src="${x.product.images?.[0]||''}" alt=""></div>
         <div>
-          <div class="cart-title">${x.product.title}</div>
+          <div class="cart-title" style="overflow-wrap:anywhere">${x.product.title}</div>
           <div class="cart-sub">${x.size?`Размер ${x.size}`:''} ${x.color?`• ${x.color}`:''}</div>
           <div class="cart-price">${priceFmt(x.product.price)}</div>
         </div>
@@ -125,7 +125,7 @@ function checkoutFlow(items, addr, total){
 
   mt.textContent = 'Подтверждение данных';
   mb.innerHTML = `
-    <div class="form-grid" style="display:grid; grid-template-columns:1fr; gap:10px">
+    <div class="form-grid">
       <label class="field"><span>Номер телефона</span>
         <input id="cfPhone" class="input" placeholder="+998 ..." value="${escapeHtml(savedPhone)}">
       </label>
@@ -134,10 +134,10 @@ function checkoutFlow(items, addr, total){
       </label>
       <label class="field"><span>Адрес доставки</span>
         <input id="cfAddr" class="input" value="${escapeHtml(addr.address)}">
-        <div class="cart-sub" style="margin-top:4px">Сохранённый адрес: <b>${escapeHtml(addr.nickname)}</b> — <a class="link" href="#/account/addresses">изменить</a></div>
+        <div class="helper">Сохранённый адрес: <b>${escapeHtml(addr.nickname)}</b> — <a class="link" href="#/account/addresses">изменить</a></div>
       </label>
       <div class="field">
-        <div class="cart-title" style="font-size:16px">Товары в заказе</div>
+        <span>Товары в заказе</span>
         <ul style="margin:6px 0 0; padding-left:18px; color:#444">
           ${items.map(x=>`<li>${escapeHtml(x.product.title)} · ${x.size?`размер ${escapeHtml(x.size)} `:''}${x.color?`· ${escapeHtml(x.color)} `:''}×${x.qty}</li>`).join('')}
         </ul>
@@ -191,7 +191,7 @@ function openPayModal({ items, address, phone, payer, total }){
 
   mt.textContent = 'Оплата заказа';
   mb.innerHTML = `
-    <div style="display:grid; gap:10px">
+    <div class="form-grid">
       <div class="cart-title" style="font-size:18px">К оплате: ${priceFmt(total)}</div>
       <div class="note" style="grid-template-columns: auto 1fr">
         <i data-lucide="credit-card"></i>
@@ -202,7 +202,7 @@ function openPayModal({ items, address, phone, payer, total }){
       </div>
       <label class="field"><span>Загрузить скриншот оплаты</span>
         <input id="payShot" type="file" accept="image/*" class="input">
-        <div class="cart-sub">или вставьте URL изображения</div>
+        <div class="helper">или вставьте URL изображения чека</div>
         <input id="payShotUrl" class="input" placeholder="https://...">
       </label>
     </div>
@@ -227,10 +227,8 @@ function openPayModal({ items, address, phone, payer, total }){
       shotUrl = urlInput;
     }
 
-    // создаём заказ
     const first = items[0];
     const orderId = addOrder({
-      // сохраняем и корзину, и первый товар (для обратной совместимости)
       cart: items.map(x=>({
         id: x.product.id,
         title: x.product.title,
@@ -255,16 +253,13 @@ function openPayModal({ items, address, phone, payer, total }){
       accepted: false
     });
 
-    // чистим корзину
     state.cart.items = [];
     persistCart(); updateCartBadge();
 
     close();
     toast('Заказ оформлен, ожидает подтверждения');
-    // открываем профиль → Заказы
     location.hash = '#/orders';
 
-    // простая нотификация пользователю
     try{
       const ev = new CustomEvent('client:orderPlaced', { detail:{ id: orderId } });
       window.dispatchEvent(ev);
