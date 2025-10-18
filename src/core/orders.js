@@ -41,14 +41,15 @@ export function getOrders(){
 
 export function saveOrders(list){
   localStorage.setItem(KEY, JSON.stringify(list));
-  window.dispatchEvent(new CustomEvent('orders:updated'));
+  // общее событие для перерисовок
+  try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
 }
 
 /** Полная очистка всех заказов (для миграции/сброса) */
 export function clearAllOrders(){
   try{
     localStorage.removeItem(KEY);
-    window.dispatchEvent(new CustomEvent('orders:updated'));
+    try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
   }catch{}
 }
 
@@ -67,7 +68,7 @@ export function addOrder(order){
     id,
 
     // Идентификация пользователя (для клиентского фильтра)
-    userId: order.userId ?? null,     // <== добавлено
+    userId: order.userId ?? null,
     username: order.username ?? '',
 
     // поддержка одиночного товара + корзины из нескольких
@@ -126,6 +127,13 @@ export function acceptOrder(orderId){
   o.status = 'принят';
   writeHistory(o, 'принят');
   saveOrders(list);
+
+  // <<< важное: триггерим событие для уведомлений
+  try{
+    window.dispatchEvent(new CustomEvent('admin:orderAccepted', {
+      detail: { id: o.id, userId: o.userId }
+    }));
+  }catch{}
 }
 
 /** Отменить «новый» заказ с комментарием */
@@ -143,6 +151,13 @@ export function cancelOrder(orderId, reason = ''){
   o.status = 'отменён';
   writeHistory(o, 'отменён', { comment: o.cancelReason });
   saveOrders(list);
+
+  // событие отмены (если нужно показывать уведомление)
+  try{
+    window.dispatchEvent(new CustomEvent('admin:orderCanceled', {
+      detail: { id: o.id, reason: o.cancelReason, userId: o.userId }
+    }));
+  }catch{}
 }
 
 /** Обновить статус уже принятого заказа */
@@ -165,6 +180,13 @@ export function updateOrderStatus(orderId, status){
   }
   writeHistory(o, status);
   saveOrders(list);
+
+  // <<< важное: событие для уведомлений о смене статуса
+  try{
+    window.dispatchEvent(new CustomEvent('admin:statusChanged', {
+      detail: { id: o.id, status, userId: o.userId }
+    }));
+  }catch{}
 }
 
 /** Быстрая финализация */
@@ -172,5 +194,5 @@ export function markCompleted(orderId){
   updateOrderStatus(orderId, 'выдан');
 }
 
-/* ===== Демосидирование отключено (сохранена функция для совместимости) ===== */
-export function seedOrdersOnce(){ /* no-op: демо-данные отключены */ }
+/* ===== Демосидирование отключено ===== */
+export function seedOrdersOnce(){ /* no-op */ }

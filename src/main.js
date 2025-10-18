@@ -1,7 +1,20 @@
 // src/app.js
-import { state, loadCart, updateCartBadge, loadAddresses, pruneCartAgainstProducts, loadProfile, getUID, loadFavorites } from './core/state.js';
+import {
+  state,
+  loadCart,
+  updateCartBadge,
+  loadAddresses,
+  pruneCartAgainstProducts,
+  loadProfile,
+  loadFavorites,
+  getUID,
+  getNotifications,
+  setNotifications,
+  pushNotification,
+} from './core/state.js';
+
 import { toast } from './core/toast.js';
-import { el } from './core/utils.js';
+import { el, } from './core/utils.js';
 import { initTelegramChrome } from './core/utils.js';
 
 import { renderHome, drawCategoriesChips } from './components/Home.js';
@@ -203,21 +216,6 @@ el('#searchInput')?.addEventListener('input', (e)=>{
 });
 
 /* ---------- Уведомления (per-user) ---------- */
-function notifKey(){ return `nas_notifications__${getUID()}`; }
-
-function seedNotificationsOnce(){
-  try{
-    const K = notifKey();
-    if (localStorage.getItem(K)) return;
-    const seed = [
-      { id: 1, title: 'Добро пожаловать в EVLISE OUTLET', sub: 'Подборка новинок уже на главной.', ts: Date.now()-1000*60*60*6, read:false, icon:'bell' },
-      { id: 2, title: 'Скидки на худи', sub: 'MANIA и DIRT — выгоднее на 15% до воскресенья.', ts: Date.now()-1000*60*50, read:false, icon:'percent' },
-    ];
-    localStorage.setItem(K, JSON.stringify(seed));
-  }catch{}
-}
-function getNotifications(){ try{ return JSON.parse(localStorage.getItem(notifKey()) || '[]'); }catch{ return []; } }
-function setNotifications(list){ localStorage.setItem(notifKey(), JSON.stringify(list)); }
 function updateNotifBadge(){
   const unread = getNotifications().filter(n=>!n.read).length;
   const b = document.getElementById('notifBadge');
@@ -230,6 +228,17 @@ document.addEventListener('click', (e)=>{
   if (!btn) return;
   location.hash = '#/notifications';
 });
+
+function seedNotificationsOnce(){
+  try{
+    if (getNotifications().length) return;
+    const seed = [
+      { id: 1, title: 'Добро пожаловать в EVLISE OUTLET', sub: 'Подборка новинок уже на главной.', ts: Date.now()-1000*60*60*6, read:false, icon:'bell' },
+      { id: 2, title: 'Скидки на худи', sub: 'MANIA и DIRT — выгоднее на 15% до воскресенья.', ts: Date.now()-1000*60*50, read:false, icon:'percent' },
+    ];
+    setNotifications(seed);
+  }catch{}
+}
 
 /* ---------- Фикс-хедер товара: универсальное скрытие вне карточки ---------- */
 function hideProductHeader(){
@@ -343,7 +352,7 @@ async function init(){
     }
   }catch{}
 
-  // Заказы (персональные)
+  // Заказы
   state.orders = getOrders();
 
   // САНИТИЗАЦИЯ КОРЗИНЫ
@@ -379,29 +388,49 @@ async function init(){
     router();
   });
 
-  // Локальные нотификации по событиям заказа (per-user)
+  // === УВЕДОМЛЕНИЯ: персонифицированные события ===
   window.addEventListener('client:orderPlaced', (e)=>{
     try{
-      const list = JSON.parse(localStorage.getItem(notifKey()) || '[]');
-      list.push({ id: Date.now(), title: 'Заказ оформлен', sub:`#${e.detail?.id} — ожидает подтверждения`, ts: Date.now(), read:false, icon:'package' });
-      localStorage.setItem(notifKey(), JSON.stringify(list));
-      updateNotifBadge();
+      pushNotification({
+        icon: 'package',
+        title: 'Заказ оформлен',
+        sub: `#${e.detail?.id} — ожидает подтверждения`,
+      });
+      updateNotifBadge?.();
     }catch{}
   });
+
   window.addEventListener('admin:orderAccepted', (e)=>{
     try{
-      const list = JSON.parse(localStorage.getItem(notifKey()) || '[]');
-      list.push({ id: Date.now(), title: 'Заказ принят администратором', sub:`#${e.detail?.id}`, ts: Date.now(), read:false, icon:'shield-check' });
-      localStorage.setItem(notifKey(), JSON.stringify(list));
-      updateNotifBadge();
+      pushNotification({
+        icon: 'shield-check',
+        title: 'Заказ принят администратором',
+        sub: `#${e.detail?.id}`,
+      });
+      updateNotifBadge?.();
     }catch{}
   });
+
   window.addEventListener('admin:statusChanged', (e)=>{
     try{
-      const list = JSON.parse(localStorage.getItem(notifKey()) || '[]');
-      list.push({ id: Date.now(), title: 'Статус заказа обновлён', sub:`#${e.detail?.id}: ${e.detail?.status}`, ts: Date.now(), read:false, icon:'refresh-ccw' });
-      localStorage.setItem(notifKey(), JSON.stringify(list));
-      updateNotifBadge();
+      const { id, status } = e.detail || {};
+      pushNotification({
+        icon: 'refresh-ccw',
+        title: 'Статус заказа обновлён',
+        sub: `#${id}: ${status}`,
+      });
+      updateNotifBadge?.();
+    }catch{}
+  });
+
+  window.addEventListener('admin:orderCanceled', (e)=>{
+    try{
+      pushNotification({
+        icon: 'x-circle',
+        title: 'Заказ отменён',
+        sub: `#${e.detail?.id}${e.detail?.reason ? ` — ${e.detail.reason}` : ''}`,
+      });
+      updateNotifBadge?.();
     }catch{}
   });
 
