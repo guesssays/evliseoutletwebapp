@@ -1,6 +1,15 @@
+// core/orders.js
 // Простое локальное хранилище заказов + утилиты для админки/клиента
 const KEY = 'nas_orders';
 
+/**
+ * Полный список статусов, включая служебные.
+ * - 'новый'        — стартовый, доступно только: принять или отменить (с комментарием)
+ * - 'принят'       — после принятия
+ * - '...этапы...'  — меняем только после принятия
+ * - 'выдан'        — финальный, переходит во «Завершённые»
+ * - 'отменён'      — отдельное состояние (фиксируется причина)
+ */
 export const ORDER_STATUSES = [
   'новый',
   'принят',
@@ -9,7 +18,21 @@ export const ORDER_STATUSES = [
   'на таможне',
   'на почте',
   'забран с почты',
-  'готов к отправке',
+  'выдан',
+  'отменён',
+];
+
+/**
+ * Этапы, доступные к выбору ТОЛЬКО после принятия.
+ * В интерфейсе админки используй этот массив для стилизованного «пилюльного» выбора.
+ */
+export const ADMIN_STAGE_OPTIONS = [
+  'собирается в китае',
+  'вылетел в узб',
+  'на таможне',
+  'на почте',
+  'забран с почты',
+  'выдан',
 ];
 
 export function getOrders(){
@@ -21,10 +44,17 @@ export function saveOrders(list){
   window.dispatchEvent(new CustomEvent('orders:updated'));
 }
 
+function writeHistory(order, status, extra = {}){
+  const rec = { ts: Date.now(), status, ...extra };
+  order.history = Array.isArray(order.history) ? [...order.history, rec] : [rec];
+}
+
 export function addOrder(order){
   const list = getOrders();
   const id = order.id ?? String(Date.now());
   const now = Date.now();
+  const initialStatus = order.status ?? 'новый';
+
   const next = {
     id,
     // поддержка одиночного товара + корзины из нескольких
@@ -45,45 +75,106 @@ export function addOrder(order){
     paymentScreenshot: order.paymentScreenshot ?? '',
 
     // статусы
-    status: order.status ?? 'новый',
+    status: initialStatus,
     accepted: !!order.accepted,
+
+    // отмена/завершение
+    canceled: !!order.canceled,
+    cancelReason: order.cancelReason || '',
+    canceledAt: order.canceledAt || null,
+    completedAt: order.completedAt || null,
 
     // мета
     createdAt: order.createdAt ?? now,
     currency: order.currency || 'UZS',
-    history: order.history ?? [{ ts: now, status: order.status ?? 'новый' }],
+    history: order.history ?? [{ ts: now, status: initialStatus }],
   };
+
   list.unshift(next);
   saveOrders(list);
   return next.id;
 }
 
+/**
+ * Принять заказ с состояния «новый»
+ * Ставит статус 'принят' и помечает accepted=true.
+ */
 export function acceptOrder(orderId){
   const list = getOrders();
   const i = list.findIndex(o => String(o.id) === String(orderId));
   if (i === -1) return;
-  list[i].accepted = true;
-  list[i].status = 'принят';
-  list[i].history = [...(list[i].history||[]), { ts: Date.now(), status:'принят' }];
+  const o = list[i];
+
+  // Разрешаем принять только «новый» и неотменённый
+  if (o.status !== 'новый' || o.canceled) return;
+
+  o.accepted = true;
+  o.status = 'принят';
+  writeHistory(o, 'принят');
   saveOrders(list);
 }
 
-export function updateOrderStatus(orderId, status){
+/**
+ * Отменить «новый» заказ с комментарием
+ * Ставит статус 'отменён', фиксирует причину и время.
+ */
+export function cancelOrder(orderId, reason = ''){
   const list = getOrders();
   const i = list.findIndex(o => String(o.id) === String(orderId));
   if (i === -1) return;
-  list[i].status = status;
-  list[i].history = [...(list[i].history||[]), { ts: Date.now(), status }];
+  const o = list[i];
+
+  // Отменяем ТОЛЬКО на стадии «новый»
+  if (o.status !== 'новый') return;
+
+  o.canceled = true;
+  o.cancelReason = String(reason || '').trim();
+  o.canceledAt = Date.now();
+  o.accepted = false;
+  o.status = 'отменён';
+  writeHistory(o, 'отменён', { comment: o.cancelReason });
   saveOrders(list);
 }
 
-export function markCompleted(orderId){
-  updateOrderStatus(orderId, 'готов к отправке');
+/**
+ * Обновить статус уже принятого заказа.
+ * Если выставлен 'выдан' — помечаем как завершённый.
+ */
+export function updateOrderStatus(orderId, status){
+  if (!ORDER_STATUSES.includes(status)) return;
+
+  const list = getOrders();
+  const i = list.findIndex(o => String(o.id) === String(orderId));
+  if (i === -1) return;
+  const o = list[i];
+
+  // Нельзя менять статус у «новый» через этот метод — сначала acceptOrder()
+  if (o.status === 'новый') return;
+
+  // Нельзя менять отменённый
+  if (o.status === 'отменён' || o.canceled) return;
+
+  o.status = status;
+  // Если вдруг ставим статус до принятия — авто-пометим как принятый
+  if (!o.accepted && status !== 'отменён') o.accepted = true;
+
+  // Финализация
+  if (status === 'выдан'){
+    o.completedAt = Date.now();
+  }
+  writeHistory(o, status);
+  saveOrders(list);
 }
 
-// демо-наполнение при первом старте
+/** Быстрая финализация */
+export function markCompleted(orderId){
+  updateOrderStatus(orderId, 'выдан');
+}
+
+/* ===== Демо-данные при первом старте ===== */
 export function seedOrdersOnce(){
   if (getOrders().length) return;
+
   addOrder({
     productId: 101,
     size: 'M',
@@ -97,6 +188,7 @@ export function seedOrdersOnce(){
     link: '#/product/101',
     status: 'новый',
   });
+
   addOrder({
     productId: 205,
     size: 'L',
@@ -109,5 +201,27 @@ export function seedOrdersOnce(){
     link: '#/product/205',
     status: 'принят',
     accepted: true,
+  });
+
+  // Пример завершённого заказа
+  addOrder({
+    productId: 309,
+    size: 'XL',
+    address: 'г. Бухара, ул. Ляби-Хауз, 3',
+    phone: '+998 93 555-55-55',
+    username: 'done_user',
+    payerFullName: 'Сидоров Семён',
+    cart: [],
+    total: 459000,
+    link: '#/product/309',
+    status: 'выдан',
+    accepted: true,
+    completedAt: Date.now() - 3600_000,
+    history: [
+      { ts: Date.now() - 48*3600_000, status: 'новый' },
+      { ts: Date.now() - 47*3600_000, status: 'принят' },
+      { ts: Date.now() - 6*3600_000,  status: 'на почте' },
+      { ts: Date.now() - 3600_000,    status: 'выдан' },
+    ],
   });
 }

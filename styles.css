@@ -54,7 +54,7 @@ body{
 /* ===== ФИКС-ХЕДЕР ДЛЯ ТОВАРА ===== */
 .product-fixhdr{
   position:fixed; left:0; right:0; top:calc(6px + var(--safe-top));
-  padding:0 12px; z-index:40; display:none; /* без фона! */
+  padding:0 12px; z-index:40; display:none; /* без фона */
   pointer-events:none; /* кликабельны только кнопки */
 }
 .product-fixhdr.show{ display:block; }
@@ -66,8 +66,7 @@ body{
   color:var(--text); cursor:pointer;
   position:absolute; top:0;
 }
-#btnFixBack{ left:12px; }
-#btnFixFav{ right:12px; }
+#btnFixBack{ left:12px; } #btnFixFav{ right:12px; }
 .product-fixhdr .fixbtn i{ width:22px; height:22px }
 #btnFixFav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none }
 
@@ -191,14 +190,14 @@ body{
 .pill i{ width:18px; height:18px }
 .pill:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
 
-/* ===== ФОРМА (для модалок подтверждения/оплаты) ===== */
+/* ===== ФОРМА ===== */
 .form-grid{ display:grid; gap:10px; }
 .field{ display:grid; gap:6px; }
 .field > span{ font-weight:800; font-size:14px; }
 .input{
   width:100%; height:44px; border-radius:12px; border:1px solid var(--stroke);
   padding:0 12px; font:600 15px "Encode Sans";
-  background:#fff; color:var(--text);
+  background:#fff; color:#var(--text);
 }
 .input[type="file"]{ padding:8px 10px; height:auto; }
 .field .helper{ color:var(--muted); font-size:12px; }
@@ -206,27 +205,25 @@ body{
 /* ===== КОРЗИНА/ЧЕКАУТ ===== */
 .section-title{ font-size:24px; font-weight:800; margin:10px 18px }
 .checkout{ padding:0 18px calc(var(--tabbar-h) + var(--safe) + 24px); display:grid; gap:14px }
-.cart-row{
-  display:grid; grid-template-columns:72px 1fr auto; gap:14px; align-items:center;
-  padding:12px 0; border-bottom:1px solid var(--stroke)
+
+/* СПИСОК ЗАКАЗОВ — фикс грид, чтобы «Отследить» всегда справа */
+.order-row{
+  display:grid; grid-template-columns:72px minmax(0,1fr) max-content; gap:14px; align-items:center;
+  padding:12px 0; border-bottom:1px solid var(--stroke);
 }
 .cart-img{ width:72px; height:72px; border-radius:16px; overflow:hidden }
 .cart-img img{ width:100%; height:100%; object-fit:cover }
 .cart-title{ font-weight:800; font-size:18px; }
 .cart-sub{ color:var(--muted); font-size:14px; margin-top:2px; }
 .cart-price{ font-weight:800; }
-.qty-mini{ display:flex; align-items:center; gap:10px; }
-.qty-mini .ctrl{ width:36px; height:36px; border-radius:12px; }
-.shipping{ margin:4px 0 12px; }
+.order-row .cart-title{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.order-row .pill{ justify-self:end; }
 
-.address-row{
-  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
-}
+/* Итого/адрес */
+.address-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
 .address-left{ min-width:0; flex:1; }
-.address-left .cart-title{ margin-bottom:2px; }
+.address-left .cart-title{ margin-bottom:2px }
 .address-left .cart-sub{ overflow-wrap:anywhere; }
-
-/* Итого */
 .payline{ display:grid; gap:10px; border-top:1px solid var(--stroke); padding:12px 0 }
 .payrow{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
 .payrow span{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
@@ -293,9 +290,7 @@ body{
 .account-card .info .name{ font-weight:800; font-size:18px; }
 .account-card .info .muted{ color:var(--muted); font-size:14px; margin-top:2px; }
 
-.menu{
-  display:grid; gap:8px; margin:0 18px 18px;
-}
+.menu{ display:grid; gap:8px; margin:0 18px 18px; }
 .menu-item{
   display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:12px;
   padding:12px; border:1px solid var(--stroke); border-radius:14px; background:#fff;
@@ -318,44 +313,22 @@ body{
   margin:0 18px 18px;
 }
 
-/* ====== КРАСИВЫЙ ТРЕКИНГ ЗАКАЗА ====== */
-.timeline{
-  position:relative; margin:12px 0; padding-left:10px;
-}
-.timeline::before{
-  content:""; position:absolute; left:16px; top:0; bottom:0;
-  width:2px; background:#eee;
-}
-.timeline-step{
-  position:relative; padding:8px 8px 8px 42px; border-radius:12px; margin:4px 0;
-  background:#fff; border:1px solid var(--stroke);
-  display:grid; gap:2px;
-}
-.timeline-step .dot{
-  position:absolute; left:8px; top:14px; width:16px; height:16px; border-radius:50%;
-  background:#ddd; border:2px solid #fff; box-shadow:0 0 0 2px #eee;
-}
-.timeline-step.is-done{ border-color:#dfece1; background:#f7fbf8; }
-.timeline-step.is-done .dot{ background:#34c759; box-shadow:0 0 0 2px #dff3e6; }
-.timeline-step.is-current{ border-color:#cfe3ff; background:#f6faff; }
-.timeline-step.is-current .dot{ background:#1e90ff; box-shadow:0 0 0 2px #d7e9ff; }
-.timeline-title{ font-weight:800; font-size:15px; }
-.timeline-sub{ color:var(--muted); font-size:12px; }
+/* ====== МИНИМАЛИСТИЧНЫЙ ТРЕКИНГ (клиент) ====== */
+.track-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.track-caption{ color:var(--muted); font-size:13px; }
+.progress-bar{ height:6px; background:#eee; border-radius:999px; overflow:hidden; }
+.progress-bar b{ display:block; height:100%; background:#121111; width:0%; }
 
-/* ===== АДАПТИВ ===== */
-@media (max-width: 420px){
-  .cart-row{ grid-template-columns:64px 1fr; }
-  .qty-mini{ grid-column:1 / -1; justify-self:end; }
+.progress-list{ border:1px solid var(--stroke); border-radius:12px; background:#fff; }
+.progress-item{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-bottom:1px solid var(--stroke);
 }
-@media (max-width: 380px){
-  .grid{ grid-template-columns:1fr; }
-  .p-title{ font-size:28px }
-  .btn{ height:58px; font-size:16px }
-  .thumb{ width:64px; height:64px }
-  .real-photos{ grid-template-columns:1fr 1fr; }
-  .tabbar-inner{ height:72px; }
-  .tab{ height:50px; }
-}
+.progress-item:last-child{ border-bottom:none; }
+.progress-dot{ width:10px; height:10px; border-radius:50%; background:#ddd; }
+.progress-item.is-done .progress-dot{ background:#121111; }
+.progress-item.is-current .progress-dot{ background:#121111; box-shadow:0 0 0 4px rgba(18,17,17,.08); }
+.progress-label{ font-weight:700; }
 
 /* === Overlay (zoom) === */
 .zoom-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; z-index:1000; }
@@ -374,7 +347,7 @@ body{
 .has-cta .cta{ display:none !important; }
 body.has-cta{ padding-bottom:calc(var(--safe) + 16px) !important; }
 .tabbar-inner.is-cta .tab{ display:none !important; }
-.tabbar-inner.is-cta{ justify-content:stretch; gap:8px; padding:10px; height:72px; border-radius:24px; }
+.tabbar-inner.is-cta{ justify-content:stretch; gap:8px; height:72px; border-radius:24px; padding:10px; }
 .tabbar-inner.is-cta .btn{ height:48px !important; font-size:15px !important; font-weight:800; border-radius:999px; padding:0 14px; box-shadow:none; }
 .tabbar-inner.is-cta .btn.primary{ background:#121111; color:#fff; border:1px solid rgba(255,255,255,.14); }
 .tabbar-inner.is-cta .btn.outline{ background:transparent !important; color:#fff !important; border:1px solid rgba(255,255,255,.22) !important; }
@@ -391,54 +364,10 @@ body.admin-mode #activeFilters{
   display:none !important;
 }
 
-/* скрыть клиентские вкладки, оставить только админ таббар (или выключите таббар совсем ниже) */
-body.admin-mode .tabbar .tabbar-inner a[data-tab="home"],
-body.admin-mode .tabbar .tabbar-inner a[data-tab="saved"],
-body.admin-mode .tabbar .tabbar-inner a[data-tab="cart"],
-body.admin-mode .tabbar .tabbar-inner a[data-tab="account"]{
-  display:none !important;
-}
-
-/* если нужно полностью убрать таббар в админке, раскомментируй: */
-/* body.admin-mode .tabbar{ display:none !important; } */
-
-.admin-topbar{
-  display:flex; justify-content:space-between; align-items:center;
-  gap:8px; padding-top:8px;
-}
-.admin-title{
-  display:flex; align-items:center; gap:8px; font-weight:700; font-size:18px;
-}
-.right-col{ min-width:180px; display:grid; gap:8px; justify-items:end; }
-
-@media (max-width:480px){
-  .notes.notes-mobile .note.note-mobile{
-    grid-template-columns: 32px 1fr;
-    gap:10px;
-  }
-  .note .time.right-col{
-    min-width:0; justify-items:stretch; align-items:start; gap:6px;
-  }
-  .mini{ font-size:12px; }
-  .mobile-full{ width:100%; }
-  .scrollable{ overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
-  .scrollable::-webkit-scrollbar{ display:none; }
-  .grid.grid-compact{
-    display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center;
-  }
-  @media (max-width:360px){
-    .grid.grid-compact{ grid-template-columns:1fr; }
-    .grid.grid-compact > *{ width:100%; }
-  }
-}
-/* =========================
-   ADMIN UI — PRO ONLY STYLES
-   ========================= */
-
-/* Скрываем клиентский таббар в админке */
+/* скрыть клиентский таббар в админке */
 body.admin-mode .tabbar{ display:none !important; }
 
-/* Шапка */
+/* ===== ADMIN UI ===== */
 .admin-shell{ padding:0 0 18px; }
 .admin-head{
   display:flex; align-items:center; justify-content:space-between;
@@ -466,14 +395,11 @@ body.admin-mode .tabbar{ display:none !important; }
 }
 .admin-empty i{ width:24px; height:24px; }
 
-/* ====== Список: мини-карточки ====== */
-.admin-list-mini{
-  display:grid; gap:10px; margin:10px 18px 18px;
-}
+/* Список: мини-карточки */
+.admin-list-mini{ display:grid; gap:10px; margin:10px 18px 18px; }
 .order-mini{
   display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center;
-  padding:12px; border:1px solid var(--stroke); border-radius:14px; background:#fff;
-  outline:none;
+  padding:12px; border:1px solid var(--stroke); border-radius:14px; background:#fff; outline:none;
 }
 .order-mini:focus{ box-shadow:0 0 0 2px rgba(18,17,17,.12) inset; }
 .order-mini__left{ min-width:0; }
@@ -484,31 +410,20 @@ body.admin-mode .tabbar{ display:none !important; }
   background:#f6f6f6; border:1px solid var(--stroke);
 }
 .order-mini__right{ display:flex; align-items:center; gap:10px; }
-.order-mini .badge{
-  display:inline-flex; align-items:center; justify-content:center;
-  height:26px; padding:0 10px; border-radius:999px; font-size:12px; font-weight:800; color:#fff;
-}
 .order-mini .arrow{
   width:18px; height:18px; border-right:2px solid #bbb; border-bottom:2px solid #bbb; transform:rotate(-45deg); margin-left:2px;
 }
 
-/* Бейджи */
-.badge--new{ background:#ff9f43; }
-.badge--accept{ background:#34c759; }
-.badge--done{ background:#5856d6; }
-.badge--progress{ background:#1e90ff; }
-
-/* ====== Детальная карточка ====== */
+/* Детальная карточка */
 .order-detail{ padding:10px 18px 0; display:grid; gap:14px; }
 .order-detail__top{
-  display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:center; /* убрали правый бейдж статуса */
+  display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:center;
 }
 .btn-ghost{
   height:40px; display:inline-flex; align-items:center; gap:8px; padding:0 12px;
   border-radius:12px; border:1px solid var(--stroke); background:#fff; cursor:pointer;
 }
 .btn-ghost i{ width:18px; height:18px; }
-
 .order-detail__title{ font-weight:800; font-size:18px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .order-detail__body{ display:grid; gap:14px; }
 
@@ -516,31 +431,24 @@ body.admin-mode .tabbar{ display:none !important; }
 .kv__row{ display:grid; grid-template-columns:140px 1fr; gap:8px; align-items:start; }
 .kv__row dt{ color:var(--muted); font-size:13px; line-height:1.4; }
 .kv__row dd{ margin:0; font-size:14px; line-height:1.45; overflow-wrap:anywhere; }
-.kv--detail .receipt-actions{ display:flex; gap:8px; flex-wrap:wrap; }
 
-/* селект */
-.select-wrap{ position:relative; width:100%; max-width:360px; }
-.select{
-  appearance:none; -webkit-appearance:none; -moz-appearance:none;
-  height:44px; padding:0 36px 0 12px; border-radius:999px; width:100%;
-  border:1px solid var(--stroke); background:#fff; font-weight:800; font-size:14px; line-height:1; cursor:pointer;
-  background-image:
-    linear-gradient(45deg, transparent 50%, #999 50%),
-    linear-gradient(135deg, #999 50%, transparent 50%);
-  background-position: calc(100% - 16px) 50%, calc(100% - 10px) 50%;
-  background-size:6px 6px, 6px 6px; background-repeat:no-repeat;
+/* Панель действий и выбор этапов (пилюли) */
+.order-detail__actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+.stage-list{
+  display:flex; gap:8px; flex-wrap:wrap;
+  border:1px dashed var(--stroke); border-radius:14px; padding:8px;
+  background:#fff;
 }
-.select:disabled{ opacity:.6; cursor:not-allowed; }
-
-.order-detail__actions{
-  display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+.stage-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  height:40px; padding:0 14px; border-radius:999px; border:1px solid var(--stroke);
+  background:#fff; font-weight:800; cursor:pointer;
 }
-
-/* Кнопки */
-.btn{ height:48px; border:none; border-radius:999px; padding:0 16px; font-weight:800; cursor:pointer; }
-.btn--primary{ background:#121111; color:#fff; border:1px solid #121111; }
-.btn--outline{ background:#fff; color:#121111; border:1px solid var(--stroke); }
-.btn--sm{ height:40px; font-size:14px; }
+.stage-btn.is-active{
+  background:#121111; color:#fff; border-color:#121111;
+}
+.mini{ font-size:12px; }
 
 /* Предпросмотр чека (в модалке) */
 .receipt-view{ display:grid; gap:10px; }
@@ -550,7 +458,20 @@ body.admin-mode .tabbar{ display:none !important; }
 }
 .receipt-img{ display:block; width:100%; height:auto; }
 
-/* ====== Адаптив ====== */
+/* ===== АДАПТИВ ===== */
+@media (max-width: 420px){
+  .cart-row{ grid-template-columns:64px 1fr; } /* если используешь старую сетку корзины */
+  .qty-mini{ grid-column:1 / -1; justify-self:end; }
+}
+@media (max-width: 380px){
+  .grid{ grid-template-columns:1fr; }
+  .p-title{ font-size:28px }
+  .btn{ height:58px; font-size:16px }
+  .thumb{ width:64px; height:64px }
+  .real-photos{ grid-template-columns:1fr 1fr; }
+  .tabbar-inner{ height:72px; }
+  .tab{ height:50px; }
+}
 @media (max-width: 920px){
   .kv__row{ grid-template-columns:120px 1fr; }
 }
@@ -570,5 +491,4 @@ body.admin-mode .tabbar{ display:none !important; }
 @media (max-width: 360px){
   .admin-title{ font-size:16px; }
   .order-mini{ gap:10px; }
-  .order-mini .badge{ height:24px; font-size:11px; }
 }

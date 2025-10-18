@@ -9,15 +9,28 @@ import { state } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 
 /**
- * Профи-админка:
+ * Админка:
  * - Вкладки: Новые / В процессе / Завершённые
- * - Список заказов (мини-карточка: сумма, ID, @username, статус)
- * - Детальная карточка заказа (вся инфа, принять, смена статуса, чек с предпросмотром/скачиванием)
- * - Без «таббара», без кнопок «Выйти», «Создать заказ»
- * - События для нотификаций клиента:
- *    - 'admin:orderAccepted'  { id }
- *    - 'admin:statusChanged'  { id, status }
+ * - Новый: только «Принять» и «Отменить» (с комментарием)
+ * - В процессе: выбор этапа через стилизованные пилюли
+ * - Если статус «выдан» → в «Завершённые»
+ * - Бейджи статусов убраны
  */
+
+const CANCEL_STORE_KEY = 'nas_cancel_reasons';
+
+function loadCancelReasons(){
+  try{ return JSON.parse(localStorage.getItem(CANCEL_STORE_KEY) || '{}'); }catch{ return {}; }
+}
+function saveCancelReason(orderId, text=''){
+  const map = loadCancelReasons();
+  map[String(orderId)] = String(text||'');
+  localStorage.setItem(CANCEL_STORE_KEY, JSON.stringify(map));
+}
+function getCancelReason(orderId){
+  const map = loadCancelReasons();
+  return map[String(orderId)] || '';
+}
 
 export function renderAdmin(){
   const v = document.getElementById('view');
@@ -44,10 +57,11 @@ export function renderAdmin(){
     return orders;
   };
 
+  // фильтрация по вкладкам согласно ТЗ
   const filterByTab = (list)=>{
-    if (tab==='new')    return list.filter(o => o.status==='новый' || (!o.accepted && o.status!=='готов к отправке'));
-    if (tab==='active') return list.filter(o => (o.accepted && o.status!=='готов к отправке') || (o.status!=='новый' && o.status!=='готов к отправке'));
-    if (tab==='done')   return list.filter(o => o.status==='готов к отправке');
+    if (tab==='new')    return list.filter(o => o.status==='новый' && !o.accepted);
+    if (tab==='active') return list.filter(o => !['новый','выдан','отменён'].includes(o.status));
+    if (tab==='done')   return list.filter(o => ['выдан','отменён'].includes(o.status));
     return list;
   };
 
@@ -58,6 +72,10 @@ export function renderAdmin(){
     (state.products || []).forEach(p => map.set(String(p.id), p));
     return map;
   };
+
+  // допустимые этапы для «в процессе»
+  const ACTIVE_STAGES = ORDER_STATUSES
+    .filter(s => !['новый','отменён'].includes(s)); // «выдан» остаётся доступным — отправит в «Завершённые»
 
   // ---------- UI shells ----------
   function shell(innerHTML){
@@ -70,7 +88,7 @@ export function renderAdmin(){
         <div class="admin-tabs" id="adminTabs" role="tablist" aria-label="Статусы заказов">
           ${TABS.map(t=>`
             <button class="admin-tab ${tab===t.key?'is-active':''}" data-k="${t.key}" role="tab" aria-selected="${tab===t.key}">${t.label}</button>
-          `).join('')}
+          ").join('')}
         </div>
 
         ${innerHTML}
@@ -104,10 +122,10 @@ export function renderAdmin(){
                 <div class="order-mini__meta">
                   <span class="chip-id">#${escapeHtml(o.id)}</span>
                   <span class="chip-user">@${escapeHtml(o.username||'—')}</span>
+                  <span class="muted mini">· ${escapeHtml(humanStatus(o.status))}</span>
                 </div>
               </div>
               <div class="order-mini__right">
-                <span class="badge ${badgeMod(o)}">${escapeHtml(o.status)}</span>
                 <i class="arrow" aria-hidden="true"></i>
               </div>
             </article>
@@ -123,21 +141,19 @@ export function renderAdmin(){
 
     shell(html);
 
-    document.getElementById('adminListMini')?.addEventListener('click', (e)=>{
-      const card = e.target.closest('.order-mini');
+    const hook = (card)=>{
       if(!card) return;
       selectedId = card.getAttribute('data-id');
       mode = 'detail';
       render();
-    });
+    };
+    document.getElementById('adminListMini')?.addEventListener('click', (e)=> hook(e.target.closest('.order-mini')));
     document.getElementById('adminListMini')?.addEventListener('keydown', (e)=>{
       if (e.key === 'Enter' || e.key === ' ') {
         const card = e.target.closest('.order-mini');
         if(!card) return;
         e.preventDefault();
-        selectedId = card.getAttribute('data-id');
-        mode = 'detail';
-        render();
+        hook(card);
       }
     });
   }
@@ -153,7 +169,7 @@ export function renderAdmin(){
     const price  = prod?.price ? priceFmt(prod.price) : (o.total ? priceFmt(o.total) : '—');
     const title  = prod?.title ? `${prod.title} ${price ? `· <span class="muted">${price}</span>`:''}` : `Заказ #${o.id}`;
     const isNew  = o.status==='новый' && !o.accepted;
-    const isDone = o.status==='готов к отправке';
+    const isDone = ['выдан','отменён'].includes(o.status);
 
     shell(`
       <div class="order-detail">
@@ -161,8 +177,7 @@ export function renderAdmin(){
           <button id="backToList" class="btn-ghost" aria-label="Назад к списку">
             <i data-lucide="arrow-left"></i><span>Назад</span>
           </button>
-          <div class="order-detail__title">${escapeHtml(title)}</div>
-          <!-- Бейдж статуса сверху справа удалён по просьбе -->
+          <div class="order-detail__title">${title}</div>
         </div>
 
         <div class="order-detail__body">
@@ -192,13 +207,18 @@ export function renderAdmin(){
               <dd>${escapeHtml(o.size||'—')}${o.color?` · ${escapeHtml(o.color)}`:''}</dd>
             </div>
             <div class="kv__row">
-              <dt>Ссылка на товар</dt>
-              <dd>${o.productId ? `<a class="link" href="#/product/${escapeHtml(o.productId)}">Открыть</a>`:'—'}</dd>
-            </div>
-            <div class="kv__row">
               <dt>Сумма</dt>
               <dd>${price}</dd>
             </div>
+            <div class="kv__row">
+              <dt>Статус</dt>
+              <dd>${escapeHtml(humanStatus(o.status))}</dd>
+            </div>
+            ${o.status==='отменён' ? `
+              <div class="kv__row">
+                <dt>Причина отмены</dt>
+                <dd class="break">${escapeHtml(getCancelReason(o.id) || '—')}</dd>
+              </div>` : ''}
             <div class="kv__row">
               <dt>Чек</dt>
               <dd>
@@ -217,15 +237,20 @@ export function renderAdmin(){
           </dl>
 
           <div class="order-detail__actions">
-            ${isNew ? `<button class="btn btn--primary" id="btnAccept" data-id="${o.id}">Принять заказ</button>`:''}
-            <label class="select-wrap">
-              <select id="statusSelect" class="select" ${isNew?'disabled':''}>
-                ${ORDER_STATUSES.filter(s=>s!=='новый').map(s=>`
-                  <option value="${s}" ${o.status===s?'selected':''}>${s}</option>
-                `).join('')}
-              </select>
-            </label>
-            ${isDone?'<span class="muted text-xs">Заказ завершён</span>':''}
+            ${isNew ? `
+              <button class="btn btn--primary" id="btnAccept" data-id="${o.id}">Принять</button>
+              <button class="btn btn--outline" id="btnCancel" data-id="${o.id}">Отменить</button>
+            ` : ''}
+
+            ${(!isNew && !isDone) ? `
+              <div class="stage-list" id="stageList" role="group" aria-label="Этапы заказа">
+                ${ACTIVE_STAGES.map(s=>`
+                  <button class="stage-btn ${o.status===s?'is-active':''}" data-st="${s}">${stageLabel(s)}</button>
+                ").join('')}
+              </div>
+            ` : ''}
+
+            ${isDone?'<span class="muted mini">Заказ завершён</span>':''}
           </div>
         </div>
       </div>
@@ -242,6 +267,7 @@ export function renderAdmin(){
       openReceiptPreview(url);
     });
 
+    // Новый: принять
     document.getElementById('btnAccept')?.addEventListener('click', ()=>{
       acceptOrder(o.id);
       try {
@@ -250,12 +276,29 @@ export function renderAdmin(){
       render();
     });
 
-    document.getElementById('statusSelect')?.addEventListener('change', (e)=>{
-      const st = e.target.value;
+    // Новый: отменить с комментарием
+    document.getElementById('btnCancel')?.addEventListener('click', ()=>{
+      const reason = prompt('Укажите причину отмены (видно будет только админам):');
+      saveCancelReason(o.id, reason||'');
+      updateOrderStatus(o.id, 'отменён');
+      try {
+        window.dispatchEvent(new CustomEvent('admin:statusChanged',{ detail:{ id:o.id, status:'отменён', reason } }));
+      }catch{}
+      mode='list'; render();
+    });
+
+    // В процессе: выбор этапа (в т.ч. «выдан»)
+    document.getElementById('stageList')?.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.stage-btn');
+      if (!btn) return;
+      const st = btn.getAttribute('data-st');
+      if (!st) return;
       updateOrderStatus(o.id, st);
       try {
         window.dispatchEvent(new CustomEvent('admin:statusChanged',{ detail:{ id:o.id, status: st } }));
       }catch{}
+      // Если выбрали «выдан» — карточка уйдёт в завершённые
+      if (st === 'выдан'){ mode='list'; tab='done'; }
       render();
     });
   }
@@ -292,15 +335,23 @@ export function renderAdmin(){
     document.getElementById('modalClose').onclick = ()=> modal.classList.remove('show');
   }
 
-  function badgeMod(o){
-    if (o.status==='новый') return 'badge--new';
-    if (o.status==='принят') return 'badge--accept';
-    if (o.status==='готов к отправке') return 'badge--done';
-    return 'badge--progress';
-  }
-
   render();
 }
+
+function humanStatus(s){
+  if (s==='новый') return 'Новый';
+  if (s==='принят') return 'Принят';
+  if (s==='собирается в китае') return 'Сборка';
+  if (s==='вылетел в узб') return 'В пути';
+  if (s==='на таможне') return 'Таможня';
+  if (s==='на почте') return 'На почте';
+  if (s==='забран с почты') return 'Забран';
+  if (s==='выдан') return 'Выдан';
+  if (s==='готов к отправке') return 'Готов к отправке';
+  if (s==='отменён') return 'Отменён';
+  return String(s||'');
+}
+function stageLabel(s){ return humanStatus(s); }
 
 function escapeHtml(s=''){
   return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
