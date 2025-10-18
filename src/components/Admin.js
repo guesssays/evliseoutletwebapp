@@ -237,23 +237,43 @@ export async function renderAdmin(){
       await triggerDownload(url, suggestReceiptFilename(url, oid));
     });
 
+    // === действие: принять заказ ===
     document.getElementById('btnAccept')?.addEventListener('click', async ()=>{
       await acceptOrder(o.id);
-      render();
+      // уведомим приложение о результате — для локальных и бот-уведомлений
+      try{
+        const ev = new CustomEvent('admin:orderAccepted', { detail:{ id: o.id, userId: o.userId } });
+        window.dispatchEvent(ev);
+      }catch{}
+      // остаёмся в деталях, но обновим карточку
+      mode='detail'; selectedId = o.id; render();
     });
 
+    // === действие: отменить заказ ===
     document.getElementById('btnCancel')?.addEventListener('click', async ()=>{
       const reason = prompt('Причина отмены (будет видна клиенту):');
       await cancelOrder(o.id, reason||'');
+      try{
+        const ev = new CustomEvent('admin:orderCanceled', { detail:{ id:o.id, reason:reason||'', userId:o.userId } });
+        window.dispatchEvent(ev);
+      }catch{}
+      // после отмены логичнее вернуться в «Завершённые»
       mode='list'; tab='done'; render();
     });
 
+    // === действие: смена этапа ===
     document.getElementById('stageList')?.addEventListener('click', async (e)=>{
       const btn = e.target.closest('.stage-btn');
       if (!btn) return;
       const st = btn.getAttribute('data-st');
       if (!st) return;
       await updateOrderStatus(o.id, st);
+
+      try{
+        const ev = new CustomEvent('admin:statusChanged', { detail:{ id:o.id, status:st, userId:o.userId } });
+        window.dispatchEvent(ev);
+      }catch{}
+
       if (st === 'выдан'){ mode='list'; tab='done'; }
       render();
     });
@@ -264,7 +284,11 @@ export async function renderAdmin(){
     else await listView();
   }
 
-  window.addEventListener('orders:updated', render);
+  // Обновления данных теперь мягкие: не сбрасываем вкладку/режим, просто перерисовываем
+  const rerenderOnOrders = ()=> render();
+  window.addEventListener('admin:refresh', rerenderOnOrders);
+  window.addEventListener('orders:updated', rerenderOnOrders);
+
   await render();
 }
 

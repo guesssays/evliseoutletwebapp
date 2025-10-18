@@ -392,10 +392,18 @@ async function init(){
 
   window.addEventListener('hashchange', router);
 
-  // ВАЖНО: здесь больше не дергаем getOrders() повторно — избегаем зацикливания!
+  // ВАЖНО: Больше не перезапускаем router() при обновлении заказов в админке,
+  // чтобы не сбрасывать вкладку/экран и не вызывать «прыжки».
   window.addEventListener('orders:updated', ()=>{
-    // state.orders уже обновлён автором события (core/orders.saveOrders)
-    router();
+    const inAdmin = document.body.classList.contains('admin-mode');
+    const isAdminRoute = location.hash.replace('#','').startsWith('/admin');
+    if (inAdmin && isAdminRoute){
+      // мягко попросим админку просто перерисоваться
+      try{ window.dispatchEvent(new CustomEvent('admin:refresh')); }catch{}
+    }else{
+      // обычное поведение для клиентской части
+      router();
+    }
   });
 
   window.addEventListener('force:rerender', router);
