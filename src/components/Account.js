@@ -39,6 +39,63 @@ export function renderAddresses(){
     <section class="section">
       <div class="section-title">Адреса доставки</div>
 
+      <!-- локальные стили — кнопки в столбик справа -->
+      <style>
+        .addr-list .addr{
+          display:grid;
+          grid-template-columns: auto 1fr auto;
+          align-items: center;
+          column-gap: 10px;
+          padding: 10px 12px;
+          border: 1px solid var(--border, rgba(0,0,0,.08));
+          border-radius: 10px;
+          margin-bottom: 8px;
+          background: var(--card, rgba(0,0,0,.03));
+        }
+        .addr-list .addr input[type="radio"]{
+          margin: 0 4px 0 0;
+          align-self: start;
+        }
+        .addr-list .addr-body{
+          min-width: 0;
+        }
+        .addr-list .addr-title{
+          font-weight: 700;
+          line-height: 1.2;
+        }
+        .addr-list .addr-sub{
+          color: var(--muted, #777);
+          font-size: .92rem;
+          line-height: 1.3;
+          word-break: break-word;
+        }
+        .addr-list .addr-ops{
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          align-items: flex-end;
+          justify-content: center;
+        }
+        .addr-list .addr-ops .icon-btn{
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          width:32px; height:32px;
+          border-radius:8px;
+          border:1px solid var(--border, rgba(0,0,0,.08));
+          background: var(--btn, #fff);
+        }
+        .addr-list .addr-ops .icon-btn.danger{
+          border-color: rgba(220, 53, 69, .35);
+          background: rgba(220, 53, 69, .06);
+        }
+        @media (hover:hover){
+          .addr-list .addr-ops .icon-btn:hover{
+            filter: brightness(0.98);
+          }
+        }
+      </style>
+
       <div class="addr-list">
         ${list.length ? list.map(a=>`
           <label class="addr">
