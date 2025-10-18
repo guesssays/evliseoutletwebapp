@@ -282,7 +282,11 @@ body{
 .tabbar-inner.is-cta{ justify-content:stretch; gap:10px; padding:8px; }
 
 /* ===== МОДАЛКИ / ТОСТЫ ===== */
-.modal{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.35); padding:12px; }
+.modal{
+  position:fixed; inset:0; display:none; place-items:center;
+  background:rgba(0,0,0,.35); padding:12px;
+  z-index: 80; /* выше таббара (50) и не конфликтует с zoom-overlay (1000) */
+}
 .modal.show{ display:grid }
 .modal-dialog{ width:min(92vw,560px); background:#fff; border-radius:18px; overflow:hidden; box-shadow:var(--shadow) }
 .modal-head{ display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--stroke); font-weight:800 }

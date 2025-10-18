@@ -4,7 +4,7 @@ import { priceFmt } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 import { addOrder } from '../core/orders.js';
 import { getPayCardNumber } from '../core/payments.js';
-import { persistProfile } from '../core/state.js';
+import { persistProfile, getUID } from '../core/state.js';
 
 export function renderCart(){
   const v = document.getElementById('view');
@@ -380,7 +380,7 @@ function openPayModal({ items, address, phone, payer, total }){
       address,
       phone,
       username: state.user?.username || '',
-      userId: state.user?.id || null,
+      userId: getUID(),
       payerFullName: payer || '',
       paymentScreenshot,
       status: 'новый',
