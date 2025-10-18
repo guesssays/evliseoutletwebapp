@@ -73,12 +73,19 @@ function orderCard(o){
     actionHtml = `<a class="pill primary" href="#/track/${encodeURIComponent(o.id)}">Отследить</a>`;
   }
 
+  // доп.инфа для отменённых: причина
+  const subLines = [];
+  subLines.push(getStatusLabel(o.status));
+  if (o.status === 'отменён' && o.cancelReason){
+    subLines.push(`Причина: ${escapeHtml(o.cancelReason)}`);
+  }
+
   return `
     <div class="order-row">
       <div class="cart-img"><img src="${cover}" alt=""></div>
       <div>
         <div class="cart-title">Заказ #${escapeHtml(o.id)}</div>
-        <div class="cart-sub">${escapeHtml(getStatusLabel(o.status))}</div>
+        <div class="cart-sub">${subLines.map(escapeHtml).join(' · ')}</div>
         <div class="cart-price">${priceFmt(o.total || 0)}</div>
       </div>
       ${actionHtml}
@@ -107,6 +114,25 @@ export function renderTrack({id}){
   const v=document.getElementById('view');
   if(!o){
     v.innerHTML='<div class="section-title">Трекинг</div><section class="checkout">Не найдено</section>';
+    return;
+  }
+
+  // если заказ отменён — показать компактный экран с причиной
+  if (o.status === 'отменён'){
+    v.innerHTML = `
+      <div class="section-title">Трекинг заказа #${escapeHtml(o.id)}</div>
+      <section class="checkout">
+        <div class="note" style="grid-template-columns:auto 1fr">
+          <i data-lucide="x-circle"></i>
+          <div>
+            <div class="note-title">Заказ отменён</div>
+            ${o.cancelReason ? `<div class="note-sub">Причина: ${escapeHtml(o.cancelReason)}</div>` : ''}
+          </div>
+        </div>
+        <a class="pill" href="#/orders" style="margin-top:10px">Назад к заказам</a>
+      </section>
+    `;
+    window.lucide?.createIcons && lucide.createIcons();
     return;
   }
 
@@ -145,6 +171,7 @@ export function renderTrack({id}){
 
       <a class="pill primary" href="#/orders" style="margin-top:10px">Назад к заказам</a>
     </section>`;
+  window.lucide?.createIcons && lucide.createIcons();
 }
 
 function escapeHtml(s=''){

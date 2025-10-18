@@ -161,7 +161,7 @@ export function acceptOrder(orderId){
   }catch{}
 }
 
-/** Отменить «новый» заказ с комментарием */
+/** Отменить «новый» заказ с комментарием (виден клиенту) */
 export function cancelOrder(orderId, reason = ''){
   const list = getOrders();
   const i = list.findIndex(o => String(o.id) === String(orderId));

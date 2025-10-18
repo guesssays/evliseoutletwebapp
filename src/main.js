@@ -264,6 +264,7 @@ function hideProductHeader(){
 function router(){
   const path=(location.hash||'#/').slice(1);
   const clean = path.replace(/#.*/,'');
+
   const inAdmin = document.body.classList.contains('admin-mode');
 
   const parts = path.split('/').filter(Boolean);
@@ -435,6 +436,17 @@ async function init(){
       });
       if (String(userId) === String(getUID?.())) updateNotifBadge?.();
     }catch{}
+  });
+
+  // === ВАЖНО: ловим изменения localStorage из других вкладок (orders + уведомления) ===
+  window.addEventListener('storage', (ev)=>{
+    // обновим список заказов и перерисуем экраны, если менялся список
+    if (ev.key === 'nas_orders'){
+      state.orders = getOrders();
+      router();
+    }
+    // бейдж уведомлений обновим всегда (ключи именуются с UID)
+    updateNotifBadge();
   });
 
   window.lucide && lucide.createIcons?.();

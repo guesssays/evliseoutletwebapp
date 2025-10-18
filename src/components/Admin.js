@@ -11,25 +11,11 @@ import {
 import { state } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 
-const CANCEL_STORE_KEY = 'nas_cancel_reasons';
-
-function loadCancelReasons(){
-  try{ return JSON.parse(localStorage.getItem(CANCEL_STORE_KEY) || '{}'); }catch{ return {}; }
-}
-function saveCancelReason(orderId, text=''){
-  const map = loadCancelReasons();
-  map[String(orderId)] = String(text||'');
-  localStorage.setItem(CANCEL_STORE_KEY, JSON.stringify(map));
-}
-function getCancelReason(orderId){
-  const map = loadCancelReasons();
-  return map[String(orderId)] || '';
-}
-
 export function renderAdmin(){
   const v = document.getElementById('view');
   seedOrdersOnce();
 
+  // прячем клиентский таббар для режима админа
   document.body.classList.add('admin-mode');
 
   const TABS = [
@@ -38,16 +24,19 @@ export function renderAdmin(){
     { key:'done',    label:'Завершённые' },
   ];
 
+  // локальное состояние экрана админки
   let tab = 'new';
-  let mode = 'list';
-  let selectedId = null;
+  let mode = 'list';     // 'list' | 'detail'
+  let selectedId = null; // id текущего заказа в detail
 
+  // ---------- helpers ----------
   const getAll = ()=> {
     const orders = getOrders();
     state.orders = orders;
     return orders;
   };
 
+  // фильтрация по вкладкам согласно ТЗ
   const filterByTab = (list)=>{
     if (tab==='new')    return list.filter(o => o.status==='новый' && !o.accepted);
     if (tab==='active') return list.filter(o => !['новый','выдан','отменён'].includes(o.status));
@@ -63,8 +52,10 @@ export function renderAdmin(){
     return map;
   };
 
+  // допустимые этапы для «в процессе»
   const ACTIVE_STAGES = ORDER_STATUSES.filter(s => !['новый','отменён'].includes(s));
 
+  // ---------- UI shells ----------
   function shell(innerHTML){
     v.innerHTML = `
       <section class="section admin-shell">
@@ -204,7 +195,7 @@ export function renderAdmin(){
             ${o.status==='отменён' ? `
               <div class="kv__row">
                 <dt>Причина отмены</dt>
-                <dd class="break">${escapeHtml(getCancelReason(o.id) || '—')}</dd>
+                <dd class="break">${escapeHtml(o.cancelReason || '—')}</dd>
               </div>` : ''}
             <div class="kv__row">
               <dt>Чек</dt>
@@ -273,15 +264,14 @@ export function renderAdmin(){
       render();
     });
 
-    // Новый: отменить
+    // Новый: отменить (комментарий виден клиенту)
     document.getElementById('btnCancel')?.addEventListener('click', ()=>{
-      const reason = prompt('Укажите причину отмены (видно будет только админам):');
-      saveCancelReason(o.id, reason||'');
+      const reason = prompt('Причина отмены (будет видна клиенту):');
       cancelOrder(o.id, reason||'');
       mode='list'; tab='done'; render();
     });
 
-    // В процессе: этапы
+    // В процессе: выбор этапа
     document.getElementById('stageList')?.addEventListener('click', (e)=>{
       const btn = e.target.closest('.stage-btn');
       if (!btn) return;
@@ -338,19 +328,18 @@ function safeOpenInNewTab(url){
   try{
     window.open(url, '_blank', 'noopener,noreferrer');
   }catch{
-    // молча игнорируем — в некоторых окружениях popup может быть заблокирован
+    // игнорируем — popup может быть заблокирован
   }
 }
 
 /**
  * Пытаемся скачать по ссылке. Работает:
- * - для data: URL (чек, сохранённый в заказе)
+ * - для data: URL
  * - для http(s) при том же домене/разрешённом CORS
- * Если браузер/сервер не разрешает прямое скачивание — открываем в новой вкладке.
+ * Если не вышло — открываем в новой вкладке.
  */
 async function triggerDownload(url, filename='receipt.jpg'){
   try{
-    // простой путь: скрытая ссылка с download
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
@@ -360,7 +349,6 @@ async function triggerDownload(url, filename='receipt.jpg'){
     a.click();
     a.remove();
   }catch{
-    // если вдруг не удалось — пробуем fetch -> blob (когда CORS позволяет)
     try{
       const resp = await fetch(url, { mode:'cors' });
       const blob = await resp.blob();
@@ -376,20 +364,17 @@ async function triggerDownload(url, filename='receipt.jpg'){
       a.remove();
       setTimeout(()=> URL.revokeObjectURL(blobUrl), 2000);
     }catch{
-      // финальный фолбэк — открыть в новой вкладке
       safeOpenInNewTab(url);
     }
   }
 }
 
 function suggestReceiptFilename(url, orderId=''){
-  // data:image/jpeg;base64,...
   if (/^data:/i.test(url)){
     const m = /^data:([^;,]+)/i.exec(url);
     const ext = extensionFromMime(m?.[1] || '') || 'jpg';
     return `receipt_${orderId||'order'}.${ext}`;
   }
-  // http(s) — пробуем вытащить имя из пути
   try{
     const u = new URL(url, location.href);
     const last = (u.pathname.split('/').pop() || '').split('?')[0];
@@ -417,7 +402,6 @@ function ensureExt(name, ext){
   if (!ext) return name;
   const low = name.toLowerCase();
   if (low.endsWith(`.${ext.toLowerCase()}`)) return name;
-  // срезать другой расшир
   const dot = name.lastIndexOf('.');
   const base = dot>0 ? name.slice(0,dot) : name;
   return `${base}.${ext}`;
