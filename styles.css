@@ -54,8 +54,8 @@ body{
 /* ===== ФИКС-ХЕДЕР ДЛЯ ТОВАРА ===== */
 .product-fixhdr{
   position:fixed; left:0; right:0; top:calc(6px + var(--safe-top));
-  padding:0 12px; z-index:40; display:none; /* без фона */
-  pointer-events:none; /* кликабельны только кнопки */
+  padding:0 12px; z-index:40; display:none;
+  pointer-events:none;
 }
 .product-fixhdr.show{ display:block; }
 .product-fixhdr .fixbtn{
@@ -118,7 +118,6 @@ body{
 .gallery-main img{ width:100%; height:auto; display:block; }
 
 .p-hero{ position:relative; margin:0 18px; border-radius:24px; overflow:hidden }
-/* Кнопки поверх геро-фото */
 .hero-btn{
   position:absolute; top:12px; width:48px; height:48px;
   border-radius:999px; display:grid; place-items:center;
@@ -139,7 +138,6 @@ body{
 .real-photo img{ width:100%; height:auto; display:block; }
 
 .p-body{ padding:16px 18px }
-/* нижний отступ на странице товара, чтобы не залипало под таббар */
 .product .p-body.home-bottom-pad{ padding-bottom:calc(var(--tabbar-h) + var(--safe) + 8px); }
 
 .p-title{ font-size:34px; font-weight:800; line-height:1.15; margin:8px 0 6px }
@@ -148,6 +146,7 @@ body{
 .qty-ctrl{ display:flex; align-items:center; gap:10px }
 .ctrl{ width:44px; height:44px; border:1px solid var(--stroke); border-radius:14px; display:grid; place-items:center; background:#fff }
 
+/* ===== ОПЦИИ ТОВАРА ===== */
 .p-options{ display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:12px }
 .opt-title{ font-weight:800; margin:10px 0 }
 .sizes{ display:flex; gap:10px; flex-wrap:wrap }
@@ -178,7 +177,7 @@ body{
 .btn:disabled{ opacity:.6; cursor:not-allowed; box-shadow:none; }
 .btn.outline{ background:#fff; color:#121111; border:1px solid var(--stroke); box-shadow:0 8px 24px rgba(0,0,0,.06); }
 
-/* Пилюли (например «Изменить адрес») */
+/* Пилюли */
 .pill{
   display:inline-flex; gap:8px; align-items:center;
   border-radius:999px; border:1px solid var(--stroke);
@@ -206,9 +205,11 @@ body{
 .section-title{ font-size:24px; font-weight:800; margin:10px 18px }
 .checkout{ padding:0 18px calc(var(--tabbar-h) + var(--safe) + 24px); display:grid; gap:14px }
 
-/* СПИСОК ЗАКАЗОВ — фикс грид, чтобы «Отследить» всегда справа */
-.order-row{
-  display:grid; grid-template-columns:72px minmax(0,1fr) max-content; gap:14px; align-items:center;
+/* КАРТОЧКА ТОВАРА В КОРЗИНЕ (исправлено) */
+.cart-row{
+  display:grid;
+  grid-template-columns:72px minmax(0,1fr) max-content; /* qty всегда справа */
+  gap:14px; align-items:center;
   padding:12px 0; border-bottom:1px solid var(--stroke);
 }
 .cart-img{ width:72px; height:72px; border-radius:16px; overflow:hidden }
@@ -216,8 +217,14 @@ body{
 .cart-title{ font-weight:800; font-size:18px; }
 .cart-sub{ color:var(--muted); font-size:14px; margin-top:2px; }
 .cart-price{ font-weight:800; }
-.order-row .cart-title{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.order-row .pill{ justify-self:end; }
+.cart-title{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* счётчик количества — всегда в одну строку */
+.qty-mini{
+  display:flex; align-items:center; gap:10px;
+  white-space:nowrap;
+}
+.qty-mini .ctrl{ width:36px; height:36px; border-radius:12px }
 
 /* Итого/адрес */
 .address-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
@@ -363,8 +370,6 @@ body.admin-mode #catChips,
 body.admin-mode #activeFilters{
   display:none !important;
 }
-
-/* скрыть клиентский таббар в админке */
 body.admin-mode .tabbar{ display:none !important; }
 
 /* ===== ADMIN UI ===== */
@@ -391,7 +396,7 @@ body.admin-mode .tabbar{ display:none !important; }
 /* Пустое состояние */
 .admin-empty{
   margin:12px 18px 0; padding:18px; display:flex; flex-direction:column; gap:8px; align-items:center;
-  border:1px dashed var(--stroke); border-radius:14px; background:#fff; color:var(--muted);
+  border:1px dashed var(--stroke); border-radius:14px; background:#fff; color:#muted;
 }
 .admin-empty i{ width:24px; height:24px; }
 
@@ -432,7 +437,7 @@ body.admin-mode .tabbar{ display:none !important; }
 .kv__row dt{ color:var(--muted); font-size:13px; line-height:1.4; }
 .kv__row dd{ margin:0; font-size:14px; line-height:1.45; overflow-wrap:anywhere; }
 
-/* Панель действий и выбор этапов (пилюли) */
+/* Панель действий и выбор этапов */
 .order-detail__actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 
 .stage-list{
@@ -450,7 +455,7 @@ body.admin-mode .tabbar{ display:none !important; }
 }
 .mini{ font-size:12px; }
 
-/* Предпросмотр чека (в модалке) */
+/* Предпросмотр чека */
 .receipt-view{ display:grid; gap:10px; }
 .receipt-img-wrap{
   max-height:70vh; overflow:auto; -webkit-overflow-scrolling:touch;
@@ -459,19 +464,6 @@ body.admin-mode .tabbar{ display:none !important; }
 .receipt-img{ display:block; width:100%; height:auto; }
 
 /* ===== АДАПТИВ ===== */
-@media (max-width: 420px){
-  .cart-row{ grid-template-columns:64px 1fr; } /* если используешь старую сетку корзины */
-  .qty-mini{ grid-column:1 / -1; justify-self:end; }
-}
-@media (max-width: 380px){
-  .grid{ grid-template-columns:1fr; }
-  .p-title{ font-size:28px }
-  .btn{ height:58px; font-size:16px }
-  .thumb{ width:64px; height:64px }
-  .real-photos{ grid-template-columns:1fr 1fr; }
-  .tabbar-inner{ height:72px; }
-  .tab{ height:50px; }
-}
 @media (max-width: 920px){
   .kv__row{ grid-template-columns:120px 1fr; }
 }
@@ -488,7 +480,52 @@ body.admin-mode .tabbar{ display:none !important; }
   .kv__row{ grid-template-columns:96px 1fr; }
   .order-mini__sum{ font-size:17px; }
 }
-@media (max-width: 360px){
-  .admin-title{ font-size:16px; }
-  .order-mini{ gap:10px; }
+@media (max-width: 380px){
+  .grid{ grid-template-columns:1fr; }
+  .p-title{ font-size:28px }
+  .btn{ height:58px; font-size:16px }
+  .thumb{ width:64px; height:64px }
+  .real-photos{ grid-template-columns:1fr 1fr; }
+  .tabbar-inner{ height:72px; }
+  .tab{ height:50px; }
 }
+/* === Admin buttons fixes (receipt actions) === */
+.receipt-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;           /* если не помещаются — аккуратно переносятся */
+}
+
+/* компактные кнопки */
+.btn--sm{
+  height:36px;
+  font-size:14px;
+  font-weight:800;
+  padding:0 12px;
+  border-radius:12px;
+  width:auto;               /* не растягиваем на 100% */
+  box-shadow:none;          /* без большой тени */
+}
+.btn--sm i{ width:18px; height:18px }
+
+/* модификаторы в стиле BEM — в коде используются именно они */
+.btn--outline{
+  background:#fff;
+  color:#121111;
+  border:1px solid var(--stroke);
+}
+.btn--primary{
+  background:#121111;
+  color:#fff;
+  border:1px solid #121111;
+}
+
+/* на супер-узких — ровные переносы, не налезают друг на друга */
+@media (max-width: 380px){
+  .receipt-actions .btn--sm{ flex:1 0 auto; } /* по 1–2 в ряд в зависимости от ширины */
+}
+
+/* совместимость: если где-то осталась старая запись .btn.outline/.btn.primary */
+.btn.outline{ background:#fff; color:#121111; border:1px solid var(--stroke); box-shadow:0 0 0 0 transparent; }
+.btn.primary{ background:#121111; color:#fff; border:1px solid #121111; }
