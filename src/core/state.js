@@ -10,7 +10,8 @@ export const state = {
   user: null,
   filters: { category: 'all', query: '', size:[], colors:[], materials:[], minPrice:null, maxPrice:null, inStock:false },
   orders: [],
-  addresses: { list: [], defaultId: null }
+  addresses: { list: [], defaultId: null },
+  profile: { phone:'', payerFullName:'' } // НОВОЕ: сохраняемые поля пользователя
 };
 
 export function persistCart(){ localStorage.setItem('nas_cart', JSON.stringify(state.cart)); }
@@ -30,7 +31,6 @@ export function loadCart(){
   }
 }
 
-/** Удаляем «осиротевшие» строки и строки с qty<=0 после загрузки каталога */
 export function pruneCartAgainstProducts(products){
   const ids = new Set(products.map(p => String(p.id)));
   const before = state.cart.items.length;
@@ -42,13 +42,10 @@ export function pruneCartAgainstProducts(products){
   if (state.cart.items.length !== before) persistCart();
 }
 
-/** Обновляем бейдж корзины. Если 0 — полностью прячем. */
 export function updateCartBadge(){
   const n = state.cart.items.reduce((s,i)=> s + (Number(i.qty) || 0), 0);
-
   const badges = [...document.querySelectorAll('#cartBadge, [data-cart-badge], .cart-badge')];
   if (!badges.length) return;
-
   badges.forEach(b=>{
     if (n > 0){
       b.textContent = String(n);
@@ -64,6 +61,7 @@ export function updateCartBadge(){
   });
 }
 
+/* === Адреса === */
 const ADDR_KEY = 'nas_addresses';
 export function loadAddresses(){
   try{
@@ -75,4 +73,24 @@ export function loadAddresses(){
 }
 export function persistAddresses(){
   localStorage.setItem(ADDR_KEY, JSON.stringify(state.addresses));
+}
+
+/* === Профиль (телефон/ФИО плательщика) === */
+const PROF_KEY = 'nas_profile';
+export function loadProfile(){
+  try{
+    const data = JSON.parse(localStorage.getItem(PROF_KEY) || '{}');
+    state.profile = {
+      phone: data.phone || '',
+      payerFullName: data.payerFullName || ''
+    };
+  }catch{
+    state.profile = { phone:'', payerFullName:'' };
+  }
+}
+export function persistProfile(){
+  localStorage.setItem(PROF_KEY, JSON.stringify({
+    phone: state.profile?.phone || '',
+    payerFullName: state.profile?.payerFullName || ''
+  }));
 }

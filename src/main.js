@@ -1,4 +1,4 @@
-import { state, loadCart, updateCartBadge, loadAddresses, pruneCartAgainstProducts } from './core/state.js';
+import { state, loadCart, updateCartBadge, loadAddresses, pruneCartAgainstProducts, loadProfile } from './core/state.js';
 import { toast } from './core/toast.js';
 import { el } from './core/utils.js';
 import { initTelegramChrome } from './core/utils.js';
@@ -20,7 +20,7 @@ import { renderAdminLogin } from './components/AdminLogin.js';
 import { getOrders } from './core/orders.js';
 import { canAccessAdmin, tryUnlockFromStartParam } from './core/auth.js';
 
-loadCart(); loadAddresses(); updateCartBadge(); initTelegramChrome();
+loadCart(); loadAddresses(); loadProfile(); updateCartBadge(); initTelegramChrome();
 
 /* ---------- ADMIN MODE ---------- */
 function setAdminMode(on){
@@ -347,6 +347,32 @@ async function init(){
       location.hash = '#/admin-login';
     }
     router();
+  });
+
+  // Локальные нотификации по событиям заказа
+  window.addEventListener('client:orderPlaced', (e)=>{
+    try{
+      const list = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
+      list.push({ id: Date.now(), title: 'Заказ оформлен', sub:`#${e.detail?.id} — ожидает подтверждения`, ts: Date.now(), read:false, icon:'package' });
+      localStorage.setItem(NOTIF_KEY, JSON.stringify(list));
+      updateNotifBadge();
+    }catch{}
+  });
+  window.addEventListener('admin:orderAccepted', (e)=>{
+    try{
+      const list = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
+      list.push({ id: Date.now(), title: 'Заказ принят администратором', sub:`#${e.detail?.id}`, ts: Date.now(), read:false, icon:'shield-check' });
+      localStorage.setItem(NOTIF_KEY, JSON.stringify(list));
+      updateNotifBadge();
+    }catch{}
+  });
+  window.addEventListener('admin:statusChanged', (e)=>{
+    try{
+      const list = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
+      list.push({ id: Date.now(), title: 'Статус заказа обновлён', sub:`#${e.detail?.id}: ${e.detail?.status}`, ts: Date.now(), read:false, icon:'refresh-ccw' });
+      localStorage.setItem(NOTIF_KEY, JSON.stringify(list));
+      updateNotifBadge();
+    }catch{}
   });
 
   window.lucide && lucide.createIcons?.();

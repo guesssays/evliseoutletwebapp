@@ -1,6 +1,9 @@
 import { state, persistCart, updateCartBadge } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { toast } from '../core/toast.js';
+import { addOrder } from '../core/orders.js';
+import { getPayCardNumber } from '../core/payments.js';
+import { persistProfile } from '../core/state.js';
 
 export function renderCart(){
   const v = document.getElementById('view');
@@ -8,7 +11,6 @@ export function renderCart(){
     .map(it => ({ ...it, product: state.products.find(p => String(p.id) === String(it.productId)) }))
     .filter(x => x.product);
 
-  // таббар: по умолчанию — обычное меню
   window.setTabbarMenu?.('cart');
 
   if (!items.length){
@@ -20,7 +22,6 @@ export function renderCart(){
       <section class="checkout"><div class="cart-sub">Корзина пуста</div></section>`;
     window.lucide?.createIcons && lucide.createIcons();
     document.getElementById('cartBack')?.addEventListener('click', ()=>history.back());
-    // убираем CTA-режим, если он был
     window.setTabbarMenu?.('cart');
     return;
   }
@@ -68,12 +69,9 @@ export function renderCart(){
   </section>`;
   window.lucide?.createIcons && lucide.createIcons();
 
-  // кнопка "назад"
   document.getElementById('cartBack')?.addEventListener('click', ()=>history.back());
 
-  // события +/- по строкам
   document.querySelectorAll('.cart-row').forEach(row=>{
-    // берём id как СТРОКУ, чтобы совпадало с productId в state
     const id   = row.getAttribute('data-id');
     const size = row.getAttribute('data-size') || null;
     const color= row.getAttribute('data-color') || null;
@@ -82,10 +80,9 @@ export function renderCart(){
     row.querySelector('.dec')?.addEventListener('click', ()=> changeQty(id,size,color, -1));
   });
 
-  // нижний бар → CTA «Оформить заказ»
   window.setTabbarCTA?.({
     html: `<i data-lucide="credit-card"></i><span>Оформить заказ</span>`,
-    onClick(){ checkout(items, ad); }
+    onClick(){ checkoutFlow(items, ad, total); }
   });
 }
 
@@ -110,15 +107,173 @@ function remove(productId,size,color){
   persistCart(); updateCartBadge(); toast('Удалено'); renderCart();
 }
 
-function checkout(items, addr){
+/* ======================
+   Новый сценарий чекаута
+   ====================== */
+function checkoutFlow(items, addr, total){
+  if (!items?.length){ toast('Корзина пуста'); return; }
   if (!addr){ toast('Укажите адрес доставки'); location.hash='#/account/addresses'; return; }
-  const order = {
-    cart: items.map(x=>({id:x.product.id,title:x.product.title,price:x.product.price,qty:x.qty,size:x.size||null,color:x.color||null})),
-    total: items.reduce((s,x)=> s + x.qty * x.product.price, 0),
-    currency:'UZS', comment:'', address: addr, ts: Date.now()
+
+  // 1) Модалка подтверждения данных
+  const modal = document.getElementById('modal');
+  const mb = document.getElementById('modalBody');
+  const mt = document.getElementById('modalTitle');
+  const ma = document.getElementById('modalActions');
+
+  const savedPhone = state.profile?.phone || '';
+  const savedPayer = state.profile?.payerFullName || '';
+
+  mt.textContent = 'Подтверждение данных';
+  mb.innerHTML = `
+    <div class="form-grid" style="display:grid; grid-template-columns:1fr; gap:10px">
+      <label class="field"><span>Номер телефона</span>
+        <input id="cfPhone" class="input" placeholder="+998 ..." value="${escapeHtml(savedPhone)}">
+      </label>
+      <label class="field"><span>ФИО плательщика</span>
+        <input id="cfPayer" class="input" placeholder="Фамилия Имя" value="${escapeHtml(savedPayer)}">
+      </label>
+      <label class="field"><span>Адрес доставки</span>
+        <input id="cfAddr" class="input" value="${escapeHtml(addr.address)}">
+        <div class="cart-sub" style="margin-top:4px">Сохранённый адрес: <b>${escapeHtml(addr.nickname)}</b> — <a class="link" href="#/account/addresses">изменить</a></div>
+      </label>
+      <div class="field">
+        <div class="cart-title" style="font-size:16px">Товары в заказе</div>
+        <ul style="margin:6px 0 0; padding-left:18px; color:#444">
+          ${items.map(x=>`<li>${escapeHtml(x.product.title)} · ${x.size?`размер ${escapeHtml(x.size)} `:''}${x.color?`· ${escapeHtml(x.color)} `:''}×${x.qty}</li>`).join('')}
+        </ul>
+      </div>
+      <label class="field" style="display:flex;align-items:center;gap:10px">
+        <input id="cfSavePhone" type="checkbox" ${savedPhone?'checked':''}>
+        <span>Запомнить телефон</span>
+      </label>
+      <label class="field" style="display:flex;align-items:center;gap:10px">
+        <input id="cfSavePayer" type="checkbox" ${savedPayer?'checked':''}>
+        <span>Запомнить ФИО плательщика</span>
+      </label>
+    </div>
+  `;
+  ma.innerHTML = `
+    <button id="cfCancel" class="pill">Отмена</button>
+    <button id="cfNext" class="pill primary">Далее к оплате</button>
+  `;
+  modal.classList.add('show');
+  document.getElementById('modalClose').onclick = close;
+  document.getElementById('cfCancel').onclick = close;
+  document.getElementById('cfNext').onclick = ()=>{
+    const phone = (document.getElementById('cfPhone')?.value||'').trim();
+    const payer = (document.getElementById('cfPayer')?.value||'').trim();
+    const address= (document.getElementById('cfAddr')?.value||'').trim();
+    const savePhone = document.getElementById('cfSavePhone')?.checked;
+    const savePayer = document.getElementById('cfSavePayer')?.checked;
+
+    if (!phone){ toast('Укажите номер телефона'); return; }
+    if (!address){ toast('Укажите адрес'); return; }
+
+    if (!state.profile) state.profile = {};
+    if (savePhone){ state.profile.phone = phone; }
+    if (savePayer){ state.profile.payerFullName = payer; }
+    persistProfile();
+
+    close();
+    openPayModal({ items, address, phone, payer, total });
   };
-  const tg=window.Telegram?.WebApp;
-  const payload = JSON.stringify(order);
-  if (tg?.sendData){ tg.sendData(payload); toast('Заказ отправлен менеджеру в Telegram'); }
-  else { navigator.clipboard.writeText(payload); toast('WebApp вне Telegram: заказ (JSON) скопирован'); }
+
+  function close(){ modal.classList.remove('show'); }
+}
+
+function openPayModal({ items, address, phone, payer, total }){
+  const modal = document.getElementById('modal');
+  const mb = document.getElementById('modalBody');
+  const mt = document.getElementById('modalTitle');
+  const ma = document.getElementById('modalActions');
+
+  const card = getPayCardNumber();
+
+  mt.textContent = 'Оплата заказа';
+  mb.innerHTML = `
+    <div style="display:grid; gap:10px">
+      <div class="cart-title" style="font-size:18px">К оплате: ${priceFmt(total)}</div>
+      <div class="note" style="grid-template-columns: auto 1fr">
+        <i data-lucide="credit-card"></i>
+        <div>
+          <div class="note-title">Переведите на карту</div>
+          <div class="note-sub" style="user-select:all">${escapeHtml(card)}</div>
+        </div>
+      </div>
+      <label class="field"><span>Загрузить скриншот оплаты</span>
+        <input id="payShot" type="file" accept="image/*" class="input">
+        <div class="cart-sub">или вставьте URL изображения</div>
+        <input id="payShotUrl" class="input" placeholder="https://...">
+      </label>
+    </div>
+  `;
+  ma.innerHTML = `
+    <button id="payBack" class="pill">Назад</button>
+    <button id="payDone" class="pill primary">Подтвердить оплату</button>
+  `;
+  modal.classList.add('show');
+  window.lucide?.createIcons && lucide.createIcons();
+
+  document.getElementById('modalClose').onclick = close;
+  document.getElementById('payBack').onclick = close;
+  document.getElementById('payDone').onclick = async ()=>{
+    const file = document.getElementById('payShot')?.files?.[0] || null;
+    const urlInput = (document.getElementById('payShotUrl')?.value || '').trim();
+
+    let shotUrl = '';
+    if (file){
+      try{ shotUrl = URL.createObjectURL(file); }catch{}
+    }else if (urlInput){
+      shotUrl = urlInput;
+    }
+
+    // создаём заказ
+    const first = items[0];
+    const orderId = addOrder({
+      // сохраняем и корзину, и первый товар (для обратной совместимости)
+      cart: items.map(x=>({
+        id: x.product.id,
+        title: x.product.title,
+        price: x.product.price,
+        qty: x.qty,
+        size: x.size || null,
+        color: x.color || null,
+        images: x.product.images || []
+      })),
+      productId: first?.product?.id || null,
+      size: first?.size || null,
+      color: first?.color || null,
+      link: first?.product?.id ? `#/product/${first.product.id}` : '',
+      total,
+      currency: 'UZS',
+      address,
+      phone,
+      username: state.user?.username || '',
+      payerFullName: payer || '',
+      paymentScreenshot: shotUrl || '',
+      status: 'новый',
+      accepted: false
+    });
+
+    // чистим корзину
+    state.cart.items = [];
+    persistCart(); updateCartBadge();
+
+    close();
+    toast('Заказ оформлен, ожидает подтверждения');
+    // открываем профиль → Заказы
+    location.hash = '#/orders';
+
+    // простая нотификация пользователю
+    try{
+      const ev = new CustomEvent('client:orderPlaced', { detail:{ id: orderId } });
+      window.dispatchEvent(ev);
+    }catch{}
+  };
+
+  function close(){ modal.classList.remove('show'); }
+}
+
+function escapeHtml(s=''){
+  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }

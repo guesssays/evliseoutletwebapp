@@ -18,7 +18,6 @@ export function getOrders(){
 
 export function saveOrders(list){
   localStorage.setItem(KEY, JSON.stringify(list));
-  // Сообщим приложению, что заказы обновились
   window.dispatchEvent(new CustomEvent('orders:updated'));
 }
 
@@ -28,18 +27,30 @@ export function addOrder(order){
   const now = Date.now();
   const next = {
     id,
+    // поддержка одиночного товара + корзины из нескольких
     productId: order.productId ?? null,
     size: order.size ?? null,
     color: order.color ?? null,
-    address: order.address ?? '',
+    link: order.link ?? (order.productId ? `#/product/${order.productId}` : ''),
+    cart: Array.isArray(order.cart) ? order.cart : [],
+    total: Number(order.total || 0),
+
+    // контактные
+    address: typeof order.address === 'string' ? order.address : (order.address?.address || ''),
     phone: order.phone ?? '',
     username: order.username ?? '',
     payerFullName: order.payerFullName ?? '',
+
+    // оплата
     paymentScreenshot: order.paymentScreenshot ?? '',
-    link: order.link ?? (order.productId ? `#/product/${order.productId}` : ''),
+
+    // статусы
     status: order.status ?? 'новый',
     accepted: !!order.accepted,
+
+    // мета
     createdAt: order.createdAt ?? now,
+    currency: order.currency || 'UZS',
     history: order.history ?? [{ ts: now, status: order.status ?? 'новый' }],
   };
   list.unshift(next);
@@ -70,8 +81,8 @@ export function markCompleted(orderId){
   updateOrderStatus(orderId, 'готов к отправке');
 }
 
+// демо-наполнение при первом старте
 export function seedOrdersOnce(){
-  // Для демо: если пусто — подбросим пару заказов
   if (getOrders().length) return;
   addOrder({
     productId: 101,
@@ -81,7 +92,8 @@ export function seedOrdersOnce(){
     phone: '+998 90 123-45-67',
     username: 'customer_one',
     payerFullName: 'Иванов Иван',
-    paymentScreenshot: '',
+    cart: [],
+    total: 299000,
     link: '#/product/101',
     status: 'новый',
   });
@@ -92,7 +104,8 @@ export function seedOrdersOnce(){
     phone: '+998 91 765-43-21',
     username: 'client_two',
     payerFullName: 'Петров Пётр',
-    paymentScreenshot: '',
+    cart: [],
+    total: 399000,
     link: '#/product/205',
     status: 'принят',
     accepted: true,
