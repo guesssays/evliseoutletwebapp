@@ -1,12 +1,12 @@
 // src/components/Orders.js
 import { state, getUID } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
-import { getOrdersForUser, ORDER_STATUSES, getStatusLabel } from '../core/orders.js';
+import { getOrdersForUser, getStatusLabel } from '../core/orders.js';
 
 export function renderOrders(){
   const v=document.getElementById('view');
   const myUid = getUID();
-  const myOrders = getOrdersForUser(myUid);
+  const myOrders = (getOrdersForUser(myUid) || []).slice();
 
   if (!myOrders.length){
     v.innerHTML = `<div class="section-title">Мои заказы</div>
@@ -21,20 +21,64 @@ export function renderOrders(){
     return;
   }
 
-  v.innerHTML = `<div class="section-title">Мои заказы</div>
-    <section class="checkout">
-      ${myOrders.map(o=>`
-        <div class="order-row">
-          <div class="cart-img"><img src="${o.cart?.[0]?.images?.[0] || 'assets/placeholder.jpg'}" alt=""></div>
-          <div>
-            <div class="cart-title">Заказ #${o.id}</div>
-            <div class="cart-sub">${getStatusLabel(o.status)}</div>
-            <div class="cart-price">${priceFmt(o.total || 0)}</div>
-          </div>
-          <a class="pill primary" href="#/track/${o.id}">Отследить</a>
-        </div>`).join('')}
-    </section>`;
+  // сортируем по дате создания (новые выше)
+  myOrders.sort((a,b)=> (b.createdAt||0) - (a.createdAt||0));
+
+  // группы
+  const inProgress = myOrders.filter(o => !['выдан','отменён'].includes(o.status));
+  const received   = myOrders.filter(o => o.status === 'выдан');
+  const canceled   = myOrders.filter(o => o.status === 'отменён');
+
+  v.innerHTML = `
+    <div class="section-title">Мои заказы</div>
+    <section class="checkout orders-groups">
+      ${groupBlock('В процессе', inProgress)}
+      ${groupBlock('Получены', received)}
+      ${groupBlock('Отменены', canceled)}
+    </section>
+  `;
+
   window.lucide?.createIcons && lucide.createIcons();
+}
+
+function groupBlock(title, list){
+  const count = list.length;
+  return `
+    <div class="orders-group">
+      <div class="subsection-title" style="display:flex;align-items:center;justify-content:space-between;margin:8px 0 6px">
+        <span>${title}</span>
+        <span class="muted mini">${count}</span>
+      </div>
+      ${count ? list.map(orderCard).join('') : emptyRow(title)}
+    </div>
+  `;
+}
+
+function orderCard(o){
+  const cover = o.cart?.[0]?.images?.[0] || 'assets/placeholder.jpg';
+  return `
+    <div class="order-row">
+      <div class="cart-img"><img src="${cover}" alt=""></div>
+      <div>
+        <div class="cart-title">Заказ #${escapeHtml(o.id)}</div>
+        <div class="cart-sub">${escapeHtml(getStatusLabel(o.status))}</div>
+        <div class="cart-price">${priceFmt(o.total || 0)}</div>
+      </div>
+      <a class="pill primary" href="#/track/${encodeURIComponent(o.id)}">Отследить</a>
+    </div>
+  `;
+}
+
+function emptyRow(title){
+  let hint = 'Нет заказов';
+  if (title === 'В процессе') hint = 'Сейчас нет активных заказов';
+  if (title === 'Получены')   hint = 'Вы ещё ничего не получили';
+  if (title === 'Отменены')   hint = 'Отменённых заказов нет';
+  return `
+    <div class="orders-empty" style="color:#999; padding:8px 0 16px">
+      ${hint}
+    </div>
+  `;
 }
 
 export function renderTrack({id}){
@@ -65,11 +109,11 @@ export function renderTrack({id}){
   const curIdx = Math.max(steps.findIndex(s=>s.key===o.status), 0);
   const progress = Math.max(0, Math.min(100, Math.round(curIdx * 100 / (steps.length - 1))));
 
-  v.innerHTML = `<div class="section-title">Трекинг заказа #${o.id}</div>
+  v.innerHTML = `<div class="section-title">Трекинг заказа #${escapeHtml(o.id)}</div>
     <section class="checkout">
       <div class="track-head">
         <div class="track-caption">Этап ${curIdx+1} из ${steps.length}</div>
-        <div style="min-width:120px; text-align:right; font-weight:800">${getStatusLabel(o.status)}</div>
+        <div style="min-width:120px; text-align:right; font-weight:800">${escapeHtml(getStatusLabel(o.status))}</div>
       </div>
       <div class="progress-bar" aria-label="Прогресс заказа"><b style="width:${progress}%"></b></div>
 
@@ -84,4 +128,8 @@ export function renderTrack({id}){
 
       <a class="pill primary" href="#/orders" style="margin-top:10px">Назад к заказам</a>
     </section>`;
+}
+
+function escapeHtml(s=''){
+  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
