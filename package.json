@@ -1,10 +1,11 @@
 {
-  "name": "evlise-webapp",
+  "name": "evliseoutlet",
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "@netlify/blobs": "^6.3.0"
+  }
 }

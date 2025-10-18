@@ -32,16 +32,10 @@ function originMatches(origin, rule) {
 
 function buildCorsHeaders(origin) {
   const allowed = parseAllowed();
-  // Разрешаем:
-  //  - любые, если ALLOWED_ORIGINS пуст (поведение по умолчанию — как было);
-  //  - Telegram webview
-  //  - точные совпадения / wildcard из ALLOWED_ORIGINS
   const isAllowed = !allowed.length ||
                     isTelegramOrigin(origin) ||
                     allowed.some(rule => originMatches(origin, rule));
 
-  // Отдаём максимально совместимые CORS-заголовки.
-  // Если origin известен и разрешён — отражаем его; иначе ставим '*', чтобы не ломать webview без Origin.
   const allowOrigin = isAllowed ? (origin || '*') : 'null';
 
   return {
@@ -69,7 +63,6 @@ export async function handler(event) {
   }
 
   if (!isAllowed) {
-    // Не рвём жёстко UX — чётко сообщаем.
     return { statusCode: 403, body: 'Forbidden by CORS', ...headers };
   }
 
@@ -78,10 +71,7 @@ export async function handler(event) {
     if (!type) return { statusCode: 400, body: 'type required', ...headers };
 
     const token = process.env.TG_BOT_TOKEN;
-    if (!token) {
-      // Нет токена — сообщаем явно (поможет диагностике)
-      return { statusCode: 500, body: 'TG_BOT_TOKEN is not set', ...headers };
-    }
+    if (!token) return { statusCode: 500, body: 'TG_BOT_TOKEN is not set', ...headers };
 
     const webappUrl   = process.env.WEBAPP_URL || '';
     const adminChatId = String(process.env.ADMIN_CHAT_ID || '').trim();
@@ -132,6 +122,7 @@ export async function handler(event) {
 
     return { statusCode: 200, body: JSON.stringify({ ok:true }), ...headers };
   } catch (err) {
+    console.error('[notify] handler error:', err);
     return { statusCode: 500, body: JSON.stringify({ ok:false, error:String(err) }), ...headers };
   }
 }

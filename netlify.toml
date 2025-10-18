@@ -2,29 +2,5 @@
   functions = "netlify/functions"
 
 [functions]
-  # Важно: используем esbuild и НЕ пытаемся слифтовывать @netlify/blobs внутрь бандла,
-  # а оставляем как внешнюю зависимость рантайма Netlify (так рекомендуют их доки).
   node_bundler = "esbuild"
   external_node_modules = ["@netlify/blobs"]
-  included_files = []
-
-[build.environment]
-  NODE_VERSION = "18"
-
-# CORS для notify
-[[headers]]
-  for = "/.netlify/functions/notify"
-  [headers.values]
-    Access-Control-Allow-Origin = "https://evliseoutlet.netlify.app"
-    Access-Control-Allow-Headers = "Content-Type"
-    Access-Control-Allow-Methods = "POST, OPTIONS"
-    Vary = "Origin"
-
-# CORS для orders
-[[headers]]
-  for = "/.netlify/functions/orders"
-  [headers.values]
-    Access-Control-Allow-Origin = "https://evliseoutlet.netlify.app"
-    Access-Control-Allow-Headers = "Content-Type"
-    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
-    Vary = "Origin"

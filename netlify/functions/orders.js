@@ -79,8 +79,9 @@ export async function handler(event) {
 
     if (op === 'add') {
       const id = await store.add(body.order || {});
-      // уведомим админа о новом заказе (серверная отправка — без CORS)
-      try { await notifyAdminNewOrder(id, body.order); } catch {}
+      try { await notifyAdminNewOrder(id, body.order); } catch (e) {
+        console.error('[orders] notifyAdminNewOrder error:', e);
+      }
       return ok({ id }, headers);
     }
 
@@ -106,6 +107,7 @@ export async function handler(event) {
 
     return bad('unknown op', headers);
   } catch (e) {
+    console.error('[orders] handler error:', e);
     return { statusCode: 500, body: JSON.stringify({ ok:false, error: String(e) }), ...headers };
   }
 }
@@ -122,7 +124,10 @@ async function getStore(){
     try{
       const raw = await bucket.get(KEY_ALL, { type:'json' });
       return Array.isArray(raw) ? raw : [];
-    }catch{ return []; }
+    }catch(e){
+      console.error('[orders] readAll error:', e);
+      return [];
+    }
   }
   async function writeAll(list){
     await bucket.set(KEY_ALL, list, { type:'json' });
@@ -229,7 +234,7 @@ async function getStore(){
 async function notifyAdminNewOrder(id, order){
   const token = process.env.TG_BOT_TOKEN;
   const admin = process.env.ADMIN_CHAT_ID;
-  if (!token || !admin) return; // аккуратно выходим, если не настроено
+  if (!token || !admin) return;
 
   const webappUrl = process.env.WEBAPP_URL || '';
   const title = order?.cart?.[0]?.title || order?.title || 'товар';
@@ -253,10 +258,14 @@ async function notifyAdminNewOrder(id, order){
     ...(link ? { reply_markup: { inline_keyboard: [[{ text:'Открыть админку', web_app:{ url: link } }]] } } : {})
   };
 
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(payload)
-  });
+  try{
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+  }catch(e){
+    console.error('[orders] telegram notify error:', e);
+  }
 }
 
 /* ---------------- helpers ---------------- */
