@@ -56,6 +56,23 @@ function groupBlock(title, list){
 
 function orderCard(o){
   const cover = o.cart?.[0]?.images?.[0] || 'assets/placeholder.jpg';
+
+  // действие справа
+  let actionHtml = '';
+  if (o.status === 'выдан'){
+    actionHtml = `
+      <span class="pill" style="pointer-events:none;opacity:.95;display:inline-flex;align-items:center;gap:6px">
+        <i data-lucide="check-circle"></i><span>Получен</span>
+      </span>`;
+  } else if (o.status === 'отменён'){
+    actionHtml = `
+      <span class="pill outline" style="pointer-events:none;opacity:.95;display:inline-flex;align-items:center;gap:6px">
+        <i data-lucide="x-circle"></i><span>Отменён</span>
+      </span>`;
+  } else {
+    actionHtml = `<a class="pill primary" href="#/track/${encodeURIComponent(o.id)}">Отследить</a>`;
+  }
+
   return `
     <div class="order-row">
       <div class="cart-img"><img src="${cover}" alt=""></div>
@@ -64,7 +81,7 @@ function orderCard(o){
         <div class="cart-sub">${escapeHtml(getStatusLabel(o.status))}</div>
         <div class="cart-price">${priceFmt(o.total || 0)}</div>
       </div>
-      <a class="pill primary" href="#/track/${encodeURIComponent(o.id)}">Отследить</a>
+      ${actionHtml}
     </div>
   `;
 }
