@@ -1,8 +1,9 @@
+// src/components/Admin.js
 import {
   ORDER_STATUSES,
   getOrders,
   acceptOrder,
-  cancelOrder,          // ← добавили
+  cancelOrder,
   updateOrderStatus,
   seedOrdersOnce
 } from '../core/orders.js';
@@ -270,9 +271,7 @@ export function renderAdmin(){
     // Новый: принять
     document.getElementById('btnAccept')?.addEventListener('click', ()=>{
       acceptOrder(o.id);
-      try {
-        window.dispatchEvent(new CustomEvent('admin:orderAccepted',{ detail:{ id:o.id } }));
-      }catch{}
+      // событий здесь НЕ шлём: их отправляет core/orders.js
       render();
     });
 
@@ -280,10 +279,8 @@ export function renderAdmin(){
     document.getElementById('btnCancel')?.addEventListener('click', ()=>{
       const reason = prompt('Укажите причину отмены (видно будет только админам):');
       saveCancelReason(o.id, reason||'');
-      cancelOrder(o.id, reason||''); // ← правильный путь отмены «нового»
-      try {
-        window.dispatchEvent(new CustomEvent('admin:statusChanged',{ detail:{ id:o.id, status:'отменён', reason } }));
-      }catch{}
+      cancelOrder(o.id, reason||'');
+      // событий здесь НЕ шлём: их отправляет core/orders.js
       mode='list'; tab='done'; render();
     });
 
@@ -294,9 +291,7 @@ export function renderAdmin(){
       const st = btn.getAttribute('data-st');
       if (!st) return;
       updateOrderStatus(o.id, st);
-      try {
-        window.dispatchEvent(new CustomEvent('admin:statusChanged',{ detail:{ id:o.id, status: st } }));
-      }catch{}
+      // событий здесь НЕ шлём: их отправляет core/orders.js
       if (st === 'выдан'){ mode='list'; tab='done'; }
       render();
     });
@@ -353,5 +348,5 @@ function humanStatus(s){
 function stageLabel(s){ return humanStatus(s); }
 
 function escapeHtml(s=''){
-  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }

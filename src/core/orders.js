@@ -1,4 +1,4 @@
-// core/orders.js
+// src/core/orders.js
 // Простое локальное хранилище заказов + утилиты для админки/клиента
 const KEY = 'nas_orders';
 
@@ -128,7 +128,7 @@ export function acceptOrder(orderId){
   writeHistory(o, 'принят');
   saveOrders(list);
 
-  // <<< важное: триггерим событие для уведомлений
+  // событие для уведомлений
   try{
     window.dispatchEvent(new CustomEvent('admin:orderAccepted', {
       detail: { id: o.id, userId: o.userId }
@@ -152,7 +152,7 @@ export function cancelOrder(orderId, reason = ''){
   writeHistory(o, 'отменён', { comment: o.cancelReason });
   saveOrders(list);
 
-  // событие отмены (если нужно показывать уведомление)
+  // событие отмены
   try{
     window.dispatchEvent(new CustomEvent('admin:orderCanceled', {
       detail: { id: o.id, reason: o.cancelReason, userId: o.userId }
@@ -181,7 +181,7 @@ export function updateOrderStatus(orderId, status){
   writeHistory(o, status);
   saveOrders(list);
 
-  // <<< важное: событие для уведомлений о смене статуса
+  // событие смены статуса
   try{
     window.dispatchEvent(new CustomEvent('admin:statusChanged', {
       detail: { id: o.id, status, userId: o.userId }

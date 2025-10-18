@@ -11,10 +11,11 @@ import {
   getNotifications,
   setNotifications,
   pushNotification,
+  pushNotificationFor,
 } from './core/state.js';
 
 import { toast } from './core/toast.js';
-import { el, } from './core/utils.js';
+import { el } from './core/utils.js';
 import { initTelegramChrome } from './core/utils.js';
 
 import { renderHome, drawCategoriesChips } from './components/Home.js';
@@ -402,35 +403,37 @@ async function init(){
 
   window.addEventListener('admin:orderAccepted', (e)=>{
     try{
-      pushNotification({
+      const { id, userId } = e.detail || {};
+      pushNotificationFor(userId, {
         icon: 'shield-check',
         title: 'Заказ принят администратором',
-        sub: `#${e.detail?.id}`,
+        sub: `#${id}`,
       });
-      updateNotifBadge?.();
+      if (String(userId) === String(getUID?.())) updateNotifBadge?.();
     }catch{}
   });
 
   window.addEventListener('admin:statusChanged', (e)=>{
     try{
-      const { id, status } = e.detail || {};
-      pushNotification({
+      const { id, status, userId } = e.detail || {};
+      pushNotificationFor(userId, {
         icon: 'refresh-ccw',
         title: 'Статус заказа обновлён',
         sub: `#${id}: ${status}`,
       });
-      updateNotifBadge?.();
+      if (String(userId) === String(getUID?.())) updateNotifBadge?.();
     }catch{}
   });
 
   window.addEventListener('admin:orderCanceled', (e)=>{
     try{
-      pushNotification({
+      const { id, reason, userId } = e.detail || {};
+      pushNotificationFor(userId, {
         icon: 'x-circle',
         title: 'Заказ отменён',
-        sub: `#${e.detail?.id}${e.detail?.reason ? ` — ${e.detail.reason}` : ''}`,
+        sub: `#${id}${reason ? ` — ${reason}` : ''}`,
       });
-      updateNotifBadge?.();
+      if (String(userId) === String(getUID?.())) updateNotifBadge?.();
     }catch{}
   });
 

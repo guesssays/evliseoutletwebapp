@@ -25,6 +25,7 @@ export function getUID(){
   }catch{ return 'guest'; }
 }
 export function k(base){ return `${base}__${getUID()}`; }
+export function kFor(base, uid){ return `${base}__${uid}`; }
 export function migrateOnce(base){
   try{
     const old = localStorage.getItem(base);
@@ -159,4 +160,14 @@ export function pushNotification(n){
   const list = getNotifications();
   list.push({ id: Date.now(), ts: Date.now(), read:false, icon:'bell', title:'', sub:'', ...n });
   setNotifications(list);
+}
+
+/** Положить уведомление конкретному пользователю (по userId/uid) */
+export function pushNotificationFor(uid, n){
+  if (!uid) return;
+  const key = kFor(NOTIF_BASE, String(uid));
+  let list = [];
+  try{ list = JSON.parse(localStorage.getItem(key) || '[]'); }catch{}
+  list.push({ id: Date.now(), ts: Date.now(), read:false, icon:'bell', title:'', sub:'', ...n });
+  localStorage.setItem(key, JSON.stringify(list));
 }
