@@ -1,7 +1,8 @@
 // Serverless-функция Netlify: принимает событие от фронта и шлёт "тизер" в Telegram бота
-// Требуются переменные окружения:
-//   TG_BOT_TOKEN  — токен бота (без "bot" префикса)
-//   WEBAPP_URL    — базовый URL вашего приложения (для ссылки в сообщении), опционально
+// Переменные окружения:
+//   TG_BOT_TOKEN   — токен бота (без "bot" префикса)
+//   WEBAPP_URL     — базовый URL вашего приложения (для ссылки в сообщении), опционально
+//   ALLOWED_ORIGINS — запятая-разделённый список origin'ов (опционально)
 
 export async function handler(event) {
   // Разрешаем только POST
@@ -9,17 +10,20 @@ export async function handler(event) {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  // Простейшая защита от кросс-доменных запросов (опционально)
+  // Опциональная защита от кросс-доменных запросов
   const origin = event.headers?.origin || '';
-  const allowed = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
-    : []; // например: "https://evliseoutlet.netlify.app"
-  if (allowed.length && !allowed.includes(origin)) {
+  const allowed = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  // Если список задан и origin присутствует — проверяем
+  if (allowed.length && origin && !allowed.includes(origin)) {
     return { statusCode: 403, body: 'Forbidden' };
   }
 
   try {
-    const { chat_id, type, orderId } = JSON.parse(event.body || '{}') || {};
+    const { chat_id, type, orderId, title } = JSON.parse(event.body || '{}') || {};
     if (!chat_id) return { statusCode: 400, body: 'chat_id required' };
     if (!type)    return { statusCode: 400, body: 'type required' };
 
@@ -28,25 +32,38 @@ export async function handler(event) {
 
     const webappUrl = process.env.WEBAPP_URL || 'https://evliseoutlet.netlify.app';
 
-    // Тексты-«тизеры» (без деталей, чтобы пользователь зашёл в приложение)
-    const makeText = () => {
-      const base = `У вас новое обновление по заказам.`;
-      const hint = `Откройте приложение, чтобы посмотреть подробности.`;
-      const link = `${webappUrl}${orderId ? `#/track/${encodeURIComponent(orderId)}` : '#/orders'}`;
-      const btn  = [{ text: 'Открыть приложение', web_app: { url: link } }];
-      let text = base;
+    // Безопасное сокращение и экранирование текста
+    const safeTitle = (t) => (t ? String(t).slice(0, 140) : '').trim();
+    const goods = safeTitle(title) || 'товар';
 
-      switch (type) {
-        case 'orderPlaced':     text = `Заказ оформлен. ${hint}`; break;
-        case 'orderAccepted':   text = `Заказ принят администратором. ${hint}`; break;
-        case 'statusChanged':   text = `Статус заказа обновлён. ${hint}`; break;
-        case 'orderCanceled':   text = `Заказ отменён. ${hint}`; break;
-        default:                text = `${base} ${hint}`;
-      }
-      return { text, btn };
-    };
+    const link = `${webappUrl}${orderId ? `#/track/${encodeURIComponent(orderId)}` : '#/orders'}`;
+    const btn  = [{
+      text: orderId ? `Заказ #${orderId}` : 'Открыть приложение',
+      web_app: { url: link }
+    }];
 
-    const { text, btn } = makeText();
+    const hint = 'Откройте приложение, чтобы посмотреть подробности.';
+    const about = orderId
+      ? `Заказ #${orderId}${goods ? ` — «${goods}»` : ''}.`
+      : (goods ? `По товару «${goods}».` : '');
+
+    let text;
+    switch (type) {
+      case 'orderPlaced':
+        text = `Оформлен ${about} ${hint}`;
+        break;
+      case 'orderAccepted':
+        text = `Подтверждён ${about} ${hint}`;
+        break;
+      case 'statusChanged':
+        text = `Статус обновлён. ${about} ${hint}`;
+        break;
+      case 'orderCanceled':
+        text = `Отменён ${about} ${hint}`;
+        break;
+      default:
+        text = `${about} ${hint}`;
+    }
 
     // Отправляем сообщение через Bot API
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -57,7 +74,7 @@ export async function handler(event) {
         text,
         parse_mode: 'HTML',
         reply_markup: { inline_keyboard: [btn] },
-        disable_web_page_preview: true,
+        disable_web_page_preview: true
       })
     });
 

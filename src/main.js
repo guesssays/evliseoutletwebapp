@@ -1,4 +1,3 @@
-// src/app.js
 import {
   state,
   loadCart,
@@ -35,7 +34,7 @@ import { renderAdminLogin } from './components/AdminLogin.js';
 import { getOrders, clearAllOrders, getStatusLabel } from './core/orders.js';
 import { canAccessAdmin, tryUnlockFromStartParam } from './core/auth.js';
 
-// === Пинг в Telegram-бота (короткие уведомления без деталей) ===
+// === Пинг в Telegram-бота (короткие уведомления) ===
 import {
   notifyOrderPlaced,
   notifyOrderAccepted,
@@ -412,10 +411,22 @@ async function init(){
     router();
   });
 
+  // ===== утилита: короткий заголовок заказа для уведомлений в бота
+  function buildOrderShortTitle(order) {
+    const firstTitle =
+      order?.cart?.[0]?.title ||
+      order?.cart?.[0]?.name ||
+      order?.title ||
+      'товар';
+    const extra = Math.max(0, (order?.cart?.length || 0) - 1);
+    return extra > 0 ? `${firstTitle} + ещё ${extra}` : firstTitle;
+  }
+
   // === УВЕДОМЛЕНИЯ: персонифицированные события + ПИНГ В БОТА ===
   window.addEventListener('client:orderPlaced', (e)=>{
     try{
       const id = e.detail?.id;
+
       // локально — только текущему клиенту:
       pushNotification({
         icon: 'package',
@@ -423,15 +434,21 @@ async function init(){
         sub: `#${id} — ожидает подтверждения`,
       });
       updateNotifBadge?.();
+
+      // подготовим название для бота
+      const order = (getOrders() || []).find(o => String(o.id) === String(id));
+      const title = buildOrderShortTitle(order);
+
       // пинг боту: только если это Telegram-пользователь
       const uid = state?.user?.id;
-      notifyOrderPlaced(uid, { orderId: id });
+      notifyOrderPlaced(uid, { orderId: id, title });
     }catch{}
   });
 
   window.addEventListener('admin:orderAccepted', (e)=>{
     try{
       const { id, userId } = e.detail || {};
+
       pushNotificationFor(userId, {
         icon: 'shield-check',
         title: 'Заказ принят администратором',
@@ -439,13 +456,17 @@ async function init(){
       });
       if (String(userId) === String(getUID?.())) updateNotifBadge?.();
 
-      notifyOrderAccepted(userId, { orderId: id });
+      const order = (getOrders() || []).find(o => String(o.id) === String(id));
+      const title = buildOrderShortTitle(order);
+
+      notifyOrderAccepted(userId, { orderId: id, title });
     }catch{}
   });
 
   window.addEventListener('admin:statusChanged', (e)=>{
     try{
       const { id, status, userId } = e.detail || {};
+
       pushNotificationFor(userId, {
         icon: 'refresh-ccw',
         title: 'Статус заказа обновлён',
@@ -453,13 +474,17 @@ async function init(){
       });
       if (String(userId) === String(getUID?.())) updateNotifBadge?.();
 
-      notifyStatusChanged(userId, { orderId: id, status });
+      const order = (getOrders() || []).find(o => String(o.id) === String(id));
+      const title = buildOrderShortTitle(order);
+
+      notifyStatusChanged(userId, { orderId: id, title });
     }catch{}
   });
 
   window.addEventListener('admin:orderCanceled', (e)=>{
     try{
       const { id, reason, userId } = e.detail || {};
+
       pushNotificationFor(userId, {
         icon: 'x-circle',
         title: 'Заказ отменён',
@@ -467,7 +492,10 @@ async function init(){
       });
       if (String(userId) === String(getUID?.())) updateNotifBadge?.();
 
-      notifyOrderCanceled(userId, { orderId: id });
+      const order = (getOrders() || []).find(o => String(o.id) === String(id));
+      const title = buildOrderShortTitle(order);
+
+      notifyOrderCanceled(userId, { orderId: id, title });
     }catch{}
   });
 

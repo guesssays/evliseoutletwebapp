@@ -1,4 +1,4 @@
-// Клиентский модуль, который умеет пинговать serverless-функцию
+// Клиентский модуль, который пингует serverless-функцию
 // Вызывается из app.js при событиях оформления/подтверждения/смены статуса/отмены
 
 const ENDPOINT = '/.netlify/functions/notify';
@@ -23,17 +23,18 @@ function resolveTargetChatId(preferredChatId) {
 }
 
 /** Базовый отправитель события в бота (через Netlify Function) */
-async function sendToBot(type, { orderId, chatId } = {}) {
+async function sendToBot(type, { orderId, chatId, title } = {}) {
   const chat_id = resolveTargetChatId(chatId);
-  if (!chat_id) {
-    // Нет валидного получателя — тихо выходим (например, пользователь открыл сайт вне Telegram)
-    return;
-  }
+  if (!chat_id) return; // нет валидного получателя
+
+  const payload = { chat_id, type, orderId };
+  if (title) payload.title = String(title).slice(0, 140); // ограничим длину
+
   try {
     await fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id, type, orderId })
+      body: JSON.stringify(payload)
     });
   } catch {
     // молча игнорируем, чтобы не ломать UX (при желании логируйте в Sentry)
@@ -41,7 +42,7 @@ async function sendToBot(type, { orderId, chatId } = {}) {
 }
 
 /* Публичные хелперы — первый аргумент: целевой chatId (опционально) */
-export const notifyOrderPlaced   = (chatId, { orderId } = {}) => sendToBot('orderPlaced',   { orderId, chatId });
-export const notifyOrderAccepted = (chatId, { orderId } = {}) => sendToBot('orderAccepted', { orderId, chatId });
-export const notifyStatusChanged = (chatId, { orderId } = {}) => sendToBot('statusChanged', { orderId, chatId });
-export const notifyOrderCanceled = (chatId, { orderId } = {}) => sendToBot('orderCanceled', { orderId, chatId });
+export const notifyOrderPlaced   = (chatId, { orderId, title } = {}) => sendToBot('orderPlaced',   { orderId, chatId, title });
+export const notifyOrderAccepted = (chatId, { orderId, title } = {}) => sendToBot('orderAccepted', { orderId, chatId, title });
+export const notifyStatusChanged = (chatId, { orderId, title } = {}) => sendToBot('statusChanged', { orderId, chatId, title });
+export const notifyOrderCanceled = (chatId, { orderId, title } = {}) => sendToBot('orderCanceled', { orderId, chatId, title });
