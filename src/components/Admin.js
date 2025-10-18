@@ -6,19 +6,10 @@ import {
   cancelOrder,
   updateOrderStatus,
   seedOrdersOnce,
-  getStatusLabel,      // ← единая функция названий
+  getStatusLabel,
 } from '../core/orders.js';
 import { state } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
-
-/**
- * Админка:
- * - Вкладки: Новые / В процессе / Завершённые
- * - Новый: только «Принять» и «Отменить» (с комментарием)
- * - В процессе: выбор этапа через стилизованные пилюли
- * - Если статус «выдан» → в «Завершённые»
- * - Бейджи статусов убраны
- */
 
 const CANCEL_STORE_KEY = 'nas_cancel_reasons';
 
@@ -39,7 +30,6 @@ export function renderAdmin(){
   const v = document.getElementById('view');
   seedOrdersOnce();
 
-  // прячем клиентский таббар для режима админа
   document.body.classList.add('admin-mode');
 
   const TABS = [
@@ -48,19 +38,16 @@ export function renderAdmin(){
     { key:'done',    label:'Завершённые' },
   ];
 
-  // локальное состояние экрана админки
   let tab = 'new';
-  let mode = 'list';     // 'list' | 'detail'
-  let selectedId = null; // id текущего заказа в detail
+  let mode = 'list';
+  let selectedId = null;
 
-  // ---------- helpers ----------
   const getAll = ()=> {
     const orders = getOrders();
     state.orders = orders;
     return orders;
   };
 
-  // фильтрация по вкладкам согласно ТЗ
   const filterByTab = (list)=>{
     if (tab==='new')    return list.filter(o => o.status==='новый' && !o.accepted);
     if (tab==='active') return list.filter(o => !['новый','выдан','отменён'].includes(o.status));
@@ -76,10 +63,8 @@ export function renderAdmin(){
     return map;
   };
 
-  // допустимые этапы для «в процессе»
   const ACTIVE_STAGES = ORDER_STATUSES.filter(s => !['новый','отменён'].includes(s));
 
-  // ---------- UI shells ----------
   function shell(innerHTML){
     v.innerHTML = `
       <section class="section admin-shell">
@@ -229,9 +214,12 @@ export function renderAdmin(){
                     <button class="btn btn--sm btn--outline" data-preview="${escapeHtml(o.paymentScreenshot)}">
                       <i data-lucide="image"></i><span>&nbsp;Предпросмотр</span>
                     </button>
-                    <a class="btn btn--sm btn--primary" href="${escapeHtml(o.paymentScreenshot)}" target="_blank" rel="noopener" download>
+                    <button class="btn btn--sm" data-open="${escapeHtml(o.paymentScreenshot)}">
+                      <i data-lucide="external-link"></i><span>&nbsp;Открыть в новой вкладке</span>
+                    </button>
+                    <button class="btn btn--sm btn--primary" data-download="${escapeHtml(o.paymentScreenshot)}" data-oid="${escapeHtml(o.id)}">
                       <i data-lucide="download"></i><span>&nbsp;Скачать</span>
-                    </a>
+                    </button>
                   </div>
                 ` : '—'}
               </dd>
@@ -264,18 +252,28 @@ export function renderAdmin(){
       mode='list'; selectedId=null; render();
     });
 
+    // чек: предпросмотр / открыть / скачать
     document.querySelector('[data-preview]')?.addEventListener('click', (e)=>{
       const url = e.currentTarget.getAttribute('data-preview');
-      openReceiptPreview(url);
+      openReceiptPreview(url, String(o.id||''));
+    });
+    document.querySelector('[data-open]')?.addEventListener('click', (e)=>{
+      const url = e.currentTarget.getAttribute('data-open');
+      safeOpenInNewTab(url);
+    });
+    document.querySelector('[data-download]')?.addEventListener('click', async (e)=>{
+      const url = e.currentTarget.getAttribute('data-download');
+      const oid = e.currentTarget.getAttribute('data-oid') || 'receipt';
+      await triggerDownload(url, suggestReceiptFilename(url, oid));
     });
 
     // Новый: принять
     document.getElementById('btnAccept')?.addEventListener('click', ()=>{
       acceptOrder(o.id);
-      render(); // события отработают в core/orders.js
+      render();
     });
 
-    // Новый: отменить с комментарием
+    // Новый: отменить
     document.getElementById('btnCancel')?.addEventListener('click', ()=>{
       const reason = prompt('Укажите причину отмены (видно будет только админам):');
       saveCancelReason(o.id, reason||'');
@@ -283,7 +281,7 @@ export function renderAdmin(){
       mode='list'; tab='done'; render();
     });
 
-    // В процессе: выбор этапа
+    // В процессе: этапы
     document.getElementById('stageList')?.addEventListener('click', (e)=>{
       const btn = e.target.closest('.stage-btn');
       if (!btn) return;
@@ -300,14 +298,14 @@ export function renderAdmin(){
     else listView();
   }
 
-  function openReceiptPreview(url){
+  function openReceiptPreview(url, orderId=''){
     if(!url) return;
     const modal = document.getElementById('modal');
     const mb = document.getElementById('modalBody');
     const mt = document.getElementById('modalTitle');
     const ma = document.getElementById('modalActions');
     if (!modal || !mb || !mt || !ma){
-      window.open(url, '_blank', 'noopener');
+      safeOpenInNewTab(url);
       return;
     }
     mt.textContent = 'Чек оплаты';
@@ -320,14 +318,109 @@ export function renderAdmin(){
       </div>
     `;
     ma.innerHTML = `
-      <a class="btn btn--outline" href="${escapeHtml(url)}" target="_blank" rel="noopener">Открыть в новой вкладке</a>
-      <a class="btn btn--primary" href="${escapeHtml(url)}" download>Скачать</a>
+      <button class="btn btn--outline" id="rcOpen"><i data-lucide="external-link"></i><span>&nbsp;Открыть в новой вкладке</span></button>
+      <button class="btn btn--primary" id="rcDownload"><i data-lucide="download"></i><span>&nbsp;Скачать</span></button>
     `;
     modal.classList.add('show');
+    window.lucide?.createIcons && lucide.createIcons();
+
     document.getElementById('modalClose').onclick = ()=> modal.classList.remove('show');
+    document.getElementById('rcOpen')?.addEventListener('click', ()=> safeOpenInNewTab(url));
+    document.getElementById('rcDownload')?.addEventListener('click', ()=> triggerDownload(url, suggestReceiptFilename(url, orderId)));
   }
 
   render();
+}
+
+/* ---------------- Helpers: open & download ---------------- */
+
+function safeOpenInNewTab(url){
+  try{
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }catch{
+    // молча игнорируем — в некоторых окружениях popup может быть заблокирован
+  }
+}
+
+/**
+ * Пытаемся скачать по ссылке. Работает:
+ * - для data: URL (чек, сохранённый в заказе)
+ * - для http(s) при том же домене/разрешённом CORS
+ * Если браузер/сервер не разрешает прямое скачивание — открываем в новой вкладке.
+ */
+async function triggerDownload(url, filename='receipt.jpg'){
+  try{
+    // простой путь: скрытая ссылка с download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }catch{
+    // если вдруг не удалось — пробуем fetch -> blob (когда CORS позволяет)
+    try{
+      const resp = await fetch(url, { mode:'cors' });
+      const blob = await resp.blob();
+      const ext = extensionFromMime(blob.type) || filename.split('.').pop() || 'jpg';
+      const name = ensureExt(filename, ext);
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = name;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=> URL.revokeObjectURL(blobUrl), 2000);
+    }catch{
+      // финальный фолбэк — открыть в новой вкладке
+      safeOpenInNewTab(url);
+    }
+  }
+}
+
+function suggestReceiptFilename(url, orderId=''){
+  // data:image/jpeg;base64,...
+  if (/^data:/i.test(url)){
+    const m = /^data:([^;,]+)/i.exec(url);
+    const ext = extensionFromMime(m?.[1] || '') || 'jpg';
+    return `receipt_${orderId||'order'}.${ext}`;
+  }
+  // http(s) — пробуем вытащить имя из пути
+  try{
+    const u = new URL(url, location.href);
+    const last = (u.pathname.split('/').pop() || '').split('?')[0];
+    if (last) return last;
+  }catch{}
+  return `receipt_${orderId||'order'}.jpg`;
+}
+
+function extensionFromMime(mime=''){
+  const map = {
+    'image/jpeg':'jpg',
+    'image/jpg':'jpg',
+    'image/png':'png',
+    'image/webp':'webp',
+    'image/gif':'gif',
+    'image/bmp':'bmp',
+    'image/heic':'heic',
+    'image/heif':'heif',
+    'application/pdf':'pdf',
+  };
+  return map[mime.toLowerCase()] || '';
+}
+
+function ensureExt(name, ext){
+  if (!ext) return name;
+  const low = name.toLowerCase();
+  if (low.endsWith(`.${ext.toLowerCase()}`)) return name;
+  // срезать другой расшир
+  const dot = name.lastIndexOf('.');
+  const base = dot>0 ? name.slice(0,dot) : name;
+  return `${base}.${ext}`;
 }
 
 function escapeHtml(s=''){
