@@ -2,10 +2,8 @@
   "name": "evliseoutlet",
   "private": true,
   "type": "module",
-  "engines": {
-    "node": ">=18"
-  },
+  "engines": { "node": ">=18" },
   "dependencies": {
-    "@netlify/blobs": "^6.3.0"
+    "@netlify/blobs": "^7.1.0"
   }
 }

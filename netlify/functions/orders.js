@@ -1,10 +1,12 @@
-// netlify/functions/orders.js
 // Централизованное хранилище заказов (Netlify Blobs) + операции админа
 // ENV: TG_BOT_TOKEN, ADMIN_CHAT_ID, WEBAPP_URL, ALLOWED_ORIGINS (опц.)
 
+/* ---------------- CORS ---------------- */
 function parseAllowed() {
-  const raw = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
-  return raw;
+  return (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
 }
 function isTelegramOrigin(origin) {
   return origin === 'https://t.me' ||
@@ -40,25 +42,23 @@ function buildCorsHeaders(origin) {
   };
 }
 
+/* ---------------- Netlify Function ---------------- */
 export async function handler(event) {
   const origin = event.headers?.origin || event.headers?.Origin || '';
   const { headers, isAllowed } = buildCorsHeaders(origin);
 
-  // CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, ...headers };
   }
-
   if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed', ...headers };
   }
-
   if (!isAllowed) {
     return { statusCode: 403, body: 'Forbidden by CORS', ...headers };
   }
 
   try {
-    const store = await getStore();
+    const store = await getStoreSafe(); // Blobs или in-memory
 
     if (event.httpMethod === 'GET') {
       const op = (event.queryStringParameters?.op || 'list').toLowerCase();
@@ -112,32 +112,58 @@ export async function handler(event) {
   }
 }
 
-/* ---------------- Storage (Netlify Blobs) ---------------- */
-async function getStore(){
-  const { blobs } = await import('@netlify/blobs');
-  const bucket = blobs?.kvStorage ? blobs.kvStorage('orders') : null;
-  if (!bucket) throw new Error('Netlify Blobs is not available');
+/* ---------------- Storage (Blobs v7 getStore) ---------------- */
+async function getStoreSafe(){
+  // Пытаемся подключить настоящий Blobs store
+  try {
+    // Важно: в v7 используем именованный импорт getStore
+    const { getStore } = await import('@netlify/blobs');
+    const store = getStore('orders'); // общий namespace сайта
+    // Проверочный чтение (silent), чтобы отловить проблемы окружения
+    await store.list({ prefix: '__ping__', paginate: false });
+    console.log('[orders] Using Netlify Blobs via getStore');
+    return makeBlobsStore(store);
+  } catch (e) {
+    console.warn('[orders] Netlify Blobs not available, fallback to in-memory:', e?.message || e);
+    return makeMemoryStore();
+  }
+}
 
+function makeBlobsStore(store){
   const KEY_ALL = 'orders_all';
 
   async function readAll(){
     try{
-      const raw = await bucket.get(KEY_ALL, { type:'json' });
-      return Array.isArray(raw) ? raw : [];
+      // Сильная консистентность, чтобы админ видел мгновенно
+      const data = await store.get(KEY_ALL, { type: 'json', consistency: 'strong' });
+      return Array.isArray(data) ? data : [];
     }catch(e){
-      console.error('[orders] readAll error:', e);
+      console.error('[orders] readAll (blobs) error:', e);
       return [];
     }
   }
   async function writeAll(list){
-    await bucket.set(KEY_ALL, list, { type:'json' });
+    // Записываем JSON целиком
+    await store.setJSON(KEY_ALL, list);
   }
 
-  function writeHistory(order, status, extra = {}){
+  return makeStoreCore(readAll, writeAll);
+}
+
+/* ---------------- In-memory fallback ---------------- */
+const __mem = { orders: [] }; // не персистентно
+function makeMemoryStore(){
+  async function readAll(){ return __mem.orders.slice(); }
+  async function writeAll(list){ __mem.orders = list.slice(); }
+  return makeStoreCore(readAll, writeAll);
+}
+
+/* ---------------- Store core (общая логика CRUD) ---------------- */
+function makeStoreCore(readAll, writeAll){
+  function writeHistory(order, status, extra = {}) {
     const rec = { ts: Date.now(), status, ...extra };
     order.history = Array.isArray(order.history) ? [...order.history, rec] : [rec];
   }
-
   return {
     async list(){
       const arr = await readAll();
