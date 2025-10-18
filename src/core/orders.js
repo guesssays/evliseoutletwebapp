@@ -44,6 +44,14 @@ export function saveOrders(list){
   window.dispatchEvent(new CustomEvent('orders:updated'));
 }
 
+/** Полная очистка всех заказов (для миграции/сброса) */
+export function clearAllOrders(){
+  try{
+    localStorage.removeItem(KEY);
+    window.dispatchEvent(new CustomEvent('orders:updated'));
+  }catch{}
+}
+
 function writeHistory(order, status, extra = {}){
   const rec = { ts: Date.now(), status, ...extra };
   order.history = Array.isArray(order.history) ? [...order.history, rec] : [rec];
@@ -57,6 +65,11 @@ export function addOrder(order){
 
   const next = {
     id,
+
+    // Идентификация пользователя (для клиентского фильтра)
+    userId: order.userId ?? null,     // <== добавлено
+    username: order.username ?? '',
+
     // поддержка одиночного товара + корзины из нескольких
     productId: order.productId ?? null,
     size: order.size ?? null,
@@ -68,7 +81,6 @@ export function addOrder(order){
     // контактные
     address: typeof order.address === 'string' ? order.address : (order.address?.address || ''),
     phone: order.phone ?? '',
-    username: order.username ?? '',
     payerFullName: order.payerFullName ?? '',
 
     // оплата
@@ -93,6 +105,13 @@ export function addOrder(order){
   list.unshift(next);
   saveOrders(list);
   return next.id;
+}
+
+/** Выборка заказов конкретного пользователя */
+export function getOrdersForUser(userId){
+  const list = getOrders();
+  if (!userId) return [];
+  return list.filter(o => String(o.userId||'') === String(userId));
 }
 
 /** Принять «новый» заказ */
@@ -126,10 +145,7 @@ export function cancelOrder(orderId, reason = ''){
   saveOrders(list);
 }
 
-/**
- * Обновить статус уже принятого заказа.
- * Если выставлен 'выдан' — помечаем как завершённый.
- */
+/** Обновить статус уже принятого заказа */
 export function updateOrderStatus(orderId, status){
   if (!ORDER_STATUSES.includes(status)) return;
 
@@ -138,9 +154,7 @@ export function updateOrderStatus(orderId, status){
   if (i === -1) return;
   const o = list[i];
 
-  // Нельзя менять статус у «новый» — сначала acceptOrder()/cancelOrder()
-  if (o.status === 'новый') return;
-  // Нельзя менять отменённый
+  if (o.status === 'новый') return; // сначала accept/cancel
   if (o.status === 'отменён' || o.canceled) return;
 
   o.status = status;
@@ -158,57 +172,5 @@ export function markCompleted(orderId){
   updateOrderStatus(orderId, 'выдан');
 }
 
-/* ===== Демо-данные при первом старте ===== */
-export function seedOrdersOnce(){
-  if (getOrders().length) return;
-
-  addOrder({
-    productId: 101,
-    size: 'M',
-    color: 'Черный',
-    address: 'г. Ташкент, ул. Мирзо Улугбека, 10',
-    phone: '+998 90 123-45-67',
-    username: 'customer_one',
-    payerFullName: 'Иванов Иван',
-    cart: [],
-    total: 299000,
-    link: '#/product/101',
-    status: 'новый',
-  });
-
-  addOrder({
-    productId: 205,
-    size: 'L',
-    address: 'г. Самарканд, ул. Регистан, 7',
-    phone: '+998 91 765-43-21',
-    username: 'client_two',
-    payerFullName: 'Петров Пётр',
-    cart: [],
-    total: 399000,
-    link: '#/product/205',
-    status: 'принят',
-    accepted: true,
-  });
-
-  // Пример завершённого заказа
-  addOrder({
-    productId: 309,
-    size: 'XL',
-    address: 'г. Бухара, ул. Ляби-Хауз, 3',
-    phone: '+998 93 555-55-55',
-    username: 'done_user',
-    payerFullName: 'Сидоров Семён',
-    cart: [],
-    total: 459000,
-    link: '#/product/309',
-    status: 'выдан',
-    accepted: true,
-    completedAt: Date.now() - 3600_000,
-    history: [
-      { ts: Date.now() - 48*3600_000, status: 'новый' },
-      { ts: Date.now() - 47*3600_000, status: 'принят' },
-      { ts: Date.now() - 6*3600_000,  status: 'на почте' },
-      { ts: Date.now() - 3600_000,    status: 'выдан' },
-    ],
-  });
-}
+/* ===== Демосидирование отключено (сохранена функция для совместимости) ===== */
+export function seedOrdersOnce(){ /* no-op: демо-данные отключены */ }

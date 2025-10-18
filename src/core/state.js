@@ -1,3 +1,4 @@
+// src/core/state.js
 export const PRICE_CURRENCY = 'UZS';
 export const RUB_TO_UZS = 1;
 export const DEFAULT_LANG  = localStorage.getItem('evlise_lang')  || 'ru';
@@ -11,14 +12,37 @@ export const state = {
   filters: { category: 'all', query: '', size:[], colors:[], materials:[], minPrice:null, maxPrice:null, inStock:false },
   orders: [],
   addresses: { list: [], defaultId: null },
-  profile: { phone:'', payerFullName:'' } // НОВОЕ: сохраняемые поля пользователя
+  profile: { phone:'', payerFullName:'' },
+  favorites: new Set(),
 };
 
-export function persistCart(){ localStorage.setItem('nas_cart', JSON.stringify(state.cart)); }
+/* ===== user scoping (per-user localStorage) ===== */
+const UID_KEY = 'nas_uid';
+export function getUID(){
+  try{
+    const v = localStorage.getItem(UID_KEY);
+    return v ? String(v) : 'guest';
+  }catch{ return 'guest'; }
+}
+export function k(base){ return `${base}__${getUID()}`; }
+export function migrateOnce(base){
+  try{
+    const old = localStorage.getItem(base);
+    const scoped = localStorage.getItem(k(base));
+    if (old && !scoped){
+      localStorage.setItem(k(base), old);
+      // старый общий ключ можно удалить вручную при желании
+    }
+  }catch{}
+}
+
+/* ===== Корзина ===== */
+export function persistCart(){ localStorage.setItem(k('nas_cart'), JSON.stringify(state.cart)); }
 
 export function loadCart(){
+  migrateOnce('nas_cart');
   try{
-    const parsed = JSON.parse(localStorage.getItem('nas_cart') || '{"items":[]}');
+    const parsed = JSON.parse(localStorage.getItem(k('nas_cart')) || '{"items":[]}');
     const items = Array.isArray(parsed?.items) ? parsed.items : [];
     state.cart = { items: items.map(it => ({
       productId: String(it.productId),
@@ -61,25 +85,27 @@ export function updateCartBadge(){
   });
 }
 
-/* === Адреса === */
-const ADDR_KEY = 'nas_addresses';
+/* ===== Адреса ===== */
+const ADDR_BASE = 'nas_addresses';
 export function loadAddresses(){
+  migrateOnce(ADDR_BASE);
   try{
-    const data = JSON.parse(localStorage.getItem(ADDR_KEY) || '{}');
+    const data = JSON.parse(localStorage.getItem(k(ADDR_BASE)) || '{}');
     state.addresses = { list: data.list || [], defaultId: data.defaultId || null };
   }catch{
     state.addresses = { list: [], defaultId: null };
   }
 }
 export function persistAddresses(){
-  localStorage.setItem(ADDR_KEY, JSON.stringify(state.addresses));
+  localStorage.setItem(k(ADDR_BASE), JSON.stringify(state.addresses));
 }
 
-/* === Профиль (телефон/ФИО плательщика) === */
-const PROF_KEY = 'nas_profile';
+/* ===== Профиль (телефон/ФИО плательщика) ===== */
+const PROF_BASE = 'nas_profile';
 export function loadProfile(){
+  migrateOnce(PROF_BASE);
   try{
-    const data = JSON.parse(localStorage.getItem(PROF_KEY) || '{}');
+    const data = JSON.parse(localStorage.getItem(k(PROF_BASE)) || '{}');
     state.profile = {
       phone: data.phone || '',
       payerFullName: data.payerFullName || ''
@@ -89,8 +115,33 @@ export function loadProfile(){
   }
 }
 export function persistProfile(){
-  localStorage.setItem(PROF_KEY, JSON.stringify({
+  localStorage.setItem(k(PROF_BASE), JSON.stringify({
     phone: state.profile?.phone || '',
     payerFullName: state.profile?.payerFullName || ''
   }));
+}
+
+/* ===== Избранное (персонально на UID) ===== */
+const FAV_BASE = 'nas_favorites';
+export function loadFavorites(){
+  migrateOnce(FAV_BASE);
+  try{
+    const arr = JSON.parse(localStorage.getItem(k(FAV_BASE)) || '[]');
+    state.favorites = new Set(Array.isArray(arr) ? arr.map(String) : []);
+  }catch{
+    state.favorites = new Set();
+  }
+}
+export function persistFavorites(){
+  try{ localStorage.setItem(k(FAV_BASE), JSON.stringify([...state.favorites])); }catch{}
+}
+export function isFav(productId){
+  return state.favorites.has(String(productId));
+}
+export function toggleFav(productId){
+  const id = String(productId);
+  if (state.favorites.has(id)) state.favorites.delete(id);
+  else state.favorites.add(id);
+  persistFavorites();
+  try{ window.dispatchEvent(new CustomEvent('force:rerender')); }catch{}
 }

@@ -1,4 +1,5 @@
-import { state, loadCart, updateCartBadge, loadAddresses, pruneCartAgainstProducts, loadProfile } from './core/state.js';
+// src/app.js
+import { state, loadCart, updateCartBadge, loadAddresses, pruneCartAgainstProducts, loadProfile, getUID, loadFavorites } from './core/state.js';
 import { toast } from './core/toast.js';
 import { el } from './core/utils.js';
 import { initTelegramChrome } from './core/utils.js';
@@ -17,10 +18,30 @@ import { renderNotifications } from './components/Notifications.js';
 // Админка
 import { renderAdmin } from './components/Admin.js';
 import { renderAdminLogin } from './components/AdminLogin.js';
-import { getOrders } from './core/orders.js';
+import { getOrders, clearAllOrders } from './core/orders.js';
 import { canAccessAdmin, tryUnlockFromStartParam } from './core/auth.js';
 
-loadCart(); loadAddresses(); loadProfile(); updateCartBadge(); initTelegramChrome();
+/* ---------- Ранняя фиксация UID до загрузки персональных данных ---------- */
+(function initUserIdentityEarly(){
+  const tg = window.Telegram?.WebApp;
+  let uid = 'guest';
+  if (tg?.initDataUnsafe?.user) {
+    const u = tg.initDataUnsafe.user;
+    state.user = u;
+    uid = String(u.id);
+  } else {
+    uid = localStorage.getItem('nas_uid') || 'guest';
+  }
+  try{ localStorage.setItem('nas_uid', uid); }catch{}
+})();
+
+/* ---------- Персональные данные (уже с корректным UID) ---------- */
+loadCart();
+loadAddresses();
+loadProfile();
+loadFavorites();
+updateCartBadge();
+initTelegramChrome();
 
 /* ---------- ADMIN MODE ---------- */
 function setAdminMode(on){
@@ -181,21 +202,22 @@ el('#searchInput')?.addEventListener('input', (e)=>{
   renderHome(router);
 });
 
-/* ---------- Уведомления (localStorage) ---------- */
-const NOTIF_KEY = 'nas_notifications';
+/* ---------- Уведомления (per-user) ---------- */
+function notifKey(){ return `nas_notifications__${getUID()}`; }
 
 function seedNotificationsOnce(){
   try{
-    if (localStorage.getItem(NOTIF_KEY)) return;
+    const K = notifKey();
+    if (localStorage.getItem(K)) return;
     const seed = [
       { id: 1, title: 'Добро пожаловать в EVLISE OUTLET', sub: 'Подборка новинок уже на главной.', ts: Date.now()-1000*60*60*6, read:false, icon:'bell' },
       { id: 2, title: 'Скидки на худи', sub: 'MANIA и DIRT — выгоднее на 15% до воскресенья.', ts: Date.now()-1000*60*50, read:false, icon:'percent' },
     ];
-    localStorage.setItem(NOTIF_KEY, JSON.stringify(seed));
+    localStorage.setItem(K, JSON.stringify(seed));
   }catch{}
 }
-function getNotifications(){ try{ return JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]'); }catch{ return []; } }
-function setNotifications(list){ localStorage.setItem(NOTIF_KEY, JSON.stringify(list)); }
+function getNotifications(){ try{ return JSON.parse(localStorage.getItem(notifKey()) || '[]'); }catch{ return []; } }
+function setNotifications(list){ localStorage.setItem(notifKey(), JSON.stringify(list)); }
 function updateNotifBadge(){
   const unread = getNotifications().filter(n=>!n.read).length;
   const b = document.getElementById('notifBadge');
@@ -313,7 +335,15 @@ async function init(){
   state.products   = data.products;
   state.categories = data.categories.map(c=>({ ...c, name: c.name }));
 
-  // Заказы (общая синхронизация с localStorage)
+  /* Одноразовая очистка всех заказов (включая демо) после обновления */
+  try{
+    if (!localStorage.getItem('nas_orders_wiped_v1')){
+      clearAllOrders();
+      localStorage.setItem('nas_orders_wiped_v1','1');
+    }
+  }catch{}
+
+  // Заказы (персональные)
   state.orders = getOrders();
 
   // САНИТИЗАЦИЯ КОРЗИНЫ
@@ -349,28 +379,28 @@ async function init(){
     router();
   });
 
-  // Локальные нотификации по событиям заказа
+  // Локальные нотификации по событиям заказа (per-user)
   window.addEventListener('client:orderPlaced', (e)=>{
     try{
-      const list = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
+      const list = JSON.parse(localStorage.getItem(notifKey()) || '[]');
       list.push({ id: Date.now(), title: 'Заказ оформлен', sub:`#${e.detail?.id} — ожидает подтверждения`, ts: Date.now(), read:false, icon:'package' });
-      localStorage.setItem(NOTIF_KEY, JSON.stringify(list));
+      localStorage.setItem(notifKey(), JSON.stringify(list));
       updateNotifBadge();
     }catch{}
   });
   window.addEventListener('admin:orderAccepted', (e)=>{
     try{
-      const list = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
+      const list = JSON.parse(localStorage.getItem(notifKey()) || '[]');
       list.push({ id: Date.now(), title: 'Заказ принят администратором', sub:`#${e.detail?.id}`, ts: Date.now(), read:false, icon:'shield-check' });
-      localStorage.setItem(NOTIF_KEY, JSON.stringify(list));
+      localStorage.setItem(notifKey(), JSON.stringify(list));
       updateNotifBadge();
     }catch{}
   });
   window.addEventListener('admin:statusChanged', (e)=>{
     try{
-      const list = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
+      const list = JSON.parse(localStorage.getItem(notifKey()) || '[]');
       list.push({ id: Date.now(), title: 'Статус заказа обновлён', sub:`#${e.detail?.id}: ${e.detail?.status}`, ts: Date.now(), read:false, icon:'refresh-ccw' });
-      localStorage.setItem(NOTIF_KEY, JSON.stringify(list));
+      localStorage.setItem(notifKey(), JSON.stringify(list));
       updateNotifBadge();
     }catch{}
   });

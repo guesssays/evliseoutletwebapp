@@ -1,9 +1,13 @@
-import { state } from '../core/state.js';
+import { state, getUID } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
+import { getOrdersForUser } from '../core/orders.js';
 
 export function renderOrders(){
   const v=document.getElementById('view');
-  if (!state.orders.length){
+  const myUid = getUID();
+  const myOrders = getOrdersForUser(myUid);
+
+  if (!myOrders.length){
     v.innerHTML = `<div class="section-title">Мои заказы</div>
       <section class="checkout">
         <div style="text-align:center;color:#999; padding:40px 0">
@@ -18,7 +22,7 @@ export function renderOrders(){
 
   v.innerHTML = `<div class="section-title">Мои заказы</div>
     <section class="checkout">
-      ${state.orders.map(o=>`
+      ${myOrders.map(o=>`
         <div class="order-row">
           <div class="cart-img"><img src="${o.cart?.[0]?.images?.[0] || 'assets/placeholder.jpg'}" alt=""></div>
           <div>
@@ -33,11 +37,17 @@ export function renderOrders(){
 }
 
 export function renderTrack({id}){
-  const o = state.orders.find(x=>String(x.id)===String(id));
-  const v=document.getElementById('view');
-  if(!o){ v.innerHTML='<div class="section-title">Трекинг</div><section class="checkout">Не найдено</section>'; return; }
+  // доступ к чужому заказу скрываем простым фильтром
+  const myUid = getUID();
+  const myOrders = getOrdersForUser(myUid);
+  const o = myOrders.find(x=>String(x.id)===String(id));
 
-  // Минималистичные, короткие статусы
+  const v=document.getElementById('view');
+  if(!o){
+    v.innerHTML='<div class="section-title">Трекинг</div><section class="checkout">Не найдено</section>';
+    return;
+  }
+
   const steps = [
     { key:'новый', label:'В обработке' },
     { key:'принят', label:'Подтверждён' },

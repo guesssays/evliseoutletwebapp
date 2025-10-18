@@ -247,6 +247,7 @@ function openPayModal({ items, address, phone, payer, total }){
       address,
       phone,
       username: state.user?.username || '',
+      userId: state.user?.id || null,            // <== ВАЖНО: привязка заказа к пользователю
       payerFullName: payer || '',
       paymentScreenshot: shotUrl || '',
       status: 'новый',

@@ -1,4 +1,5 @@
-import { state } from '../core/state.js';
+// src/components/Product.js
+import { state, isFav, toggleFav } from '../core/state.js';
 import { priceFmt, colorToHex } from '../core/utils.js';
 import { addToCart, removeLineFromCart, isInCart } from './cartActions.js';
 
@@ -6,8 +7,7 @@ export function renderProduct({id}){
   const p = state.products.find(x=> String(x.id)===String(id));
   if (!p){ location.hash='#/'; return; }
 
-  const favSet = new Set(JSON.parse(localStorage.getItem('nas_fav')||'[]'));
-  const isFav = favSet.has(p.id);
+  const favActive = isFav(p.id);
 
   const images = Array.isArray(p.images) && p.images.length ? p.images : [p.images?.[0] || ''];
   const realPhotos = Array.isArray(p.realPhotos) ? p.realPhotos : [];
@@ -21,7 +21,7 @@ export function renderProduct({id}){
           <div class="gallery-main">
             <img id="mainImg" class="zoomable" src="${images[0]||''}" alt="${escapeHtml(p.title)}">
             <button class="hero-btn hero-back" id="goBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
-            <button class="hero-btn hero-fav ${isFav?'active':''}" id="favBtn" aria-pressed="${isFav?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
+            <button class="hero-btn hero-fav ${favActive?'active':''}" id="favBtn" aria-pressed="${favActive?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
           </div>
 
           ${images.length>1 ? `
@@ -110,15 +110,11 @@ export function renderProduct({id}){
   // Избранное (кнопка на герое)
   const favBtn = document.getElementById('favBtn');
   favBtn.onclick = ()=>{
-    let list = JSON.parse(localStorage.getItem('nas_fav')||'[]');
-    const i = list.indexOf(p.id);
-    const nowFav = i===-1;
-    if (nowFav) list.push(p.id); else list.splice(i,1);
-    localStorage.setItem('nas_fav', JSON.stringify(list));
-    favBtn.classList.toggle('active', nowFav);
-    favBtn.setAttribute('aria-pressed', String(nowFav));
-    // синхронизируем фикс-хедер
-    setFixFavActive(nowFav);
+    toggleFav(p.id);
+    const active = isFav(p.id);
+    favBtn.classList.toggle('active', active);
+    favBtn.setAttribute('aria-pressed', String(active));
+    setFixFavActive(active);
   };
 
   // Галерея: миниатюры -> главное фото
@@ -144,7 +140,6 @@ export function renderProduct({id}){
       id: 'ctaAdd',
       html: `<i data-lucide="shopping-bag"></i><span>${needPick ? 'Выберите размер' : 'Добавить в корзину&nbsp;|&nbsp;'+priceFmt(p.price)}</span>`,
       onClick(){
-        // блокируем добавление, если нужен размер, а он не выбран
         if (needSize && !size){
           document.getElementById('sizes')?.scrollIntoView({ behavior:'smooth', block:'center' });
           return;
@@ -153,7 +148,6 @@ export function renderProduct({id}){
         showInCartCTAs();
       }
     });
-    // деактивируем кнопку до выбора размера
     const btn = document.getElementById('ctaAdd');
     if (btn) btn.disabled = needPick;
   }
@@ -172,7 +166,6 @@ export function renderProduct({id}){
   }
 
   function refreshCTAByState(){
-    // если требуется размер и он не выбран — всегда показываем заблокированный CTA
     if (needSize && !size){ showAddCTA(); return; }
     if (isInCart(p.id, size||null, color||null)) showInCartCTAs(); else showAddCTA();
   }
@@ -188,40 +181,39 @@ export function renderProduct({id}){
   function resetZoom(){ if (!mainImg) return; mainImg.style.transform=''; mainImg.dataset.zoom='1'; }
 
   /* -------- ДВА РАЗНЫХ ХЕДЕРА: показ/скрытие -------- */
-  setupTwoHeaders({ isFav });
+  setupTwoHeaders({ isFav: favActive });
 
   /* ==== ВНУТРЕННЕЕ: управление двумя хедерами ==== */
-  function setupTwoHeaders({ isFav }){
+  function setupTwoHeaders({ isFav: favAtStart }){
     const stat = document.querySelector('.app-header');
     const fix  = document.getElementById('productFixHdr');
     const btnBack = document.getElementById('btnFixBack');
     const btnFav  = document.getElementById('btnFixFav');
     if (!stat || !fix || !btnBack || !btnFav) return;
 
-    // 1) Сначала убиваем все старые обработчики фикс-хедера (если были)
     if (window._productHdrAbort){
       try{ window._productHdrAbort.abort(); }catch{}
     }
     const ctrl = new AbortController();
     window._productHdrAbort = ctrl;
 
-    // 2) Исходное состояние
     stat.classList.remove('hidden');
     fix.classList.remove('show');
     fix.setAttribute('aria-hidden','true');
 
-    // 3) Кнопки фикс-хедера
     btnBack.addEventListener('click', ()=> history.back(), { signal: ctrl.signal });
-    setFixFavActive(isFav);
+    setFixFavActive(favAtStart);
     btnFav.addEventListener('click', ()=>{
-      const active = !btnFav.classList.contains('active');
+      toggleFav(p.id);
+      const active = isFav(p.id);
       setFixFavActive(active);
-      // синхронизируем «геро»-кнопку
-      const now = favBtn.classList.contains('active');
-      if (now !== active) favBtn.click();
+      const heroActive = favBtn.classList.contains('active');
+      if (heroActive !== active){
+        favBtn.classList.toggle('active', active);
+        favBtn.setAttribute('aria-pressed', String(active));
+      }
     }, { signal: ctrl.signal });
 
-    // 4) Скролл-порог и обработчик (всегда вешаем заново)
     const THRESHOLD = 24;
     const onScroll = ()=>{
       const sc = window.scrollY || document.documentElement.scrollTop || 0;
@@ -231,10 +223,8 @@ export function renderProduct({id}){
       fix.setAttribute('aria-hidden', String(!showFix));
     };
     window.addEventListener('scroll', onScroll, { passive:true, signal: ctrl.signal });
-    // первичная проверка
     onScroll();
 
-    // 5) На любой уход со страницы — скрыть и зачистить
     const cleanup = ()=>{
       fix.classList.remove('show'); fix.setAttribute('aria-hidden','true');
       stat.classList.remove('hidden');
