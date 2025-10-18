@@ -63,7 +63,7 @@ body{
   width:48px; height:48px; border-radius:999px;
   display:grid; place-items:center;
   background:#fff; border:1px solid var(--stroke); box-shadow:var(--shadow);
-  color:var(--text); cursor:pointer;
+  color:#var(--text); cursor:pointer;
   position:absolute; top:0;
 }
 #btnFixBack{ left:12px; } #btnFixFav{ right:12px; }
@@ -205,10 +205,10 @@ body{
 .section-title{ font-size:24px; font-weight:800; margin:10px 18px }
 .checkout{ padding:0 18px calc(var(--tabbar-h) + var(--safe) + 24px); display:grid; gap:14px }
 
-/* КАРТОЧКА ТОВАРА В КОРЗИНЕ (исправлено) */
+/* КАРТОЧКА ТОВАРА В КОРЗИНЕ */
 .cart-row{
   display:grid;
-  grid-template-columns:72px minmax(0,1fr) max-content; /* qty всегда справа */
+  grid-template-columns:72px minmax(0,1fr) max-content;
   gap:14px; align-items:center;
   padding:12px 0; border-bottom:1px solid var(--stroke);
 }
@@ -218,6 +218,15 @@ body{
 .cart-sub{ color:var(--muted); font-size:14px; margin-top:2px; }
 .cart-price{ font-weight:800; }
 .cart-title{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* СТРОКА ЗАКАЗА (клиентский список) — ФИКС ДЛЯ КНОПКИ «ОТСЛЕДИТЬ» */
+.order-row{
+  display:grid;
+  grid-template-columns:72px minmax(0,1fr) max-content; /* кнопка всегда справа */
+  gap:14px; align-items:center;
+  padding:12px 0; border-bottom:1px solid var(--stroke);
+}
+.order-row .pill{ justify-self:end; }
 
 /* счётчик количества — всегда в одну строку */
 .qty-mini{
@@ -489,27 +498,24 @@ body.admin-mode .tabbar{ display:none !important; }
   .tabbar-inner{ height:72px; }
   .tab{ height:50px; }
 }
+
 /* === Admin buttons fixes (receipt actions) === */
 .receipt-actions{
   display:flex;
   align-items:center;
   gap:8px;
-  flex-wrap:wrap;           /* если не помещаются — аккуратно переносятся */
+  flex-wrap:wrap;
 }
-
-/* компактные кнопки */
 .btn--sm{
   height:36px;
   font-size:14px;
   font-weight:800;
   padding:0 12px;
   border-radius:12px;
-  width:auto;               /* не растягиваем на 100% */
-  box-shadow:none;          /* без большой тени */
+  width:auto;
+  box-shadow:none;
 }
 .btn--sm i{ width:18px; height:18px }
-
-/* модификаторы в стиле BEM — в коде используются именно они */
 .btn--outline{
   background:#fff;
   color:#121111;
@@ -520,12 +526,9 @@ body.admin-mode .tabbar{ display:none !important; }
   color:#fff;
   border:1px solid #121111;
 }
-
-/* на супер-узких — ровные переносы, не налезают друг на друга */
 @media (max-width: 380px){
-  .receipt-actions .btn--sm{ flex:1 0 auto; } /* по 1–2 в ряд в зависимости от ширины */
+  .receipt-actions .btn--sm{ flex:1 0 auto; }
 }
-
-/* совместимость: если где-то осталась старая запись .btn.outline/.btn.primary */
+/* совместимость */
 .btn.outline{ background:#fff; color:#121111; border:1px solid var(--stroke); box-shadow:0 0 0 0 transparent; }
 .btn.primary{ background:#121111; color:#fff; border:1px solid #121111; }

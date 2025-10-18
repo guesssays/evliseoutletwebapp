@@ -145,3 +145,18 @@ export function toggleFav(productId){
   persistFavorites();
   try{ window.dispatchEvent(new CustomEvent('force:rerender')); }catch{}
 }
+
+/* ===== Уведомления (персонально на UID) ===== */
+const NOTIF_BASE = 'nas_notifications';
+
+export function getNotifications(){
+  try{ return JSON.parse(localStorage.getItem(k(NOTIF_BASE)) || '[]'); }catch{ return []; }
+}
+export function setNotifications(list){
+  localStorage.setItem(k(NOTIF_BASE), JSON.stringify(Array.isArray(list) ? list : []));
+}
+export function pushNotification(n){
+  const list = getNotifications();
+  list.push({ id: Date.now(), ts: Date.now(), read:false, icon:'bell', title:'', sub:'', ...n });
+  setNotifications(list);
+}
