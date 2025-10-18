@@ -38,15 +38,29 @@ import { canAccessAdmin, tryUnlockFromStartParam } from './core/auth.js';
 /* ---------- Ранняя фиксация UID до загрузки персональных данных ---------- */
 (function initUserIdentityEarly(){
   const tg = window.Telegram?.WebApp;
-  let uid = 'guest';
+
+  // если есть Telegram-пользователь — берём его id
   if (tg?.initDataUnsafe?.user) {
     const u = tg.initDataUnsafe.user;
     state.user = u;
-    uid = String(u.id);
-  } else {
-    uid = localStorage.getItem('nas_uid') || 'guest';
+    try{ localStorage.setItem('nas_uid', String(u.id)); }catch{}
+    return;
   }
-  try{ localStorage.setItem('nas_uid', uid); }catch{}
+
+  // нет Telegram-пользователя: обеспечиваем УНИКАЛЬНЫЙ анонимный UID
+  try{
+    const stored = localStorage.getItem('nas_uid');
+    if (stored && stored !== 'guest') {
+      // уже есть персональный UID — ничего не делаем
+      return;
+    }
+    // либо не было, либо был общий "guest" — генерируем свой
+    const anon = 'anon_' + Math.random().toString(36).slice(2, 9) + '_' + Date.now().toString(36);
+    localStorage.setItem('nas_uid', anon);
+  }catch{
+    // на всякий случай оставим "guest", если localStorage недоступен
+    try{ localStorage.setItem('nas_uid', 'guest'); }catch{}
+  }
 })();
 
 /* ---------- Персональные данные (уже с корректным UID) ---------- */
@@ -216,7 +230,7 @@ el('#searchInput')?.addEventListener('input', (e)=>{
   renderHome(router);
 });
 
-/* ---------- Уведомления (per-user) ---------- */
+/* ---------- Уведомления (пер-user) ---------- */
 function updateNotifBadge(){
   const unread = getNotifications().filter(n=>!n.read).length;
   const b = document.getElementById('notifBadge');
