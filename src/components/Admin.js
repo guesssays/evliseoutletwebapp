@@ -1,4 +1,3 @@
-// src/components/Admin.js
 import {
   ORDER_STATUSES,
   getOrders,
@@ -11,11 +10,10 @@ import {
 import { state } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 
-export function renderAdmin(){
+export async function renderAdmin(){
   const v = document.getElementById('view');
   seedOrdersOnce();
 
-  // прячем клиентский таббар для режима админа
   document.body.classList.add('admin-mode');
 
   const TABS = [
@@ -24,19 +22,16 @@ export function renderAdmin(){
     { key:'done',    label:'Завершённые' },
   ];
 
-  // локальное состояние экрана админки
   let tab = 'new';
-  let mode = 'list';     // 'list' | 'detail'
-  let selectedId = null; // id текущего заказа в detail
+  let mode = 'list';
+  let selectedId = null;
 
-  // ---------- helpers ----------
-  const getAll = ()=> {
-    const orders = getOrders();
+  const getAll = async ()=> {
+    const orders = await getOrders();
     state.orders = orders;
     return orders;
   };
 
-  // фильтрация по вкладкам согласно ТЗ
   const filterByTab = (list)=>{
     if (tab==='new')    return list.filter(o => o.status==='новый' && !o.accepted);
     if (tab==='active') return list.filter(o => !['новый','выдан','отменён'].includes(o.status));
@@ -44,18 +39,12 @@ export function renderAdmin(){
     return list;
   };
 
-  const getById = (id)=> getAll().find(o=>String(o.id)===String(id));
-
   const currentProductsMap = ()=>{
     const map = new Map();
     (state.products || []).forEach(p => map.set(String(p.id), p));
     return map;
   };
 
-  // допустимые этапы для «в процессе»
-  const ACTIVE_STAGES = ORDER_STATUSES.filter(s => !['новый','отменён'].includes(s));
-
-  // ---------- UI shells ----------
   function shell(innerHTML){
     v.innerHTML = `
       <section class="section admin-shell">
@@ -84,8 +73,8 @@ export function renderAdmin(){
     });
   }
 
-  function listView(){
-    const orders = filterByTab(getAll());
+  async function listView(){
+    const orders = filterByTab(await getAll());
     const pmap   = currentProductsMap();
 
     const html = orders.length ? `
@@ -136,8 +125,9 @@ export function renderAdmin(){
     });
   }
 
-  function detailView(){
-    const o = getById(selectedId);
+  async function detailView(){
+    const orders = await getAll();
+    const o = orders.find(x=>String(x.id)===String(selectedId));
     if(!o){
       mode='list';
       return listView();
@@ -181,10 +171,6 @@ export function renderAdmin(){
               <dd class="break">${escapeHtml(o.payerFullName||'—')}</dd>
             </div>
             <div class="kv__row">
-              <dt>Размер/цвет</dt>
-              <dd>${escapeHtml(o.size||'—')}${o.color?` · ${escapeHtml(o.color)}`:''}</dd>
-            </div>
-            <div class="kv__row">
               <dt>Сумма</dt>
               <dd>${price}</dd>
             </div>
@@ -202,11 +188,8 @@ export function renderAdmin(){
               <dd>
                 ${o.paymentScreenshot ? `
                   <div class="receipt-actions">
-                    <button class="btn btn--sm btn--outline" data-preview="${escapeHtml(o.paymentScreenshot)}">
-                      <i data-lucide="image"></i><span>&nbsp;Предпросмотр</span>
-                    </button>
-                    <button class="btn btn--sm" data-open="${escapeHtml(o.paymentScreenshot)}">
-                      <i data-lucide="external-link"></i><span>&nbsp;Открыть в новой вкладке</span>
+                    <button class="btn btn--sm btn--outline" data-open="${escapeHtml(o.paymentScreenshot)}">
+                      <i data-lucide="external-link"></i><span>&nbsp;Открыть</span>
                     </button>
                     <button class="btn btn--sm btn--primary" data-download="${escapeHtml(o.paymentScreenshot)}" data-oid="${escapeHtml(o.id)}">
                       <i data-lucide="download"></i><span>&nbsp;Скачать</span>
@@ -243,11 +226,6 @@ export function renderAdmin(){
       mode='list'; selectedId=null; render();
     });
 
-    // чек: предпросмотр / открыть / скачать
-    document.querySelector('[data-preview]')?.addEventListener('click', (e)=>{
-      const url = e.currentTarget.getAttribute('data-preview');
-      openReceiptPreview(url, String(o.id||''));
-    });
     document.querySelector('[data-open]')?.addEventListener('click', (e)=>{
       const url = e.currentTarget.getAttribute('data-open');
       safeOpenInNewTab(url);
@@ -258,96 +236,46 @@ export function renderAdmin(){
       await triggerDownload(url, suggestReceiptFilename(url, oid));
     });
 
-    // Новый: принять
-    document.getElementById('btnAccept')?.addEventListener('click', ()=>{
-      acceptOrder(o.id);
+    document.getElementById('btnAccept')?.addEventListener('click', async ()=>{
+      await acceptOrder(o.id);
       render();
     });
 
-    // Новый: отменить (комментарий виден клиенту)
-    document.getElementById('btnCancel')?.addEventListener('click', ()=>{
+    document.getElementById('btnCancel')?.addEventListener('click', async ()=>{
       const reason = prompt('Причина отмены (будет видна клиенту):');
-      cancelOrder(o.id, reason||'');
+      await cancelOrder(o.id, reason||'');
       mode='list'; tab='done'; render();
     });
 
-    // В процессе: выбор этапа
-    document.getElementById('stageList')?.addEventListener('click', (e)=>{
+    document.getElementById('stageList')?.addEventListener('click', async (e)=>{
       const btn = e.target.closest('.stage-btn');
       if (!btn) return;
       const st = btn.getAttribute('data-st');
       if (!st) return;
-      updateOrderStatus(o.id, st);
+      await updateOrderStatus(o.id, st);
       if (st === 'выдан'){ mode='list'; tab='done'; }
       render();
     });
   }
 
-  function render(){
-    if (mode==='detail') detailView();
-    else listView();
+  async function render(){
+    if (mode==='detail') await detailView();
+    else await listView();
   }
 
-  function openReceiptPreview(url, orderId=''){
-    if(!url) return;
-    const modal = document.getElementById('modal');
-    const mb = document.getElementById('modalBody');
-    const mt = document.getElementById('modalTitle');
-    const ma = document.getElementById('modalActions');
-    if (!modal || !mb || !mt || !ma){
-      safeOpenInNewTab(url);
-      return;
-    }
-    mt.textContent = 'Чек оплаты';
-    mb.innerHTML = `
-      <div class="receipt-view">
-        <div class="receipt-img-wrap">
-          <img class="receipt-img" src="${escapeHtml(url)}" alt="Чек оплаты">
-        </div>
-        <div class="muted" style="font-size:12px">Если изображение не загрузилось — ссылка может быть приватной (требует доступ) или запрещена CORS.</div>
-      </div>
-    `;
-    ma.innerHTML = `
-      <button class="btn btn--outline" id="rcOpen"><i data-lucide="external-link"></i><span>&nbsp;Открыть в новой вкладке</span></button>
-      <button class="btn btn--primary" id="rcDownload"><i data-lucide="download"></i><span>&nbsp;Скачать</span></button>
-    `;
-    modal.classList.add('show');
-    window.lucide?.createIcons && lucide.createIcons();
-
-    document.getElementById('modalClose').onclick = ()=> modal.classList.remove('show');
-    document.getElementById('rcOpen')?.addEventListener('click', ()=> safeOpenInNewTab(url));
-    document.getElementById('rcDownload')?.addEventListener('click', ()=> triggerDownload(url, suggestReceiptFilename(url, orderId)));
-  }
-
-  render();
+  window.addEventListener('orders:updated', render);
+  await render();
 }
 
-/* ---------------- Helpers: open & download ---------------- */
-
+/* helpers */
 function safeOpenInNewTab(url){
-  try{
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }catch{
-    // игнорируем — popup может быть заблокирован
-  }
+  try{ window.open(url, '_blank', 'noopener,noreferrer'); }catch{}
 }
-
-/**
- * Пытаемся скачать по ссылке. Работает:
- * - для data: URL
- * - для http(s) при том же домене/разрешённом CORS
- * Если не вышло — открываем в новой вкладке.
- */
 async function triggerDownload(url, filename='receipt.jpg'){
   try{
     const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.rel = 'noopener';
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    a.href = url; a.download = filename; a.rel='noopener'; a.style.display='none';
+    document.body.appendChild(a); a.click(); a.remove();
   }catch{
     try{
       const resp = await fetch(url, { mode:'cors' });
@@ -355,20 +283,14 @@ async function triggerDownload(url, filename='receipt.jpg'){
       const ext = extensionFromMime(blob.type) || filename.split('.').pop() || 'jpg';
       const name = ensureExt(filename, ext);
       const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = name;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      const a = document.createElement('a'); a.href = blobUrl; a.download = name; a.style.display='none';
+      document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=> URL.revokeObjectURL(blobUrl), 2000);
     }catch{
       safeOpenInNewTab(url);
     }
   }
 }
-
 function suggestReceiptFilename(url, orderId=''){
   if (/^data:/i.test(url)){
     const m = /^data:([^;,]+)/i.exec(url);
@@ -382,31 +304,15 @@ function suggestReceiptFilename(url, orderId=''){
   }catch{}
   return `receipt_${orderId||'order'}.jpg`;
 }
-
 function extensionFromMime(mime=''){
-  const map = {
-    'image/jpeg':'jpg',
-    'image/jpg':'jpg',
-    'image/png':'png',
-    'image/webp':'webp',
-    'image/gif':'gif',
-    'image/bmp':'bmp',
-    'image/heic':'heic',
-    'image/heif':'heif',
-    'application/pdf':'pdf',
-  };
+  const map = { 'image/jpeg':'jpg','image/jpg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','image/bmp':'bmp','image/heic':'heic','image/heif':'heif','application/pdf':'pdf' };
   return map[mime.toLowerCase()] || '';
 }
-
 function ensureExt(name, ext){
   if (!ext) return name;
   const low = name.toLowerCase();
   if (low.endsWith(`.${ext.toLowerCase()}`)) return name;
-  const dot = name.lastIndexOf('.');
-  const base = dot>0 ? name.slice(0,dot) : name;
+  const dot = name.lastIndexOf('.'); const base = dot>0 ? name.slice(0,dot) : name;
   return `${base}.${ext}`;
 }
-
-function escapeHtml(s=''){
-  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
+function escapeHtml(s=''){ return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }

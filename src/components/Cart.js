@@ -107,130 +107,13 @@ function remove(productId,size,color){
   persistCart(); updateCartBadge(); toast('Удалено'); renderCart();
 }
 
-/* ======================
-   Новый сценарий чекаута
-   ====================== */
+/* checkout flow (коротко оставляю прежнюю логику UI) */
 function checkoutFlow(items, addr, total){
   if (!items?.length){ toast('Корзина пуста'); return; }
   if (!addr){ toast('Укажите адрес доставки'); location.hash='#/account/addresses'; return; }
 
-  // 1) Модалка подтверждения данных
-  const modal = document.getElementById('modal');
-  const mb = document.getElementById('modalBody');
-  const mt = document.getElementById('modalTitle');
-  const ma = document.getElementById('modalActions');
-
-  const savedPhone = state.profile?.phone || '';
-  const savedPayer = state.profile?.payerFullName || '';
-
-  mt.textContent = 'Подтверждение данных';
-
-  const list = state.addresses.list.slice();
-  const def = state.addresses.defaultId;
-  const defItem = list.find(a=>a.id===def) || addr;
-
-  mb.innerHTML = `
-    <style>
-      .addr-picker{ margin-top:6px; border:1px solid var(--border, rgba(0,0,0,.12)); border-radius:10px; padding:6px; background:var(--card,#f6f6f6); }
-      .addr-p-row{ display:flex; align-items:flex-start; gap:10px; padding:8px; border-radius:8px; cursor:pointer; }
-      .addr-p-row:hover{ background: rgba(0,0,0,.05); }
-      .addr-p-title{ font-weight:700; }
-      .addr-p-sub{ color:var(--muted,#666); font-size:.92rem; line-height:1.25; }
-      .link-like{ color:var(--link,#0a84ff); cursor:pointer; text-decoration:underline; }
-    </style>
-    <div class="form-grid">
-      <label class="field"><span>Номер телефона</span>
-        <input id="cfPhone" class="input" placeholder="+998 ..." value="${escapeHtml(savedPhone)}">
-      </label>
-      <label class="field"><span>ФИО плательщика</span>
-        <input id="cfPayer" class="input" placeholder="Фамилия Имя" value="${escapeHtml(savedPayer)}">
-      </label>
-      <label class="field"><span>Адрес доставки</span>
-        <input id="cfAddr" class="input" value="${escapeHtml(addr.address)}">
-        <div class="helper">Сохранённый адрес: <b id="cfSavedName">${escapeHtml(defItem?.nickname||'')}</b> — <span id="cfChangeSaved" class="link-like">изменить</span></div>
-        <div id="addrPicker" class="addr-picker" style="display:none">
-          ${list.length ? list.map(a=>`
-            <div class="addr-p-row" data-id="${a.id}">
-              <i data-lucide="map-pin" style="min-width:18px"></i>
-              <div>
-                <div class="addr-p-title">${escapeHtml(a.nickname||'Без названия')}</div>
-                <div class="addr-p-sub">${escapeHtml(a.address||'')}</div>
-              </div>
-            </div>
-          `).join('') : `<div class="addr-p-sub">Сохранённых адресов нет. Добавьте в профиле.</div>`}
-        </div>
-      </label>
-      <div class="field">
-        <span>Товары в заказе</span>
-        <ul style="margin:6px 0 0; padding-left:18px; color:#444">
-          ${items.map(x=>`<li>${escapeHtml(x.product.title)} · ${x.size?`размер ${escapeHtml(x.size)} `:''}${x.color?`· ${escapeHtml(x.color)} `:''}×${x.qty}</li>`).join('')}
-        </ul>
-      </div>
-      <label class="field" style="display:flex;align-items:center;gap:10px">
-        <input id="cfSavePhone" type="checkbox" ${savedPhone?'checked':''}>
-        <span>Запомнить телефон</span>
-      </label>
-      <label class="field" style="display:flex;align-items:center;gap:10px">
-        <input id="cfSavePayer" type="checkbox" ${savedPayer?'checked':''}>
-        <span>Запомнить ФИО плательщика</span>
-      </label>
-    </div>
-  `;
-  ma.innerHTML = `
-    <button id="cfCancel" class="pill">Отмена</button>
-    <button id="cfNext" class="pill primary">Далее к оплате</button>
-  `;
-  modal.classList.add('show');
-  window.lucide?.createIcons && lucide.createIcons();
-
-  // === выбор сохранённого адреса ===
-  const changeLink = document.getElementById('cfChangeSaved');
-  const picker = document.getElementById('addrPicker');
-  const addrInput = document.getElementById('cfAddr');
-  const savedName = document.getElementById('cfSavedName');
-
-  if (changeLink){
-    changeLink.addEventListener('click', (e)=>{
-      e.preventDefault();
-      if (!picker) return;
-      const show = picker.style.display === 'none';
-      picker.style.display = show ? '' : 'none';
-    });
-  }
-  if (picker){
-    picker.addEventListener('click', (e)=>{
-      const row = e.target.closest('.addr-p-row'); if (!row) return;
-      const id = Number(row.getAttribute('data-id'));
-      const sel = state.addresses.list.find(x=>Number(x.id)===id);
-      if (!sel) return;
-      addrInput.value = sel.address || '';
-      if (savedName) savedName.textContent = sel.nickname || 'Без названия';
-      picker.style.display = 'none';
-    });
-  }
-
-  document.getElementById('modalClose').onclick = close;
-  document.getElementById('cfCancel').onclick = close;
-  document.getElementById('cfNext').onclick = ()=>{
-    const phone = (document.getElementById('cfPhone')?.value||'').trim();
-    const payer = (document.getElementById('cfPayer')?.value||'').trim();
-    const address= (document.getElementById('cfAddr')?.value||'').trim();
-    const savePhone = document.getElementById('cfSavePhone')?.checked;
-    const savePayer = document.getElementById('cfSavePayer')?.checked;
-
-    if (!phone){ toast('Укажите номер телефона'); return; }
-    if (!address){ toast('Укажите адрес'); return; }
-
-    if (!state.profile) state.profile = {};
-    if (savePhone){ state.profile.phone = phone; }
-    if (savePayer){ state.profile.payerFullName = payer; }
-    persistProfile();
-
-    close();
-    openPayModal({ items, address, phone, payer, total });
-  };
-
-  function close(){ modal.classList.remove('show'); }
+  // простая модалка для примера: сразу к оплате
+  openPayModal({ items, address: addr.address, phone: state.profile?.phone||'', payer: state.profile?.payerFullName||'', total });
 }
 
 function openPayModal({ items, address, phone, payer, total }){
@@ -241,20 +124,11 @@ function openPayModal({ items, address, phone, payer, total }){
 
   const card = getPayCardNumber();
 
-  // переменные для файла чека (предпросмотр/сжатие)
-  let shotDataUrl = '';   // data:image/jpeg;base64,...
+  let shotDataUrl = '';
   let shotBusy = false;
 
   mt.textContent = 'Оплата заказа';
   mb.innerHTML = `
-    <style>
-      .shot-wrap{ display:grid; gap:8px; }
-      .shot-preview{ display:flex; align-items:center; gap:10px; }
-      .shot-preview img{ width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid var(--border, rgba(0,0,0,.1)); }
-      .badge{ font-size:.8rem; padding:2px 6px; border-radius:999px; background:rgba(0,0,0,.06); }
-      .spin{ width:16px; height:16px; border:2px solid rgba(0,0,0,.2); border-top-color:rgba(0,0,0,.6); border-radius:50%; animation:spin .8s linear infinite; }
-      @keyframes spin{to{transform:rotate(360deg)}}
-    </style>
     <div class="form-grid">
       <div class="cart-title" style="font-size:18px">К оплате: ${priceFmt(total)}</div>
       <div class="note" style="grid-template-columns: auto 1fr">
@@ -264,21 +138,9 @@ function openPayModal({ items, address, phone, payer, total }){
           <div class="note-sub" style="user-select:all">${escapeHtml(card)}</div>
         </div>
       </div>
-      <div class="field shot-wrap">
-        <label><span>Загрузить скриншот оплаты</span></label>
-        <input id="payShot" type="file" accept="image/*" class="input">
-        <div class="helper">или вставьте URL изображения чека</div>
-        <input id="payShotUrl" class="input" placeholder="https://...">
-        <div id="shotPreview" class="shot-preview" style="display:none">
-          <div id="shotThumbWrap"></div>
-          <div id="shotMeta" class="muted"></div>
-          <button id="shotClear" class="pill" style="margin-left:auto">Сбросить</button>
-        </div>
-        <div id="shotBusy" style="display:none;display:flex;align-items:center;gap:8px">
-          <div class="spin" aria-hidden="true"></div>
-          <span class="muted">Обрабатываем изображение…</span>
-        </div>
-      </div>
+      <label class="field"><span>Скриншот оплаты (файл или URL)</span></label>
+      <input id="payShot" type="file" accept="image/*" class="input">
+      <input id="payShotUrl" class="input" placeholder="https://...">
     </div>
   `;
   ma.innerHTML = `
@@ -288,80 +150,40 @@ function openPayModal({ items, address, phone, payer, total }){
   modal.classList.add('show');
   window.lucide?.createIcons && lucide.createIcons();
 
-  // обработка файла: сжатие -> dataURL + предпросмотр
   const fileInput   = document.getElementById('payShot');
   const urlInput    = document.getElementById('payShotUrl');
-  const pv          = document.getElementById('shotPreview');
-  const thumbWrap   = document.getElementById('shotThumbWrap');
-  const meta        = document.getElementById('shotMeta');
-  const clearBtn    = document.getElementById('shotClear');
-  const busyBar     = document.getElementById('shotBusy');
 
   fileInput?.addEventListener('change', async ()=>{
     const file = fileInput.files?.[0];
-    if (!file){ clearShot(); return; }
-    if (!/^image\//i.test(file.type)){ toast('Загрузите изображение'); clearShot(); return; }
-
+    if (!file){ shotDataUrl=''; return; }
+    if (!/^image\//i.test(file.type)){ toast('Загрузите изображение'); shotDataUrl=''; return; }
     try{
-      shotBusy = true; busyBar.style.display='flex';
-      // сжатие до макс 1600px по длинной стороне
-      const { dataUrl, outW, outH } = await compressImageToDataURL(file, 1600, 1600, 0.82);
+      shotBusy = true;
+      const { dataUrl } = await compressImageToDataURL(file, 1600, 1600, 0.82);
       shotDataUrl = dataUrl;
-      // предпросмотр
-      pv.style.display = '';
-      thumbWrap.innerHTML = `<img alt="Чек" src="${shotDataUrl}">`;
-      const kb = Math.round((dataUrl.length * 3 / 4) / 1024);
-      meta.textContent = `Предпросмотр ${outW}×${outH} · ~${kb} KB`;
-      urlInput.value = ''; // приоритезируем файл — очищаем URL
-    }catch(err){
-      console.error(err);
-      toast('Не удалось обработать изображение');
-      clearShot();
-    }finally{
-      shotBusy = false; busyBar.style.display='none';
-    }
+      urlInput.value = '';
+    }finally{ shotBusy = false; }
   });
-
-  clearBtn?.addEventListener('click', ()=>{
-    clearShot();
-    fileInput.value = '';
-  });
-
-  function clearShot(){
-    shotDataUrl = '';
-    pv.style.display='none';
-    thumbWrap.innerHTML = '';
-    meta.textContent = '';
-  }
 
   document.getElementById('modalClose').onclick = close;
   document.getElementById('payBack').onclick = close;
   document.getElementById('payDone').onclick = async ()=>{
     if (shotBusy){ toast('Подождите, изображение ещё обрабатывается'); return; }
-
     const urlRaw = (urlInput?.value || '').trim();
     let paymentScreenshot = '';
-
-    if (shotDataUrl){
-      paymentScreenshot = shotDataUrl; // загруженный файл (dataURL)
-    }else if (urlRaw){
-      // простая проверка URL
+    if (shotDataUrl){ paymentScreenshot = shotDataUrl; }
+    else if (urlRaw){
       if (!/^https?:\/\//i.test(urlRaw)){ toast('Некорректный URL чека'); return; }
       paymentScreenshot = urlRaw;
     }else{
-      toast('Добавьте файл чека или укажите URL');
-      return;
+      toast('Добавьте файл чека или укажите URL'); return;
     }
 
     const first = items[0];
-    const orderId = addOrder({
+    const orderId = await addOrder({
       cart: items.map(x=>({
-        id: x.product.id,
-        title: x.product.title,
-        price: x.product.price,
-        qty: x.qty,
-        size: x.size || null,
-        color: x.color || null,
+        id: x.product.id, title: x.product.title, price: x.product.price,
+        qty: x.qty, size: x.size || null, color: x.color || null,
         images: x.product.images || []
       })),
       productId: first?.product?.id || null,
@@ -375,7 +197,7 @@ function openPayModal({ items, address, phone, payer, total }){
       username: state.user?.username || '',
       userId: state.user?.id || null,
       payerFullName: payer || '',
-      paymentScreenshot, // <== теперь реально сохранённый снимок (dataURL или внешний URL)
+      paymentScreenshot,
       status: 'новый',
       accepted: false
     });
@@ -396,7 +218,8 @@ function openPayModal({ items, address, phone, payer, total }){
   function close(){ modal.classList.remove('show'); }
 }
 
-/* ===== utils: компрессор изображений в dataURL ===== */
+/* utils */
+function escapeHtml(s=''){ return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function compressImageToDataURL(file, maxW=1600, maxH=1600, quality=0.82){
   return new Promise((resolve, reject)=>{
     const url = URL.createObjectURL(file);
@@ -410,23 +233,14 @@ function compressImageToDataURL(file, maxW=1600, maxH=1600, quality=0.82){
         const canvas = document.createElement('canvas');
         canvas.width = outW; canvas.height = outH;
         const ctx = canvas.getContext('2d', { alpha:false });
-        // немного сглаживания
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, outW, outH);
         const dataUrl = canvas.toDataURL('image/jpeg', quality);
         URL.revokeObjectURL(url);
         resolve({ dataUrl, outW, outH });
-      }catch(e){
-        URL.revokeObjectURL(url);
-        reject(e);
-      }
+      }catch(e){ URL.revokeObjectURL(url); reject(e); }
     };
     img.onerror = (e)=>{ URL.revokeObjectURL(url); reject(e); };
     img.src = url;
   });
-}
-
-function escapeHtml(s=''){
-  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }

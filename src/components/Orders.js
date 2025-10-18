@@ -1,12 +1,11 @@
-// src/components/Orders.js
 import { state, getUID } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { getOrdersForUser, getStatusLabel } from '../core/orders.js';
 
-export function renderOrders(){
+export async function renderOrders(){
   const v=document.getElementById('view');
   const myUid = getUID();
-  const myOrders = (getOrdersForUser(myUid) || []).slice();
+  const myOrders = (await getOrdersForUser(myUid) || []).slice();
 
   if (!myOrders.length){
     v.innerHTML = `<div class="section-title">Мои заказы</div>
@@ -21,10 +20,8 @@ export function renderOrders(){
     return;
   }
 
-  // сортируем по дате создания (новые выше)
   myOrders.sort((a,b)=> (b.createdAt||0) - (a.createdAt||0));
 
-  // группы
   const inProgress = myOrders.filter(o => !['выдан','отменён'].includes(o.status));
   const received   = myOrders.filter(o => o.status === 'выдан');
   const canceled   = myOrders.filter(o => o.status === 'отменён');
@@ -57,7 +54,6 @@ function groupBlock(title, list){
 function orderCard(o){
   const cover = o.cart?.[0]?.images?.[0] || 'assets/placeholder.jpg';
 
-  // действие справа
   let actionHtml = '';
   if (o.status === 'выдан'){
     actionHtml = `
@@ -73,7 +69,6 @@ function orderCard(o){
     actionHtml = `<a class="pill primary" href="#/track/${encodeURIComponent(o.id)}">Отследить</a>`;
   }
 
-  // доп.инфа для отменённых: причина
   const subLines = [];
   subLines.push(getStatusLabel(o.status));
   if (o.status === 'отменён' && o.cancelReason){
@@ -93,31 +88,16 @@ function orderCard(o){
   `;
 }
 
-function emptyRow(title){
-  let hint = 'Нет заказов';
-  if (title === 'В процессе') hint = 'Сейчас нет активных заказов';
-  if (title === 'Получены')   hint = 'Вы ещё ничего не получили';
-  if (title === 'Отменены')   hint = 'Отменённых заказов нет';
-  return `
-    <div class="orders-empty" style="color:#999; padding:8px 0 16px">
-      ${hint}
-    </div>
-  `;
-}
-
-export function renderTrack({id}){
-  // доступ к чужому заказу скрываем простым фильтром
-  const myUid = getUID();
-  const myOrders = getOrdersForUser(myUid);
-  const o = myOrders.find(x=>String(x.id)===String(id));
-
+export async function renderTrack({id}){
   const v=document.getElementById('view');
+  const myUid = getUID();
+  const list = await getOrdersForUser(myUid);
+  const o = list.find(x=>String(x.id)===String(id));
   if(!o){
     v.innerHTML='<div class="section-title">Трекинг</div><section class="checkout">Не найдено</section>';
     return;
   }
 
-  // если заказ отменён — показать компактный экран с причиной
   if (o.status === 'отменён'){
     v.innerHTML = `
       <div class="section-title">Трекинг заказа #${escapeHtml(o.id)}</div>
@@ -136,19 +116,11 @@ export function renderTrack({id}){
     return;
   }
 
-  // последовательность шагов для визуализации прогресса
   const stepsKeys = [
-    'новый',
-    'принят',
-    'собирается в китае',
-    'вылетел в узб',
-    'на таможне',
-    'на почте',
-    'забран с почты',
-    'выдан'
+    'новый','принят','собирается в китае','вылетел в узб',
+    'на таможне','на почте','забран с почты','выдан'
   ];
   const steps = stepsKeys.map(k => ({ key:k, label:getStatusLabel(k) }));
-
   const curIdx = Math.max(steps.findIndex(s=>s.key===o.status), 0);
   const progress = Math.max(0, Math.min(100, Math.round(curIdx * 100 / (steps.length - 1))));
 
@@ -174,6 +146,11 @@ export function renderTrack({id}){
   window.lucide?.createIcons && lucide.createIcons();
 }
 
-function escapeHtml(s=''){
-  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function emptyRow(title){
+  let hint = 'Нет заказов';
+  if (title === 'В процессе') hint = 'Сейчас нет активных заказов';
+  if (title === 'Получены')   hint = 'Вы ещё ничего не получили';
+  if (title === 'Отменены')   hint = 'Отменённых заказов нет';
+  return `<div class="orders-empty" style="color:#999; padding:8px 0 16px">${hint}</div>`;
 }
+function escapeHtml(s=''){ return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }

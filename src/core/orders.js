@@ -1,223 +1,102 @@
-// src/core/orders.js
-// Простое локальное хранилище заказов + утилиты для админки/клиента
-const KEY = 'nas_orders';
+// Централизованные заказы через serverless API + локальные события
+// ВАЖНО: все функции асинхронные
 
-/**
- * Внутренние ключи статусов (не менять — завязаны сохранённые заказы).
- * Отображаемые названия берутся из STATUS_LABELS.
- *
- * - 'новый'                 — стартовый
- * - 'принят'                — подтверждён
- * - 'собирается в китае'    — сборка в Китае
- * - 'вылетел в узб'         — отгружен из Китая
- * - 'на таможне'            — на таможне
- * - 'на почте'              — в отделении почты
- * - 'забран с почты'        — получен с почты
- * - 'выдан'                 — выдан
- * - 'отменён'               — отменён
- */
 export const ORDER_STATUSES = [
-  'новый',
-  'принят',
-  'собирается в китае',
-  'вылетел в узб',
-  'на таможне',
-  'на почте',
-  'забран с почты',
-  'выдан',
-  'отменён',
+  'новый','принят','собирается в китае','вылетел в узб',
+  'на таможне','на почте','забран с почты','выдан','отменён',
 ];
 
-/** Отображаемые названия для всех экранов/уведомлений (единый источник правды) */
 export const STATUS_LABELS = {
-  'новый':                 'В обработке',
-  'принят':                'Подтверждён',
-  'собирается в китае':    'Собирается продавцом',
-  'вылетел в узб':         'Вылетел из Китая',
-  'на таможне':            'На таможне в Узбекистане',
-  'на почте':              'В отделении почты',
-  'забран с почты':        'Получен с почты',
-  'выдан':                 'Выдан',
-  'отменён':               'Отменён',
+  'новый':'В обработке',
+  'принят':'Подтверждён',
+  'собирается в китае':'Собирается продавцом',
+  'вылетел в узб':'Вылетел из Китая',
+  'на таможне':'На таможне в Узбекистане',
+  'на почте':'В отделении почты',
+  'забран с почты':'Получен с почты',
+  'выдан':'Выдан',
+  'отменён':'Отменён',
 };
 
-/** Утилита получения «человеческого» названия статуса */
-export function getStatusLabel(statusKey){
-  return STATUS_LABELS[statusKey] || String(statusKey || '');
+export function getStatusLabel(k){ return STATUS_LABELS[k] || k; }
+
+const ENDPOINT = '/.netlify/functions/orders';
+
+/* -------- базовые вызовы API -------- */
+async function apiGET(params){
+  const url = new URL(ENDPOINT, location.origin);
+  Object.entries(params||{}).forEach(([k,v])=> url.searchParams.set(k,String(v)));
+  const r = await fetch(url.toString(), { method:'GET' });
+  const j = await r.json();
+  if (!j?.ok) throw new Error(j?.error||'API error');
+  return j;
+}
+async function apiPOST(body){
+  const r = await fetch(ENDPOINT, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{}) });
+  const j = await r.json();
+  if (!j?.ok) throw new Error(j?.error||'API error');
+  return j;
 }
 
-/**
- * Этапы, доступные к выбору ТОЛЬКО после принятия.
- * (ключи, не отображаемые названия)
- */
-export const ADMIN_STAGE_OPTIONS = [
-  'принят',
-  'собирается в китае',
-  'вылетел в узб',
-  'на таможне',
-  'на почте',
-  'забран с почты',
-  'выдан',
-];
-
-export function getOrders(){
-  try{ return JSON.parse(localStorage.getItem(KEY) || '[]'); }catch{ return []; }
+/* -------- публичный API -------- */
+export async function getOrders(){
+  const { orders } = await apiGET({ op:'list' });
+  return Array.isArray(orders) ? orders : [];
 }
-
-export function saveOrders(list){
-  localStorage.setItem(KEY, JSON.stringify(list));
-  // общее событие для перерисовок
+export async function getOrderById(id){
+  const { order } = await apiGET({ op:'get', id });
+  return order || null;
+}
+export async function addOrder(order){
+  const { id } = await apiPOST({ op:'add', order });
+  // локальный сигнал клиенту
   try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
+  return id;
 }
-
-/** Полная очистка всех заказов (для миграции/сброса) */
-export function clearAllOrders(){
-  try{
-    localStorage.removeItem(KEY);
-    try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
-  }catch{}
-}
-
-function writeHistory(order, status, extra = {}){
-  const rec = { ts: Date.now(), status, ...extra };
-  order.history = Array.isArray(order.history) ? [...order.history, rec] : [rec];
-}
-
-export function addOrder(order){
-  const list = getOrders();
-  const id = order.id ?? String(Date.now());
-  const now = Date.now();
-  const initialStatus = order.status ?? 'новый';
-
-  const next = {
-    id,
-
-    // Идентификация пользователя (для клиентского фильтра)
-    userId: order.userId ?? null,
-    username: order.username ?? '',
-
-    // поддержка одиночного товара + корзины из нескольких
-    productId: order.productId ?? null,
-    size: order.size ?? null,
-    color: order.color ?? null,
-    link: order.link ?? (order.productId ? `#/product/${order.productId}` : ''),
-    cart: Array.isArray(order.cart) ? order.cart : [],
-    total: Number(order.total || 0),
-
-    // контактные
-    address: typeof order.address === 'string' ? order.address : (order.address?.address || ''),
-    phone: order.phone ?? '',
-    payerFullName: order.payerFullName ?? '',
-
-    // оплата
-    paymentScreenshot: order.paymentScreenshot ?? '',
-
-    // статусы
-    status: initialStatus,
-    accepted: !!order.accepted,
-
-    // отмена/завершение
-    canceled: !!order.canceled,
-    cancelReason: order.cancelReason || '',
-    canceledAt: order.canceledAt || null,
-    completedAt: order.completedAt || null,
-
-    // мета
-    createdAt: order.createdAt ?? now,
-    currency: order.currency || 'UZS',
-    history: order.history ?? [{ ts: now, status: initialStatus }],
-  };
-
-  list.unshift(next);
-  saveOrders(list);
-  return next.id;
-}
-
-/** Выборка заказов конкретного пользователя */
-export function getOrdersForUser(userId){
-  const list = getOrders();
-  if (!userId) return [];
-  return list.filter(o => String(o.userId||'') === String(userId));
-}
-
-/** Принять «новый» заказ */
-export function acceptOrder(orderId){
-  const list = getOrders();
-  const i = list.findIndex(o => String(o.id) === String(orderId));
-  if (i === -1) return;
-  const o = list[i];
-  if (o.status !== 'новый' || o.canceled) return;
-
-  o.accepted = true;
-  o.status = 'принят';
-  writeHistory(o, 'принят');
-  saveOrders(list);
-
-  // событие для уведомлений
-  try{
-    window.dispatchEvent(new CustomEvent('admin:orderAccepted', {
-      detail: { id: o.id, userId: o.userId }
-    }));
-  }catch{}
-}
-
-/** Отменить «новый» заказ с комментарием (виден клиенту) */
-export function cancelOrder(orderId, reason = ''){
-  const list = getOrders();
-  const i = list.findIndex(o => String(o.id) === String(orderId));
-  if (i === -1) return;
-  const o = list[i];
-  if (o.status !== 'новый') return;
-
-  o.canceled = true;
-  o.cancelReason = String(reason || '').trim();
-  o.canceledAt = Date.now();
-  o.accepted = false;
-  o.status = 'отменён';
-  writeHistory(o, 'отменён', { comment: o.cancelReason });
-  saveOrders(list);
-
-  // событие отмены
-  try{
-    window.dispatchEvent(new CustomEvent('admin:orderCanceled', {
-      detail: { id: o.id, reason: o.cancelReason, userId: o.userId }
-    }));
-  }catch{}
-}
-
-/** Обновить статус уже принятого заказа */
-export function updateOrderStatus(orderId, status){
-  if (!ORDER_STATUSES.includes(status)) return;
-
-  const list = getOrders();
-  const i = list.findIndex(o => String(o.id) === String(orderId));
-  if (i === -1) return;
-  const o = list[i];
-
-  if (o.status === 'новый') return; // сначала accept/cancel
-  if (o.status === 'отменён' || o.canceled) return;
-
-  o.status = status;
-  if (!o.accepted && status !== 'отменён') o.accepted = true;
-
-  if (status === 'выдан'){
-    o.completedAt = Date.now();
+export async function acceptOrder(orderId){
+  const { order } = await apiPOST({ op:'accept', id: orderId });
+  if (order){
+    try{
+      window.dispatchEvent(new CustomEvent('admin:orderAccepted', {
+        detail: { id: order.id, userId: order.userId }
+      }));
+    }catch{}
   }
-  writeHistory(o, status);
-  saveOrders(list);
-
-  // событие смены статуса
-  try{
-    window.dispatchEvent(new CustomEvent('admin:statusChanged', {
-      detail: { id: o.id, status, userId: o.userId }
-    }));
-  }catch{}
+  try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
+  return order;
+}
+export async function cancelOrder(orderId, reason=''){
+  const { order } = await apiPOST({ op:'cancel', id: orderId, reason });
+  if (order){
+    try{
+      window.dispatchEvent(new CustomEvent('admin:orderCanceled', {
+        detail: { id: order.id, reason: order.cancelReason, userId: order.userId }
+      }));
+    }catch{}
+  }
+  try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
+  return order;
+}
+export async function updateOrderStatus(orderId, status){
+  const { order } = await apiPOST({ op:'status', id: orderId, status });
+  if (order){
+    try{
+      window.dispatchEvent(new CustomEvent('admin:statusChanged', {
+        detail: { id: order.id, status: order.status, userId: order.userId }
+      }));
+    }catch{}
+  }
+  try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
+  return order;
 }
 
-/** Быстрая финализация */
-export function markCompleted(orderId){
-  updateOrderStatus(orderId, 'выдан');
+/* фильтрация по пользователю */
+export async function getOrdersForUser(userId){
+  if (!userId) return [];
+  const all = await getOrders();
+  return all.filter(o => String(o.userId||'') === String(userId));
 }
 
-/* ===== Демосидирование отключено ===== */
+/* демо-сидирование отключено */
 export function seedOrdersOnce(){ /* no-op */ }
+export function clearAllOrders(){ /* no-op: теперь централизовано */ }
