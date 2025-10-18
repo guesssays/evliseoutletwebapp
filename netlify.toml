@@ -1,7 +1,7 @@
 [build]
   functions = "netlify/functions"
 
-# (Опционально) CORS для функции
+# CORS для notify
 [[headers]]
   for = "/.netlify/functions/notify"
   [headers.values]
@@ -9,8 +9,10 @@
     Access-Control-Allow-Headers = "Content-Type"
     Access-Control-Allow-Methods = "POST, OPTIONS"
 
-# Preflight
-[[redirects]]
-  from = "/.netlify/functions/notify"
-  to = "/.netlify/functions/notify"
-  status = 200
+# CORS для orders (если фронт стучится к ней напрямую)
+[[headers]]
+  for = "/.netlify/functions/orders"
+  [headers.values]
+    Access-Control-Allow-Origin = "https://evliseoutlet.netlify.app"
+    Access-Control-Allow-Headers = "Content-Type"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"

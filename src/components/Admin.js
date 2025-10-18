@@ -226,9 +226,10 @@ export async function renderAdmin(){
       mode='list'; selectedId=null; render();
     });
 
+    // === чек: предпросмотр в модалке + скачивание ===
     document.querySelector('[data-open]')?.addEventListener('click', (e)=>{
       const url = e.currentTarget.getAttribute('data-open');
-      safeOpenInNewTab(url);
+      openReceiptPreview(url);
     });
     document.querySelector('[data-download]')?.addEventListener('click', async (e)=>{
       const url = e.currentTarget.getAttribute('data-download');
@@ -268,9 +269,64 @@ export async function renderAdmin(){
 }
 
 /* helpers */
+function openReceiptPreview(url=''){
+  const modal = document.getElementById('modal');
+  const mb = document.getElementById('modalBody');
+  const mt = document.getElementById('modalTitle');
+  const ma = document.getElementById('modalActions');
+
+  if (!modal || !mb || !mt || !ma){
+    // как fallback — откроем в новой вкладке
+    return safeOpenInNewTab(url);
+  }
+
+  mt.textContent = 'Чек оплаты';
+  ma.innerHTML = `<button id="rcClose" class="pill">Закрыть</button>
+                  <a id="rcDownload" class="pill primary" href="${escapeHtml(url)}" download>Скачать</a>`;
+
+  // Показываем картинку <img> или PDF внутри <iframe>
+  const isPdf = isProbablyPdf(url);
+  mb.innerHTML = isPdf
+    ? `
+      <div class="receipt-view">
+        <div class="receipt-img-wrap" style="aspect-ratio:auto">
+          <iframe src="${escapeHtml(url)}" title="Предпросмотр PDF" style="width:100%;height:70vh;border:0;border-radius:12px;background:#f8f8f8"></iframe>
+        </div>
+      </div>`
+    : `
+      <div class="receipt-view">
+        <div class="receipt-img-wrap">
+          <img class="receipt-img" src="${escapeHtml(url)}" alt="Чек оплаты">
+        </div>
+      </div>`;
+
+  modal.classList.add('show');
+
+  const close = ()=> modal.classList.remove('show');
+  document.getElementById('modalClose')?.addEventListener('click', close, { once:true });
+  document.getElementById('rcClose')?.addEventListener('click', close, { once:true });
+
+  // ESC для закрытия
+  const onKey = (e)=>{ if (e.key==='Escape'){ close(); window.removeEventListener('keydown', onKey); } };
+  window.addEventListener('keydown', onKey);
+}
+
+function isProbablyPdf(url=''){
+  if (/^data:/i.test(url)) return /^data:application\/pdf/i.test(url);
+  try{
+    const u = new URL(url, location.href);
+    const path = (u.pathname||'').toLowerCase();
+    const type = (u.searchParams.get('type')||'').toLowerCase();
+    return path.endsWith('.pdf') || type === 'pdf';
+  }catch{
+    return /\.pdf(\?|$)/i.test(url);
+  }
+}
+
 function safeOpenInNewTab(url){
   try{ window.open(url, '_blank', 'noopener,noreferrer'); }catch{}
 }
+
 async function triggerDownload(url, filename='receipt.jpg'){
   try{
     const a = document.createElement('a');
@@ -291,6 +347,7 @@ async function triggerDownload(url, filename='receipt.jpg'){
     }
   }
 }
+
 function suggestReceiptFilename(url, orderId=''){
   if (/^data:/i.test(url)){
     const m = /^data:([^;,]+)/i.exec(url);
@@ -304,6 +361,7 @@ function suggestReceiptFilename(url, orderId=''){
   }catch{}
   return `receipt_${orderId||'order'}.jpg`;
 }
+
 function extensionFromMime(mime=''){
   const map = { 'image/jpeg':'jpg','image/jpg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','image/bmp':'bmp','image/heic':'heic','image/heif':'heif','application/pdf':'pdf' };
   return map[mime.toLowerCase()] || '';

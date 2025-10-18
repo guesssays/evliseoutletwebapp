@@ -1,9 +1,8 @@
-// Централизованное хранилище заказов + операции админа (Netlify Blobs)
-// Требует Netlify runtime с blobs: https://docs.netlify.com/functions/blobs/
+// netlify/functions/orders.js
+// Централизованное хранилище заказов (Netlify Blobs) + операции админа
 // ENV: TG_BOT_TOKEN, ADMIN_CHAT_ID, WEBAPP_URL, ALLOWED_ORIGINS (опц.)
 
 export async function handler(event) {
-  // CORS / метод
   if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
@@ -16,6 +15,7 @@ export async function handler(event) {
 
   try {
     const store = await getStore();
+
     if (event.httpMethod === 'GET') {
       const op = (event.queryStringParameters?.op || 'list').toLowerCase();
       if (op === 'list') {
@@ -68,7 +68,6 @@ export async function handler(event) {
 
 /* ---------------- Storage (Netlify Blobs) ---------------- */
 async function getStore(){
-  // доступ к blobs
   const { blobs } = await import('@netlify/blobs');
   const bucket = blobs?.kvStorage ? blobs.kvStorage('orders') : null;
   if (!bucket) throw new Error('Netlify Blobs is not available');
@@ -93,7 +92,6 @@ async function getStore(){
   return {
     async list(){
       const arr = await readAll();
-      // по убыванию даты
       arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
       return arr;
     },
@@ -193,7 +191,6 @@ async function notifyAdminNewOrder(id, order){
   const title = order?.cart?.[0]?.title || order?.title || 'товар';
   const extra = Math.max(0, (order?.cart?.length || 0) - 1);
   const caption = extra>0 ? `${title} + ещё ${extra}` : title;
-
   const link = webappUrl ? `${webappUrl}#/admin` : undefined;
 
   const text = [
