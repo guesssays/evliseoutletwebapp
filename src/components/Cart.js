@@ -356,7 +356,8 @@ function openPayModal({ items, address, phone, payer, total }){
     }
 
     const first = items[0];
-    const orderId = addOrder({
+    // === ВАЖНО: теперь addOrder — async (сервер-первый)
+    const orderId = await addOrder({
       cart: items.map(x=>({
         id: x.product.id,
         title: x.product.title,

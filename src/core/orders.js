@@ -4,6 +4,39 @@ import { getUID } from './state.js';
 
 const KEY = 'nas_orders';
 
+// === NEW: централизованный backend ===
+const API_BASE = '/.netlify/functions/orders';
+
+async function apiGetList(){
+  try{
+    const res = await fetch(`${API_BASE}?op=list`, { method:'GET' });
+    const data = await res.json();
+    if (res.ok && data?.ok && Array.isArray(data.orders)) return data.orders;
+    throw new Error('bad response');
+  }catch(e){
+    // оффлайн/фолбэк — вернём локальный кэш
+    return getOrdersLocal();
+  }
+}
+async function apiGetOne(id){
+  try{
+    const res = await fetch(`${API_BASE}?op=get&id=${encodeURIComponent(id)}`, { method:'GET' });
+    const data = await res.json();
+    if (res.ok && data?.ok) return data.order || null;
+    return null;
+  }catch{ return null; }
+}
+async function apiPost(op, body){
+  const res = await fetch(API_BASE, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ op, ...body })
+  });
+  const data = await res.json().catch(()=> ({}));
+  if (!res.ok || !data?.ok) throw new Error(data?.error || 'api error');
+  return data;
+}
+
 /**
  * Внутренние ключи статусов (не менять — завязаны сохранённые заказы).
  * Отображаемые названия берутся из STATUS_LABELS.
@@ -62,12 +95,17 @@ export const ADMIN_STAGE_OPTIONS = [
   'выдан',
 ];
 
-export function getOrders(){
+// ======== ЛОКАЛЬНЫЙ КЭШ (оставляем как было) ========
+function getOrdersLocal(){
   try{ return JSON.parse(localStorage.getItem(KEY) || '[]'); }catch{ return []; }
 }
 
-export function saveOrders(list){
+function setOrdersLocal(list){
   localStorage.setItem(KEY, JSON.stringify(list));
+}
+
+export function saveOrders(list){
+  setOrdersLocal(list);
   // общее событие для перерисовок
   try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
 }
@@ -85,9 +123,19 @@ function writeHistory(order, status, extra = {}){
   order.history = Array.isArray(order.history) ? [...order.history, rec] : [rec];
 }
 
-export function addOrder(order){
-  const list = getOrders();
-  const id = order.id ?? String(Date.now());
+// ======== СЕРВЕР-ПЕРВЫЕ API (с фолбэком в локальный кэш) ========
+
+/** Получить ВСЕ заказы (для админки) — теперь с сервера */
+export async function getOrders(){
+  const list = await apiGetList();
+  // поддержим локальный кэш для офлайна/быстрых перерисовок
+  saveOrders(list);
+  return list;
+}
+
+/** Добавить заказ (сервер-первый, возвращает id) */
+export async function addOrder(order){
+  const idLocal = order.id ?? String(Date.now());
   const now = Date.now();
   const initialStatus = order.status ?? 'новый';
 
@@ -95,7 +143,7 @@ export function addOrder(order){
   const safeUserId = order.userId ?? getUID() ?? null;
 
   const next = {
-    id,
+    id: idLocal,
 
     // Идентификация пользователя (для клиентского фильтра)
     userId: safeUserId,
@@ -133,88 +181,156 @@ export function addOrder(order){
     history: order.history ?? [{ ts: now, status: initialStatus }],
   };
 
-  list.unshift(next);
-  saveOrders(list);
-  return next.id;
+  // 1) Пытаемся отправить на сервер
+  try{
+    const { id } = await apiPost('add', { order: next });
+    // после успешной записи — актуализируем локальный кэш из сервера
+    try{
+      const fresh = await apiGetList();
+      saveOrders(fresh);
+    }catch{
+      // если не вышло — хотя бы добавим локально
+      const list = getOrdersLocal();
+      saveOrders([next, ...list]);
+    }
+    return id || next.id;
+  }catch{
+    // 2) оффлайн/ошибка — добавим локально, админ увидит после онлайна
+    const list = getOrdersLocal();
+    saveOrders([next, ...list]);
+    return next.id;
+  }
 }
 
 /** Выборка заказов конкретного пользователя */
-export function getOrdersForUser(userId){
-  const list = getOrders();
+export async function getOrdersForUser(userId){
+  const list = await getOrders();
   if (!userId) return [];
   return list.filter(o => String(o.userId||'') === String(userId));
 }
 
 /** Принять «новый» заказ */
-export function acceptOrder(orderId){
-  const list = getOrders();
-  const i = list.findIndex(o => String(o.id) === String(orderId));
-  if (i === -1) return;
-  const o = list[i];
-  if (o.status !== 'новый' || o.canceled) return;
+export async function acceptOrder(orderId){
+  try{
+    await apiPost('accept', { id: String(orderId) });
+    // синхронизируем кэш
+    const one = await apiGetOne(orderId);
+    if (one){
+      const list = getOrdersLocal();
+      const i = list.findIndex(o => String(o.id) === String(orderId));
+      if (i>-1) list[i] = one; else list.unshift(one);
+      saveOrders(list);
+    }else{
+      const fresh = await apiGetList();
+      saveOrders(fresh);
+    }
+  }catch{
+    // фолбэк: локально (как раньше)
+    const list = getOrdersLocal();
+    const i = list.findIndex(o => String(o.id) === String(orderId));
+    if (i === -1) return;
+    const o = list[i];
+    if (o.status !== 'новый' || o.canceled) return;
 
-  o.accepted = true;
-  o.status = 'принят';
-  writeHistory(o, 'принят');
-  saveOrders(list);
+    o.accepted = true;
+    o.status = 'принят';
+    writeHistory(o, 'принят');
+    saveOrders(list);
+  }
 
   // событие для уведомлений
   try{
+    const list = getOrdersLocal();
+    const o = list.find(x=> String(x.id)===String(orderId));
     window.dispatchEvent(new CustomEvent('admin:orderAccepted', {
-      detail: { id: o.id, userId: o.userId }
+      detail: { id: orderId, userId: o?.userId }
     }));
   }catch{}
 }
 
 /** Отменить «новый» заказ с комментарием (виден клиенту) */
-export function cancelOrder(orderId, reason = ''){
-  const list = getOrders();
-  const i = list.findIndex(o => String(o.id) === String(orderId));
-  if (i === -1) return;
-  const o = list[i];
-  if (o.status !== 'новый') return;
+export async function cancelOrder(orderId, reason = ''){
+  try{
+    await apiPost('cancel', { id: String(orderId), reason: String(reason||'') });
+    const one = await apiGetOne(orderId);
+    if (one){
+      const list = getOrdersLocal();
+      const i = list.findIndex(o => String(o.id) === String(orderId));
+      if (i>-1) list[i] = one; else list.unshift(one);
+      saveOrders(list);
+    }else{
+      const fresh = await apiGetList();
+      saveOrders(fresh);
+    }
+  }catch{
+    // фолбэк локально
+    const list = getOrdersLocal();
+    const i = list.findIndex(o => String(o.id) === String(orderId));
+    if (i === -1) return;
+    const o = list[i];
+    if (o.status !== 'новый') return;
 
-  o.canceled = true;
-  o.cancelReason = String(reason || '').trim();
-  o.canceledAt = Date.now();
-  o.accepted = false;
-  o.status = 'отменён';
-  writeHistory(o, 'отменён', { comment: o.cancelReason });
-  saveOrders(list);
+    o.canceled = true;
+    o.cancelReason = String(reason || '').trim();
+    o.canceledAt = Date.now();
+    o.accepted = false;
+    o.status = 'отменён';
+    writeHistory(o, 'отменён', { comment: o.cancelReason });
+    saveOrders(list);
+  }
 
   // событие отмены
   try{
+    const list = getOrdersLocal();
+    const o = list.find(x=> String(x.id)===String(orderId));
     window.dispatchEvent(new CustomEvent('admin:orderCanceled', {
-      detail: { id: o.id, reason: o.cancelReason, userId: o.userId }
+      detail: { id: orderId, reason: String(reason||''), userId: o?.userId }
     }));
   }catch{}
 }
 
 /** Обновить статус уже принятого заказа */
-export function updateOrderStatus(orderId, status){
+export async function updateOrderStatus(orderId, status){
   if (!ORDER_STATUSES.includes(status)) return;
 
-  const list = getOrders();
-  const i = list.findIndex(o => String(o.id) === String(orderId));
-  if (i === -1) return;
-  const o = list[i];
+  try{
+    await apiPost('status', { id:String(orderId), status:String(status) });
+    const one = await apiGetOne(orderId);
+    if (one){
+      const list = getOrdersLocal();
+      const i = list.findIndex(o => String(o.id) === String(orderId));
+      if (i>-1) list[i] = one; else list.unshift(one);
+      saveOrders(list);
+    }else{
+      const fresh = await apiGetList();
+      saveOrders(fresh);
+    }
+  }catch{
+    // локальный фолбэк
+    const list = getOrdersLocal();
+    const i = list.findIndex(o => String(o.id) === String(orderId));
+    if (i === -1) return;
+    const o = list[i];
 
-  if (o.status === 'новый') return; // сначала accept/cancel
-  if (o.status === 'отменён' || o.canceled) return;
+    if (o.status === 'новый') return; // сначала accept/cancel
+    if (o.status === 'отменён' || o.canceled) return;
 
-  o.status = status;
-  if (!o.accepted && status !== 'отменён') o.accepted = true;
+    o.status = status;
+    if (!o.accepted && status !== 'отменён') o.accepted = true;
 
-  if (status === 'выдан'){
-    o.completedAt = Date.now();
+    if (status === 'выдан'){
+      o.completedAt = Date.now();
+    }
+    writeHistory(o, status);
+    saveOrders(list);
   }
-  writeHistory(o, status);
-  saveOrders(list);
 
   // событие смены статуса
   try{
+    const list = getOrdersLocal();
+    const o = list.find(x=> String(x.id)===String(orderId));
     window.dispatchEvent(new CustomEvent('admin:statusChanged', {
-      detail: { id: o.id, status, userId: o.userId }
+      detail: { id: orderId, status, userId: o?.userId }
     }));
   }catch{}
 }
