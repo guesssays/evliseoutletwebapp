@@ -32,42 +32,104 @@ export function renderAccount(){
 
 export function renderAddresses(){
   const v=document.getElementById('view');
-  const list = state.addresses.list;
+  const list = state.addresses.list.slice();
+  const defId = state.addresses.defaultId;
+
   v.innerHTML = `
     <section class="section">
       <div class="section-title">Адреса доставки</div>
+
       <div class="addr-list">
-        ${list.map(a=>`
+        ${list.length ? list.map(a=>`
           <label class="addr">
-            <input type="radio" name="addr" ${a.id===state.addresses.defaultId?'checked':''} data-id="${a.id}">
+            <input type="radio" name="addr" ${a.id===defId?'checked':''} data-id="${a.id}" aria-label="Выбрать адрес по умолчанию">
             <div class="addr-body">
-              <div class="addr-title">${a.nickname}</div>
-              <div class="addr-sub">${a.address}</div>
+              <div class="addr-title">${escapeHtml(a.nickname||'Без названия')}</div>
+              <div class="addr-sub">${escapeHtml(a.address||'')}</div>
+            </div>
+            <div class="addr-ops" aria-label="Действия с адресом">
+              <button class="icon-btn edit" data-id="${a.id}" title="Редактировать" aria-label="Редактировать адрес">
+                <i data-lucide="pencil"></i>
+              </button>
+              <button class="icon-btn danger delete" data-id="${a.id}" title="Удалить" aria-label="Удалить адрес">
+                <i data-lucide="trash-2"></i>
+              </button>
             </div>
           </label>
-        `).join('')}
+        `).join('') : `
+          <div class="muted" style="padding:8px 2px">Адресов пока нет — добавьте первый.</div>
+        `}
       </div>
+
       <div class="addr-actions">
         <button id="addAddr" class="pill primary">Добавить адрес</button>
         <button id="saveAddr" class="pill">Сохранить</button>
       </div>
     </section>`;
 
+  // делегирование кликов на список (редактирование/удаление)
+  const listEl = v.querySelector('.addr-list');
+  if (listEl){
+    listEl.addEventListener('click', (e)=>{
+      const delBtn = e.target.closest('.delete');
+      const editBtn = e.target.closest('.edit');
+      if (!delBtn && !editBtn) return;
+
+      const id = Number((delBtn||editBtn).getAttribute('data-id'));
+      const idx = state.addresses.list.findIndex(x => Number(x.id)===id);
+      if (idx === -1) return;
+
+      if (editBtn){
+        const cur = state.addresses.list[idx];
+        const nickname = prompt('Название (например, Дом)', cur.nickname || '');
+        if (nickname === null) return; // отмена
+        const address = prompt('Полный адрес', cur.address || '');
+        if (address === null) return; // отмена
+        state.addresses.list[idx] = { ...cur, nickname: (nickname||'').trim(), address: (address||'').trim() };
+        persistAddresses();
+        renderAddresses();
+        return;
+      }
+
+      if (delBtn){
+        const cur = state.addresses.list[idx];
+        const ok = confirm(`Удалить адрес "${cur.nickname||'Без названия'}"?`);
+        if (!ok) return;
+        state.addresses.list.splice(idx, 1);
+
+        // если удалили адрес по умолчанию — поставить другой
+        if (Number(state.addresses.defaultId) === id){
+          state.addresses.defaultId = state.addresses.list[0]?.id ?? null;
+        }
+        persistAddresses();
+        renderAddresses();
+        return;
+      }
+    });
+  }
+
+  // добавить новый
   document.getElementById('addAddr').onclick=()=>{
     const nickname = prompt('Название (например, Дом)');
+    if (nickname === null) return;
     const address = prompt('Полный адрес');
-    if (!nickname || !address) return;
+    if (address === null) return;
+    if (!nickname.trim() || !address.trim()) return;
     const id = Date.now();
-    state.addresses.list.push({ id, nickname, address });
+    state.addresses.list.push({ id, nickname: nickname.trim(), address: address.trim() });
     if (!state.addresses.defaultId) state.addresses.defaultId = id;
     persistAddresses();
     renderAddresses();
   };
+
+  // сохранить выбранный адрес по умолчанию
   document.getElementById('saveAddr').onclick=()=>{
-    const r = document.querySelector('input[name="addr"]:checked');
+    const r = v.querySelector('input[name="addr"]:checked');
     if (r){ state.addresses.defaultId = Number(r.getAttribute('data-id')); persistAddresses(); }
     history.back();
   };
+
+  window.lucide?.createIcons && lucide.createIcons();
 }
 
 export function renderSettings(){
@@ -80,4 +142,9 @@ export function renderSettings(){
       </div>
     </section>`;
   window.lucide?.createIcons && lucide.createIcons();
+}
+
+/* utils */
+function escapeHtml(s=''){
+  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
