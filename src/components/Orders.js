@@ -1,3 +1,4 @@
+// src/components/Orders.js
 import { state, getUID } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { getOrdersForUser, getStatusLabel } from '../core/orders.js';
