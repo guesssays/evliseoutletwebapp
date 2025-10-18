@@ -15,14 +15,14 @@ export function renderProduct({id}){
   const v=document.getElementById('view');
   v.innerHTML = `
     <!-- Фикс-хедер карточки (показывается при прокрутке) -->
-    <div id="productFixHdr" class="product-fix-hdr" aria-hidden="true">
-      <button id="btnFixBack" class="fix-btn" aria-label="Назад"><i data-lucide="arrow-left"></i></button>
-      <div class="fix-title">
-        <div class="fix-title__name">${escapeHtml(p.title)}</div>
-        <div class="fix-title__price">${priceFmt(p.price)}</div>
-      </div>
-      <button id="btnFixFav" class="fix-btn ${favActive?'active':''}" aria-pressed="${favActive?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
+    <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
+     <button id="btnFixBack" class="fixbtn" aria-label="Назад"><i data-lucide="arrow-left"></i></button>
+     <div class="fix-title">
+       <div class="fix-title__name">${escapeHtml(p.title)}</div>
+      <div class="fix-title__price">${priceFmt(p.price)}</div>
     </div>
+     <button id="btnFixFav" class="fixbtn ${favActive?'active':''}" aria-pressed="${favActive?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
+   </div>
 
     <div class="product">
       <!-- ГАЛЕРЕЯ -->

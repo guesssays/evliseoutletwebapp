@@ -1,7 +1,15 @@
+// src/components/Account.js
 import { state, persistAddresses } from '../core/state.js';
 import { canAccessAdmin } from '../core/auth.js';
 
 export function renderAccount(){
+  // страховка: вдруг висит фикс-хедер товара — уберём, чтобы ничего не перекрывало клики
+  try{
+    document.querySelector('.app-header')?.classList.remove('hidden');
+    const fix = document.getElementById('productFixHdr');
+    if (fix){ fix.classList.remove('show'); fix.setAttribute('aria-hidden','true'); }
+  }catch{}
+
   const v=document.getElementById('view');
   const u = state.user;
 
@@ -166,7 +174,7 @@ export function renderAddresses(){
   }
 
   // добавить новый
-  document.getElementById('addAddr').onclick=()=>{
+  document.getElementById('addAddr')?.addEventListener('click', ()=>{
     const nickname = prompt('Название (например, Дом)');
     if (nickname === null) return;
     const address = prompt('Полный адрес');
@@ -177,14 +185,14 @@ export function renderAddresses(){
     if (!state.addresses.defaultId) state.addresses.defaultId = id;
     persistAddresses();
     renderAddresses();
-  };
+  });
 
   // сохранить выбранный адрес по умолчанию
-  document.getElementById('saveAddr').onclick=()=>{
+  document.getElementById('saveAddr')?.addEventListener('click', ()=>{
     const r = v.querySelector('input[name="addr"]:checked');
     if (r){ state.addresses.defaultId = Number(r.getAttribute('data-id')); persistAddresses(); }
     history.back();
-  };
+  });
 
   window.lucide?.createIcons && lucide.createIcons();
 }

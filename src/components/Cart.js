@@ -1,3 +1,4 @@
+// src/components/Cart.js
 import { state, persistCart, updateCartBadge } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { toast } from '../core/toast.js';
@@ -23,7 +24,7 @@ export function renderCart(){
     window.lucide?.createIcons && lucide.createIcons();
     document.getElementById('cartBack')?.addEventListener('click', ()=>history.back());
     window.setTabbarMenu?.('cart');
-    // важно: убрать CTA, если он вдруг остался
+    // убрать CTA, если вдруг остался
     window.setTabbarMenu?.('cart');
     return;
   }
@@ -82,7 +83,7 @@ export function renderCart(){
     row.querySelector('.dec')?.addEventListener('click', ()=> changeQty(id,size,color, -1));
   });
 
-  // === ВОЗВРАЩЁННЫЙ CTA ===
+  // CTA «Оформить заказ»
   window.setTabbarCTA?.({
     html: `<i data-lucide="credit-card"></i><span>Оформить заказ</span>`,
     onClick(){ checkoutFlow(items, ad, total); }
@@ -111,7 +112,7 @@ function remove(productId,size,color){
 }
 
 /* ======================
-   Новый сценарий чекаута
+   Чекаут
    ====================== */
 function checkoutFlow(items, addr, total){
   if (!items?.length){ toast('Корзина пуста'); return; }
@@ -125,6 +126,10 @@ function checkoutFlow(items, addr, total){
 
   const savedPhone = state.profile?.phone || '';
   const savedPayer = state.profile?.payerFullName || '';
+
+  if (!modal || !mb || !mt || !ma){
+    toast('Не найден контейнер модалки'); return;
+  }
 
   mt.textContent = 'Подтверждение данных';
 
@@ -186,35 +191,31 @@ function checkoutFlow(items, addr, total){
   modal.classList.add('show');
   window.lucide?.createIcons && lucide.createIcons();
 
-  // === выбор сохранённого адреса ===
+  // выбор сохранённого адреса
   const changeLink = document.getElementById('cfChangeSaved');
   const picker = document.getElementById('addrPicker');
   const addrInput = document.getElementById('cfAddr');
   const savedName = document.getElementById('cfSavedName');
 
-  if (changeLink){
-    changeLink.addEventListener('click', (e)=>{
-      e.preventDefault();
-      if (!picker) return;
-      const show = picker.style.display === 'none';
-      picker.style.display = show ? '' : 'none';
-    });
-  }
-  if (picker){
-    picker.addEventListener('click', (e)=>{
-      const row = e.target.closest('.addr-p-row'); if (!row) return;
-      const id = Number(row.getAttribute('data-id'));
-      const sel = state.addresses.list.find(x=>Number(x.id)===id);
-      if (!sel) return;
-      addrInput.value = sel.address || '';
-      if (savedName) savedName.textContent = sel.nickname || 'Без названия';
-      picker.style.display = 'none';
-    });
-  }
+  changeLink?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    if (!picker) return;
+    const show = picker.style.display === 'none';
+    picker.style.display = show ? '' : 'none';
+  });
+  picker?.addEventListener('click', (e)=>{
+    const row = e.target.closest('.addr-p-row'); if (!row) return;
+    const id = Number(row.getAttribute('data-id'));
+    const sel = state.addresses.list.find(x=>Number(x.id)===id);
+    if (!sel) return;
+    if (addrInput) addrInput.value = sel.address || '';
+    if (savedName) savedName.textContent = sel.nickname || 'Без названия';
+    picker.style.display = 'none';
+  });
 
-  document.getElementById('modalClose').onclick = close;
-  document.getElementById('cfCancel').onclick = close;
-  document.getElementById('cfNext').onclick = ()=>{
+  document.getElementById('modalClose')?.addEventListener('click', close);
+  document.getElementById('cfCancel')?.addEventListener('click', close);
+  document.getElementById('cfNext')?.addEventListener('click', ()=>{
     const phone = (document.getElementById('cfPhone')?.value||'').trim();
     const payer = (document.getElementById('cfPayer')?.value||'').trim();
     const address= (document.getElementById('cfAddr')?.value||'').trim();
@@ -231,7 +232,7 @@ function checkoutFlow(items, addr, total){
 
     close();
     openPayModal({ items, address, phone, payer, total });
-  };
+  });
 
   function close(){ modal.classList.remove('show'); }
 }
@@ -241,6 +242,10 @@ function openPayModal({ items, address, phone, payer, total }){
   const mb = document.getElementById('modalBody');
   const mt = document.getElementById('modalTitle');
   const ma = document.getElementById('modalActions');
+
+  if (!modal || !mb || !mt || !ma){
+    toast('Не найден контейнер модалки'); return;
+  }
 
   const card = getPayCardNumber();
 
@@ -306,40 +311,40 @@ function openPayModal({ items, address, phone, payer, total }){
     if (!/^image\//i.test(file.type)){ toast('Загрузите изображение'); clearShot(); return; }
 
     try{
-      shotBusy = true; busyBar.style.display='flex';
+      shotBusy = true; if (busyBar) busyBar.style.display='flex';
       // сжатие до макс 1600px по длинной стороне
       const { dataUrl, outW, outH } = await compressImageToDataURL(file, 1600, 1600, 0.82);
       shotDataUrl = dataUrl;
       // предпросмотр
-      pv.style.display = '';
-      thumbWrap.innerHTML = `<img alt="Чек" src="${shotDataUrl}">`;
+      if (pv) pv.style.display = '';
+      if (thumbWrap) thumbWrap.innerHTML = `<img alt="Чек" src="${shotDataUrl}">`;
       const kb = Math.round((dataUrl.length * 3 / 4) / 1024);
-      meta.textContent = `Предпросмотр ${outW}×${outH} · ~${kb} KB`;
-      urlInput.value = ''; // приоритезируем файл — очищаем URL
+      if (meta) meta.textContent = `Предпросмотр ${outW}×${outH} · ~${kb} KB`;
+      if (urlInput) urlInput.value = ''; // приоритезируем файл — очищаем URL
     }catch(err){
       console.error(err);
       toast('Не удалось обработать изображение');
       clearShot();
     }finally{
-      shotBusy = false; busyBar.style.display='none';
+      shotBusy = false; if (busyBar) busyBar.style.display='none';
     }
   });
 
   clearBtn?.addEventListener('click', ()=>{
     clearShot();
-    fileInput.value = '';
+    if (fileInput) fileInput.value = '';
   });
 
   function clearShot(){
     shotDataUrl = '';
-    pv.style.display='none';
-    thumbWrap.innerHTML = '';
-    meta.textContent = '';
+    if (pv) pv.style.display='none';
+    if (thumbWrap) thumbWrap.innerHTML = '';
+    if (meta) meta.textContent = '';
   }
 
-  document.getElementById('modalClose').onclick = close;
-  document.getElementById('payBack').onclick = close;
-  document.getElementById('payDone').onclick = async ()=>{
+  document.getElementById('modalClose')?.addEventListener('click', close);
+  document.getElementById('payBack')?.addEventListener('click', close);
+  document.getElementById('payDone')?.addEventListener('click', async ()=>{
     if (shotBusy){ toast('Подождите, изображение ещё обрабатывается'); return; }
 
     const urlRaw = (urlInput?.value || '').trim();
@@ -348,7 +353,6 @@ function openPayModal({ items, address, phone, payer, total }){
     if (shotDataUrl){
       paymentScreenshot = shotDataUrl; // загруженный файл (dataURL)
     }else if (urlRaw){
-      // простая проверка URL
       if (!/^https?:\/\//i.test(urlRaw)){ toast('Некорректный URL чека'); return; }
       paymentScreenshot = urlRaw;
     }else{
@@ -378,7 +382,7 @@ function openPayModal({ items, address, phone, payer, total }){
       username: state.user?.username || '',
       userId: state.user?.id || null,
       payerFullName: payer || '',
-      paymentScreenshot, // <== теперь реально сохранённый снимок (dataURL или внешний URL)
+      paymentScreenshot,
       status: 'новый',
       accepted: false
     });
@@ -394,7 +398,7 @@ function openPayModal({ items, address, phone, payer, total }){
       const ev = new CustomEvent('client:orderPlaced', { detail:{ id: orderId } });
       window.dispatchEvent(ev);
     }catch{}
-  };
+  });
 
   function close(){ modal.classList.remove('show'); }
 }
@@ -413,7 +417,6 @@ function compressImageToDataURL(file, maxW=1600, maxH=1600, quality=0.82){
         const canvas = document.createElement('canvas');
         canvas.width = outW; canvas.height = outH;
         const ctx = canvas.getContext('2d', { alpha:false });
-        // немного сглаживания
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, outW, outH);
