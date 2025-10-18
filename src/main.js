@@ -391,10 +391,13 @@ async function init(){
   router();
 
   window.addEventListener('hashchange', router);
-  window.addEventListener('orders:updated', async ()=>{
-    try{ state.orders = await getOrders(); }catch{}
+
+  // ВАЖНО: здесь больше не дергаем getOrders() повторно — избегаем зацикливания!
+  window.addEventListener('orders:updated', ()=>{
+    // state.orders уже обновлён автором события (core/orders.saveOrders)
     router();
   });
+
   window.addEventListener('force:rerender', router);
 
   // при смене прав — перерисовать таббар/выйти из админки при потере доступа

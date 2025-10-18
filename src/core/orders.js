@@ -99,15 +99,23 @@ export const ADMIN_STAGE_OPTIONS = [
 function getOrdersLocal(){
   try{ return JSON.parse(localStorage.getItem(KEY) || '[]'); }catch{ return []; }
 }
-
 function setOrdersLocal(list){
   localStorage.setItem(KEY, JSON.stringify(list));
 }
 
+/** 
+ * Сохранить заказы в локальный кэш и уведомить UI.
+ * Используйте ТОЛЬКО когда действительно меняете данные, чтобы не вызвать лишние перерисовки.
+ */
 export function saveOrders(list){
   setOrdersLocal(list);
   // общее событие для перерисовок
   try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
+}
+
+/** Тихое обновление кэша (без события) — для чтения/синхронизации */
+function replaceOrdersCacheSilently(list){
+  setOrdersLocal(list);
 }
 
 /** Полная очистка всех заказов (для миграции/сброса) */
@@ -125,11 +133,13 @@ function writeHistory(order, status, extra = {}){
 
 // ======== СЕРВЕР-ПЕРВЫЕ API (с фолбэком в локальный кэш) ========
 
-/** Получить ВСЕ заказы (для админки) — теперь с сервера */
+/** Получить ВСЕ заказы (для админки) — теперь с сервера.
+ *  ВАЖНО: не эмитим orders:updated здесь, чтобы не ловить циклы перерисовки.
+ */
 export async function getOrders(){
   const list = await apiGetList();
-  // поддержим локальный кэш для офлайна/быстрых перерисовок
-  saveOrders(list);
+  // поддержим локальный кэш для офлайна/быстрых перерисовок — БЕЗ события
+  replaceOrdersCacheSilently(list);
   return list;
 }
 
@@ -144,38 +154,24 @@ export async function addOrder(order){
 
   const next = {
     id: idLocal,
-
-    // Идентификация пользователя (для клиентского фильтра)
     userId: safeUserId,
     username: order.username ?? '',
-
-    // поддержка одиночного товара + корзины из нескольких
     productId: order.productId ?? null,
     size: order.size ?? null,
     color: order.color ?? null,
     link: order.link ?? (order.productId ? `#/product/${order.productId}` : ''),
     cart: Array.isArray(order.cart) ? order.cart : [],
     total: Number(order.total || 0),
-
-    // контактные
     address: typeof order.address === 'string' ? order.address : (order.address?.address || ''),
     phone: order.phone ?? '',
     payerFullName: order.payerFullName ?? '',
-
-    // оплата
     paymentScreenshot: order.paymentScreenshot ?? '',
-
-    // статусы
     status: initialStatus,
     accepted: !!order.accepted,
-
-    // отмена/завершение
     canceled: !!order.canceled,
     cancelReason: order.cancelReason || '',
     canceledAt: order.canceledAt || null,
     completedAt: order.completedAt || null,
-
-    // мета
     createdAt: order.createdAt ?? now,
     currency: order.currency || 'UZS',
     history: order.history ?? [{ ts: now, status: initialStatus }],
@@ -184,18 +180,18 @@ export async function addOrder(order){
   // 1) Пытаемся отправить на сервер
   try{
     const { id } = await apiPost('add', { order: next });
-    // после успешной записи — актуализируем локальный кэш из сервера
+    // после успешной записи — актуализируем локальный кэш из сервера (тихо)
     try{
       const fresh = await apiGetList();
-      saveOrders(fresh);
+      replaceOrdersCacheSilently(fresh);
     }catch{
-      // если не вышло — хотя бы добавим локально
+      // если не вышло — хотя бы добавим локально и уведомим UI
       const list = getOrdersLocal();
       saveOrders([next, ...list]);
     }
     return id || next.id;
   }catch{
-    // 2) оффлайн/ошибка — добавим локально, админ увидит после онлайна
+    // 2) оффлайн/ошибка — добавим локально и уведомим UI, админ увидит после онлайна
     const list = getOrdersLocal();
     saveOrders([next, ...list]);
     return next.id;
@@ -213,19 +209,19 @@ export async function getOrdersForUser(userId){
 export async function acceptOrder(orderId){
   try{
     await apiPost('accept', { id: String(orderId) });
-    // синхронизируем кэш
+    // синхронизируем кэш — БЕЗ события
     const one = await apiGetOne(orderId);
     if (one){
       const list = getOrdersLocal();
       const i = list.findIndex(o => String(o.id) === String(orderId));
       if (i>-1) list[i] = one; else list.unshift(one);
-      saveOrders(list);
+      replaceOrdersCacheSilently(list);
     }else{
       const fresh = await apiGetList();
-      saveOrders(fresh);
+      replaceOrdersCacheSilently(fresh);
     }
   }catch{
-    // фолбэк: локально (как раньше)
+    // фолбэк: локально
     const list = getOrdersLocal();
     const i = list.findIndex(o => String(o.id) === String(orderId));
     if (i === -1) return;
@@ -235,17 +231,12 @@ export async function acceptOrder(orderId){
     o.accepted = true;
     o.status = 'принят';
     writeHistory(o, 'принят');
-    saveOrders(list);
+    saveOrders(list); // локально изменили — уведомим UI
+    return;
   }
 
-  // событие для уведомлений
-  try{
-    const list = getOrdersLocal();
-    const o = list.find(x=> String(x.id)===String(orderId));
-    window.dispatchEvent(new CustomEvent('admin:orderAccepted', {
-      detail: { id: orderId, userId: o?.userId }
-    }));
-  }catch{}
+  // после серверной операции самим уведомим UI одним событием
+  saveOrders(getOrdersLocal());
 }
 
 /** Отменить «новый» заказ с комментарием (виден клиенту) */
@@ -257,10 +248,10 @@ export async function cancelOrder(orderId, reason = ''){
       const list = getOrdersLocal();
       const i = list.findIndex(o => String(o.id) === String(orderId));
       if (i>-1) list[i] = one; else list.unshift(one);
-      saveOrders(list);
+      replaceOrdersCacheSilently(list);
     }else{
       const fresh = await apiGetList();
-      saveOrders(fresh);
+      replaceOrdersCacheSilently(fresh);
     }
   }catch{
     // фолбэк локально
@@ -277,16 +268,11 @@ export async function cancelOrder(orderId, reason = ''){
     o.status = 'отменён';
     writeHistory(o, 'отменён', { comment: o.cancelReason });
     saveOrders(list);
+    return;
   }
 
-  // событие отмены
-  try{
-    const list = getOrdersLocal();
-    const o = list.find(x=> String(x.id)===String(orderId));
-    window.dispatchEvent(new CustomEvent('admin:orderCanceled', {
-      detail: { id: orderId, reason: String(reason||''), userId: o?.userId }
-    }));
-  }catch{}
+  // синхронизировали с сервером — уведомим UI единым событием
+  saveOrders(getOrdersLocal());
 }
 
 /** Обновить статус уже принятого заказа */
@@ -300,10 +286,10 @@ export async function updateOrderStatus(orderId, status){
       const list = getOrdersLocal();
       const i = list.findIndex(o => String(o.id) === String(orderId));
       if (i>-1) list[i] = one; else list.unshift(one);
-      saveOrders(list);
+      replaceOrdersCacheSilently(list);
     }else{
       const fresh = await apiGetList();
-      saveOrders(fresh);
+      replaceOrdersCacheSilently(fresh);
     }
   }catch{
     // локальный фолбэк
@@ -323,16 +309,11 @@ export async function updateOrderStatus(orderId, status){
     }
     writeHistory(o, status);
     saveOrders(list);
+    return;
   }
 
-  // событие смены статуса
-  try{
-    const list = getOrdersLocal();
-    const o = list.find(x=> String(x.id)===String(orderId));
-    window.dispatchEvent(new CustomEvent('admin:statusChanged', {
-      detail: { id: orderId, status, userId: o?.userId }
-    }));
-  }catch{}
+  // после серверной операции — одно событие на UI
+  saveOrders(getOrdersLocal());
 }
 
 /** Быстрая финализация */

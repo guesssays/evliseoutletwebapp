@@ -7,29 +7,53 @@
 //   WEBAPP_URL       — базовый URL приложения для ссылок       [опционально]
 //   ALLOWED_ORIGINS  — список origin'ов через запятую          [опционально]
 
-export async function handler(event) {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
-  }
+function buildCorsHeaders(origin, allowedList) {
+  const isTelegram = origin === 'https://t.me';
+  const isAllowed =
+    !allowedList.length || !origin || isTelegram || allowedList.includes(origin) || allowedList.includes('*');
 
-  const origin = event.headers?.origin || '';
+  return {
+    headers: {
+      'Access-Control-Allow-Origin': isAllowed ? (origin || '*') : 'null',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Vary': 'Origin',
+    },
+    isAllowed,
+  };
+}
+
+export async function handler(event) {
+  const origin = event.headers?.origin || event.headers?.Origin || '';
   const allowed = (process.env.ALLOWED_ORIGINS || '')
     .split(',').map(s=>s.trim()).filter(Boolean);
-  if (allowed.length && origin && !allowed.includes(origin)) {
-    return { statusCode: 403, body: 'Forbidden' };
+
+  const { headers, isAllowed } = buildCorsHeaders(origin, allowed);
+
+  // CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, ...headers };
+  }
+
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: 'Method Not Allowed', ...headers };
+  }
+
+  if (!isAllowed) {
+    return { statusCode: 403, body: 'Forbidden', ...headers };
   }
 
   try {
     const { chat_id: clientChatId, type, orderId, title } = JSON.parse(event.body || '{}') || {};
-    if (!type) return { statusCode: 400, body: 'type required' };
+    if (!type) return { statusCode: 400, body: 'type required', ...headers };
 
     const token = process.env.TG_BOT_TOKEN;
-    if (!token) return { statusCode: 500, body: 'TG_BOT_TOKEN is not set' };
+    if (!token) return { statusCode: 500, body: 'TG_BOT_TOKEN is not set', ...headers };
 
     const webappUrl = process.env.WEBAPP_URL || '';
     const targetChatId = String(clientChatId || process.env.ADMIN_CHAT_ID || '').trim();
     if (!targetChatId) {
-      return { statusCode: 400, body: 'chat_id required (or ADMIN_CHAT_ID must be set)' };
+      return { statusCode: 400, body: 'chat_id required (or ADMIN_CHAT_ID must be set)', ...headers };
     }
 
     const safeTitle = (t)=> (t ? String(t).slice(0,140) : '').trim();
@@ -69,11 +93,11 @@ export async function handler(event) {
 
     const data = await res.json();
     if (!res.ok || !data.ok) {
-      return { statusCode: 502, body: JSON.stringify({ ok:false, tg:data }) };
+      return { statusCode: 502, body: JSON.stringify({ ok:false, tg:data }), ...headers };
     }
 
-    return { statusCode: 200, body: JSON.stringify({ ok:true }) };
+    return { statusCode: 200, body: JSON.stringify({ ok:true }), ...headers };
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ ok:false, error:String(err) }) };
+    return { statusCode: 500, body: JSON.stringify({ ok:false, error:String(err) }), ...headers };
   }
 }

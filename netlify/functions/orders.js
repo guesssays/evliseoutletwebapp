@@ -2,15 +2,39 @@
 // Централизованное хранилище заказов (Netlify Blobs) + операции админа
 // ENV: TG_BOT_TOKEN, ADMIN_CHAT_ID, WEBAPP_URL, ALLOWED_ORIGINS (опц.)
 
+function buildCorsHeaders(origin, allowedList) {
+  const isTelegram = origin === 'https://t.me';
+  const isAllowed =
+    !allowedList.length || !origin || isTelegram || allowedList.includes(origin) || allowedList.includes('*');
+
+  return {
+    headers: {
+      'Access-Control-Allow-Origin': isAllowed ? (origin || '*') : 'null',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Vary': 'Origin',
+    },
+    isAllowed,
+  };
+}
+
 export async function handler(event) {
-  if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
-  }
-  const origin = event.headers?.origin || '';
+  const origin = event.headers?.origin || event.headers?.Origin || '';
   const allowed = (process.env.ALLOWED_ORIGINS || '')
     .split(',').map(s=>s.trim()).filter(Boolean);
-  if (allowed.length && origin && !allowed.includes(origin)) {
-    return { statusCode: 403, body: 'Forbidden' };
+  const { headers, isAllowed } = buildCorsHeaders(origin, allowed);
+
+  // CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, ...headers };
+  }
+
+  if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: 'Method Not Allowed', ...headers };
+  }
+
+  if (!isAllowed) {
+    return { statusCode: 403, body: 'Forbidden', ...headers };
   }
 
   try {
@@ -20,13 +44,13 @@ export async function handler(event) {
       const op = (event.queryStringParameters?.op || 'list').toLowerCase();
       if (op === 'list') {
         const items = await store.list();
-        return ok({ orders: items });
+        return ok({ orders: items }, headers);
       }
       if (op === 'get' && event.queryStringParameters?.id) {
         const o = await store.get(String(event.queryStringParameters.id));
-        return ok({ order: o || null });
+        return ok({ order: o || null }, headers);
       }
-      return bad('unknown op');
+      return bad('unknown op', headers);
     }
 
     // POST
@@ -37,32 +61,32 @@ export async function handler(event) {
       const id = await store.add(body.order || {});
       // уведомим админа о новом заказе
       try { await notifyAdminNewOrder(id, body.order); } catch {}
-      return ok({ id });
+      return ok({ id }, headers);
     }
 
     if (op === 'accept') {
       const id = String(body.id || '');
       const o = await store.accept(id);
-      return ok({ ok: !!o, order: o || null });
+      return ok({ ok: !!o, order: o || null }, headers);
     }
 
     if (op === 'cancel') {
       const id = String(body.id || '');
       const reason = String(body.reason || '');
       const o = await store.cancel(id, reason);
-      return ok({ ok: !!o, order: o || null });
+      return ok({ ok: !!o, order: o || null }, headers);
     }
 
     if (op === 'status') {
       const id = String(body.id || '');
       const status = String(body.status || '');
       const o = await store.status(id, status);
-      return ok({ ok: !!o, order: o || null });
+      return ok({ ok: !!o, order: o || null }, headers);
     }
 
-    return bad('unknown op');
+    return bad('unknown op', headers);
   } catch (e) {
-    return { statusCode: 500, body: JSON.stringify({ ok:false, error: String(e) }) };
+    return { statusCode: 500, body: JSON.stringify({ ok:false, error: String(e) }), ...headers };
   }
 }
 
@@ -216,5 +240,5 @@ async function notifyAdminNewOrder(id, order){
 }
 
 /* ---------------- helpers ---------------- */
-function ok(json){ return { statusCode:200, body: JSON.stringify({ ok:true, ...json }) }; }
-function bad(msg){ return { statusCode:400, body: JSON.stringify({ ok:false, error: msg }) }; }
+function ok(json, headers){ return { statusCode:200, body: JSON.stringify({ ok:true, ...json }), ...headers }; }
+function bad(msg, headers){ return { statusCode:400, body: JSON.stringify({ ok:false, error: msg }), ...headers }; }
