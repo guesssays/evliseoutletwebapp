@@ -2,6 +2,7 @@ import {
   ORDER_STATUSES,
   getOrders,
   acceptOrder,
+  cancelOrder,          // ← добавили
   updateOrderStatus,
   seedOrdersOnce
 } from '../core/orders.js';
@@ -74,8 +75,7 @@ export function renderAdmin(){
   };
 
   // допустимые этапы для «в процессе»
-  const ACTIVE_STAGES = ORDER_STATUSES
-    .filter(s => !['новый','отменён'].includes(s)); // «выдан» остаётся доступным — отправит в «Завершённые»
+  const ACTIVE_STAGES = ORDER_STATUSES.filter(s => !['новый','отменён'].includes(s));
 
   // ---------- UI shells ----------
   function shell(innerHTML){
@@ -88,7 +88,7 @@ export function renderAdmin(){
         <div class="admin-tabs" id="adminTabs" role="tablist" aria-label="Статусы заказов">
           ${TABS.map(t=>`
             <button class="admin-tab ${tab===t.key?'is-active':''}" data-k="${t.key}" role="tab" aria-selected="${tab===t.key}">${t.label}</button>
-          ").join('')}
+          `).join('')}
         </div>
 
         ${innerHTML}
@@ -246,7 +246,7 @@ export function renderAdmin(){
               <div class="stage-list" id="stageList" role="group" aria-label="Этапы заказа">
                 ${ACTIVE_STAGES.map(s=>`
                   <button class="stage-btn ${o.status===s?'is-active':''}" data-st="${s}">${stageLabel(s)}</button>
-                ").join('')}
+                `).join('')}
               </div>
             ` : ''}
 
@@ -280,11 +280,11 @@ export function renderAdmin(){
     document.getElementById('btnCancel')?.addEventListener('click', ()=>{
       const reason = prompt('Укажите причину отмены (видно будет только админам):');
       saveCancelReason(o.id, reason||'');
-      updateOrderStatus(o.id, 'отменён');
+      cancelOrder(o.id, reason||''); // ← правильный путь отмены «нового»
       try {
         window.dispatchEvent(new CustomEvent('admin:statusChanged',{ detail:{ id:o.id, status:'отменён', reason } }));
       }catch{}
-      mode='list'; render();
+      mode='list'; tab='done'; render();
     });
 
     // В процессе: выбор этапа (в т.ч. «выдан»)
@@ -297,7 +297,6 @@ export function renderAdmin(){
       try {
         window.dispatchEvent(new CustomEvent('admin:statusChanged',{ detail:{ id:o.id, status: st } }));
       }catch{}
-      // Если выбрали «выдан» — карточка уйдёт в завершённые
       if (st === 'выдан'){ mode='list'; tab='done'; }
       render();
     });
@@ -354,5 +353,5 @@ function humanStatus(s){
 function stageLabel(s){ return humanStatus(s); }
 
 function escapeHtml(s=''){
-  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }

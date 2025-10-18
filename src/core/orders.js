@@ -24,9 +24,9 @@ export const ORDER_STATUSES = [
 
 /**
  * Этапы, доступные к выбору ТОЛЬКО после принятия.
- * В интерфейсе админки используй этот массив для стилизованного «пилюльного» выбора.
  */
 export const ADMIN_STAGE_OPTIONS = [
+  'принят',
   'собирается в китае',
   'вылетел в узб',
   'на таможне',
@@ -95,17 +95,12 @@ export function addOrder(order){
   return next.id;
 }
 
-/**
- * Принять заказ с состояния «новый»
- * Ставит статус 'принят' и помечает accepted=true.
- */
+/** Принять «новый» заказ */
 export function acceptOrder(orderId){
   const list = getOrders();
   const i = list.findIndex(o => String(o.id) === String(orderId));
   if (i === -1) return;
   const o = list[i];
-
-  // Разрешаем принять только «новый» и неотменённый
   if (o.status !== 'новый' || o.canceled) return;
 
   o.accepted = true;
@@ -114,17 +109,12 @@ export function acceptOrder(orderId){
   saveOrders(list);
 }
 
-/**
- * Отменить «новый» заказ с комментарием
- * Ставит статус 'отменён', фиксирует причину и время.
- */
+/** Отменить «новый» заказ с комментарием */
 export function cancelOrder(orderId, reason = ''){
   const list = getOrders();
   const i = list.findIndex(o => String(o.id) === String(orderId));
   if (i === -1) return;
   const o = list[i];
-
-  // Отменяем ТОЛЬКО на стадии «новый»
   if (o.status !== 'новый') return;
 
   o.canceled = true;
@@ -148,17 +138,14 @@ export function updateOrderStatus(orderId, status){
   if (i === -1) return;
   const o = list[i];
 
-  // Нельзя менять статус у «новый» через этот метод — сначала acceptOrder()
+  // Нельзя менять статус у «новый» — сначала acceptOrder()/cancelOrder()
   if (o.status === 'новый') return;
-
   // Нельзя менять отменённый
   if (o.status === 'отменён' || o.canceled) return;
 
   o.status = status;
-  // Если вдруг ставим статус до принятия — авто-пометим как принятый
   if (!o.accepted && status !== 'отменён') o.accepted = true;
 
-  // Финализация
   if (status === 'выдан'){
     o.completedAt = Date.now();
   }
