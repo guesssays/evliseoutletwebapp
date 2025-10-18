@@ -2,14 +2,36 @@
 // Централизованное хранилище заказов (Netlify Blobs) + операции админа
 // ENV: TG_BOT_TOKEN, ADMIN_CHAT_ID, WEBAPP_URL, ALLOWED_ORIGINS (опц.)
 
-function buildCorsHeaders(origin, allowedList) {
-  const isTelegram = origin === 'https://t.me';
-  const isAllowed =
-    !allowedList.length || !origin || isTelegram || allowedList.includes(origin) || allowedList.includes('*');
-
+function parseAllowed() {
+  const raw = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+  return raw;
+}
+function isTelegramOrigin(origin) {
+  return origin === 'https://t.me' ||
+         origin === 'https://web.telegram.org' ||
+         origin === 'https://telegram.org';
+}
+function originMatches(origin, rule) {
+  if (!rule || rule === '*') return true;
+  if (!origin) return false;
+  if (rule.startsWith('*.')) {
+    try {
+      const host = new URL(origin).hostname;
+      const suffix = rule.slice(1);
+      return host === rule.slice(2) || host.endsWith(suffix);
+    } catch { return false; }
+  }
+  return origin === rule;
+}
+function buildCorsHeaders(origin) {
+  const allowed = parseAllowed();
+  const isAllowed = !allowed.length ||
+                    isTelegramOrigin(origin) ||
+                    allowed.some(rule => originMatches(origin, rule));
+  const allowOrigin = isAllowed ? (origin || '*') : 'null';
   return {
     headers: {
-      'Access-Control-Allow-Origin': isAllowed ? (origin || '*') : 'null',
+      'Access-Control-Allow-Origin': allowOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
       'Vary': 'Origin',
@@ -20,9 +42,7 @@ function buildCorsHeaders(origin, allowedList) {
 
 export async function handler(event) {
   const origin = event.headers?.origin || event.headers?.Origin || '';
-  const allowed = (process.env.ALLOWED_ORIGINS || '')
-    .split(',').map(s=>s.trim()).filter(Boolean);
-  const { headers, isAllowed } = buildCorsHeaders(origin, allowed);
+  const { headers, isAllowed } = buildCorsHeaders(origin);
 
   // CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -34,7 +54,7 @@ export async function handler(event) {
   }
 
   if (!isAllowed) {
-    return { statusCode: 403, body: 'Forbidden', ...headers };
+    return { statusCode: 403, body: 'Forbidden by CORS', ...headers };
   }
 
   try {
@@ -59,7 +79,7 @@ export async function handler(event) {
 
     if (op === 'add') {
       const id = await store.add(body.order || {});
-      // уведомим админа о новом заказе
+      // уведомим админа о новом заказе (серверная отправка — без CORS)
       try { await notifyAdminNewOrder(id, body.order); } catch {}
       return ok({ id }, headers);
     }
@@ -205,11 +225,11 @@ async function getStore(){
   };
 }
 
-/* ---------------- Telegram admin notify ---------------- */
+/* ---------------- Telegram admin notify (server-side) ---------------- */
 async function notifyAdminNewOrder(id, order){
   const token = process.env.TG_BOT_TOKEN;
   const admin = process.env.ADMIN_CHAT_ID;
-  if (!token || !admin) return;
+  if (!token || !admin) return; // аккуратно выходим, если не настроено
 
   const webappUrl = process.env.WEBAPP_URL || '';
   const title = order?.cart?.[0]?.title || order?.title || 'товар';

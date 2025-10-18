@@ -4,12 +4,23 @@ import { getUID } from './state.js';
 
 const KEY = 'nas_orders';
 
-// === NEW: централизованный backend ===
+// === централизованный backend ===
 const API_BASE = '/.netlify/functions/orders';
+
+// Небольшой таймаут, чтобы UI не «подвисал» при сетевых проблемах
+const FETCH_TIMEOUT_MS = 10000;
+
+function withTimeout(promise, ms = FETCH_TIMEOUT_MS){
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout')), ms);
+    promise.then(v => { clearTimeout(t); resolve(v); },
+                 e => { clearTimeout(t); reject(e); });
+  });
+}
 
 async function apiGetList(){
   try{
-    const res = await fetch(`${API_BASE}?op=list`, { method:'GET' });
+    const res = await withTimeout(fetch(`${API_BASE}?op=list`, { method:'GET' }));
     const data = await res.json();
     if (res.ok && data?.ok && Array.isArray(data.orders)) return data.orders;
     throw new Error('bad response');
@@ -20,36 +31,25 @@ async function apiGetList(){
 }
 async function apiGetOne(id){
   try{
-    const res = await fetch(`${API_BASE}?op=get&id=${encodeURIComponent(id)}`, { method:'GET' });
+    const res = await withTimeout(fetch(`${API_BASE}?op=get&id=${encodeURIComponent(id)}`, { method:'GET' }));
     const data = await res.json();
     if (res.ok && data?.ok) return data.order || null;
     return null;
   }catch{ return null; }
 }
 async function apiPost(op, body){
-  const res = await fetch(API_BASE, {
+  const res = await withTimeout(fetch(API_BASE, {
     method:'POST',
     headers:{ 'Content-Type':'application/json' },
     body: JSON.stringify({ op, ...body })
-  });
+  }));
   const data = await res.json().catch(()=> ({}));
   if (!res.ok || !data?.ok) throw new Error(data?.error || 'api error');
   return data;
 }
 
 /**
- * Внутренние ключи статусов (не менять — завязаны сохранённые заказы).
- * Отображаемые названия берутся из STATUS_LABELS.
- *
- * - 'новый'                 — стартовый
- * - 'принят'                — подтверждён
- * - 'собирается в китае'    — сборка в Китае
- * - 'вылетел в узб'         — отгружен из Китая
- * - 'на таможне'            — на таможне
- * - 'на почте'              — в отделении почты
- * - 'забран с почты'        — получен с почты
- * - 'выдан'                 — выдан
- * - 'отменён'               — отменён
+ * Статусы (ключи)
  */
 export const ORDER_STATUSES = [
   'новый',
@@ -63,7 +63,7 @@ export const ORDER_STATUSES = [
   'отменён',
 ];
 
-/** Отображаемые названия для всех экранов/уведомлений (единый источник правды) */
+/** Отображаемые названия */
 export const STATUS_LABELS = {
   'новый':                 'В обработке',
   'принят':                'Подтверждён',
@@ -76,15 +76,11 @@ export const STATUS_LABELS = {
   'отменён':               'Отменён',
 };
 
-/** Утилита получения «человеческого» названия статуса */
 export function getStatusLabel(statusKey){
   return STATUS_LABELS[statusKey] || String(statusKey || '');
 }
 
-/**
- * Этапы, доступные к выбору ТОЛЬКО после принятия.
- * (ключи, не отображаемые названия)
- */
+/** Этапы, доступные администратору */
 export const ADMIN_STAGE_OPTIONS = [
   'принят',
   'собирается в китае',
@@ -95,7 +91,7 @@ export const ADMIN_STAGE_OPTIONS = [
   'выдан',
 ];
 
-// ======== ЛОКАЛЬНЫЙ КЭШ (оставляем как было) ========
+// ======== ЛОКАЛЬНЫЙ КЭШ ========
 function getOrdersLocal(){
   try{ return JSON.parse(localStorage.getItem(KEY) || '[]'); }catch{ return []; }
 }
@@ -103,22 +99,18 @@ function setOrdersLocal(list){
   localStorage.setItem(KEY, JSON.stringify(list));
 }
 
-/** 
- * Сохранить заказы в локальный кэш и уведомить UI.
- * Используйте ТОЛЬКО когда действительно меняете данные, чтобы не вызвать лишние перерисовки.
- */
+/** Сохранить и уведомить UI */
 export function saveOrders(list){
   setOrdersLocal(list);
-  // общее событие для перерисовок
   try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
 }
 
-/** Тихое обновление кэша (без события) — для чтения/синхронизации */
+/** Тихо заменить кэш */
 function replaceOrdersCacheSilently(list){
   setOrdersLocal(list);
 }
 
-/** Полная очистка всех заказов (для миграции/сброса) */
+/** Полная очистка (на всякий случай) */
 export function clearAllOrders(){
   try{
     localStorage.removeItem(KEY);
@@ -131,25 +123,19 @@ function writeHistory(order, status, extra = {}){
   order.history = Array.isArray(order.history) ? [...order.history, rec] : [rec];
 }
 
-// ======== СЕРВЕР-ПЕРВЫЕ API (с фолбэком в локальный кэш) ========
+// ======== СЕРВЕР-ПЕРВЫЕ API (с фолбэком) ========
 
-/** Получить ВСЕ заказы (для админки) — теперь с сервера.
- *  ВАЖНО: не эмитим orders:updated здесь, чтобы не ловить циклы перерисовки.
- */
 export async function getOrders(){
   const list = await apiGetList();
-  // поддержим локальный кэш для офлайна/быстрых перерисовок — БЕЗ события
   replaceOrdersCacheSilently(list);
   return list;
 }
 
-/** Добавить заказ (сервер-первый, возвращает id) */
 export async function addOrder(order){
   const idLocal = order.id ?? String(Date.now());
   const now = Date.now();
   const initialStatus = order.status ?? 'новый';
 
-  // КРИТИЧЕСКИЙ ФИКС: userId всегда задаём через getUID() при отсутствии
   const safeUserId = order.userId ?? getUID() ?? null;
 
   const next = {
@@ -177,39 +163,32 @@ export async function addOrder(order){
     history: order.history ?? [{ ts: now, status: initialStatus }],
   };
 
-  // 1) Пытаемся отправить на сервер
   try{
     const { id } = await apiPost('add', { order: next });
-    // после успешной записи — актуализируем локальный кэш из сервера (тихо)
     try{
       const fresh = await apiGetList();
       replaceOrdersCacheSilently(fresh);
     }catch{
-      // если не вышло — хотя бы добавим локально и уведомим UI
       const list = getOrdersLocal();
       saveOrders([next, ...list]);
     }
     return id || next.id;
   }catch{
-    // 2) оффлайн/ошибка — добавим локально и уведомим UI, админ увидит после онлайна
     const list = getOrdersLocal();
     saveOrders([next, ...list]);
     return next.id;
   }
 }
 
-/** Выборка заказов конкретного пользователя */
 export async function getOrdersForUser(userId){
   const list = await getOrders();
   if (!userId) return [];
   return list.filter(o => String(o.userId||'') === String(userId));
 }
 
-/** Принять «новый» заказ */
 export async function acceptOrder(orderId){
   try{
     await apiPost('accept', { id: String(orderId) });
-    // синхронизируем кэш — БЕЗ события
     const one = await apiGetOne(orderId);
     if (one){
       const list = getOrdersLocal();
@@ -221,25 +200,20 @@ export async function acceptOrder(orderId){
       replaceOrdersCacheSilently(fresh);
     }
   }catch{
-    // фолбэк: локально
     const list = getOrdersLocal();
     const i = list.findIndex(o => String(o.id) === String(orderId));
     if (i === -1) return;
     const o = list[i];
     if (o.status !== 'новый' || o.canceled) return;
-
     o.accepted = true;
     o.status = 'принят';
     writeHistory(o, 'принят');
-    saveOrders(list); // локально изменили — уведомим UI
+    saveOrders(list);
     return;
   }
-
-  // после серверной операции самим уведомим UI одним событием
   saveOrders(getOrdersLocal());
 }
 
-/** Отменить «новый» заказ с комментарием (виден клиенту) */
 export async function cancelOrder(orderId, reason = ''){
   try{
     await apiPost('cancel', { id: String(orderId), reason: String(reason||'') });
@@ -254,13 +228,11 @@ export async function cancelOrder(orderId, reason = ''){
       replaceOrdersCacheSilently(fresh);
     }
   }catch{
-    // фолбэк локально
     const list = getOrdersLocal();
     const i = list.findIndex(o => String(o.id) === String(orderId));
     if (i === -1) return;
     const o = list[i];
     if (o.status !== 'новый') return;
-
     o.canceled = true;
     o.cancelReason = String(reason || '').trim();
     o.canceledAt = Date.now();
@@ -270,12 +242,9 @@ export async function cancelOrder(orderId, reason = ''){
     saveOrders(list);
     return;
   }
-
-  // синхронизировали с сервером — уведомим UI единым событием
   saveOrders(getOrdersLocal());
 }
 
-/** Обновить статус уже принятого заказа */
 export async function updateOrderStatus(orderId, status){
   if (!ORDER_STATUSES.includes(status)) return;
 
@@ -292,34 +261,26 @@ export async function updateOrderStatus(orderId, status){
       replaceOrdersCacheSilently(fresh);
     }
   }catch{
-    // локальный фолбэк
     const list = getOrdersLocal();
     const i = list.findIndex(o => String(o.id) === String(orderId));
     if (i === -1) return;
     const o = list[i];
-
-    if (o.status === 'новый') return; // сначала accept/cancel
+    if (o.status === 'новый') return;
     if (o.status === 'отменён' || o.canceled) return;
-
     o.status = status;
     if (!o.accepted && status !== 'отменён') o.accepted = true;
-
-    if (status === 'выдан'){
-      o.completedAt = Date.now();
-    }
+    if (status === 'выдан'){ o.completedAt = Date.now(); }
     writeHistory(o, status);
     saveOrders(list);
     return;
   }
 
-  // после серверной операции — одно событие на UI
   saveOrders(getOrdersLocal());
 }
 
-/** Быстрая финализация */
 export function markCompleted(orderId){
   updateOrderStatus(orderId, 'выдан');
 }
 
-/* ===== Демосидирование отключено ===== */
+/* Демосидирование отключено */
 export function seedOrdersOnce(){ /* no-op */ }

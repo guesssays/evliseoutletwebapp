@@ -1,20 +1,52 @@
 // netlify/functions/notify.js
-
 // Serverless-функция Netlify: принимает событие от фронта и шлёт "тизер" в Telegram бота
 // ENV:
-//   TG_BOT_TOKEN     — токен бота (без "bot" префикса)        [обязателен]
-//   ADMIN_CHAT_ID    — chat_id администратора                  [рекомендуется]
+//   TG_BOT_TOKEN     — токен бота (без "bot" префикса)        [обязателен для отправки]
+//   ADMIN_CHAT_ID    — chat_id администратора                  [желателен; иначе ждём chat_id от клиента]
 //   WEBAPP_URL       — базовый URL приложения для ссылок       [опционально]
-//   ALLOWED_ORIGINS  — список origin'ов через запятую          [опционально]
+//   ALLOWED_ORIGINS  — список origin'ов через запятую          [опционально: '*', точные origin, '*.domain.com']
 
-function buildCorsHeaders(origin, allowedList) {
-  const isTelegram = origin === 'https://t.me';
-  const isAllowed =
-    !allowedList.length || !origin || isTelegram || allowedList.includes(origin) || allowedList.includes('*');
+function parseAllowed() {
+  const raw = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+  return raw;
+}
+
+function isTelegramOrigin(origin) {
+  return origin === 'https://t.me' ||
+         origin === 'https://web.telegram.org' ||
+         origin === 'https://telegram.org';
+}
+
+function originMatches(origin, rule) {
+  if (!rule || rule === '*') return true;
+  if (!origin) return false;
+  if (rule.startsWith('*.')) {
+    try {
+      const host = new URL(origin).hostname;
+      const suffix = rule.slice(1); // ".example.com"
+      return host === rule.slice(2) || host.endsWith(suffix);
+    } catch { return false; }
+  }
+  return origin === rule;
+}
+
+function buildCorsHeaders(origin) {
+  const allowed = parseAllowed();
+  // Разрешаем:
+  //  - любые, если ALLOWED_ORIGINS пуст (поведение по умолчанию — как было);
+  //  - Telegram webview
+  //  - точные совпадения / wildcard из ALLOWED_ORIGINS
+  const isAllowed = !allowed.length ||
+                    isTelegramOrigin(origin) ||
+                    allowed.some(rule => originMatches(origin, rule));
+
+  // Отдаём максимально совместимые CORS-заголовки.
+  // Если origin известен и разрешён — отражаем его; иначе ставим '*', чтобы не ломать webview без Origin.
+  const allowOrigin = isAllowed ? (origin || '*') : 'null';
 
   return {
     headers: {
-      'Access-Control-Allow-Origin': isAllowed ? (origin || '*') : 'null',
+      'Access-Control-Allow-Origin': allowOrigin,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
       'Vary': 'Origin',
@@ -25,10 +57,7 @@ function buildCorsHeaders(origin, allowedList) {
 
 export async function handler(event) {
   const origin = event.headers?.origin || event.headers?.Origin || '';
-  const allowed = (process.env.ALLOWED_ORIGINS || '')
-    .split(',').map(s=>s.trim()).filter(Boolean);
-
-  const { headers, isAllowed } = buildCorsHeaders(origin, allowed);
+  const { headers, isAllowed } = buildCorsHeaders(origin);
 
   // CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -40,7 +69,8 @@ export async function handler(event) {
   }
 
   if (!isAllowed) {
-    return { statusCode: 403, body: 'Forbidden', ...headers };
+    // Не рвём жёстко UX — чётко сообщаем.
+    return { statusCode: 403, body: 'Forbidden by CORS', ...headers };
   }
 
   try {
@@ -48,10 +78,14 @@ export async function handler(event) {
     if (!type) return { statusCode: 400, body: 'type required', ...headers };
 
     const token = process.env.TG_BOT_TOKEN;
-    if (!token) return { statusCode: 500, body: 'TG_BOT_TOKEN is not set', ...headers };
+    if (!token) {
+      // Нет токена — сообщаем явно (поможет диагностике)
+      return { statusCode: 500, body: 'TG_BOT_TOKEN is not set', ...headers };
+    }
 
-    const webappUrl = process.env.WEBAPP_URL || '';
-    const targetChatId = String(clientChatId || process.env.ADMIN_CHAT_ID || '').trim();
+    const webappUrl   = process.env.WEBAPP_URL || '';
+    const adminChatId = String(process.env.ADMIN_CHAT_ID || '').trim();
+    const targetChatId = String(clientChatId || adminChatId || '').trim();
     if (!targetChatId) {
       return { statusCode: 400, body: 'chat_id required (or ADMIN_CHAT_ID must be set)', ...headers };
     }
@@ -91,8 +125,8 @@ export async function handler(event) {
       })
     });
 
-    const data = await res.json();
-    if (!res.ok || !data.ok) {
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) {
       return { statusCode: 502, body: JSON.stringify({ ok:false, tg:data }), ...headers };
     }
 
