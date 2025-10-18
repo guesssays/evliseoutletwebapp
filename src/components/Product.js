@@ -37,7 +37,13 @@ export function renderProduct({id}){
 
       <div class="p-body home-bottom-pad">
         <div class="p-title">${escapeHtml(p.title)}</div>
-        <div class="p-desc">${p.description ? escapeHtml(p.description) : 'Описание скоро будет обновлено.'}</div>
+
+        <!-- ВМЕСТО ОПИСАНИЯ: СРОК ДОСТАВКИ -->
+        <div class="p-delivery" style="display:flex;align-items:center;gap:8px;margin:6px 0 8px">
+          <i data-lucide="clock"></i>
+          <span><b>Срок доставки:</b> 14–16 дней</span>
+        </div>
+
         <div class="specs"><b>Материал:</b> ${p.material ? escapeHtml(p.material) : '—'}</div>
 
         <div class="p-options">
