@@ -1,8 +1,7 @@
-// netlify/functions/notify.js
 // Serverless-функция Netlify: принимает событие от фронта и шлёт "тизер" в Telegram бота
 // ENV:
 //   TG_BOT_TOKEN     — токен бота (без "bot" префикса)        [обязателен для отправки]
-//   ADMIN_CHAT_ID    — chat_id администратора                  [желателен; иначе ждём chat_id от клиента]
+//   ADMIN_CHAT_ID    — chat_id(ы) администратора(ов), через запятую
 //   WEBAPP_URL       — базовый URL приложения для ссылок       [опционально]
 //   ALLOWED_ORIGINS  — список origin'ов через запятую          [опционально: '*', точные origin, '*.domain.com']
 
@@ -49,6 +48,24 @@ function buildCorsHeaders(origin) {
   };
 }
 
+async function sendTgMessage(token, chatId, text, btn){
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+      ...(btn ? { reply_markup: { inline_keyboard: [btn] } } : {})
+    })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data?.ok) {
+    throw new Error('telegram send failed');
+  }
+}
+
 export async function handler(event) {
   const origin = event.headers?.origin || event.headers?.Origin || '';
   const { headers, isAllowed } = buildCorsHeaders(origin);
@@ -74,25 +91,20 @@ export async function handler(event) {
     if (!token) return { statusCode: 500, body: 'TG_BOT_TOKEN is not set', ...headers };
 
     const webappUrl   = process.env.WEBAPP_URL || '';
-    const adminChatId = String(process.env.ADMIN_CHAT_ID || '').trim();
+    const adminChatIds = String(process.env.ADMIN_CHAT_ID || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
 
-    // В обычных (служебных) кейсах можно слать админу. В маркетинговых — нет смысла.
+    // В обычных (служебных) кейсах можно слать админам. В маркетинговых — нет смысла.
     const isMarketing = (type === 'cartReminder' || type === 'favReminder');
-    const targetChatId = String(clientChatId || (isMarketing ? '' : adminChatId) || '').trim();
-    if (!targetChatId) {
-      return { statusCode: 400, body: 'chat_id required', ...headers };
-    }
 
     const safeTitle = (t)=> (t ? String(t).slice(0,140) : '').trim();
     const goods = safeTitle(title) || 'товар';
 
-    // ⬇⬇⬇ ГЛАВНАЯ ПРАВКА: всегда ведём в «Мои заказы», а не на трекинг конкретного заказа
+    // Всегда ведём в «Мои заказы»
     const link = webappUrl ? `${webappUrl}#/orders` : undefined;
-
-    const btn = link ? [{
-      text: 'Мои заказы',
-      web_app: { url: link }
-    }] : null;
+    const btn = link ? [{ text: 'Мои заказы', web_app: { url: link } }] : null;
 
     const hint = 'Откройте приложение, чтобы посмотреть подробности.';
     const about = orderId
@@ -101,10 +113,8 @@ export async function handler(event) {
 
     let finalText;
     if (typeof text === 'string' && text.trim()){
-      // Клиент прислал уже «готовую» фразу — используем её без дополнений
       finalText = text.trim();
     } else {
-      // Шаблоны по типам
       switch (type) {
         case 'orderPlaced':    finalText = `Оформлен ${about} ${hint}`; break;
         case 'orderAccepted':  finalText = `Подтверждён ${about} ${hint}`; break;
@@ -116,24 +126,25 @@ export async function handler(event) {
       }
     }
 
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: targetChatId,
-        text: finalText,
-        parse_mode: 'HTML',
-        disable_web_page_preview: true,
-        ...(btn ? { reply_markup: { inline_keyboard: [btn] } } : {})
-      })
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.ok) {
-      return { statusCode: 502, body: JSON.stringify({ ok:false, tg:data }), ...headers };
+    // 1) Если указан clientChatId — отправляем только клиенту
+    if (clientChatId) {
+      await sendTgMessage(token, String(clientChatId), finalText, btn);
+      return { statusCode: 200, body: JSON.stringify({ ok:true }), ...headers };
     }
 
-    return { statusCode: 200, body: JSON.stringify({ ok:true }), ...headers };
+    // 2) Иначе (служебные), рассылаем всем админам (если не маркетинг)
+    if (!isMarketing && adminChatIds.length) {
+      const results = await Promise.allSettled(
+        adminChatIds.map(id => sendTgMessage(token, String(id), finalText, btn))
+      );
+      const anyOk = results.some(r => r.status === 'fulfilled');
+      if (!anyOk) {
+        return { statusCode: 502, body: JSON.stringify({ ok:false, error:'telegram failed for all admins' }), ...headers };
+      }
+      return { statusCode: 200, body: JSON.stringify({ ok:true }), ...headers };
+    }
+
+    return { statusCode: 400, body: 'chat_id required', ...headers };
   } catch (err) {
     console.error('[notify] handler error:', err);
     return { statusCode: 500, body: JSON.stringify({ ok:false, error:String(err) }), ...headers };

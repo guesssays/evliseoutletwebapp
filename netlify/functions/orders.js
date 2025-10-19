@@ -1,5 +1,5 @@
 // Централизованное хранилище заказов (Netlify Blobs) + операции админа
-// ENV: TG_BOT_TOKEN, ADMIN_CHAT_ID, WEBAPP_URL, ALLOWED_ORIGINS (опц.)
+// ENV: TG_BOT_TOKEN, ADMIN_CHAT_ID (может быть список через запятую), WEBAPP_URL, ALLOWED_ORIGINS (опц.)
 
 /* ---------------- CORS ---------------- */
 function parseAllowed() {
@@ -116,10 +116,8 @@ export async function handler(event) {
 async function getStoreSafe(){
   // Пытаемся подключить настоящий Blobs store
   try {
-    // Важно: в v7 используем именованный импорт getStore
     const { getStore } = await import('@netlify/blobs');
     const store = getStore('orders'); // общий namespace сайта
-    // Проверочный чтение (silent), чтобы отловить проблемы окружения
     await store.list({ prefix: '__ping__', paginate: false });
     console.log('[orders] Using Netlify Blobs via getStore');
     return makeBlobsStore(store);
@@ -134,7 +132,6 @@ function makeBlobsStore(store){
 
   async function readAll(){
     try{
-      // Сильная консистентность, чтобы админ видел мгновенно
       const data = await store.get(KEY_ALL, { type: 'json', consistency: 'strong' });
       return Array.isArray(data) ? data : [];
     }catch(e){
@@ -143,7 +140,6 @@ function makeBlobsStore(store){
     }
   }
   async function writeAll(list){
-    // Записываем JSON целиком
     await store.setJSON(KEY_ALL, list);
   }
 
@@ -151,7 +147,7 @@ function makeBlobsStore(store){
 }
 
 /* ---------------- In-memory fallback ---------------- */
-const __mem = { orders: [] }; // не персистентно
+const __mem = { orders: [] };
 function makeMemoryStore(){
   async function readAll(){ return __mem.orders.slice(); }
   async function writeAll(list){ __mem.orders = list.slice(); }
@@ -256,11 +252,15 @@ function makeStoreCore(readAll, writeAll){
   };
 }
 
-/* ---------------- Telegram admin notify (server-side) ---------------- */
+/* ---------------- Telegram admin notify (server-side, multi-admin) ---------------- */
 async function notifyAdminNewOrder(id, order){
   const token = process.env.TG_BOT_TOKEN;
-  const admin = process.env.ADMIN_CHAT_ID;
-  if (!token || !admin) return;
+  const adminIds = String(process.env.ADMIN_CHAT_ID || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  if (!token || adminIds.length === 0) return;
 
   const webappUrl = process.env.WEBAPP_URL || '';
   const title = order?.cart?.[0]?.title || order?.title || 'товар';
@@ -276,8 +276,7 @@ async function notifyAdminNewOrder(id, order){
     `• Сумма: ${Number(order?.total||0)} ${order?.currency||'UZS'}`
   ].filter(Boolean).join('\n');
 
-  const payload = {
-    chat_id: admin,
+  const payloadBase = {
     text,
     parse_mode: 'HTML',
     disable_web_page_preview: true,
@@ -285,10 +284,18 @@ async function notifyAdminNewOrder(id, order){
   };
 
   try{
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
+    const results = await Promise.allSettled(
+      adminIds.map(chat_id =>
+        fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ chat_id, ...payloadBase })
+        })
+        .then(r => r.json())
+      )
+    );
+    const allFailed = results.every(r => r.status === 'rejected' || (r.value && r.value.ok === false));
+    if (allFailed) console.error('[orders] telegram notify failed for all admins:', results);
   }catch(e){
     console.error('[orders] telegram notify error:', e);
   }

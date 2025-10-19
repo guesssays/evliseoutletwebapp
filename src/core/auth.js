@@ -6,11 +6,13 @@ const KEY_UNLOCK = 'nas_admin_unlock';
 // Telegram user.id админов (числа)
 const ADMIN_IDS = [
   5422089180,
+  6448300416
 ];
 
 // Telegram username админов БЕЗ @ и в кавычках
 const ADMIN_USERNAMES = [
   'dcoredanil',
+  'evliseorder'
 ];
 
 // Секретный код и срок его действия локальной разблокировки
