@@ -1,4 +1,4 @@
-// src/app.js
+// src/main.js
 import {
   state,
   loadCart,
@@ -11,18 +11,16 @@ import {
   getNotifications,
   setNotifications,
   pushNotification,
-  // pushNotificationFor, // больше не используем в «богатой» версии — уведомляем через сервер
 } from './core/state.js';
 
 import { toast } from './core/toast.js';
-import { el } from './core/utils.js';
-import { initTelegramChrome } from './core/utils.js';
+import { el, initTelegramChrome } from './core/utils.js';
 
 import { renderHome, drawCategoriesChips } from './components/Home.js';
 import { renderProduct } from './components/Product.js';
 import { renderCart } from './components/Cart.js';
 import { renderFavorites } from './components/Favorites.js';
-import { renderCategory } from './components/Category.js';
+import { renderCategory } from './components/Category.js'; // ВАЖНО: заглавная буква
 import { renderOrders, renderTrack } from './components/Orders.js';
 import { openFilterModal, renderActiveFilterChips } from './components/Filters.js';
 import { renderAccount, renderAddresses, renderSettings } from './components/Account.js';
@@ -35,25 +33,17 @@ import { renderAdminLogin } from './components/AdminLogin.js';
 import { getOrders, getStatusLabel } from './core/orders.js';
 import { canAccessAdmin, tryUnlockFromStartParam } from './core/auth.js';
 
-// === Пинг в Telegram-бота (короткие уведомления) ===
+// Пинг боту
 import {
   notifyOrderPlaced,
   notifyOrderAccepted,
   notifyStatusChanged,
   notifyOrderCanceled,
-  // новые маркетинговые пинги:
   notifyCartReminder,
   notifyFavoritesReminder,
 } from './core/botNotify.js';
 
-/* ====== «БОГАТЫЕ» уведомления: серверная синхронизация ======
-   Хранилище: Netlify Function (/.netlify/functions/notifs) с поддержкой:
-   - GET  ?op=list&uid=<uid>                        → [{ id, ts, read, icon, title, sub }]
-   - POST { op:'add',    uid, notif }               → { ok:true, id }
-   - POST { op:'markAll',uid }                      → { ok:true }
-   - POST { op:'mark',   uid, ids:[...]}            → { ok:true }
-   Клиент продолжает хранить кэш локально (Notifications.js не меняем).
-*/
+/* ===== «богатые» уведомления через Netlify Function ===== */
 const NOTIF_API = '/.netlify/functions/notifs';
 
 async function notifApiList(uid){
@@ -83,7 +73,6 @@ async function notifApiMarkAll(uid){
   }catch{}
 }
 
-/** Слияние серверных уведомлений с локальным кэшем, без дубликатов по id */
 function mergeNotifsToLocal(serverItems){
   const local = getNotifications();
   const byId = new Map(local.map(n => [String(n.id), n]));
@@ -96,7 +85,6 @@ function mergeNotifsToLocal(serverItems){
       byId.set(sid, { id:s.id, ts:s.ts||Date.now(), read:!!s.read, icon:s.icon||'bell', title:s.title||'', sub:s.sub||'' });
       changed = true;
     }else{
-      // обновим read-статус/текст, если вдруг поменялся
       const next = { ...prev, ...s };
       if (JSON.stringify(next) !== JSON.stringify(prev)){
         byId.set(sid, next);
@@ -110,7 +98,6 @@ function mergeNotifsToLocal(serverItems){
   }
 }
 
-/** Пуш на сервер для конкретного пользователя */
 async function serverPushFor(uid, notif){
   const safe = {
     id: notif.id || Date.now(),
@@ -123,7 +110,7 @@ async function serverPushFor(uid, notif){
   try{
     await notifApiAdd(uid, safe);
   }catch{
-    // фолбэк: положим локально, чтобы пользователь хоть что-то увидел
+    // фолбэк: кладём локально, чтобы пользователь увидел
     if (String(uid) === String(getUID?.())){
       const cache = getNotifications();
       cache.push(safe);
@@ -132,7 +119,6 @@ async function serverPushFor(uid, notif){
   }
 }
 
-/** Синхронизировать серверные уведомления текущего пользователя → локальный кэш */
 async function syncMyNotifications(){
   const uid = getUID();
   if (!uid) return;
@@ -143,11 +129,10 @@ async function syncMyNotifications(){
   }catch{}
 }
 
-/* ---------- Ранняя фиксация UID до загрузки персональных данных ---------- */
+/* ---------- ранняя фиксация UID ---------- */
 (function initUserIdentityEarly(){
   const tg = window.Telegram?.WebApp;
 
-  // если есть Telegram-пользователь — берём его id
   if (tg?.initDataUnsafe?.user) {
     const u = tg.initDataUnsafe.user;
     state.user = u;
@@ -155,23 +140,17 @@ async function syncMyNotifications(){
     return;
   }
 
-  // нет Telegram-пользователя: обеспечиваем УНИКАЛЬНЫЙ анонимный UID
   try{
     const stored = localStorage.getItem('nas_uid');
-    if (stored && stored !== 'guest') {
-      // уже есть персональный UID — ничего не делаем
-      return;
-    }
-    // либо не было, либо был общий "guest" — генерируем свой
+    if (stored && stored !== 'guest') return;
     const anon = 'anon_' + Math.random().toString(36).slice(2, 9) + '_' + Date.now().toString(36);
     localStorage.setItem('nas_uid', anon);
   }catch{
-    // на всякий случай оставим "guest", если localStorage недоступен
     try{ localStorage.setItem('nas_uid', 'guest'); }catch{}
   }
 })();
 
-/* ---------- Персональные данные (уже с корректным UID) ---------- */
+/* ---------- персональные данные ---------- */
 loadCart();
 loadAddresses();
 loadProfile();
@@ -206,14 +185,13 @@ function confirmAdminSwitch(onConfirm, onCancel){
   document.getElementById('admOk').onclick = ()=>{ close(); onConfirm && onConfirm(); };
   function close(){ modal.classList.remove('show'); }
 }
-/* ---------- helpers для таббара ---------- */
-function mountIcons(){ window.lucide?.createIcons && lucide.createIcons(); }
 
+/* ---------- таббар-хелперы ---------- */
+function mountIcons(){ window.lucide?.createIcons && lucide.createIcons(); }
 function killExternalCTA(){
   document.querySelectorAll('.cta, .paybtn').forEach(n => n.remove());
   document.body.classList.remove('has-cta');
 }
-
 function setTabbarMenu(activeKey = 'home'){
   const inner = document.querySelector('.tabbar .tabbar-inner');
   if (!inner) return;
@@ -240,7 +218,6 @@ function setTabbarMenu(activeKey = 'home'){
     return;
   }
 
-  // клиентский таббар
   const adminTab = canAccessAdmin() ? `
     <a href="#/admin" id="openAdminTab" data-tab="admin" class="tab ${activeKey==='admin'?'active':''}" role="tab" aria-selected="${String(activeKey==='admin')}">
       <i data-lucide="shield-check"></i><span>Админка</span>
@@ -274,8 +251,6 @@ function setTabbarMenu(activeKey = 'home'){
 
   updateCartBadge();
 }
-
-/** Один CTA внутри таббара */
 function setTabbarCTA(arg){
   const inner = document.querySelector('.tabbar .tabbar-inner');
   if (!inner) return;
@@ -291,8 +266,6 @@ function setTabbarCTA(arg){
   mountIcons();
   if (onClick) document.getElementById(id).onclick = onClick;
 }
-
-/** Два CTA */
 function setTabbarCTAs(
   left = { id:'ctaLeft', html:'', onClick:null },
   right = { id:'ctaRight', html:'', onClick:null }
@@ -312,7 +285,7 @@ function setTabbarCTAs(
   if (right.onClick) document.getElementById(right.id||'ctaRight').onclick = right.onClick;
 }
 
-/* Глобально доступные хелперы таббара (нужны для Cart/Product и т.п.) */
+/* делаем доступными глобально (нужно для Cart/Product и т.д.) */
 window.setTabbarMenu = setTabbarMenu;
 window.setTabbarCTA  = setTabbarCTA;
 window.setTabbarCTAs = setTabbarCTAs;
@@ -354,7 +327,6 @@ function updateNotifBadge(){
     b.setAttribute('aria-hidden','true');
   }
 }
-// делаем доступным глобально для вызовов из других модулей/шаблонов
 window.updateNotifBadge = updateNotifBadge;
 
 document.addEventListener('click', (e)=>{
@@ -368,13 +340,13 @@ function seedNotificationsOnce(){
     if (getNotifications().length) return;
     const seed = [
       { id: 1, title: 'Добро пожаловать в EVLISE OUTLET', sub: 'Подборка новинок уже на главной.', ts: Date.now()-1000*60*60*6, read:false, icon:'bell' },
-      { id: 2, title: 'Скидки на худи', sub: 'MANIA и DIRT — выгоднее на 15% до воскресенья.', ts: Date.now()-1000*60*50, read:false, icon:'percent' },
+      { id: 2, title: 'Скидки на худи', sub: 'MANIA и DIRT — выгоднее на 15% до воскресенье.', ts: Date.now()-1000*60*50, read:false, icon:'percent' },
     ];
     setNotifications(seed);
   }catch{}
 }
 
-/* ---------- Фикс-хедер товара: универсальное скрытие вне карточки ---------- */
+/* ---------- фикс-хедер товара: скрытие вне карточки ---------- */
 function hideProductHeader(){
   const stat = document.querySelector('.app-header');
   const fix  = document.getElementById('productFixHdr');
@@ -393,7 +365,7 @@ function hideProductHeader(){
   }
 }
 
-/* ---------- Роутер (АСИНХРОННЫЙ) ---------- */
+/* ---------- РОУТЕР ---------- */
 async function router(){
   const path=(location.hash||'#/').slice(1);
   const clean = path.replace(/#.*/,'');
@@ -417,11 +389,9 @@ async function router(){
   };
 
   setTabbarMenu(map[clean] || (inAdmin ? 'admin' : 'home'));
-
-  // Сбросить фикс-хедер товара при смене экрана
   hideProductHeader();
 
-  // Жёстко ограничиваем маршруты в админ-режиме
+  // Админ-режим
   if (inAdmin){
     if (parts.length===0 || parts[0] !== 'admin'){
       location.hash = '#/admin';
@@ -436,7 +406,7 @@ async function router(){
     return renderAdmin();
   }
 
-  // === обычный клиентский роутинг
+  // Клиентский роутинг
   if (parts.length===0) return renderHome(router);
   const m1=match('category/:slug'); if (m1) return renderCategory(m1);
   const m2=match('product/:id');   if (m2) return renderProduct(m2);
@@ -451,17 +421,13 @@ async function router(){
   if (match('account/settings'))   return renderSettings();
 
   if (match('notifications')){
-    // ВАЖНО: перед рендером подтягиваем свежие уведомления с сервера,
-    // чтобы изменения статуса заказа сразу появлялись в приложении.
     await syncMyNotifications();
     renderNotifications(updateNotifBadge);
-    // Параллельно отметим всё прочитанным на сервере
     const uid = getUID();
     notifApiMarkAll(uid);
     return;
   }
 
-  // если жмём «Админка» в клиентском режиме — покажем предупреждение
   if (match('admin')){
     if (!canAccessAdmin()){
       toast('Доступ в админ-панель ограничен');
@@ -477,28 +443,25 @@ async function router(){
     return;
   }
 
-  if (match('faq'))                return renderFAQ();
+  if (match('faq')) return renderFAQ();
 
   renderHome(router);
 }
 
-/* ---------- Инициализация ---------- */
+/* ---------- ИНИЦИАЛИЗАЦИЯ ---------- */
 async function init(){
   const res = await fetch('data/products.json'); const data = await res.json();
   state.products   = data.products;
   state.categories = data.categories.map(c=>({ ...c, name: c.name }));
 
-  // Заказы (теперь централизованы, просто грузим в state)
   try{ state.orders = await getOrders(); }catch{ state.orders = []; }
 
-  // САНИТИЗАЦИЯ КОРЗИНЫ
   pruneCartAgainstProducts(state.products);
   updateCartBadge();
 
   drawCategoriesChips(router);
   renderActiveFilterChips();
 
-  // применяем маршрут из start_param, если есть
   let startRoute = null;
   try{
     const tg = window.Telegram?.WebApp;
@@ -512,23 +475,18 @@ async function init(){
 
   window.addEventListener('hashchange', router);
 
-  // ВАЖНО: Больше не перезапускаем router() при обновлении заказов в админке,
-  // чтобы не сбрасывать вкладку/экран и не вызывать «прыжки».
   window.addEventListener('orders:updated', ()=>{
     const inAdmin = document.body.classList.contains('admin-mode');
     const isAdminRoute = location.hash.replace('#','').startsWith('/admin');
     if (inAdmin && isAdminRoute){
-      // мягко попросим админку просто перерисоваться
       try{ window.dispatchEvent(new CustomEvent('admin:refresh')); }catch{}
     }else{
-      // обычное поведение для клиентской части
       router();
     }
   });
 
   window.addEventListener('force:rerender', router);
 
-  // при смене прав — перерисовать таббар/выйти из админки при потере доступа
   window.addEventListener('auth:updated', ()=>{
     if (document.body.classList.contains('admin-mode') && !canAccessAdmin()){
       setAdminMode(false);
@@ -537,7 +495,6 @@ async function init(){
     router();
   });
 
-  // ===== утилита: короткий заголовок заказа для уведомлений в бота
   function buildOrderShortTitle(order) {
     const firstTitle =
       order?.cart?.[0]?.title ||
@@ -548,9 +505,6 @@ async function init(){
     return extra > 0 ? `${firstTitle} + ещё ${extra}` : firstTitle;
   }
 
-  // === УВЕДОМЛЕНИЯ: персонифицированные события + ПИНГ В БОТА ===
-
-  // локальный «мгновенный» пуш, если событие относится к текущему пользователю
   function instantLocalIfSelf(targetUid, notif){
     if (String(targetUid) === String(getUID?.())) {
       pushNotification(notif);
@@ -562,7 +516,6 @@ async function init(){
     try{
       const id = e.detail?.id;
 
-      // локальный быстрый отклик для пользователя
       pushNotification({
         icon: 'package',
         title: 'Заказ оформлен',
@@ -570,18 +523,15 @@ async function init(){
       });
       updateNotifBadge?.();
 
-      // положим на сервер (богатая версия)
       await serverPushFor(getUID(), {
         icon:'package',
         title:'Заказ оформлен',
         sub:`#${id} — ожидает подтверждения`
       });
 
-      // подготовим название для бота
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
       const title = buildOrderShortTitle(order);
 
-      // пинг боту: только если это Telegram-пользователь
       const uid = state?.user?.id;
       notifyOrderPlaced(uid, { orderId: id, title });
     }catch{}
@@ -597,10 +547,7 @@ async function init(){
         sub: `#${id}`,
       };
 
-      // серверное уведомление адресно пользователю
       await serverPushFor(userId, notif);
-
-      // мгновенно показать в приложении, если это текущий пользователь
       instantLocalIfSelf(userId, notif);
 
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
@@ -620,8 +567,6 @@ async function init(){
       };
 
       await serverPushFor(userId, notif);
-
-      // мгновенно показать в приложении, если это текущий пользователь
       instantLocalIfSelf(userId, notif);
 
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
@@ -641,8 +586,6 @@ async function init(){
       };
 
       await serverPushFor(userId, notif);
-
-      // мгновенно показать в приложении, если это текущий пользователь
       instantLocalIfSelf(userId, notif);
 
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
@@ -656,31 +599,27 @@ async function init(){
   seedNotificationsOnce();
   updateNotifBadge();
 
-  // Синхронизация серверных уведомлений пользователя: сразу и по интервалу
+  // синк уведомлений сразу и по интервалу
   syncMyNotifications();
-  const NOTIF_POLL_MS = 30000; // 30 секунд (можно увеличить до 60–120с)
+  const NOTIF_POLL_MS = 30000;
   setInterval(syncMyNotifications, NOTIF_POLL_MS);
 
-  // Дополнительно: при возвращении приложения на передний план — подтягиваем свежие уведомления
   document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) syncMyNotifications(); });
 
-  // === МАРКЕТИНГОВЫЕ ПИНГИ В БОТА: корзина (каждый вечер), избранное (каждые 3 дня вечером) ===
+  // маркетинговые пинги
   scheduleMarketingBotPings();
 }
 init();
 
-/* ---------- Фильтры ---------- */
-// ИСПРАВЛЕНО: безопасно навешиваем обработчик только если кнопка существует
+/* ---------- ФИЛЬТРЫ ---------- */
 document.getElementById('openFilters')?.addEventListener('click', ()=> openFilterModal(router));
 
-// экспорт если понадобится
 export { updateNotifBadge, getNotifications, setNotifications, setTabbarMenu, setTabbarCTA, setTabbarCTAs };
 
-/* ====== Маркетинговые напоминания в бота (клиентский планировщик) ====== */
+/* ===== маркетинговые напоминания в бота ===== */
 function scheduleMarketingBotPings(){
-  // шлём только если это Telegram WebApp-пользователь
   const chatId = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-  if (!chatId) return; // не спамим администратора/гостя
+  if (!chatId) return;
 
   const uid = getUID();
   const K_LAST_CART = `mkt_last_cart__${uid}`;
@@ -702,7 +641,7 @@ function scheduleMarketingBotPings(){
   ];
 
   function nowLocal(){ return new Date(); }
-  function isEvening(d){ const h=d.getHours(); return h>=20 && h<22; } // «вечер»
+  function isEvening(d){ const h=d.getHours(); return h>=20 && h<22; }
   function dayKey(d){ return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
   function daysBetween(ts){
     if (!ts) return Infinity;
@@ -721,7 +660,7 @@ function scheduleMarketingBotPings(){
     const d = nowLocal();
     if (!isEvening(d)) return;
 
-    // Корзина — каждый вечер, если в корзине что-то есть и сегодня ещё не слали
+    // корзина — каждый вечер, если есть и сегодня ещё не слали
     try{
       const lastCartKey = localStorage.getItem(K_LAST_CART) || '';
       if (state.cart?.items?.length > 0 && lastCartKey !== dayKey(d)){
@@ -735,11 +674,10 @@ function scheduleMarketingBotPings(){
       }
     }catch{}
 
-    // Избранное — раз в 3 дня, если есть избранные
+    // избранное — раз в 3 дня
     try{
       const lastFavTs = Number(localStorage.getItem(K_LAST_FAV) || 0);
       if ((state.favorites?.size || 0) > 0 && daysBetween(lastFavTs) >= 3){
-        // возьмём любой «живой» товар из избранного
         const favId = [...state.favorites][0];
         const p = state.products.find(x => String(x.id) === String(favId));
         const title = p?.title || 'товар';
@@ -751,11 +689,9 @@ function scheduleMarketingBotPings(){
     }catch{}
   }
 
-  // Проверяем чаще, чем «раз в вечер», но шлём максимум по разу
   tick();
-  const TIMER_MS = 10 * 60 * 1000; // каждые 10 минут
+  const TIMER_MS = 10 * 60 * 1000;
   setInterval(tick, TIMER_MS);
 
-  // При возврате на передний план — тоже проверим
   document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) tick(); });
 }
