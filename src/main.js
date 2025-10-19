@@ -536,6 +536,15 @@ async function init(){
   }
 
   // === УВЕДОМЛЕНИЯ: персонифицированные события + ПИНГ В БОТА ===
+
+  // локальный «мгновенный» пуш, если событие относится к текущему пользователю
+  function instantLocalIfSelf(targetUid, notif){
+    if (String(targetUid) === String(getUID?.())) {
+      pushNotification(notif);
+      updateNotifBadge?.();
+    }
+  }
+
   window.addEventListener('client:orderPlaced', async (e)=>{
     try{
       const id = e.detail?.id;
@@ -569,19 +578,20 @@ async function init(){
     try{
       const { id, userId } = e.detail || {};
 
-      // серверное уведомление адресно пользователю
-      await serverPushFor(userId, {
+      const notif = {
         icon: 'shield-check',
         title: 'Заказ принят администратором',
         sub: `#${id}`,
-      });
+      };
 
-      // если админ и есть тот же UID — обновим бейдж себе (редкий кейс)
-      if (String(userId) === String(getUID?.())) updateNotifBadge?.();
+      // серверное уведомление адресно пользователю
+      await serverPushFor(userId, notif);
+
+      // мгновенно показать в приложении, если это текущий пользователь
+      instantLocalIfSelf(userId, notif);
 
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
       const title = buildOrderShortTitle(order);
-
       notifyOrderAccepted(userId, { orderId: id, title });
     }catch{}
   });
@@ -590,16 +600,19 @@ async function init(){
     try{
       const { id, status, userId } = e.detail || {};
 
-      await serverPushFor(userId, {
+      const notif = {
         icon: 'refresh-ccw',
         title: 'Статус заказа обновлён',
         sub: `#${id}: ${getStatusLabel(status)}`,
-      });
-      if (String(userId) === String(getUID?.())) updateNotifBadge?.();
+      };
+
+      await serverPushFor(userId, notif);
+
+      // мгновенно показать в приложении, если это текущий пользователь
+      instantLocalIfSelf(userId, notif);
 
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
       const title = buildOrderShortTitle(order);
-
       notifyStatusChanged(userId, { orderId: id, title });
     }catch{}
   });
@@ -608,16 +621,19 @@ async function init(){
     try{
       const { id, reason, userId } = e.detail || {};
 
-      await serverPushFor(userId, {
+      const notif = {
         icon: 'x-circle',
         title: 'Заказ отменён',
         sub: `#${id}${reason ? ` — ${reason}` : ''}`,
-      });
-      if (String(userId) === String(getUID?.())) updateNotifBadge?.();
+      };
+
+      await serverPushFor(userId, notif);
+
+      // мгновенно показать в приложении, если это текущий пользователь
+      instantLocalIfSelf(userId, notif);
 
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
       const title = buildOrderShortTitle(order);
-
       notifyOrderCanceled(userId, { orderId: id, title });
     }catch{}
   });
