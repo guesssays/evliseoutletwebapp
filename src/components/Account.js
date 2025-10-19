@@ -5,7 +5,6 @@ import { canAccessAdmin } from '../core/auth.js';
 const OP_CHAT_URL = 'https://t.me/evliseorder';
 
 export function renderAccount(){
-  // страховка: вдруг висит фикс-хедер товара — уберём, чтобы ничего не перекрывало клики
   try{
     document.querySelector('.app-header')?.classList.remove('hidden');
     const fix = document.getElementById('productFixHdr');
@@ -14,7 +13,6 @@ export function renderAccount(){
 
   const v=document.getElementById('view');
   const u = state.user;
-
   const isAdmin = canAccessAdmin();
 
   v.innerHTML = `
@@ -45,7 +43,6 @@ export function renderAccount(){
     </section>`;
   window.lucide?.createIcons && lucide.createIcons();
 
-  // Кнопка «Поддержка» → чат оператора
   document.getElementById('supportBtn')?.addEventListener('click', ()=>{
     openExternal(OP_CHAT_URL);
   });
@@ -60,7 +57,6 @@ export function renderAddresses(){
     <section class="section">
       <div class="section-title">Адреса доставки</div>
 
-      <!-- локальные стили — кнопки в столбик справа -->
       <style>
         .addr-list .addr{
           display:grid;
@@ -75,7 +71,7 @@ export function renderAddresses(){
         }
         .addr-list .addr input[type="radio"]{
           margin: 0 4px 0 0;
-          align-self: start;
+          align-self: center; /* ⬅ фикс смещения вверх */
         }
         .addr-list .addr-body{
           min-width: 0;
@@ -145,7 +141,6 @@ export function renderAddresses(){
       </div>
     </section>`;
 
-  // делегирование кликов на список (редактирование/удаление)
   const listEl = v.querySelector('.addr-list');
   if (listEl){
     listEl.addEventListener('click', (e)=>{
@@ -160,9 +155,9 @@ export function renderAddresses(){
       if (editBtn){
         const cur = state.addresses.list[idx];
         const nickname = prompt('Название (например, Дом)', cur.nickname || '');
-        if (nickname === null) return; // отмена
+        if (nickname === null) return;
         const address = prompt('Полный адрес', cur.address || '');
-        if (address === null) return; // отмена
+        if (address === null) return;
         state.addresses.list[idx] = { ...cur, nickname: (nickname||'').trim(), address: (address||'').trim() };
         persistAddresses();
         renderAddresses();
@@ -174,8 +169,6 @@ export function renderAddresses(){
         const ok = confirm(`Удалить адрес "${cur.nickname||'Без названия'}"?`);
         if (!ok) return;
         state.addresses.list.splice(idx, 1);
-
-        // если удалили адрес по умолчанию — поставить другой
         if (Number(state.addresses.defaultId) === id){
           state.addresses.defaultId = state.addresses.list[0]?.id ?? null;
         }
@@ -186,7 +179,6 @@ export function renderAddresses(){
     });
   }
 
-  // добавить новый
   document.getElementById('addAddr')?.addEventListener('click', ()=>{
     const nickname = prompt('Название (например, Дом)');
     if (nickname === null) return;
@@ -200,7 +192,6 @@ export function renderAddresses(){
     renderAddresses();
   });
 
-  // сохранить выбранный адрес по умолчанию
   document.getElementById('saveAddr')?.addEventListener('click', ()=>{
     const r = v.querySelector('input[name="addr"]:checked');
     if (r){ state.addresses.defaultId = Number(r.getAttribute('data-id')); persistAddresses(); }
@@ -210,7 +201,7 @@ export function renderAddresses(){
   window.lucide?.createIcons && lucide.createIcons();
 }
 
-// Настройки из меню убраны, но рендер оставим на случай прямого перехода по URL
+// Настройки оставлены для прямого URL, но не показываются в меню
 export function renderSettings(){
   const v=document.getElementById('view');
   v.innerHTML = `
@@ -227,14 +218,8 @@ export function renderSettings(){
 function openExternal(url){
   try{
     const tg = window?.Telegram?.WebApp;
-    if (tg?.openTelegramLink){
-      tg.openTelegramLink(url);
-      return;
-    }
-    if (tg?.openLink){
-      tg.openLink(url, { try_instant_view:false });
-      return;
-    }
+    if (tg?.openTelegramLink){ tg.openTelegramLink(url); return; }
+    if (tg?.openLink){ tg.openLink(url, { try_instant_view:false }); return; }
   }catch{}
   window.open(url, '_blank', 'noopener');
 }

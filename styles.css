@@ -536,3 +536,14 @@ body.admin-mode .tabbar{ display:none !important; }
 /* совместимость */
 .btn.outline{ background:#fff; color:#121111; border:1px solid var(--stroke); box-shadow:0 0 0 0 transparent; }
 .btn.primary{ background:#121111; color:#fff; border:1px solid #121111; }
+.addr-list{ display:grid; gap:10px; margin:0 18px 12px; }
+.addr{
+  display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:center;
+  padding:12px; border:1px solid var(--stroke); border-radius:14px; background:#fff;
+}
+.addr input[type="radio"]{
+  width:18px; height:18px; accent-color:#121111;
+  align-self: center;          /* ⬅ фикс: центр по гриду */
+  margin: 0;                   /* ⬅ убираем возможный сдвиг */
+  vertical-align: middle;      /* ⬅ страховка для разных UA */
+}
