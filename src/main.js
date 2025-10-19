@@ -132,6 +132,7 @@ async function syncMyNotifications(){
 (function initUserIdentityEarly(){
   const tg = window.Telegram?.WebApp;
 
+  // Telegram-пользователь → фиксируем его id как UID
   if (tg?.initDataUnsafe?.user) {
     const u = tg.initDataUnsafe.user;
     state.user = u;
@@ -139,13 +140,12 @@ async function syncMyNotifications(){
     return;
   }
 
+  // Гость → ВСЕГДА общий UID 'guest' (без анонимных anon_…)
   try{
     const stored = localStorage.getItem('nas_uid');
-    if (stored && stored !== 'guest') return;
-    const anon = 'anon_' + Math.random().toString(36).slice(2, 9) + '_' + Date.now().toString(36);
-    localStorage.setItem('nas_uid', anon);
+    if (!stored) localStorage.setItem('nas_uid', 'guest');
   }catch{
-    try{ localStorage.setItem('nas_uid', 'guest'); }catch{}
+    // ignore
   }
 })();
 
@@ -533,6 +533,9 @@ async function init(){
 
       const uid = state?.user?.id;
       notifyOrderPlaced(uid, { orderId: id, title });
+
+      // ВАЖНО: сообщаем приложению, что список заказов изменился (админка обновится)
+      window.dispatchEvent(new CustomEvent('orders:updated'));
     }catch{}
   });
 
