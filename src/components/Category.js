@@ -1,6 +1,7 @@
-// src/components/Home.js
-import { state, isFav, toggleFav } from '../core/state.js';
+// src/components/Category.js
+import { state } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
+import { isFav, toggleFav } from '../core/state.js';
 
 function findCategoryBySlug(slug){
   for (const g of state.categories){
@@ -20,66 +21,11 @@ function expandSlugs(slug){
 }
 
 function categoryNameBySlug(slug){
-  return findCategoryBySlug(slug)?.name || '';
+  const c = findCategoryBySlug(slug);
+  return c?.name || '';
 }
 
-export function renderHome(router){
-  const v = document.getElementById('view');
-  v.innerHTML = `<div class="grid home-bottom-pad" id="productGrid"></div>`;
-  drawCategoriesChips(router);
-  drawProducts(state.products);
-}
-
-/**
- * Рендер чипов категорий (только ОБЩИЕ группы + служебные).
- * Клик по группе агрегирует все её подкатегории.
- */
-export function drawCategoriesChips(router){
-  const wrap = document.getElementById('catChips');
-  if (!wrap) return;
-
-  const mk=(slug, name, active)=>`<button class="chip ${active?'active':''}" data-slug="${slug}">${name}</button>`;
-
-  wrap.innerHTML='';
-  wrap.insertAdjacentHTML('beforeend', mk('all','Все товары', state.filters.category==='all'));
-  wrap.insertAdjacentHTML('beforeend', mk('new','Новинки', state.filters.category==='new'));
-
-  // только верхний уровень (общие категории)
-  state.categories.forEach(c=>{
-    if (c.slug === 'new') return;
-    wrap.insertAdjacentHTML('beforeend', mk(c.slug, c.name, state.filters.category===c.slug));
-  });
-
-  if (!wrap.dataset.bound){
-    wrap.addEventListener('click', (e)=>{
-      const b = e.target.closest('.chip'); if (!b) return;
-
-      const slug = b.getAttribute('data-slug');
-      if (slug === state.filters.category) return;
-
-      wrap.querySelector('.chip.active')?.classList.remove('active');
-      b.classList.add('active');
-
-      state.filters.category = slug;
-
-      let list;
-      if (slug === 'all') {
-        list = state.products;
-      } else if (slug === 'new') {
-        list = state.products.slice(0, 24);
-      } else {
-        const pool = new Set(expandSlugs(slug));
-        list = state.products.filter(p => pool.has(p.categoryId));
-      }
-
-      drawProducts(list);
-    });
-    wrap.dataset.bound = '1';
-  }
-}
-
-/** Рисуем карточки товаров. */
-export function drawProducts(list){
+function drawProducts(list){
   const grid = document.getElementById('productGrid');
   if (!grid) return;
   grid.innerHTML='';
@@ -101,8 +47,7 @@ export function drawProducts(list){
     const im = node.querySelector('img');
     if (im){ im.src = p.images?.[0] || ''; im.alt = p.title; }
 
-    const titleEl = node.querySelector('.title');
-    if (titleEl) titleEl.textContent = p.title;
+    node.querySelector('.title')?.append(p.title);
 
     const subEl = node.querySelector('.subtitle');
     if (subEl) {
@@ -129,4 +74,34 @@ export function drawProducts(list){
 
   grid.appendChild(frag);
   window.lucide?.createIcons && lucide.createIcons();
+}
+
+/**
+ * Рендер экрана категории по slug: объединяем все дочерние
+ * подкатегории выбранной группы и рисуем сетку товаров.
+ * @param {{slug:string}} params
+ */
+export function renderCategory(params){
+  const slug = params?.slug || 'all';
+  state.filters.category = slug;
+
+  const v = document.getElementById('view');
+  v.innerHTML = `
+    <div class="section">
+      <h2 style="margin:8px 12px">${categoryNameBySlug(slug) || 'Категория'}</h2>
+    </div>
+    <div class="grid home-bottom-pad" id="productGrid"></div>
+  `;
+
+  let list;
+  if (slug === 'all') {
+    list = state.products;
+  } else if (slug === 'new') {
+    list = state.products.slice(0, 24);
+  } else {
+    const pool = new Set(expandSlugs(slug));
+    list = state.products.filter(p => pool.has(p.categoryId));
+  }
+
+  drawProducts(list);
 }

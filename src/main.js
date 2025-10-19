@@ -33,7 +33,7 @@ import { renderAdminLogin } from './components/AdminLogin.js';
 import { getOrders, getStatusLabel } from './core/orders.js';
 import { canAccessAdmin, tryUnlockFromStartParam } from './core/auth.js';
 
-// Пинг боту
+// Пинг в бота
 import {
   notifyOrderPlaced,
   notifyOrderAccepted,
@@ -110,7 +110,6 @@ async function serverPushFor(uid, notif){
   try{
     await notifApiAdd(uid, safe);
   }catch{
-    // фолбэк: кладём локально, чтобы пользователь увидел
     if (String(uid) === String(getUID?.())){
       const cache = getNotifications();
       cache.push(safe);
@@ -340,7 +339,7 @@ function seedNotificationsOnce(){
     if (getNotifications().length) return;
     const seed = [
       { id: 1, title: 'Добро пожаловать в EVLISE OUTLET', sub: 'Подборка новинок уже на главной.', ts: Date.now()-1000*60*60*6, read:false, icon:'bell' },
-      { id: 2, title: 'Скидки на худи', sub: 'MANIA и DIRT — выгоднее на 15% до воскресенье.', ts: Date.now()-1000*60*50, read:false, icon:'percent' },
+      { id: 2, title: 'Скидки на худи', sub: 'MANIA и DIRT — выгоднее на 15% до воскресенья.', ts: Date.now()-1000*60*50, read:false, icon:'percent' },
     ];
     setNotifications(seed);
   }catch{}
@@ -660,7 +659,6 @@ function scheduleMarketingBotPings(){
     const d = nowLocal();
     if (!isEvening(d)) return;
 
-    // корзина — каждый вечер, если есть и сегодня ещё не слали
     try{
       const lastCartKey = localStorage.getItem(K_LAST_CART) || '';
       if (state.cart?.items?.length > 0 && lastCartKey !== dayKey(d)){
@@ -674,7 +672,6 @@ function scheduleMarketingBotPings(){
       }
     }catch{}
 
-    // избранное — раз в 3 дня
     try{
       const lastFavTs = Number(localStorage.getItem(K_LAST_FAV) || 0);
       if ((state.favorites?.size || 0) > 0 && daysBetween(lastFavTs) >= 3){
