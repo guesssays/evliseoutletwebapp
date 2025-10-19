@@ -60,7 +60,7 @@ export function renderFAQ(){
       <style>
         /* ==== A C C O R D I O N  (адаптив) ==== */
         .faq{
-          margin: 0 0 18px;
+          margin: 0 0 12px;
           display: grid;
           gap: 10px;
         }
@@ -114,12 +114,46 @@ export function renderFAQ(){
           .faq .a{ padding: 0 12px 12px 50px; font-size: 14px; }
         }
 
-        /* кнопка поддержки */
-        .faq-actions{
+        /* компактный блок поддержки */
+        .support-strip{
           margin-top: 6px;
+          border:1px solid var(--stroke);
+          border-radius:14px;
+          background:#fff;
           display:flex;
-          justify-content:flex-end;
+          align-items:center;
+          gap:10px;
+          padding:10px 12px;
         }
+        .support-strip i{ width:20px; height:20px; opacity:.9; }
+        .support-text{ min-width:0; flex:1; }
+        .support-title{
+          font-weight:800;
+          line-height:1.1;
+          font-size:14px;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        }
+        .support-sub{
+          color:var(--muted);
+          font-size:12px;
+          line-height:1.2;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        }
+        /* на узких экранах показываем только одну короткую строку */
+        @media (max-width: 420px){
+          .support-sub{ display:none; }
+        }
+        .support-strip .pill{
+          flex:0 0 auto;
+          height:36px;
+          padding:0 12px;
+          border-radius:12px;
+        }
+        .support-strip .pill i{ width:18px; height:18px; }
       </style>
 
       <div class="faq" id="faqList">
@@ -134,11 +168,12 @@ export function renderFAQ(){
           </details>
         `).join('')}
 
-        <div class="note" style="margin-top:6px">
+        <!-- Компактная поддержка: одна строка + кнопка -->
+        <div class="support-strip">
           <i data-lucide="message-circle"></i>
-          <div>
-            <div class="note-title">Нужна помощь прямо сейчас?</div>
-            <div class="note-sub">Задайте вопрос в чате — отвечаем как можно быстрее. По оформленному заказу укажите номер (например, #12345).</div>
+          <div class="support-text">
+            <div class="support-title">Нужна помощь?</div>
+            <div class="support-sub">Напишите оператору — ответим быстро</div>
           </div>
           <button id="faqSupport" class="pill"><i data-lucide="send"></i><span>Поддержка</span></button>
         </div>
@@ -152,13 +187,12 @@ export function renderFAQ(){
     openExternal(OP_CHAT_URL);
   });
 
-  // Делегирование кликов по summary: фокус + плавное закрытие соседей (по желанию UX)
+  // Делегирование кликов по summary: режим «один открыт»
   const faq = document.getElementById('faqList');
   faq?.addEventListener('click', (e)=>{
     const sm = e.target.closest('summary');
     if (!sm) return;
-    const host = sm.parentElement;                 // текущий <details>
-    // режим "один открыт" — закрываем остальные
+    const host = sm.parentElement;
     if (!host.open){
       faq.querySelectorAll('details[open]').forEach(d => { if (d!==host) d.removeAttribute('open'); });
     }
