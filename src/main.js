@@ -380,8 +380,8 @@ function hideProductHeader(){
   }
 }
 
-/* ---------- Роутер ---------- */
-function router(){
+/* ---------- Роутер (АСИНХРОННЫЙ) ---------- */
+async function router(){
   const path=(location.hash||'#/').slice(1);
   const clean = path.replace(/#.*/,'');
 
@@ -438,7 +438,9 @@ function router(){
   if (match('account/settings'))   return renderSettings();
 
   if (match('notifications')){
-    // Рендер локального кэша и апдейт бейджа
+    // ВАЖНО: перед рендером подтягиваем свежие уведомления с сервера,
+    // чтобы изменения статуса заказа сразу появлялись в приложении.
+    await syncMyNotifications();
     renderNotifications(updateNotifBadge);
     // Параллельно отметим всё прочитанным на сервере
     const uid = getUID();
@@ -493,7 +495,7 @@ async function init(){
   }catch{}
   if (startRoute){ location.hash = startRoute; }
 
-  router();
+  await router();
 
   window.addEventListener('hashchange', router);
 
@@ -629,6 +631,9 @@ async function init(){
   syncMyNotifications();
   const NOTIF_POLL_MS = 30000; // 30 секунд (можно увеличить до 60–120с)
   setInterval(syncMyNotifications, NOTIF_POLL_MS);
+
+  // Дополнительно: при возвращении приложения на передний план — подтягиваем свежие уведомления
+  document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) syncMyNotifications(); });
 }
 init();
 
