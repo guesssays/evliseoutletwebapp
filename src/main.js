@@ -11,7 +11,7 @@ import {
   getNotifications,
   setNotifications,
   pushNotification,
-  pushNotificationFor,
+  // pushNotificationFor, // больше не используем в «богатой» версии — уведомляем через сервер
 } from './core/state.js';
 
 import { toast } from './core/toast.js';
@@ -42,6 +42,103 @@ import {
   notifyStatusChanged,
   notifyOrderCanceled,
 } from './core/botNotify.js';
+
+/* ====== «БОГАТЫЕ» уведомления: серверная синхронизация ======
+   Хранилище: Netlify Function (/.netlify/functions/notifs) с поддержкой:
+   - GET  ?op=list&uid=<uid>                        → [{ id, ts, read, icon, title, sub }]
+   - POST { op:'add',    uid, notif }               → { ok:true, id }
+   - POST { op:'markAll',uid }                      → { ok:true }
+   - POST { op:'mark',   uid, ids:[...]}            → { ok:true }
+   Клиент продолжает хранить кэш локально (Notifications.js не меняем).
+*/
+const NOTIF_API = '/.netlify/functions/notifs';
+
+async function notifApiList(uid){
+  const url = `${NOTIF_API}?op=list&uid=${encodeURIComponent(uid)}`;
+  const res = await fetch(url, { method: 'GET' });
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok || !data?.ok) throw new Error('notif list error');
+  return Array.isArray(data.items) ? data.items : [];
+}
+async function notifApiAdd(uid, notif){
+  const res = await fetch(NOTIF_API, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ op:'add', uid:String(uid), notif })
+  });
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok || !data?.ok) throw new Error('notif add error');
+  return data.id || notif.id || Date.now();
+}
+async function notifApiMarkAll(uid){
+  try{
+    await fetch(NOTIF_API, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ op:'markAll', uid:String(uid) })
+    });
+  }catch{}
+}
+
+/** Слияние серверных уведомлений с локальным кэшем, без дубликатов по id */
+function mergeNotifsToLocal(serverItems){
+  const local = getNotifications();
+  const byId = new Map(local.map(n => [String(n.id), n]));
+  let changed = false;
+
+  for (const s of serverItems){
+    const sid = String(s.id);
+    const prev = byId.get(sid);
+    if (!prev){
+      byId.set(sid, { id:s.id, ts:s.ts||Date.now(), read:!!s.read, icon:s.icon||'bell', title:s.title||'', sub:s.sub||'' });
+      changed = true;
+    }else{
+      // обновим read-статус/текст, если вдруг поменялся
+      const next = { ...prev, ...s };
+      if (JSON.stringify(next) !== JSON.stringify(prev)){
+        byId.set(sid, next);
+        changed = true;
+      }
+    }
+  }
+
+  if (changed){
+    setNotifications([...byId.values()].sort((a,b)=> (b.ts||0)-(a.ts||0)));
+  }
+}
+
+/** Пуш на сервер для конкретного пользователя */
+async function serverPushFor(uid, notif){
+  const safe = {
+    id: notif.id || Date.now(),
+    ts: notif.ts || Date.now(),
+    read: !!notif.read,
+    icon: notif.icon || 'bell',
+    title: String(notif.title || ''),
+    sub: String(notif.sub || '')
+  };
+  try{
+    await notifApiAdd(uid, safe);
+  }catch{
+    // фолбэк: положим локально, чтобы пользователь хоть что-то увидел
+    if (String(uid) === String(getUID?.())){
+      const cache = getNotifications();
+      cache.push(safe);
+      setNotifications(cache);
+    }
+  }
+}
+
+/** Синхронизировать серверные уведомления текущего пользователя → локальный кэш */
+async function syncMyNotifications(){
+  const uid = getUID();
+  if (!uid) return;
+  try{
+    const items = await notifApiList(uid);
+    mergeNotifsToLocal(items);
+    updateNotifBadge?.();
+  }catch{}
+}
 
 /* ---------- Ранняя фиксация UID до загрузки персональных данных ---------- */
 (function initUserIdentityEarly(){
@@ -340,7 +437,14 @@ function router(){
   if (match('account/addresses'))  return renderAddresses();
   if (match('account/settings'))   return renderSettings();
 
-  if (match('notifications'))      return renderNotifications(updateNotifBadge);
+  if (match('notifications')){
+    // Рендер локального кэша и апдейт бейджа
+    renderNotifications(updateNotifBadge);
+    // Параллельно отметим всё прочитанным на сервере
+    const uid = getUID();
+    notifApiMarkAll(uid);
+    return;
+  }
 
   // если жмём «Админка» в клиентском режиме — покажем предупреждение
   if (match('admin')){
@@ -434,13 +538,20 @@ async function init(){
     try{
       const id = e.detail?.id;
 
-      // локально — только текущему клиенту:
+      // локальный быстрый отклик для пользователя
       pushNotification({
         icon: 'package',
         title: 'Заказ оформлен',
         sub: `#${id} — ожидает подтверждения`,
       });
       updateNotifBadge?.();
+
+      // положим на сервер (богатая версия)
+      await serverPushFor(getUID(), {
+        icon:'package',
+        title:'Заказ оформлен',
+        sub:`#${id} — ожидает подтверждения`
+      });
 
       // подготовим название для бота
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
@@ -456,11 +567,14 @@ async function init(){
     try{
       const { id, userId } = e.detail || {};
 
-      pushNotificationFor(userId, {
+      // серверное уведомление адресно пользователю
+      await serverPushFor(userId, {
         icon: 'shield-check',
         title: 'Заказ принят администратором',
         sub: `#${id}`,
       });
+
+      // если админ и есть тот же UID — обновим бейдж себе (редкий кейс)
       if (String(userId) === String(getUID?.())) updateNotifBadge?.();
 
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
@@ -474,7 +588,7 @@ async function init(){
     try{
       const { id, status, userId } = e.detail || {};
 
-      pushNotificationFor(userId, {
+      await serverPushFor(userId, {
         icon: 'refresh-ccw',
         title: 'Статус заказа обновлён',
         sub: `#${id}: ${getStatusLabel(status)}`,
@@ -492,7 +606,7 @@ async function init(){
     try{
       const { id, reason, userId } = e.detail || {};
 
-      pushNotificationFor(userId, {
+      await serverPushFor(userId, {
         icon: 'x-circle',
         title: 'Заказ отменён',
         sub: `#${id}${reason ? ` — ${reason}` : ''}`,
@@ -510,6 +624,11 @@ async function init(){
 
   seedNotificationsOnce();
   updateNotifBadge();
+
+  // Синхронизация серверных уведомлений пользователя: сразу и по интервалу
+  syncMyNotifications();
+  const NOTIF_POLL_MS = 30000; // 30 секунд (можно увеличить до 60–120с)
+  setInterval(syncMyNotifications, NOTIF_POLL_MS);
 }
 init();
 
