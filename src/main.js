@@ -41,6 +41,9 @@ import {
   notifyOrderAccepted,
   notifyStatusChanged,
   notifyOrderCanceled,
+  // новые маркетинговые пинги:
+  notifyCartReminder,
+  notifyFavoritesReminder,
 } from './core/botNotify.js';
 
 /* ====== «БОГАТЫЕ» уведомления: серверная синхронизация ======
@@ -650,6 +653,9 @@ async function init(){
 
   // Дополнительно: при возвращении приложения на передний план — подтягиваем свежие уведомления
   document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) syncMyNotifications(); });
+
+  // === МАРКЕТИНГОВЫЕ ПИНГИ В БОТА: корзина (каждый вечер), избранное (каждые 3 дня вечером) ===
+  scheduleMarketingBotPings();
 }
 init();
 
@@ -658,3 +664,87 @@ document.getElementById('openFilters').onclick=()=> openFilterModal(router);
 
 // экспорт если понадобится
 export { updateNotifBadge, getNotifications, setNotifications, setTabbarMenu, setTabbarCTA, setTabbarCTAs };
+
+/* ====== Маркетинговые напоминания в бота (клиентский планировщик) ====== */
+function scheduleMarketingBotPings(){
+  // шлём только если это Telegram WebApp-пользователь
+  const chatId = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  if (!chatId) return; // не спамим администратора/гостя
+
+  const uid = getUID();
+  const K_LAST_CART = `mkt_last_cart__${uid}`;
+  const K_LAST_FAV  = `mkt_last_fav__${uid}`;
+  const K_IDX_CART  = `mkt_idx_cart__${uid}`;
+  const K_IDX_FAV   = `mkt_idx_fav__${uid}`;
+
+  const cartPhrases = [
+    p => `Ваша корзина ждёт: «${p}». Успейте оформить до конца дня ✨`,
+    p => `Не забыли про «${p}»? Товар всё ещё в корзине — 2 клика до заказа.`,
+    p => `«${p}» и другие позиции всё ещё с вами. Давайте завершим оформление?`,
+    p => `Чуть-чуть не хватило до покупки: «${p}». Возвращайтесь, мы всё сохранили!`,
+  ];
+  const favPhrases = [
+    p => `Избранное напоминает о себе: «${p}». Загляните, вдруг пора брать 👀`,
+    p => `Вы отмечали «${p}» в избранное. Проверьте наличие размеров!`,
+    p => `«${p}» всё ещё в вашем избранном. Вернуться к просмотру?`,
+    p => `Похоже, вам нравилось «${p}». Возможно, самое время оформить заказ ✨`,
+  ];
+
+  function nowLocal(){ return new Date(); }
+  function isEvening(d){ const h=d.getHours(); return h>=20 && h<22; } // «вечер»
+  function dayKey(d){ return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
+  function daysBetween(ts){
+    if (!ts) return Infinity;
+    const a = new Date(); const b = new Date(ts);
+    const one = 24*60*60*1000;
+    return Math.floor((a.setHours(0,0,0,0)-b.setHours(0,0,0,0))/one);
+  }
+
+  function pickFrom(list, kIdx){
+    const i = (Number(localStorage.getItem(kIdx)) || 0) % list.length;
+    localStorage.setItem(kIdx, String(i+1));
+    return list[i];
+  }
+
+  async function tick(){
+    const d = nowLocal();
+    if (!isEvening(d)) return;
+
+    // Корзина — каждый вечер, если в корзине что-то есть и сегодня ещё не слали
+    try{
+      const lastCartKey = localStorage.getItem(K_LAST_CART) || '';
+      if (state.cart?.items?.length > 0 && lastCartKey !== dayKey(d)){
+        const first = state.cart.items[0];
+        const product = state.products.find(p => String(p.id) === String(first.productId));
+        const title = product?.title || 'товар';
+        const phraseFn = pickFrom(cartPhrases, K_IDX_CART);
+        const text = phraseFn(title);
+        await notifyCartReminder(String(chatId), { text });
+        localStorage.setItem(K_LAST_CART, dayKey(d));
+      }
+    }catch{}
+
+    // Избранное — раз в 3 дня, если есть избранные
+    try{
+      const lastFavTs = Number(localStorage.getItem(K_LAST_FAV) || 0);
+      if ((state.favorites?.size || 0) > 0 && daysBetween(lastFavTs) >= 3){
+        // возьмём любой «живой» товар из избранного
+        const favId = [...state.favorites][0];
+        const p = state.products.find(x => String(x.id) === String(favId));
+        const title = p?.title || 'товар';
+        const phraseFn = pickFrom(favPhrases, K_IDX_FAV);
+        const text = phraseFn(title);
+        await notifyFavoritesReminder(String(chatId), { text });
+        localStorage.setItem(K_LAST_FAV, String(Date.now()));
+      }
+    }catch{}
+  }
+
+  // Проверяем чаще, чем «раз в вечер», но шлём максимум по разу
+  tick();
+  const TIMER_MS = 10 * 60 * 1000; // каждые 10 минут
+  setInterval(tick, TIMER_MS);
+
+  // При возврате на передний план — тоже проверим
+  document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) tick(); });
+}

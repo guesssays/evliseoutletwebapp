@@ -2,6 +2,7 @@
 
 // Клиентский модуль, который пингует serverless-функцию
 // Вызывается из app.js при событиях оформления/подтверждения/смены статуса/отмены
+// + маркетинговые напоминания (корзина/избранное)
 
 const ENDPOINT = '/.netlify/functions/notify';
 
@@ -26,12 +27,16 @@ function resolveTargetChatId(preferredChatId) {
 
 /** Базовый отправитель события в бота (через Netlify Function)
  *  ВАЖНО: НЕ требуем chat_id на клиенте — сервер сам подставит ADMIN_CHAT_ID.
+ *  НО для маркетинговых пингов мы не хотим спамить админа: тогда не шлём, если chat_id нет.
  */
-async function sendToBot(type, { orderId, chatId, title } = {}) {
-  const chat_id = resolveTargetChatId(chatId); // может быть null — это ok
+async function sendToBot(type, { orderId, chatId, title, text } = {}, { requireUserChat=false } = {}) {
+  const chat_id = resolveTargetChatId(chatId); // может быть null
+  if (requireUserChat && !chat_id) return; // маркетинговые пинги — только реальному пользователю
+
   const payload = { type, orderId };
   if (chat_id) payload.chat_id = chat_id;
   if (title) payload.title = String(title).slice(0, 140);
+  if (text)  payload.text  = String(text).slice(0, 400);
 
   try {
     await fetch(ENDPOINT, {
@@ -49,3 +54,13 @@ export const notifyOrderPlaced   = (chatId, { orderId, title } = {}) => sendToBo
 export const notifyOrderAccepted = (chatId, { orderId, title } = {}) => sendToBot('orderAccepted', { orderId, chatId, title });
 export const notifyStatusChanged = (chatId, { orderId, title } = {}) => sendToBot('statusChanged', { orderId, chatId, title });
 export const notifyOrderCanceled = (chatId, { orderId, title } = {}) => sendToBot('orderCanceled', { orderId, chatId, title });
+
+/* Маркетинговые напоминания:
+   - Корзина: daily evening
+   - Избранное: every 3 days evening
+   Требуем явный или выведенный chat_id пользователя. */
+export const notifyCartReminder = (chatId, { text } = {}) =>
+  sendToBot('cartReminder', { chatId, text }, { requireUserChat: true });
+
+export const notifyFavoritesReminder = (chatId, { text } = {}) =>
+  sendToBot('favReminder', { chatId, text }, { requireUserChat: true });

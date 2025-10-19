@@ -67,7 +67,7 @@ export async function handler(event) {
   }
 
   try {
-    const { chat_id: clientChatId, type, orderId, title } = JSON.parse(event.body || '{}') || {};
+    const { chat_id: clientChatId, type, orderId, title, text } = JSON.parse(event.body || '{}') || {};
     if (!type) return { statusCode: 400, body: 'type required', ...headers };
 
     const token = process.env.TG_BOT_TOKEN;
@@ -75,14 +75,17 @@ export async function handler(event) {
 
     const webappUrl   = process.env.WEBAPP_URL || '';
     const adminChatId = String(process.env.ADMIN_CHAT_ID || '').trim();
-    const targetChatId = String(clientChatId || adminChatId || '').trim();
+
+    // В обычных (служебных) кейсах можно слать админу. В маркетинговых — нет смысла.
+    const isMarketing = (type === 'cartReminder' || type === 'favReminder');
+    const targetChatId = String(clientChatId || (isMarketing ? '' : adminChatId) || '').trim();
     if (!targetChatId) {
-      return { statusCode: 400, body: 'chat_id required (or ADMIN_CHAT_ID must be set)', ...headers };
+      return { statusCode: 400, body: 'chat_id required', ...headers };
     }
 
     const safeTitle = (t)=> (t ? String(t).slice(0,140) : '').trim();
     const goods = safeTitle(title) || 'товар';
-    const link = webappUrl ? `${webappUrl}${orderId ? `#/track/${encodeURIComponent(orderId)}` : '#/orders'}` : undefined;
+    const link = webappUrl ? `${webappUrl}${orderId ? `#/track/${encodeURIComponent(orderId)}` : '#/'}` : undefined;
 
     const btn = link ? [{
       text: orderId ? `Заказ #${orderId}` : 'Открыть приложение',
@@ -94,13 +97,21 @@ export async function handler(event) {
       ? `Заказ #${orderId}${goods ? ` — «${goods}»` : ''}.`
       : (goods ? `По товару «${goods}».` : '');
 
-    let text;
-    switch (type) {
-      case 'orderPlaced':    text = `Оформлен ${about} ${hint}`; break;
-      case 'orderAccepted':  text = `Подтверждён ${about} ${hint}`; break;
-      case 'statusChanged':  text = `Статус обновлён. ${about} ${hint}`; break;
-      case 'orderCanceled':  text = `Отменён ${about} ${hint}`; break;
-      default:               text = `${about} ${hint}`;
+    let finalText;
+    if (typeof text === 'string' && text.trim()){
+      // Клиент прислал уже «готовую» фразу — используем её без дополнений
+      finalText = text.trim();
+    } else {
+      // Шаблоны по типам
+      switch (type) {
+        case 'orderPlaced':    finalText = `Оформлен ${about} ${hint}`; break;
+        case 'orderAccepted':  finalText = `Подтверждён ${about} ${hint}`; break;
+        case 'statusChanged':  finalText = `Статус обновлён. ${about} ${hint}`; break;
+        case 'orderCanceled':  finalText = `Отменён ${about} ${hint}`; break;
+        case 'cartReminder':   finalText = `Вы оставили товары в корзине. ${hint}`; break;
+        case 'favReminder':    finalText = `У вас есть товары в избранном. ${hint}`; break;
+        default:               finalText = `${about} ${hint}`;
+      }
     }
 
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -108,7 +119,7 @@ export async function handler(event) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: targetChatId,
-        text,
+        text: finalText,
         parse_mode: 'HTML',
         disable_web_page_preview: true,
         ...(btn ? { reply_markup: { inline_keyboard: [btn] } } : {})

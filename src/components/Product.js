@@ -3,6 +3,16 @@ import { state, isFav, toggleFav } from '../core/state.js';
 import { priceFmt, colorToHex } from '../core/utils.js';
 import { addToCart, removeLineFromCart, isInCart } from './cartActions.js';
 
+function findCategoryBySlug(slug){
+  for (const g of state.categories){
+    if (g.slug === slug) return g;
+    for (const ch of (g.children||[])){
+      if (ch.slug === slug) return ch;
+    }
+  }
+  return null;
+}
+
 export function renderProduct({id}){
   const p = state.products.find(x=> String(x.id)===String(id));
   if (!p){ location.hash='#/'; return; }
@@ -54,6 +64,7 @@ export function renderProduct({id}){
           <span><b>Срок доставки:</b> 14–16 дней</span>
         </div>
 
+        <div class="specs"><b>Категория:</b> ${escapeHtml(findCategoryBySlug(p.categoryId)?.name || '—')}</div>
         <div class="specs"><b>Материал:</b> ${p.material ? escapeHtml(p.material) : '—'}</div>
 
         <div class="p-options">
@@ -138,7 +149,7 @@ export function renderProduct({id}){
   const mainImg = document.getElementById('mainImg');
   if (thumbs && mainImg){
     thumbs.addEventListener('click', (e)=>{
-      const t = e.target.closest('.thumb'); if (!t) return;
+      const t = e.target.closest('button.thumb'); if (!t) return;
       const idx = Number(t.getAttribute('data-index'))||0;
       mainImg.src = images[idx] || images[0] || '';
       thumbs.querySelectorAll('.thumb').forEach(x=>{
