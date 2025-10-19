@@ -1,95 +1,146 @@
 // src/components/FAQ.js
-import { el } from '../core/utils.js';
-
 const OP_CHAT_URL = 'https://t.me/evliseorder';
 
 export function renderFAQ(){
   const v = document.getElementById('view');
 
+  // данные аккордеона
+  const items = [
+    {
+      icon: 'truck',
+      title: 'Сроки доставки',
+      html: `Обычно <b>14–16 дней</b> с момента подтверждения заказа. Если срок изменится — мы заранее уведомим.`
+    },
+    {
+      icon: 'credit-card',
+      title: 'Оплата',
+      html: `Оплата переводом на карту — номер покажем на шаге оплаты. После перевода загрузите <b>скриншот чека</b> прямо в оформлении.`
+    },
+    {
+      icon: 'package',
+      title: 'Что происходит после оплаты?',
+      html: `Мы проверяем платёж и берём заказ в работу. Как только посылка будет готова к отправке — оператор свяжется и уточнит детали доставки.`
+    },
+    {
+      icon: 'clock',
+      title: 'Как отследить статус?',
+      html: `Откройте раздел <b>Мои заказы</b> — там виден текущий этап и история изменений по каждому заказу.`
+    },
+    {
+      icon: 'shirt',
+      title: 'Размеры и консультация',
+      html: `Не уверены с размером? Напишите оператору — подскажем по меркам и посадке перед оплатой.`
+    },
+    {
+      icon: 'undo-2',
+      title: 'Обмен / возврат',
+      html: `Если товар с заводским браком или пришла неверная позиция — решим вопрос. Свяжитесь с оператором и приложите фото/видео распаковки.`
+    },
+    {
+      icon: 'help-circle',
+      title: 'Можно ли изменить заказ после оплаты?',
+      html: `Иногда — да, если заказ ещё не ушёл в обработку/отправку. Напишите оператору, укажите номер заказа — проверим возможность.`
+    },
+    {
+      icon: 'wallet',
+      title: 'Стоимость доставки',
+      html: `Доставка осуществляется за счёт заказчика, с помощью сервиса Яндекс.`
+    },
+    {
+      icon: 'shield-check',
+      title: 'Безопасность и гарантия',
+      html: `Все действия — внутри приложения: чеки, статусы и история. При спорных ситуациях всё решается через оператора.`
+    }
+  ];
+
   v.innerHTML = `
     <section class="section">
       <div class="section-title">Помощь</div>
 
-      <div class="notes" style="margin-top:8px">
-        <div class="note">
-          <i data-lucide="truck"></i>
-          <div>
-            <div class="note-title">Сроки доставки</div>
-            <div class="note-sub">Обычно <b>14–16 дней</b> с момента подтверждения заказа. Если срок изменится — мы заранее уведомим.</div>
-          </div>
-        </div>
+      <style>
+        /* ==== A C C O R D I O N  (адаптив) ==== */
+        .faq{
+          margin: 0 0 18px;
+          display: grid;
+          gap: 10px;
+        }
+        .faq details{
+          border:1px solid var(--stroke);
+          border-radius:14px;
+          background:#fff;
+          overflow:hidden;
+        }
+        .faq summary{
+          list-style:none;
+          cursor:pointer;
+          padding:14px 14px;
+          display:grid;
+          grid-template-columns:auto 1fr auto;
+          gap:12px;
+          align-items:center;
+          user-select:none;
+          outline:none;
+        }
+        .faq summary::-webkit-details-marker{ display:none; }
 
-        <div class="note">
-          <i data-lucide="credit-card"></i>
-          <div>
-            <div class="note-title">Оплата</div>
-            <div class="note-sub">Оплата переводом на карту, затем вы загружаете скриншот чека в приложении при оформлении заказа.</div>
-          </div>
-        </div>
+        .faq .ico{ width:22px; height:22px; opacity:.9; color:inherit; }
+        .faq .q{
+          font-weight:800;
+          line-height:1.2;
+          min-width:0;
+          overflow:hidden;
+          text-overflow:ellipsis;
+          white-space:nowrap;
+        }
+        .faq .chev{
+          width:18px; height:18px;
+          transform:rotate(0deg);
+          transition: transform .18s ease;
+          opacity:.7;
+        }
+        details[open] .chev{ transform:rotate(180deg); }
 
-        <div class="note">
-          <i data-lucide="package"></i>
-          <div>
-            <div class="note-title">Что происходит после оплаты?</div>
-            <div class="note-sub">Мы проверяем платёж и берём заказ в работу. Как только посылка будет готова к отправке — оператор свяжется, чтобы уточнить детали.</div>
-          </div>
-        </div>
+        .faq .a{
+          padding: 0 14px 14px 54px; /* отступ под иконку */
+          color: var(--muted);
+          font-size: 14px;
+          line-height: 1.45;
+        }
+        .faq .a b{ color: var(--text); }
 
-        <div class="note">
-          <i data-lucide="clock"></i>
-          <div>
-            <div class="note-title">Как отследить статус?</div>
-            <div class="note-sub">Открывайте раздел <b>Мои заказы</b>. Там видно текущий статус и история изменений.</div>
-          </div>
-        </div>
+        /* крупные тач-цели на компактных экранах */
+        @media (max-width: 420px){
+          .faq summary{ padding:13px 12px; gap:10px; }
+          .faq .a{ padding: 0 12px 12px 50px; font-size: 14px; }
+        }
 
-        <div class="note">
-          <i data-lucide="shirt"></i>
-          <div>
-            <div class="note-title">Размеры и консультация</div>
-            <div class="note-sub">Не уверены с размером? Напишите оператору — подскажем по меркам и посадке перед оплатой.</div>
-          </div>
-        </div>
+        /* кнопка поддержки */
+        .faq-actions{
+          margin-top: 6px;
+          display:flex;
+          justify-content:flex-end;
+        }
+      </style>
 
-        <div class="note">
-          <i data-lucide="undo-2"></i>
-          <div>
-            <div class="note-title">Обмен/возврат</div>
-            <div class="note-sub">Если товар с заводским браком или пришла не та позиция — мы решим вопрос. Свяжитесь с оператором, приложите фото/видео распаковки.</div>
-          </div>
-        </div>
+      <div class="faq" id="faqList">
+        ${items.map((it, i) => `
+          <details ${i===0 ? 'open' : ''}>
+            <summary>
+              <i data-lucide="${it.icon}" class="ico"></i>
+              <div class="q">${escapeHtml(it.title)}</div>
+              <i data-lucide="chevron-down" class="chev"></i>
+            </summary>
+            <div class="a">${it.html}</div>
+          </details>
+        `).join('')}
 
-        <div class="note">
-          <i data-lucide="help-circle"></i>
-          <div>
-            <div class="note-title">Можно ли изменить заказ после оплаты?</div>
-            <div class="note-sub">Иногда — да, если заказ ещё не ушёл в обработку/отправку. Напишите оператору, укажете номер заказа — мы проверим возможность.</div>
-          </div>
-        </div>
-
-        <div class="note">
-          <i data-lucide="wallet"></i>
-          <div>
-            <div class="note-title">Стоимость доставки</div>
-            <div class="note-sub">Сейчас доставка включена в цену (для отображения в корзине указана как 0). Если появятся платные опции — сообщим в оформлении.</div>
-          </div>
-        </div>
-
-        <div class="note">
-          <i data-lucide="shield-check"></i>
-          <div>
-            <div class="note-title">Безопасность и гарантия</div>
-            <div class="note-sub">Все заказы оформляются внутри приложения. Чеки, статусы и история — у вас под рукой. При спорных ситуациях — всё решается через оператора.</div>
-          </div>
-        </div>
-
-        <div class="note">
+        <div class="note" style="margin-top:6px">
           <i data-lucide="message-circle"></i>
           <div>
-            <div class="note-title">Связаться с оператором</div>
-            <div class="note-sub">Задайте вопрос в чате — отвечаем как можно быстрее. Если вопрос по оформленному заказу — укажите номер (например, #12345).</div>
+            <div class="note-title">Нужна помощь прямо сейчас?</div>
+            <div class="note-sub">Задайте вопрос в чате — отвечаем как можно быстрее. По оформленному заказу укажите номер (например, #12345).</div>
           </div>
-          <a class="pill" id="faqSupport"><i data-lucide="send"></i><span>Поддержка</span></a>
+          <button id="faqSupport" class="pill"><i data-lucide="send"></i><span>Поддержка</span></button>
         </div>
       </div>
     </section>
@@ -99,6 +150,18 @@ export function renderFAQ(){
 
   document.getElementById('faqSupport')?.addEventListener('click', ()=>{
     openExternal(OP_CHAT_URL);
+  });
+
+  // Делегирование кликов по summary: фокус + плавное закрытие соседей (по желанию UX)
+  const faq = document.getElementById('faqList');
+  faq?.addEventListener('click', (e)=>{
+    const sm = e.target.closest('summary');
+    if (!sm) return;
+    const host = sm.parentElement;                 // текущий <details>
+    // режим "один открыт" — закрываем остальные
+    if (!host.open){
+      faq.querySelectorAll('details[open]').forEach(d => { if (d!==host) d.removeAttribute('open'); });
+    }
   });
 }
 
@@ -110,4 +173,8 @@ function openExternal(url){
     if (tg?.openLink){ tg.openLink(url, { try_instant_view:false }); return; }
   }catch{}
   window.open(url, '_blank', 'noopener');
+}
+
+function escapeHtml(s=''){
+  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
