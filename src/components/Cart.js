@@ -388,13 +388,86 @@ function openPayModal({ items, address, phone, payer, total }){
     persistCart(); updateCartBadge();
 
     close();
-    toast('Заказ оформлен, ожидает подтверждения');
-    location.hash = '#/orders';
+
+    // Вместо тоста — структурированное модальное окно подтверждения
+    showOrderConfirmationModal(orderId);
 
     try{
       const ev = new CustomEvent('client:orderPlaced', { detail:{ id: orderId } });
       window.dispatchEvent(ev);
     }catch{}
+  };
+
+  function close(){ modal.classList.remove('show'); }
+}
+
+/** Модалка «Заказ принят» — красивая, структурированная */
+function showOrderConfirmationModal(orderId){
+  const modal = document.getElementById('modal');
+  const mb = document.getElementById('modalBody');
+  const mt = document.getElementById('modalTitle');
+  const ma = document.getElementById('modalActions');
+
+  mt.textContent = 'Заказ принят';
+
+  mb.innerHTML = `
+    <style>
+      .ok-hero{
+        display:flex; align-items:center; gap:12px; padding:12px;
+        border:1px solid var(--border, rgba(0,0,0,.12)); border-radius:14px;
+        background:var(--card, #f8f8f8);
+      }
+      .ok-hero i{ width:28px; height:28px; }
+      .ok-steps{ display:grid; gap:10px; margin-top:12px; }
+      .ok-step{ display:grid; grid-template-columns: 28px 1fr; gap:10px; align-items:start; }
+      .muted{ color:var(--muted,#6b7280); }
+      .ok-badge{ font-size:.8rem; padding:2px 8px; border-radius:999px; background:rgba(0,0,0,.06); }
+    </style>
+    <div class="ok-hero">
+      <i data-lucide="shield-check"></i>
+      <div>
+        <div class="cart-title">#${orderId}</div>
+        <div class="muted">Заказ успешно принят, скоро его возьмут в работу.</div>
+      </div>
+    </div>
+
+    <div class="ok-steps">
+      <div class="ok-step">
+        <i data-lucide="clock"></i>
+        <div>
+          <div class="cart-title" style="font-size:15px">Сроки доставки</div>
+          <div class="muted">Ориентировочно <b>14–16 дней</b>. Если срок изменится — мы уведомим.</div>
+        </div>
+      </div>
+      <div class="ok-step">
+        <i data-lucide="message-circle"></i>
+        <div>
+          <div class="cart-title" style="font-size:15px">Вопросы по заказу</div>
+          <div class="muted">Если появились вопросы — напишите оператору. Мы отвечаем как можно быстрее.</div>
+        </div>
+      </div>
+      <div class="ok-step">
+        <i data-lucide="package"></i>
+        <div>
+          <div class="cart-title" style="font-size:15px">Когда свяжемся</div>
+          <div class="muted">Как только заказ будет готов к отправке, оператор свяжется для уточнения деталей.</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  ma.innerHTML = `
+    <button id="okOrders" class="pill primary">К моим заказам</button>
+  `;
+
+  modal.classList.add('show');
+  window.lucide?.createIcons && lucide.createIcons();
+
+  // Кнопки
+  document.getElementById('modalClose').onclick = close;
+  document.getElementById('okOrders').onclick = ()=>{
+    close();
+    location.hash = '#/orders';
   };
 
   function close(){ modal.classList.remove('show'); }
