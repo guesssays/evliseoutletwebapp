@@ -2,6 +2,27 @@
 import { state, isFav, toggleFav } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 
+function findCategoryBySlug(slug){
+  for (const g of state.categories){
+    if (g.slug === slug) return g;
+    for (const ch of (g.children||[])){
+      if (ch.slug === slug) return ch;
+    }
+  }
+  return null;
+}
+
+function expandSlugs(slug){
+  const c = findCategoryBySlug(slug);
+  if (!c) return [slug];
+  if (c.children && c.children.length) return c.children.map(x=>x.slug);
+  return [c.slug];
+}
+
+function categoryNameBySlug(slug){
+  return findCategoryBySlug(slug)?.name || '';
+}
+
 export function renderHome(router){
   const v = document.getElementById('view');
   v.innerHTML = `<div class="grid home-bottom-pad" id="productGrid"></div>`;
@@ -10,8 +31,8 @@ export function renderHome(router){
 }
 
 /**
- * Рендер чипов категорий + единоразовый обработчик.
- * Фильтрация по p.categoryId.
+ * Рендер чипов категорий (только ОБЩИЕ группы + служебные).
+ * Клик по группе агрегирует все её подкатегории.
  */
 export function drawCategoriesChips(router){
   const wrap = document.getElementById('catChips');
@@ -22,9 +43,11 @@ export function drawCategoriesChips(router){
   wrap.innerHTML='';
   wrap.insertAdjacentHTML('beforeend', mk('all','Все товары', state.filters.category==='all'));
   wrap.insertAdjacentHTML('beforeend', mk('new','Новинки', state.filters.category==='new'));
+
+  // только верхний уровень (общие категории)
   state.categories.forEach(c=>{
     if (c.slug === 'new') return;
-    wrap.insertAdjacentHTML('beforeend', mk(c.slug,c.name, state.filters.category===c.slug));
+    wrap.insertAdjacentHTML('beforeend', mk(c.slug, c.name, state.filters.category===c.slug));
   });
 
   if (!wrap.dataset.bound){
@@ -45,7 +68,8 @@ export function drawCategoriesChips(router){
       } else if (slug === 'new') {
         list = state.products.slice(0, 24);
       } else {
-        list = state.products.filter(p => p.categoryId === slug);
+        const pool = new Set(expandSlugs(slug));
+        list = state.products.filter(p => pool.has(p.categoryId));
       }
 
       drawProducts(list);
@@ -82,7 +106,7 @@ export function drawProducts(list){
 
     const subEl = node.querySelector('.subtitle');
     if (subEl) {
-      const labelById = state.categories.find(c => c.slug === p.categoryId)?.name || '';
+      const labelById = categoryNameBySlug(p.categoryId) || '';
       subEl.textContent = p.categoryLabel || labelById;
     }
 

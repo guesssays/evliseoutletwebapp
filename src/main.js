@@ -344,8 +344,18 @@ function updateNotifBadge(){
   const unread = getNotifications().filter(n=>!n.read).length;
   const b = document.getElementById('notifBadge');
   if (!b) return;
-  if (unread>0){ b.textContent = String(unread); b.hidden = false; } else { b.hidden = true; }
+  if (unread>0){
+    b.textContent = String(unread);
+    b.hidden = false;
+    b.setAttribute('aria-hidden','false');
+  } else {
+    b.textContent = '';
+    b.hidden = true;
+    b.setAttribute('aria-hidden','true');
+  }
 }
+// делаем доступным глобально для вызовов из других модулей/шаблонов
+window.updateNotifBadge = updateNotifBadge;
 
 document.addEventListener('click', (e)=>{
   const btn = e.target.closest('#openNotifications');
@@ -660,7 +670,8 @@ async function init(){
 init();
 
 /* ---------- Фильтры ---------- */
-document.getElementById('openFilters').onclick=()=> openFilterModal(router);
+// ИСПРАВЛЕНО: безопасно навешиваем обработчик только если кнопка существует
+document.getElementById('openFilters')?.addEventListener('click', ()=> openFilterModal(router));
 
 // экспорт если понадобится
 export { updateNotifBadge, getNotifications, setNotifications, setTabbarMenu, setTabbarCTA, setTabbarCTAs };
