@@ -85,10 +85,12 @@ export async function handler(event) {
 
     const safeTitle = (t)=> (t ? String(t).slice(0,140) : '').trim();
     const goods = safeTitle(title) || 'товар';
-    const link = webappUrl ? `${webappUrl}${orderId ? `#/track/${encodeURIComponent(orderId)}` : '#/'}` : undefined;
+
+    // ⬇⬇⬇ ГЛАВНАЯ ПРАВКА: всегда ведём в «Мои заказы», а не на трекинг конкретного заказа
+    const link = webappUrl ? `${webappUrl}#/orders` : undefined;
 
     const btn = link ? [{
-      text: orderId ? `Заказ #${orderId}` : 'Открыть приложение',
+      text: 'Мои заказы',
       web_app: { url: link }
     }] : null;
 

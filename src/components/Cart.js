@@ -7,6 +7,8 @@ import { getPayCardNumber } from '../core/payments.js';
 import { persistProfile } from '../core/state.js';
 import { getUID } from '../core/state.js';
 
+const OP_CHAT_URL = 'https://t.me/evliseorder';
+
 export function renderCart(){
   const v = document.getElementById('view');
   const items = state.cart.items
@@ -68,6 +70,44 @@ export function renderCart(){
       <div class="payrow"><span>Доставка</span><b>${priceFmt(0)}</b></div>
       <div class="payrow"><span>Скидка</span><b>${priceFmt(0)}</b></div>
     </div>
+
+    <!-- FAQ перед оформлением -->
+    <div class="cart-faq" style="margin-top:14px">
+      <style>
+        .faq-card{border:1px solid var(--border,rgba(0,0,0,.12));border-radius:14px;padding:12px;background:var(--card,#f9f9f9);display:grid;gap:10px}
+        .faq-row{display:grid;grid-template-columns:24px 1fr;gap:10px;align-items:start}
+        .faq-q{font-weight:600}
+        .faq-a{color:var(--muted,#6b7280)}
+        .faq-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+      </style>
+      <div class="faq-card" role="region" aria-label="Частые вопросы перед оформлением">
+        <div class="faq-row">
+          <i data-lucide="clock"></i>
+          <div>
+            <div class="faq-q">Сроки доставки</div>
+            <div class="faq-a">Обычно <b>14–16 дней</b> с момента подтверждения. Если срок изменится — мы уведомим.</div>
+          </div>
+        </div>
+        <div class="faq-row">
+          <i data-lucide="message-circle"></i>
+          <div>
+            <div class="faq-q">Есть вопросы?</div>
+            <div class="faq-a">Можете написать оператору — поможем с размером, оплатой и статусом заказа.</div>
+          </div>
+        </div>
+        <div class="faq-row">
+          <i data-lucide="credit-card"></i>
+          <div>
+            <div class="faq-q">Как проходит оплата?</div>
+            <div class="faq-a">После подтверждения данных вы переводите на карту и загружаете скриншот оплаты. Мы быстро проверим и запустим заказ в работу.</div>
+          </div>
+        </div>
+        <div class="faq-actions">
+          <button id="faqOperator" class="pill outline" type="button">Написать оператору</button>
+        </div>
+      </div>
+    </div>
+    <!-- /FAQ -->
   </section>`;
   window.lucide?.createIcons && lucide.createIcons();
 
@@ -81,6 +121,9 @@ export function renderCart(){
     row.querySelector('.inc')?.addEventListener('click', ()=> changeQty(id,size,color, +1));
     row.querySelector('.dec')?.addEventListener('click', ()=> changeQty(id,size,color, -1));
   });
+
+  // Кнопка «Написать оператору» из FAQ
+  document.getElementById('faqOperator')?.addEventListener('click', ()=> openExternal(OP_CHAT_URL));
 
   window.setTabbarCTA?.({
     html: `<i data-lucide="credit-card"></i><span>Оформить заказ</span>`,
@@ -421,7 +464,6 @@ function showOrderConfirmationModal(orderId){
       .ok-steps{ display:grid; gap:10px; margin-top:12px; }
       .ok-step{ display:grid; grid-template-columns: 28px 1fr; gap:10px; align-items:start; }
       .muted{ color:var(--muted,#6b7280); }
-      .ok-badge{ font-size:.8rem; padding:2px 8px; border-radius:999px; background:rgba(0,0,0,.06); }
     </style>
     <div class="ok-hero">
       <i data-lucide="shield-check"></i>
@@ -456,7 +498,9 @@ function showOrderConfirmationModal(orderId){
     </div>
   `;
 
+  // две кнопки — чат оператора и переход к заказам
   ma.innerHTML = `
+    <button id="okOperator" class="pill">Написать оператору</button>
     <button id="okOrders" class="pill primary">К моим заказам</button>
   `;
 
@@ -469,8 +513,27 @@ function showOrderConfirmationModal(orderId){
     close();
     location.hash = '#/orders';
   };
+  document.getElementById('okOperator').onclick = ()=>{
+    openExternal(OP_CHAT_URL);
+  };
 
   function close(){ modal.classList.remove('show'); }
+}
+
+/* ===== helpers ===== */
+function openExternal(url){
+  try{
+    const tg = window?.Telegram?.WebApp;
+    if (tg?.openTelegramLink){
+      tg.openTelegramLink(url);
+      return;
+    }
+    if (tg?.openLink){
+      tg.openLink(url, { try_instant_view:false });
+      return;
+    }
+  }catch{}
+  window.open(url, '_blank', 'noopener');
 }
 
 /* ===== utils: компрессор изображений в dataURL ===== */

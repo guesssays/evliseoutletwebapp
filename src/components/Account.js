@@ -2,6 +2,8 @@
 import { state, persistAddresses } from '../core/state.js';
 import { canAccessAdmin } from '../core/auth.js';
 
+const OP_CHAT_URL = 'https://t.me/evliseorder';
+
 export function renderAccount(){
   // страховка: вдруг висит фикс-хедер товара — уберём, чтобы ничего не перекрывало клики
   try{
@@ -30,12 +32,23 @@ export function renderAccount(){
         <a class="menu-item" href="#/orders"><i data-lucide="package"></i><span>Мои заказы</span><i data-lucide="chevron-right" class="chev"></i></a>
         <a class="menu-item" href="#/account/addresses"><i data-lucide="map-pin"></i><span>Адреса доставки</span><i data-lucide="chevron-right" class="chev"></i></a>
         <a class="menu-item" href="#/favorites"><i data-lucide="heart"></i><span>Избранное</span><i data-lucide="chevron-right" class="chev"></i></a>
-        <a class="menu-item" href="#/faq"><i data-lucide="help-circle"></i><span>FAQ</span><i data-lucide="chevron-right" class="chev"></i></a>
-        <a class="menu-item" href="#/account/settings"><i data-lucide="settings"></i><span>Настройки</span><i data-lucide="chevron-right" class="chev"></i></a>
+        <a class="menu-item" href="#/faq"><i data-lucide="help-circle"></i><span>Помощь</span><i data-lucide="chevron-right" class="chev"></i></a>
         ${isAdmin ? `<a class="menu-item" href="#/admin"><i data-lucide="shield-check"></i><span>Админка</span><i data-lucide="chevron-right" class="chev"></i></a>` : ''}
       </nav>
+
+      <div style="margin-top:12px;display:flex;gap:10px">
+        <button id="supportBtn" class="pill" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px">
+          <i data-lucide="message-circle"></i>
+          <span>Поддержка</span>
+        </button>
+      </div>
     </section>`;
   window.lucide?.createIcons && lucide.createIcons();
+
+  // Кнопка «Поддержка» → чат оператора
+  document.getElementById('supportBtn')?.addEventListener('click', ()=>{
+    openExternal(OP_CHAT_URL);
+  });
 }
 
 export function renderAddresses(){
@@ -197,6 +210,7 @@ export function renderAddresses(){
   window.lucide?.createIcons && lucide.createIcons();
 }
 
+// Настройки из меню убраны, но рендер оставим на случай прямого перехода по URL
 export function renderSettings(){
   const v=document.getElementById('view');
   v.innerHTML = `
@@ -209,7 +223,22 @@ export function renderSettings(){
   window.lucide?.createIcons && lucide.createIcons();
 }
 
-/* utils */
+/* helpers */
+function openExternal(url){
+  try{
+    const tg = window?.Telegram?.WebApp;
+    if (tg?.openTelegramLink){
+      tg.openTelegramLink(url);
+      return;
+    }
+    if (tg?.openLink){
+      tg.openLink(url, { try_instant_view:false });
+      return;
+    }
+  }catch{}
+  window.open(url, '_blank', 'noopener');
+}
+
 function escapeHtml(s=''){
   return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }

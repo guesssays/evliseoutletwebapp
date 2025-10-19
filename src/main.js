@@ -75,7 +75,6 @@ async function notifApiMarkAll(uid){
   return Array.isArray(data.items) ? data.items : null;
 }
 
-
 function mergeNotifsToLocal(serverItems){
   const local = getNotifications();
   const byId = new Map(local.map(n => [String(n.id), n]));
@@ -422,27 +421,26 @@ async function router(){
   if (match('account/addresses'))  return renderAddresses();
   if (match('account/settings'))   return renderSettings();
 
-if (match('notifications')){
-  // подтянем актуальные и покажем экран
-  await syncMyNotifications();
-  renderNotifications(updateNotifBadge);
+  if (match('notifications')){
+    // подтянем актуальные и покажем экран
+    await syncMyNotifications();
+    renderNotifications(updateNotifBadge);
 
-  // сразу пометим все прочитанными на сервере и мгновенно обнулим локальный счётчик
-  const uid = getUID();
-  try {
-    const items = await notifApiMarkAll(uid);
-    if (items) {
-      mergeNotifsToLocal(items); // в кэш кладём уже read:true
-    } else {
-      // фолбэк: локально отметим прочитанными
-      const loc = getNotifications().map(n => ({ ...n, read: true }));
-      setNotifications(loc);
-    }
-  } catch {}
-  updateNotifBadge?.();
-  return;
-}
-
+    // сразу пометим все прочитанными на сервере и мгновенно обнулим локальный счётчик
+    const uid = getUID();
+    try {
+      const items = await notifApiMarkAll(uid);
+      if (items) {
+        mergeNotifsToLocal(items); // в кэш кладём уже read:true
+      } else {
+        // фолбэк: локально отметим прочитанными
+        const loc = getNotifications().map(n => ({ ...n, read: true }));
+        setNotifications(loc);
+      }
+    } catch {}
+    updateNotifBadge?.();
+    return;
+  }
 
   if (match('admin')){
     if (!canAccessAdmin()){
@@ -532,18 +530,22 @@ async function init(){
     try{
       const id = e.detail?.id;
 
-      pushNotification({
+      // единый объект уведомления с детерминированным id
+      const notif = {
+        id: `order-placed-${id}`,
+        ts: Date.now(),
         icon: 'package',
         title: 'Заказ оформлен',
         sub: `#${id} — ожидает подтверждения`,
-      });
+        read: false
+      };
+
+      // локально
+      pushNotification(notif);
       updateNotifBadge?.();
 
-      await serverPushFor(getUID(), {
-        icon:'package',
-        title:'Заказ оформлен',
-        sub:`#${id} — ожидает подтверждения`
-      });
+      // и на сервер — тем же id
+      await serverPushFor(getUID(), notif);
 
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
       const title = buildOrderShortTitle(order);

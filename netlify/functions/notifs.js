@@ -109,11 +109,25 @@ function makeStoreCore(read, write) {
     async add(uid, notif) {
       const arr = await read(uid);
       const one = normalize(notif);
-      // не допускаем дубликатов по id
+
+      // ❶ Анти-дубль: одинаковые title+sub в пределах 3 секунд — не добавляем второй раз
+      const nearDupIdx = arr.findIndex(x =>
+        x.title === one.title &&
+        x.sub === one.sub &&
+        Math.abs((x.ts || 0) - (one.ts || 0)) <= 3000
+      );
+      if (nearDupIdx !== -1) {
+        arr[nearDupIdx] = { ...arr[nearDupIdx], ...one };
+        await write(uid, arr);
+        return { id: String(arr[nearDupIdx].id), items: arr };
+      }
+
+      // ❷ Базовая дедупликация по id
       const idStr = String(one.id);
       const idx = arr.findIndex(x => String(x.id) === idStr);
       if (idx === -1) arr.unshift(one);
       else arr[idx] = { ...arr[idx], ...one };
+
       // обрежем хвост
       if (arr.length > MAX_ITEMS) arr.length = MAX_ITEMS;
       await write(uid, arr);
