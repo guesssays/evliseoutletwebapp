@@ -1,3 +1,4 @@
+// src/app.js
 import {
   state,
   loadCart,
