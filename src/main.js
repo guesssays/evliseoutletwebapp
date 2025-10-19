@@ -64,14 +64,17 @@ async function notifApiAdd(uid, notif){
   return data.id || notif.id || Date.now();
 }
 async function notifApiMarkAll(uid){
-  try{
-    await fetch(NOTIF_API, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ op:'markAll', uid:String(uid) })
-    });
-  }catch{}
+  const res = await fetch(NOTIF_API, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ op:'markAll', uid:String(uid) })
+  });
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok || !data?.ok) throw new Error('notif markAll error');
+  // сервер теперь отдаёт актуальный список
+  return Array.isArray(data.items) ? data.items : null;
 }
+
 
 function mergeNotifsToLocal(serverItems){
   const local = getNotifications();
@@ -419,13 +422,27 @@ async function router(){
   if (match('account/addresses'))  return renderAddresses();
   if (match('account/settings'))   return renderSettings();
 
-  if (match('notifications')){
-    await syncMyNotifications();
-    renderNotifications(updateNotifBadge);
-    const uid = getUID();
-    notifApiMarkAll(uid);
-    return;
-  }
+if (match('notifications')){
+  // подтянем актуальные и покажем экран
+  await syncMyNotifications();
+  renderNotifications(updateNotifBadge);
+
+  // сразу пометим все прочитанными на сервере и мгновенно обнулим локальный счётчик
+  const uid = getUID();
+  try {
+    const items = await notifApiMarkAll(uid);
+    if (items) {
+      mergeNotifsToLocal(items); // в кэш кладём уже read:true
+    } else {
+      // фолбэк: локально отметим прочитанными
+      const loc = getNotifications().map(n => ({ ...n, read: true }));
+      setNotifications(loc);
+    }
+  } catch {}
+  updateNotifBadge?.();
+  return;
+}
+
 
   if (match('admin')){
     if (!canAccessAdmin()){

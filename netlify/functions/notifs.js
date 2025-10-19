@@ -3,8 +3,8 @@
 // ENDPOINTS:
 //   GET  ?op=list&uid=<uid>
 //   POST { op:'add',     uid, notif:{ id?, ts?, read?, icon?, title?, sub? } }
-//   POST { op:'markAll', uid }
-//   POST { op:'mark',    uid, ids:[...] }
+//   POST { op:'markAll', uid }                              → { ok:true, items:[...] }
+//   POST { op:'mark',    uid, ids:[...] }                   → { ok:true, items:[...] }
 // ENV: ALLOWED_ORIGINS (опц., через запятую: "*", "https://example.com", "*.domain.com")
 
 /* ---------------- CORS ---------------- */
@@ -53,7 +53,7 @@ async function getStoreSafe() {
   try {
     const { getStore } = await import('@netlify/blobs');
     const store = getStore('notifs'); // отдельный namespace
-    // проверка доступности
+    // быстрая проверка доступности
     await store.list({ prefix: '__ping__', paginate: false });
     return makeBlobsStore(store);
   } catch (e) {
@@ -63,7 +63,6 @@ async function getStoreSafe() {
 }
 function makeBlobsStore(store) {
   const prefix = 'notifs__'; // ключ на пользователя
-
   const keyFor = (uid) => `${prefix}${uid}`;
 
   async function read(uid) {
@@ -80,7 +79,7 @@ function makeBlobsStore(store) {
   return makeStoreCore(read, write);
 }
 
-// in-memory fallback (на случай dev без blobs)
+// in-memory fallback (для dev/локального запуска)
 const __mem = new Map();
 function makeMemoryStore() {
   async function read(uid){ return __mem.get(uid) || []; }
@@ -118,7 +117,7 @@ function makeStoreCore(read, write) {
       // обрежем хвост
       if (arr.length > MAX_ITEMS) arr.length = MAX_ITEMS;
       await write(uid, arr);
-      return idStr;
+      return { id: idStr, items: arr };
     },
     async markAll(uid) {
       const arr = await read(uid);
@@ -127,18 +126,18 @@ function makeStoreCore(read, write) {
         if (!n.read) { n.read = true; changed = true; }
       }
       if (changed) await write(uid, arr);
-      return true;
+      return arr; // ← возвращаем актуальный список
     },
     async mark(uid, ids = []) {
       const want = new Set((ids || []).map(String));
-      if (!want.size) return true;
+      if (!want.size) return await read(uid);
       const arr = await read(uid);
       let changed = false;
       for (const n of arr) {
         if (want.has(String(n.id)) && !n.read) { n.read = true; changed = true; }
       }
       if (changed) await write(uid, arr);
-      return true;
+      return arr; // ← возвращаем актуальный список
     },
   };
 }
@@ -180,17 +179,17 @@ export async function handler(event) {
     if (!uid) return bad('uid required', headers);
 
     if (op === 'add') {
-      const id = await store.add(uid, body.notif || {});
-      return ok({ id }, headers);
+      const { id, items } = await store.add(uid, body.notif || {});
+      return ok({ id, items }, headers);
     }
-    if (op === 'markAll') {
-      await store.markAll(uid);
-      return ok({}, headers);
+    if (op === 'markall') { // допускаем любой регистр от клиента
+      const items = await store.markAll(uid);
+      return ok({ items }, headers);
     }
     if (op === 'mark') {
       const ids = Array.isArray(body.ids) ? body.ids : [];
-      await store.mark(uid, ids);
-      return ok({}, headers);
+      const items = await store.mark(uid, ids);
+      return ok({ items }, headers);
     }
 
     return bad('unknown op', headers);
