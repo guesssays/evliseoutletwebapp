@@ -78,8 +78,8 @@ function orderCard(o){
     <div class="order-row">
       <div class="cart-img"><img src="${cover}" alt=""></div>
       <div>
-        <div class="cart-title">Заказ #${escapeHtml(o.id)}</div>
-        <div class="cart-sub">${subLines.map(escapeHtml).join(' · ')}</div>
+        <div class="cart-title">${'Заказ #'+escapeHtml(o.id)}</div>
+        <div class="cart-sub" style="overflow-wrap:anywhere">${subLines.map(escapeHtml).join(' · ')}</div>
         <div class="cart-price">${priceFmt(o.total || 0)}</div>
       </div>
       ${actionHtml}
@@ -108,11 +108,73 @@ export async function renderTrack({id}){
   const itemsHtml = itemsBlock(o);
 
   v.innerHTML = `
+    <style>
+      /* === mobile-first адаптация заказа === */
+      .order-detail-page{overflow-x:hidden; max-width:100%;}
+      .order-detail-page *{box-sizing:border-box;}
+
+      .track-head{
+        display:grid;
+        grid-template-columns: 1fr auto;
+        align-items:center;
+        gap:8px;
+      }
+      .track-status{font-weight:800;text-align:right}
+      @media (max-width: 480px){
+        .track-head{grid-template-columns: 1fr; gap:4px;}
+        .track-status{text-align:left}
+      }
+
+      .progress-bar{width:100%; overflow:hidden; border-radius:999px}
+      .progress-list{display:grid; gap:8px}
+      .progress-item{display:flex; align-items:center; gap:8px; min-width:0}
+      .progress-label{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%}
+
+      /* список позиций */
+      .order-item{
+        display:grid;
+        grid-template-columns: 56px minmax(0,1fr) auto;
+        gap:10px;
+        align-items:center;
+        margin-top:10px;
+        width:100%;
+      }
+      .order-item .cart-img img{width:56px;height:56px;object-fit:cover;border-radius:10px}
+      .order-item__meta .cart-title{word-break:break-word; overflow-wrap:anywhere}
+      .order-item__meta .cart-sub{color:var(--muted); font-size:.92rem; overflow-wrap:anywhere}
+      .order-item__qty{justify-self:end; color:var(--muted); padding-left:8px}
+      .order-item__sum{justify-self:end; font-weight:700; padding-left:8px}
+
+      /* компактная верстка на узких экранах: qty и sum – в строку под метаданными */
+      @media (max-width: 420px){
+        .order-item{
+          grid-template-columns: 56px minmax(0,1fr);
+          grid-auto-rows:auto;
+        }
+        .order-item__qty, .order-item__sum{
+          grid-column: 2 / 3;
+        }
+        .order-item__qty{justify-self:start}
+        .order-item__sum{justify-self:end}
+      }
+
+      /* таблицы/kv-блоки не должны распирать ширину */
+      .kv{display:block; width:100%;}
+      .kv__row{display:grid; grid-template-columns:minmax(80px, 40%) minmax(0,1fr); gap:10px; align-items:start; margin:6px 0}
+      .kv__row dt{color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+      .kv__row dd{margin:0; word-break:break-word; overflow-wrap:anywhere}
+
+      .subsection-title{font-weight:700;margin:10px 0 6px}
+
+      /* кнопки/бейджи не должны задавать фикс мин-ширину */
+      .pill, .btn{max-width:100%; white-space:nowrap; text-overflow:ellipsis; overflow:hidden}
+    </style>
+
     <div class="section-title">Заказ #${escapeHtml(o.id)}</div>
-    <section class="checkout">
+    <section class="checkout order-detail-page">
       <div class="track-head">
         <div class="track-caption">Этап ${Math.min(curIdx+1, steps.length)} из ${steps.length}</div>
-        <div style="min-width:120px; text-align:right; font-weight:800">${escapeHtml(getStatusLabel(o.status))}</div>
+        <div class="track-status">${escapeHtml(getStatusLabel(o.status))}</div>
       </div>
 
       ${o.status!=='отменён' ? `
@@ -164,7 +226,7 @@ function itemsBlock(o){
     return `<div class="muted" style="margin-top:12px">В заказе нет позиций</div>`;
   }
 
-  const rows = items.map((x,i)=>{
+  const rows = items.map((x)=>{
     const cover = x.images?.[0] || 'assets/placeholder.jpg';
     const opts = [
       x.size ? `Размер: ${escapeHtml(x.size)}` : '',
@@ -176,7 +238,7 @@ function itemsBlock(o){
         <div class="cart-img"><img src="${cover}" alt=""></div>
         <div class="order-item__meta">
           <div class="cart-title">${escapeHtml(x.title || 'Товар')}</div>
-          ${opts ? `<div class="cart-sub">${opts}</div>` : ''}
+          ${opts ? `<div class="cart-sub">${escapeHtml(opts)}</div>` : ''}
         </div>
         <div class="order-item__qty">×${escapeHtml(String(x.qty||0))}</div>
         <div class="order-item__sum">${priceFmt(line)}</div>
@@ -185,17 +247,10 @@ function itemsBlock(o){
   }).join('');
 
   return `
-    <style>
-      .order-item{display:grid;grid-template-columns:56px 1fr auto auto;gap:10px;align-items:center;margin-top:10px}
-      .order-item__qty{min-width:44px;text-align:right;color:var(--muted)}
-      .order-item__sum{min-width:90px;text-align:right;font-weight:700}
-      .table-wrap{overflow:auto}
-      .size-table th,.size-table td{white-space:nowrap}
-    </style>
     <div class="subsection-title" style="margin-top:12px">Состав заказа</div>
     ${rows}
     <div style="display:flex;justify-content:flex-end;margin-top:6px">
-      <div style="min-width:90px;text-align:right"><b>Итого: ${priceFmt(o.total||0)}</b></div>
+      <div style="text-align:right"><b>Итого: ${priceFmt(o.total||0)}</b></div>
     </div>
   `;
 }
