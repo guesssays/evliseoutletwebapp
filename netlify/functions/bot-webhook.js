@@ -30,7 +30,7 @@ const ADMIN_IDS = admins();
 
 const API = (method) => `https://api.telegram.org/bot${TOKEN}/${method}`;
 
-// ---------- Blobs JSON helpers (совместимы с разными версиями SDK) ----------
+/* ----------------------- Blobs JSON helpers ----------------------- */
 async function readJSON(store, key, fallback = {}) {
   try {
     const data = await store.get(key, { type: 'json' });
@@ -44,7 +44,7 @@ async function writeJSON(store, key, obj) {
   await store.set(key, body, { contentType: 'application/json; charset=utf-8' });
 }
 
-// ---------- Telegram helpers ----------
+/* ----------------------- Telegram helpers ------------------------- */
 async function tg(method, payload) {
   const r = await fetch(API(method), {
     method: 'POST',
@@ -62,11 +62,24 @@ function isAdmin(chatId) {
   return ADMIN_IDS.includes(String(chatId));
 }
 
-/** Парсинг "как в PostBot":
- *  - Текст тела: оставляем как есть (MarkdownV2).
- *  - Инлайн-кнопки: из markdown-ссылок [Текст](https://...) —> inline_keyboard.
- *  - Добавляем "Открыть приложение" как web_app, если есть WEBAPP_URL.
+/* ----------------------- Дедупликация апдейтов -------------------- */
+/** Telegram/Netlify иногда присылают один и тот же update повторно.
+ * Храним последние 100 update_id и игнорируем дубликаты, чтобы
+ * «Ок. пришлите пост…» не отправлялось дважды.
  */
+const DEDUPE_KEY = 'updates_dedupe.json';
+async function seenUpdate(store, updateId) {
+  const bag = await readJSON(store, DEDUPE_KEY, { ids: [] });
+  const id = Number(updateId);
+  if (!Number.isFinite(id)) return false;
+  if (bag.ids.includes(id)) return true;
+  bag.ids.push(id);
+  if (bag.ids.length > 100) bag.ids = bag.ids.slice(-100);
+  await writeJSON(store, DEDUPE_KEY, bag);
+  return false;
+}
+
+/* -------------------- Кнопки из Markdown + web_app ---------------- */
 function parseButtonsFromText(mdText) {
   const text = (mdText || '').trim();
   const linkRe = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
@@ -77,19 +90,13 @@ function parseButtonsFromText(mdText) {
   }
 
   const keyboard = [];
-  if (buttons.length) {
-    keyboard.push(...buttons.map(b => [b]));
-  }
-
-  // Главное изменение: web_app-кнопка (открывает WebApp внутри Telegram)
-  if (WEBAPP_URL) {
-    keyboard.push([{ text: 'Открыть приложение', web_app: { url: WEBAPP_URL } }]);
-  }
+  if (buttons.length) keyboard.push(...buttons.map(b => [b]));
+  if (WEBAPP_URL) keyboard.push([{ text: 'Открыть приложение', web_app: { url: WEBAPP_URL } }]);
 
   return keyboard.length ? { inline_keyboard: keyboard } : undefined;
 }
 
-// Сконструировать объект «поста» из входящего сообщения админа
+/* -------------------------- Пост из сообщения --------------------- */
 function buildPostFromMessage(msg) {
   const hasPhoto = Array.isArray(msg.photo) && msg.photo.length > 0;
   const hasVideo = !!msg.video;
@@ -125,7 +132,6 @@ function buildPostFromMessage(msg) {
       }
     };
   }
-  // Текстовый пост
   return {
     type: 'text',
     payload: {
@@ -138,20 +144,21 @@ function buildPostFromMessage(msg) {
   };
 }
 
-// Отправка поста (конкретному chat_id) по его типу
+/* ---------------------- Отправка поста адресату ------------------- */
 async function sendPostTo(chatId, post) {
   const p = post?.payload || {};
-  if (post.type === 'photo') return tg('sendPhoto', { chat_id: chatId, ...p });
-  if (post.type === 'video') return tg('sendVideo', { chat_id: chatId, ...p });
-  return tg('sendMessage', { chat_id: chatId, ...p }); // text по умолчанию
+  if (post.type === 'photo') return tg('sendPhoto',  { chat_id: chatId, ...p });
+  if (post.type === 'video') return tg('sendVideo',  { chat_id: chatId, ...p });
+  return tg('sendMessage', { chat_id: chatId, ...p });
 }
 
-// Рассылка ВСЕМ пользователям (всем ключам из users.json)
+/* ---------------------- Массовая рассылка ------------------------- */
 async function broadcastToAllUsers({ store, post }) {
   const users = await readJSON(store, 'users.json', {});
   const ids = Object.keys(users); // uid == chat_id
-
-  if (!ids.length) return { total: 0, ok: 0, fail: 0 };
+  if (!ids.length) {
+    return { total: 0, ok: 0, fail: 0 };
+  }
 
   const CHUNK = 25;
   const PAUSE_MS = 450;
@@ -159,12 +166,12 @@ async function broadcastToAllUsers({ store, post }) {
 
   for (let i = 0; i < ids.length; i += CHUNK) {
     const slice = ids.slice(i, i + CHUNK);
-    const promises = slice.map(uid =>
+    const batch = slice.map(uid =>
       sendPostTo(uid, post)
         .then(() => { results.ok++; })
         .catch(() => { results.fail++; })
     );
-    await Promise.all(promises);
+    await Promise.all(batch);
     if (i + CHUNK < ids.length) {
       await new Promise(r => setTimeout(r, PAUSE_MS));
     }
@@ -172,7 +179,7 @@ async function broadcastToAllUsers({ store, post }) {
   return results;
 }
 
-// Состояние ожидания поста/подтверждения на админа
+/* --------------------- Состояние мастера-рассылки ------------------ */
 async function setAdminState(store, adminId, state) {
   const key = 'broadcast_state.json';
   const st = await readJSON(store, key, {});
@@ -185,16 +192,16 @@ async function getAdminState(store, adminId) {
   const st = await readJSON(store, key, {});
   return st[adminId] || null;
 }
-
 function confirmKeyboard() {
   return {
     inline_keyboard: [
       [{ text: '✅ Подтвердить отправку', callback_data: 'bc_confirm' }],
-      [{ text: '❌ Отменить', callback_data: 'bc_cancel' }]
+      [{ text: '❌ Отменить',           callback_data: 'bc_cancel'  }]
     ]
   };
 }
 
+/* ============================ ВЕБХУК ============================== */
 export default async function handler(req) {
   // Telegram шлёт только POST
   if (req.method !== 'POST') {
@@ -207,114 +214,143 @@ export default async function handler(req) {
   try { update = await req.json(); }
   catch { return new Response('bad json', { status: 200 }); }
 
-  // A) Обрабатываем callback_query: подтверждение/отмена
-  if (update.callback_query) {
-    const cq = update.callback_query;
-    const fromId = String(cq.from?.id || '');
-    const data = cq.data || '';
+  // анти-дубликаты
+  const updId = update?.update_id;
+  if (await seenUpdate(store, updId)) {
+    // уже обрабатывали этот апдейт — молча подтверждаем
+    return new Response('ok', { status: 200 });
+  }
 
-    if (!isAdmin(fromId)) {
-      await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Недостаточно прав' });
+  try {
+    /* ---------- A) callback_query: подтверждение/отмена ---------- */
+    if (update.callback_query) {
+      const cq = update.callback_query;
+      const fromId = String(cq.from?.id || '');
+      const data = cq.data || '';
+
+      if (!isAdmin(fromId)) {
+        await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Недостаточно прав' });
+        return new Response('ok', { status: 200 });
+      }
+      const st = await getAdminState(store, fromId);
+      if (!st?.mode || !st?.post) {
+        await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Нет активной рассылки' });
+        return new Response('ok', { status: 200 });
+      }
+
+      if (data === 'bc_cancel') {
+        await setAdminState(store, fromId, null);
+        await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Отменено' });
+        await tg('sendMessage', { chat_id: fromId, text: 'Рассылка отменена.' });
+        return new Response('ok', { status: 200 });
+      }
+
+      if (data === 'bc_confirm') {
+        await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Отправляем…' });
+
+        const res = await broadcastToAllUsers({ store, post: st.post });
+        await setAdminState(store, fromId, null);
+
+        if (res.total === 0) {
+          await tg('sendMessage', {
+            chat_id: fromId,
+            text: 'В базе пользователей пока никого нет. Никому отправлять.'
+          });
+        } else {
+          await tg('sendMessage', {
+            chat_id: fromId,
+            text: `Готово: всего ${res.total}, отправлено ${res.ok}, ошибок ${res.fail}.`
+          });
+        }
+        return new Response('ok', { status: 200 });
+      }
+
+      await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Неизвестное действие' });
       return new Response('ok', { status: 200 });
     }
-    const st = await getAdminState(store, fromId);
-    if (!st?.mode || !st?.post) {
-      await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Нет активной рассылки' });
+
+    /* ---------- B) обычные сообщения (личка) ---------- */
+    const msg = update.message || update.edited_message;
+    if (!msg) return new Response('ok', { status: 200 });
+
+    const chatId = String(msg.chat?.id || '');
+    if (!isAdmin(chatId)) {
+      // молча игнорируем не-админов
       return new Response('ok', { status: 200 });
     }
 
-    if (data === 'bc_cancel') {
-      await setAdminState(store, fromId, null);
-      await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Отменено' });
-      await tg('sendMessage', { chat_id: fromId, text: 'Рассылка отменена.' });
-      return new Response('ok', { status: 200 });
-    }
+    const text = (msg.text || msg.caption || '').trim();
 
-    if (data === 'bc_confirm') {
-      await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Отправляем…' });
-      await tg('sendMessage', { chat_id: fromId, text: 'Отправляю рассылку всем пользователям…' });
-
-      const res = await broadcastToAllUsers({ store, post: st.post });
-      await setAdminState(store, fromId, null);
-
+    // /broadcast — переход в режим ожидания поста
+    if (text && msg.text && text.startsWith('/broadcast')) {
+      await setAdminState(store, chatId, { mode: 'await_post' });
       await tg('sendMessage', {
-        chat_id: fromId,
-        text: `Готово: всего ${res.total}, отправлено ${res.ok}, ошибок ${res.fail}.`
+        chat_id: chatId,
+        text: [
+          'Ок. Пришлите пост для рассылки (как в PostBot).',
+          'Варианты:',
+          '• текстовый пост',
+          '• фото + подпись',
+          '• видео + подпись',
+          'Кнопки: [Название](https://link)',
+          WEBAPP_URL ? 'Автокнопка: «Открыть приложение» откроет WebApp внутри Telegram.' : ''
+        ].filter(Boolean).join('\n')
       });
       return new Response('ok', { status: 200 });
     }
 
-    await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Неизвестное действие' });
-    return new Response('ok', { status: 200 });
-  }
+    // Если ждём пост — этот апдейт и есть пост (текст/фото/видео)
+    const st = await getAdminState(store, chatId);
+    if (st?.mode === 'await_post') {
+      const post = buildPostFromMessage(msg);
 
-  // B) Обычные сообщения
-  const msg = update.message || update.edited_message;
-  if (!msg) return new Response('ok', { status: 200 });
+      // Предпросмотр тем же типом
+      await sendPostTo(chatId, post);
 
-  const chatId = String(msg.chat?.id || '');
-  if (!isAdmin(chatId)) {
-    // молча игнорируем не-админов
-    return new Response('ok', { status: 200 });
-  }
+      // Сообщение с кнопками подтверждения
+      await tg('sendMessage', {
+        chat_id: chatId,
+        text: 'Отправить это сообщение всем пользователям?',
+        reply_markup: confirmKeyboard()
+      });
 
-  const text = (msg.text || msg.caption || '').trim();
+      await setAdminState(store, chatId, { mode: 'confirm', post });
+      return new Response('ok', { status: 200 });
+    }
 
-  // /broadcast — переход в режим ожидания поста
-  if (text && msg.text && msg.text.startsWith('/broadcast')) {
-    await setAdminState(store, chatId, { mode: 'await_post' });
+    // Уже на шаге подтверждения — напоминаем нажать кнопку
+    if (st?.mode === 'confirm') {
+      await tg('sendMessage', {
+        chat_id: chatId,
+        text: 'Вы уже на шаге подтверждения. Нажмите «✅ Подтвердить отправку» или «❌ Отменить».'
+      });
+      return new Response('ok', { status: 200 });
+    }
+
+    // Хелп по умолчанию
     await tg('sendMessage', {
       chat_id: chatId,
       text: [
-        'Ок. Пришлите пост для рассылки (как в PostBot).',
-        'Варианты:',
-        '• текстовый пост',
-        '• фото + подпись',
-        '• видео + подпись',
-        'Кнопки: [Название](https://link)',
-        WEBAPP_URL ? 'Автокнопка: «Открыть приложение» откроет WebApp внутри Telegram.' : ''
+        'Команда для рассылки всем пользователям:',
+        '/broadcast — затем пришлите текст/фото/видео с подписью (MarkdownV2).',
+        'Кнопки: [Название](https://link).',
+        WEBAPP_URL ? 'Автокнопка: «Открыть приложение» — web_app, откроет приложение внутри Telegram.' : ''
       ].filter(Boolean).join('\n')
     });
     return new Response('ok', { status: 200 });
-  }
-
-  // Если ждём пост — этот апдейт и есть пост (текст/фото/видео)
-  const st = await getAdminState(store, chatId);
-  if (st?.mode === 'await_post') {
-    const post = buildPostFromMessage(msg);
-
-    // Предпросмотр тем же типом
-    await sendPostTo(chatId, post);
-
-    // Сообщение с кнопками подтверждения
-    await tg('sendMessage', {
-      chat_id: chatId,
-      text: 'Отправить это сообщение всем пользователям?',
-      reply_markup: confirmKeyboard()
-    });
-
-    await setAdminState(store, chatId, { mode: 'confirm', post });
+  } catch (err) {
+    // Поймали ошибку — если это админ, попробуем сообщить
+    try {
+      const aid =
+        String(update?.callback_query?.from?.id || update?.message?.chat?.id || '');
+      if (aid && isAdmin(aid)) {
+        await tg('sendMessage', {
+          chat_id: aid,
+          text: `Ошибка: ${String(err?.message || err)}`
+        });
+      }
+    } catch {}
+    // Но Telegram ждёт 200 — иначе он ретраит (и будет дубль)
     return new Response('ok', { status: 200 });
   }
-
-  // Уже на шаге подтверждения — напоминаем нажать кнопку
-  if (st?.mode === 'confirm') {
-    await tg('sendMessage', {
-      chat_id: chatId,
-      text: 'Вы уже на шаге подтверждения. Нажмите «✅ Подтвердить отправку» или «❌ Отменить».'
-    });
-    return new Response('ok', { status: 200 });
-  }
-
-  // Хелп
-  await tg('sendMessage', {
-    chat_id: chatId,
-    text: [
-      'Команда для рассылки всем пользователям:',
-      '/broadcast — затем пришлите текст/фото/видео с подписью (MarkdownV2).',
-      'Кнопки: [Название](https://link).',
-      WEBAPP_URL ? 'Автокнопка: «Открыть приложение» — web_app, откроет приложение внутри Telegram.' : ''
-    ].filter(Boolean).join('\n')
-  });
-  return new Response('ok', { status: 200 });
 }
