@@ -74,14 +74,24 @@ export function renderCart(){
       <div class="payrow"><span>Скидка</span><b>${priceFmt(0)}</b></div>
     </div>
 
-    <!-- FAQ перед оформлением (кнопка прямо в блоке "Есть вопросы?") -->
+    <!-- FAQ перед оформлением (кнопка встроена в строку "Есть вопросы?") -->
     <div class="cart-faq" style="margin-top:14px">
       <style>
         .faq-card{border:1px solid var(--border,rgba(0,0,0,.12));border-radius:14px;padding:12px;background:var(--card,#f9f9f9);display:grid;gap:10px}
         .faq-row{display:grid;grid-template-columns:24px 1fr;gap:10px;align-items:start}
         .faq-q{font-weight:600}
         .faq-a{color:var(--muted,#6b7280)}
-        .faq-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+        /* строка вопроса с кнопкой справа */
+        .faq-qline{display:flex;align-items:center;gap:10px;justify-content:space-between}
+        .faq-qline .right-slot{margin-left:12px;display:flex;align-items:center}
+        /* компактная пилюля */
+        .pill.small{padding:6px 10px;font-size:.92rem;border-radius:999px;display:inline-flex;gap:8px;align-items:center}
+        .pill.small i{width:16px;height:16px}
+        /* на очень узких экранах переносим кнопку на следующую строку, но всё равно вправо */
+        @media (max-width: 360px){
+          .faq-qline{flex-wrap:wrap;row-gap:6px}
+          .faq-qline .right-slot{width:100%;justify-content:flex-end}
+        }
       </style>
       <div class="faq-card" role="region" aria-label="Частые вопросы перед оформлением">
         <div class="faq-row">
@@ -91,16 +101,22 @@ export function renderCart(){
             <div class="faq-a">Обычно <b>14–16 дней</b> с момента подтверждения. Если срок изменится — мы уведомим.</div>
           </div>
         </div>
+
         <div class="faq-row">
           <i data-lucide="message-circle"></i>
           <div>
-            <div class="faq-q">Есть вопросы?</div>
-            <div class="faq-a">Напишите оператору — поможем с размером, оплатой и статусом заказа.</div>
-            <div class="faq-actions">
-              <button id="faqOperator" class="pill outline" type="button">Написать оператору</button>
+            <div class="faq-qline">
+              <span class="faq-q">Есть вопросы?</span>
+              <span class="right-slot">
+                <button id="faqOperator" class="pill outline small" type="button" aria-label="Написать оператору в Telegram">
+                  <i data-lucide="send"></i><span>Написать оператору</span>
+                </button>
+              </span>
             </div>
+            <div class="faq-a">Ответим по размеру, оплате и статусу — просто напишите нам.</div>
           </div>
         </div>
+
         <div class="faq-row">
           <i data-lucide="credit-card"></i>
           <div>
@@ -129,7 +145,7 @@ export function renderCart(){
     row.querySelector('.dec')?.addEventListener('click', ()=> changeQty(id,size,color, -1));
   });
 
-  // Кнопка «Написать оператору» из FAQ
+  // Кнопка «Написать оператору»
   document.getElementById('faqOperator')?.addEventListener('click', ()=> openExternal(OP_CHAT_URL));
 
   // CTA «Оформить заказ» в таббаре
