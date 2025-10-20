@@ -554,3 +554,28 @@ body.admin-mode .tabbar{ display:none !important; }
   border:1px solid rgba(255,255,255,.22) !important;
   box-shadow:none !important;
 }
+/* ==== CTA: убираем второй фон кнопки внутри таббара ==== */
+body.has-cta .tabbar-inner{
+  background:#1f1e1e !important;     /* единый угольный фон контейнера */
+  box-shadow:0 10px 40px rgba(0,0,0,.18);
+}
+
+body.has-cta .tabbar-inner .btn,
+body.has-cta .tabbar-inner .btn.primary,
+body.has-cta .tabbar-inner .btn.outline{
+  background:transparent !important;  /* убрали чёрный фон кнопки */
+  background-color:transparent !important;
+  border:1px solid rgba(255,255,255,.22) !important;
+  box-shadow:none !important;
+  color:#fff !important;
+}
+
+body.has-cta .tabbar-inner .btn i{ color:#fff !important; }
+body.has-cta .tabbar-inner .btn span{ color:#fff !important; }
+
+/* на всякий случай отключим декоративные псевдоэлементы, если где-то использовались */
+body.has-cta .tabbar-inner .btn::before,
+body.has-cta .tabbar-inner .btn::after{
+  display:none !important;
+  content:none !important;
+}
