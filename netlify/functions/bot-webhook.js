@@ -1,6 +1,6 @@
 // netlify/functions/bot-webhook.js
-// Бот: рассылка /broadcast + учёт пользователей (через /start/любое сообщение),
-// предпросмотр, подтверждение/отмена, поддержка текста/фото/видео и web_app кнопки.
+// Бот: /broadcast с предпросмотром и подтверждением, учёт пользователей,
+// web_app-кнопка «Открыть приложение», без автоспама подсказками.
 //
 // ENV:
 //   TG_BOT_TOKEN   — токен бота (без "bot")                                [обяз.]
@@ -20,9 +20,9 @@ function admins() {
 }
 const ADMIN_IDS = admins();
 
-const API = (method) => `https://api.telegram.org/bot${TOKEN}/${method}`;
+const API = (m) => `https://api.telegram.org/bot${TOKEN}/${m}`;
 
-/* ----------------------- Blobs helpers (ТОЛЬКО getJSON/setJSON) --- */
+/* ----------------------- Blobs helpers ----------------------- */
 async function readJSON(store, key, fallback = {}) {
   try { return (await store.getJSON(key)) ?? fallback; } catch { return fallback; }
 }
@@ -30,11 +30,11 @@ async function writeJSON(store, key, obj) {
   await store.setJSON(key, obj ?? {});
 }
 
-/* ----------------------- Telegram helpers ------------------------- */
+/* ----------------------- Telegram helpers -------------------- */
 async function tg(method, payload) {
   const r = await fetch(API(method), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type':'application/json' },
     body: JSON.stringify(payload)
   });
   const data = await r.json().catch(()=> ({}));
@@ -44,9 +44,9 @@ async function tg(method, payload) {
   }
   return data.result;
 }
-function isAdmin(chatId) { return ADMIN_IDS.includes(String(chatId)); }
+const isAdmin = (id) => ADMIN_IDS.includes(String(id));
 
-/* ----------------------- Дедуп апдейтов --------------------------- */
+/* ----------------------- Дедуп апдейтов ---------------------- */
 const DEDUPE_KEY = 'updates_dedupe.json';
 async function seenUpdate(store, updateId) {
   const bag = await readJSON(store, DEDUPE_KEY, { ids: [] });
@@ -59,8 +59,7 @@ async function seenUpdate(store, updateId) {
   return false;
 }
 
-/* -------------------- Регистрация пользователя -------------------- */
-/** записывает/обновляет users.json и один раз шлёт уведомление админам */
+/* -------------------- Регистрация пользователя --------------- */
 async function upsertUserAndMaybeNotify(store, from) {
   const uid = String(from?.id || '').trim();
   if (!uid) return;
@@ -89,7 +88,7 @@ async function upsertUserAndMaybeNotify(store, from) {
   }
 }
 
-/* -------------------- Кнопки из Markdown + web_app ---------------- */
+/* -------------------- Кнопки из Markdown + web_app ----------- */
 function parseButtonsFromText(mdText) {
   const text = (mdText || '').trim();
   const linkRe = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
@@ -104,7 +103,7 @@ function parseButtonsFromText(mdText) {
   return keyboard.length ? { inline_keyboard: keyboard } : undefined;
 }
 
-/* -------------------------- Пост из сообщения --------------------- */
+/* -------------------------- Пост из сообщения ---------------- */
 function buildPostFromMessage(msg) {
   const hasPhoto = Array.isArray(msg.photo) && msg.photo.length > 0;
   const hasVideo = !!msg.video;
@@ -124,7 +123,7 @@ function buildPostFromMessage(msg) {
   return { type: 'text',  payload: { text: bodyText || ' ', parse_mode: 'MarkdownV2', disable_web_page_preview: true, disable_notification: false, reply_markup } };
 }
 
-/* ---------------------- Отправка поста адресату ------------------- */
+/* ---------------------- Отправка поста адресату -------------- */
 async function sendPostTo(chatId, post) {
   const p = post?.payload || {};
   if (post.type === 'photo') return tg('sendPhoto',  { chat_id: chatId, ...p });
@@ -132,7 +131,7 @@ async function sendPostTo(chatId, post) {
   return tg('sendMessage', { chat_id: chatId, ...p });
 }
 
-/* ---------------------- Массовая рассылка ------------------------- */
+/* ---------------------- Массовая рассылка -------------------- */
 async function broadcastToAllUsers({ store, post }) {
   const users = await readJSON(store, 'users.json', {});
   const ids = Object.keys(users);
@@ -155,7 +154,7 @@ async function broadcastToAllUsers({ store, post }) {
   return results;
 }
 
-/* --------------------- Состояние мастера-рассылки ------------------ */
+/* --------------------- Состояние мастера-рассылки ------------- */
 async function setAdminState(store, adminId, state) {
   const key = 'broadcast_state.json';
   const st = await readJSON(store, key, {});
@@ -166,25 +165,28 @@ async function getAdminState(store, adminId) {
   const st = await readJSON(store, 'broadcast_state.json', {});
   return st[adminId] || null;
 }
-function confirmKeyboard() {
-  return { inline_keyboard: [
+const confirmKeyboard = () => ({
+  inline_keyboard: [
     [{ text: '✅ Подтвердить отправку', callback_data: 'bc_confirm' }],
-    [{ text: '❌ Отменить',           callback_data: 'bc_cancel'  }]
-  ]};
-}
+    [{ text: '❌ Отменить',             callback_data: 'bc_cancel'  }]
+  ]
+});
 
-/* ============================ ВЕБХУК ============================== */
+/* ============================ ВЕБХУК ========================== */
 export default async function handler(req) {
+  // Telegram шлёт только POST; все остальные — 200 ok (чтобы не ретраили)
   if (req.method !== 'POST') return new Response('ok', { status: 200 });
 
   const store = getStore(process.env.BLOB_BUCKET || 'appstore');
 
   let update;
-  try { update = await req.json(); } catch { return new Response('bad json', { status: 200 }); }
+  try { update = await req.json(); } catch { return new Response('ok', { status: 200 }); }
 
-  // анти-дубликаты
-  const updId = update?.update_id;
-  if (await seenUpdate(store, updId)) return new Response('ok', { status: 200 });
+  // игнорируем правки сообщений — из-за них часто был «лишний» ответ
+  if (update.edited_message) return new Response('ok', { status: 200 });
+
+  // анти-дубликаты (повторные доставки тем же update_id)
+  if (await seenUpdate(store, update?.update_id)) return new Response('ok', { status: 200 });
 
   try {
     /* ---------- A) callback_query: подтверждение/отмена ---------- */
@@ -214,7 +216,6 @@ export default async function handler(req) {
         await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Отправляем…' });
         const res = await broadcastToAllUsers({ store, post: st.post });
         await setAdminState(store, fromId, null);
-
         await tg('sendMessage', {
           chat_id: fromId,
           text: res.total === 0
@@ -229,91 +230,98 @@ export default async function handler(req) {
     }
 
     /* ---------- B) обычные сообщения ---------- */
-    const msg = update.message || update.edited_message;
+    const msg = update.message;
     if (!msg) return new Response('ok', { status: 200 });
 
     const chatId = String(msg.chat?.id || '');
     const text = (msg.text || msg.caption || '').trim();
 
-    // если прилетела edited_message от АДМИНА — игнорируем, чтобы не было дублей
-    if (!update.message && update.edited_message && isAdmin(chatId)) {
-      return new Response('ok', { status: 200 });
-    }
-
-    // 1) если НЕ админ — регистрируем пользователя и даём короткий ответ
+    // не-админы: регистрируем и показываем кнопку /start
     if (!isAdmin(chatId)) {
       await upsertUserAndMaybeNotify(store, msg.from);
       if (text?.startsWith('/start')) {
         await tg('sendMessage', {
           chat_id: chatId,
-          text: 'Привет! Это бот EVLISE OUTLET. Открыть приложение можно кнопкой ниже.',
-          reply_markup: WEBAPP_URL ? { inline_keyboard: [[{ text: 'Открыть приложение', web_app: { url: WEBAPP_URL } }]] } : undefined
+          text: 'Привет! Это бот EVLISE OUTLET. Откройте приложение кнопкой ниже.',
+          reply_markup: WEBAPP_URL
+            ? { inline_keyboard: [[{ text: 'Открыть приложение', web_app: { url: WEBAPP_URL } }]] }
+            : undefined
         });
       }
       return new Response('ok', { status: 200 });
     }
 
-    // 2) админ-команды
-    if (text && msg.text && text.startsWith('/cancel')) {
-      await setAdminState(store, chatId, null);
-      await tg('sendMessage', { chat_id: chatId, text: 'Режим рассылки сброшен.' });
-      return new Response('ok', { status: 200 });
+    // ----- Админ-команды -----
+    if (text && msg.text) {
+      if (text.startsWith('/help')) {
+        await tg('sendMessage', {
+          chat_id: chatId,
+          text: [
+            'Команды:',
+            '/broadcast — начать рассылку (следующее сообщение будет постом).',
+            '/cancel — отменить текущую рассылку.',
+            '/help — эта справка.'
+          ].join('\n')
+        });
+        return new Response('ok', { status: 200 });
+      }
+      if (text.startsWith('/cancel')) {
+        await setAdminState(store, chatId, null);
+        await tg('sendMessage', { chat_id: chatId, text: 'Состояние сброшено.' });
+        return new Response('ok', { status: 200 });
+      }
+      if (text.startsWith('/broadcast')) {
+        await setAdminState(store, chatId, { mode: 'await_post' });
+        await tg('sendMessage', {
+          chat_id: chatId,
+          text: [
+            'Ок. Пришлите пост для рассылки:',
+            '• текстовый пост',
+            '• фото + подпись',
+            '• видео + подпись',
+            'Кнопки: [Название](https://link)',
+            WEBAPP_URL ? 'Автокнопка: «Открыть приложение» откроет WebApp внутри Telegram.' : ''
+          ].filter(Boolean).join('\n')
+        });
+        return new Response('ok', { status: 200 });
+      }
     }
 
-    if (text && msg.text && text.startsWith('/broadcast')) {
-      await setAdminState(store, chatId, { mode: 'await_post' });
-      await tg('sendMessage', {
-        chat_id: chatId,
-        text: [
-          'Ок. Пришлите пост для рассылки (как в PostBot).',
-          'Варианты:',
-          '• текстовый пост',
-          '• фото + подпись',
-          '• видео + подпись',
-          'Кнопки: [Название](https://link)',
-          WEBAPP_URL ? 'Автокнопка: «Открыть приложение» откроет WebApp внутри Telegram.' : ''
-        ].filter(Boolean).join('\n')
-      });
-      return new Response('ok', { status: 200 });
-    }
-
+    // состояние мастера-рассылки
     const st = await getAdminState(store, chatId);
 
     if (st?.mode === 'await_post') {
       const post = buildPostFromMessage(msg);
       await sendPostTo(chatId, post); // предпросмотр
-      await tg('sendMessage', { chat_id: chatId, text: 'Отправить это сообщение всем пользователям?', reply_markup: confirmKeyboard() });
+      await tg('sendMessage', {
+        chat_id: chatId,
+        text: 'Отправить это сообщение всем пользователям?',
+        reply_markup: confirmKeyboard()
+      });
       await setAdminState(store, chatId, { mode: 'confirm', post });
       return new Response('ok', { status: 200 });
     }
 
     if (st?.mode === 'confirm') {
-      await tg('sendMessage', { chat_id: chatId, text: 'Вы уже на шаге подтверждения. Нажмите «✅ Подтвердить отправку» или «❌ Отменить».' });
+      // на этом шаге игнорируем любые новые сообщения: ждём нажатия кнопки
+      await tg('sendMessage', {
+        chat_id: chatId,
+        text: 'Вы уже на шаге подтверждения. Нажмите «✅ Подтвердить отправку» или «❌ Отменить».'
+      });
       return new Response('ok', { status: 200 });
     }
 
-    // если есть активное состояние — молчим, чтобы не засорять чат
-    if (st?.mode) return new Response('ok', { status: 200 });
-
-    // Хелп
-    await tg('sendMessage', {
-      chat_id: chatId,
-      text: [
-        'Команда для рассылки всем пользователям:',
-        '/broadcast — затем пришлите текст/фото/видео с подписью (MarkdownV2).',
-        'Кнопки: [Название](https://link).',
-        WEBAPP_URL ? '«Открыть приложение» — web_app, внутри Telegram.' : ''
-      ].filter(Boolean).join('\n')
-    });
+    // по умолчанию НИЧЕГО не пишем (раньше здесь был «хелп»-спам)
     return new Response('ok', { status: 200 });
 
   } catch (err) {
+    // стараемся не провоцировать ретраи Телеграма
     try {
       const aid = String(update?.callback_query?.from?.id || update?.message?.chat?.id || '');
       if (aid && isAdmin(aid)) {
         await tg('sendMessage', { chat_id: aid, text: `Ошибка: ${String(err?.message || err)}` });
       }
     } catch {}
-    return new Response('ok', { status: 200 }); // не провоцируем ретраи
+    return new Response('ok', { status: 200 });
   }
 }
