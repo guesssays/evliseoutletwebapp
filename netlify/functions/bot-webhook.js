@@ -1,14 +1,6 @@
 // netlify/functions/bot-webhook.js
-// Telegram webhook: рассылка админами ВСЕМ пользователям с предпросмотром,
-// подтверждением/отменой и поддержкой медиа (текст/фото/видео).
-//
-// Флоу:
-// 1) Админ -> /broadcast
-// 2) Следующее сообщение админа — пост (MarkdownV2).
-//    Кнопки указываем markdown-ссылками: [Текст](https://...)
-//    Автокнопка "Открыть приложение" (web_app), если задан WEBAPP_URL.
-// 3) Бот шлёт предпросмотр и сообщение с кнопками "Подтвердить"/"Отменить".
-// 4) По "Подтвердить" — рассылаем всем chat_id из users.json.
+// Бот: рассылка /broadcast + учёт пользователей (через /start/любое сообщение),
+// предпросмотр, подтверждение/отмена, поддержка текста/фото/видео и web_app кнопки.
 //
 // ENV:
 //   TG_BOT_TOKEN   — токен бота (без "bot")                                [обяз.]
@@ -30,18 +22,12 @@ const ADMIN_IDS = admins();
 
 const API = (method) => `https://api.telegram.org/bot${TOKEN}/${method}`;
 
-/* ----------------------- Blobs JSON helpers ----------------------- */
+/* ----------------------- Blobs helpers (ТОЛЬКО getJSON/setJSON) --- */
 async function readJSON(store, key, fallback = {}) {
-  try {
-    const data = await store.get(key, { type: 'json' });
-    return (data ?? fallback);
-  } catch {
-    return fallback;
-  }
+  try { return (await store.getJSON(key)) ?? fallback; } catch { return fallback; }
 }
 async function writeJSON(store, key, obj) {
-  const body = JSON.stringify(obj ?? {});
-  await store.set(key, body, { contentType: 'application/json; charset=utf-8' });
+  await store.setJSON(key, obj ?? {});
 }
 
 /* ----------------------- Telegram helpers ------------------------- */
@@ -58,15 +44,9 @@ async function tg(method, payload) {
   }
   return data.result;
 }
-function isAdmin(chatId) {
-  return ADMIN_IDS.includes(String(chatId));
-}
+function isAdmin(chatId) { return ADMIN_IDS.includes(String(chatId)); }
 
-/* ----------------------- Дедупликация апдейтов -------------------- */
-/** Telegram/Netlify иногда присылают один и тот же update повторно.
- * Храним последние 100 update_id и игнорируем дубликаты, чтобы
- * «Ок. пришлите пост…» не отправлялось дважды.
- */
+/* ----------------------- Дедуп апдейтов --------------------------- */
 const DEDUPE_KEY = 'updates_dedupe.json';
 async function seenUpdate(store, updateId) {
   const bag = await readJSON(store, DEDUPE_KEY, { ids: [] });
@@ -74,9 +54,39 @@ async function seenUpdate(store, updateId) {
   if (!Number.isFinite(id)) return false;
   if (bag.ids.includes(id)) return true;
   bag.ids.push(id);
-  if (bag.ids.length > 100) bag.ids = bag.ids.slice(-100);
+  if (bag.ids.length > 200) bag.ids = bag.ids.slice(-200);
   await writeJSON(store, DEDUPE_KEY, bag);
   return false;
+}
+
+/* -------------------- Регистрация пользователя -------------------- */
+/** записывает/обновляет users.json и один раз шлёт уведомление админам */
+async function upsertUserAndMaybeNotify(store, from) {
+  const uid = String(from?.id || '').trim();
+  if (!uid) return;
+  const users = await readJSON(store, 'users.json', {});
+  const existed = !!users[uid];
+  users[uid] = {
+    first_name: String(from.first_name || '').trim(),
+    last_name : String(from.last_name  || '').trim(),
+    username  : String(from.username   || '').trim(),
+    ts: users[uid]?.ts || Date.now()
+  };
+  await writeJSON(store, 'users.json', users);
+
+  if (!existed) {
+    const total = Object.keys(users).length;
+    const line = [
+      '<b>Новый пользователь</b>',
+      `${users[uid].first_name}${users[uid].last_name ? ' ' + users[uid].last_name : ''}`,
+      users[uid].username ? `( @${users[uid].username} )` : '',
+      `\nID: <code>${uid}</code>`,
+      `\nВсего пользователей: <b>${total}</b>`
+    ].join(' ').replace(/\s+/g, ' ');
+    await Promise.allSettled(ADMIN_IDS.map(aid =>
+      tg('sendMessage', { chat_id: aid, text: line, parse_mode: 'HTML', disable_web_page_preview: true })
+    ));
+  }
 }
 
 /* -------------------- Кнопки из Markdown + web_app ---------------- */
@@ -85,9 +95,7 @@ function parseButtonsFromText(mdText) {
   const linkRe = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
   const buttons = [];
   let m;
-  while ((m = linkRe.exec(text)) !== null) {
-    buttons.push({ text: m[1], url: m[2] });
-  }
+  while ((m = linkRe.exec(text)) !== null) buttons.push({ text: m[1], url: m[2] });
 
   const keyboard = [];
   if (buttons.length) keyboard.push(...buttons.map(b => [b]));
@@ -104,44 +112,16 @@ function buildPostFromMessage(msg) {
   const caption = (msg.caption || '').trim();
   const text = (msg.text || '').trim();
   const bodyText = hasPhoto || hasVideo ? caption : text;
-
   const reply_markup = parseButtonsFromText(bodyText);
 
   if (hasPhoto) {
     const largest = msg.photo[msg.photo.length - 1];
-    return {
-      type: 'photo',
-      payload: {
-        photo: largest.file_id,
-        caption: bodyText || undefined,
-        parse_mode: 'MarkdownV2',
-        disable_notification: false,
-        reply_markup
-      }
-    };
+    return { type: 'photo', payload: { photo: largest.file_id, caption: bodyText || undefined, parse_mode: 'MarkdownV2', disable_notification: false, reply_markup } };
   }
   if (hasVideo) {
-    return {
-      type: 'video',
-      payload: {
-        video: msg.video.file_id,
-        caption: bodyText || undefined,
-        parse_mode: 'MarkdownV2',
-        disable_notification: false,
-        reply_markup
-      }
-    };
+    return { type: 'video', payload: { video: msg.video.file_id,   caption: bodyText || undefined, parse_mode: 'MarkdownV2', disable_notification: false, reply_markup } };
   }
-  return {
-    type: 'text',
-    payload: {
-      text: bodyText || ' ',
-      parse_mode: 'MarkdownV2',
-      disable_web_page_preview: true,
-      disable_notification: false,
-      reply_markup
-    }
-  };
+  return { type: 'text',  payload: { text: bodyText || ' ', parse_mode: 'MarkdownV2', disable_web_page_preview: true, disable_notification: false, reply_markup } };
 }
 
 /* ---------------------- Отправка поста адресату ------------------- */
@@ -155,10 +135,8 @@ async function sendPostTo(chatId, post) {
 /* ---------------------- Массовая рассылка ------------------------- */
 async function broadcastToAllUsers({ store, post }) {
   const users = await readJSON(store, 'users.json', {});
-  const ids = Object.keys(users); // uid == chat_id
-  if (!ids.length) {
-    return { total: 0, ok: 0, fail: 0 };
-  }
+  const ids = Object.keys(users);
+  if (!ids.length) return { total: 0, ok: 0, fail: 0 };
 
   const CHUNK = 25;
   const PAUSE_MS = 450;
@@ -172,9 +150,7 @@ async function broadcastToAllUsers({ store, post }) {
         .catch(() => { results.fail++; })
     );
     await Promise.all(batch);
-    if (i + CHUNK < ids.length) {
-      await new Promise(r => setTimeout(r, PAUSE_MS));
-    }
+    if (i + CHUNK < ids.length) await new Promise(r => setTimeout(r, PAUSE_MS));
   }
   return results;
 }
@@ -183,43 +159,32 @@ async function broadcastToAllUsers({ store, post }) {
 async function setAdminState(store, adminId, state) {
   const key = 'broadcast_state.json';
   const st = await readJSON(store, key, {});
-  if (state === null) delete st[adminId];
-  else st[adminId] = state;
+  if (state === null) delete st[adminId]; else st[adminId] = state;
   await writeJSON(store, key, st);
 }
 async function getAdminState(store, adminId) {
-  const key = 'broadcast_state.json';
-  const st = await readJSON(store, key, {});
+  const st = await readJSON(store, 'broadcast_state.json', {});
   return st[adminId] || null;
 }
 function confirmKeyboard() {
-  return {
-    inline_keyboard: [
-      [{ text: '✅ Подтвердить отправку', callback_data: 'bc_confirm' }],
-      [{ text: '❌ Отменить',           callback_data: 'bc_cancel'  }]
-    ]
-  };
+  return { inline_keyboard: [
+    [{ text: '✅ Подтвердить отправку', callback_data: 'bc_confirm' }],
+    [{ text: '❌ Отменить',           callback_data: 'bc_cancel'  }]
+  ]};
 }
 
 /* ============================ ВЕБХУК ============================== */
 export default async function handler(req) {
-  // Telegram шлёт только POST
-  if (req.method !== 'POST') {
-    return new Response('ok', { status: 200 });
-  }
+  if (req.method !== 'POST') return new Response('ok', { status: 200 });
 
   const store = getStore(process.env.BLOB_BUCKET || 'appstore');
 
   let update;
-  try { update = await req.json(); }
-  catch { return new Response('bad json', { status: 200 }); }
+  try { update = await req.json(); } catch { return new Response('bad json', { status: 200 }); }
 
   // анти-дубликаты
   const updId = update?.update_id;
-  if (await seenUpdate(store, updId)) {
-    // уже обрабатывали этот апдейт — молча подтверждаем
-    return new Response('ok', { status: 200 });
-  }
+  if (await seenUpdate(store, updId)) return new Response('ok', { status: 200 });
 
   try {
     /* ---------- A) callback_query: подтверждение/отмена ---------- */
@@ -247,21 +212,15 @@ export default async function handler(req) {
 
       if (data === 'bc_confirm') {
         await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Отправляем…' });
-
         const res = await broadcastToAllUsers({ store, post: st.post });
         await setAdminState(store, fromId, null);
 
-        if (res.total === 0) {
-          await tg('sendMessage', {
-            chat_id: fromId,
-            text: 'В базе пользователей пока никого нет. Никому отправлять.'
-          });
-        } else {
-          await tg('sendMessage', {
-            chat_id: fromId,
-            text: `Готово: всего ${res.total}, отправлено ${res.ok}, ошибок ${res.fail}.`
-          });
-        }
+        await tg('sendMessage', {
+          chat_id: fromId,
+          text: res.total === 0
+            ? 'В базе пользователей пока никого нет. Никому отправлять.'
+            : `Готово: всего ${res.total}, отправлено ${res.ok}, ошибок ${res.fail}.`
+        });
         return new Response('ok', { status: 200 });
       }
 
@@ -269,19 +228,27 @@ export default async function handler(req) {
       return new Response('ok', { status: 200 });
     }
 
-    /* ---------- B) обычные сообщения (личка) ---------- */
+    /* ---------- B) обычные сообщения ---------- */
     const msg = update.message || update.edited_message;
     if (!msg) return new Response('ok', { status: 200 });
 
     const chatId = String(msg.chat?.id || '');
+    const text = (msg.text || msg.caption || '').trim();
+
+    // 1) если НЕ админ — регистрируем пользователя и даём короткий ответ
     if (!isAdmin(chatId)) {
-      // молча игнорируем не-админов
+      await upsertUserAndMaybeNotify(store, msg.from);
+      if (text?.startsWith('/start')) {
+        await tg('sendMessage', {
+          chat_id: chatId,
+          text: 'Привет! Это бот EVLISE OUTLET. Открыть приложение можно кнопкой ниже.',
+          reply_markup: WEBAPP_URL ? { inline_keyboard: [[{ text: 'Открыть приложение', web_app: { url: WEBAPP_URL } }]] } : undefined
+        });
+      }
       return new Response('ok', { status: 200 });
     }
 
-    const text = (msg.text || msg.caption || '').trim();
-
-    // /broadcast — переход в режим ожидания поста
+    // 2) админ-команды
     if (text && msg.text && text.startsWith('/broadcast')) {
       await setAdminState(store, chatId, { mode: 'await_post' });
       await tg('sendMessage', {
@@ -299,58 +266,40 @@ export default async function handler(req) {
       return new Response('ok', { status: 200 });
     }
 
-    // Если ждём пост — этот апдейт и есть пост (текст/фото/видео)
     const st = await getAdminState(store, chatId);
+
     if (st?.mode === 'await_post') {
       const post = buildPostFromMessage(msg);
-
-      // Предпросмотр тем же типом
-      await sendPostTo(chatId, post);
-
-      // Сообщение с кнопками подтверждения
-      await tg('sendMessage', {
-        chat_id: chatId,
-        text: 'Отправить это сообщение всем пользователям?',
-        reply_markup: confirmKeyboard()
-      });
-
+      await sendPostTo(chatId, post); // предпросмотр
+      await tg('sendMessage', { chat_id: chatId, text: 'Отправить это сообщение всем пользователям?', reply_markup: confirmKeyboard() });
       await setAdminState(store, chatId, { mode: 'confirm', post });
       return new Response('ok', { status: 200 });
     }
 
-    // Уже на шаге подтверждения — напоминаем нажать кнопку
     if (st?.mode === 'confirm') {
-      await tg('sendMessage', {
-        chat_id: chatId,
-        text: 'Вы уже на шаге подтверждения. Нажмите «✅ Подтвердить отправку» или «❌ Отменить».'
-      });
+      await tg('sendMessage', { chat_id: chatId, text: 'Вы уже на шаге подтверждения. Нажмите «✅ Подтвердить отправку» или «❌ Отменить».' });
       return new Response('ok', { status: 200 });
     }
 
-    // Хелп по умолчанию
+    // Хелп
     await tg('sendMessage', {
       chat_id: chatId,
       text: [
         'Команда для рассылки всем пользователям:',
         '/broadcast — затем пришлите текст/фото/видео с подписью (MarkdownV2).',
         'Кнопки: [Название](https://link).',
-        WEBAPP_URL ? 'Автокнопка: «Открыть приложение» — web_app, откроет приложение внутри Telegram.' : ''
+        WEBAPP_URL ? '«Открыть приложение» — web_app, внутри Telegram.' : ''
       ].filter(Boolean).join('\n')
     });
     return new Response('ok', { status: 200 });
+
   } catch (err) {
-    // Поймали ошибку — если это админ, попробуем сообщить
     try {
-      const aid =
-        String(update?.callback_query?.from?.id || update?.message?.chat?.id || '');
+      const aid = String(update?.callback_query?.from?.id || update?.message?.chat?.id || '');
       if (aid && isAdmin(aid)) {
-        await tg('sendMessage', {
-          chat_id: aid,
-          text: `Ошибка: ${String(err?.message || err)}`
-        });
+        await tg('sendMessage', { chat_id: aid, text: `Ошибка: ${String(err?.message || err)}` });
       }
     } catch {}
-    // Но Telegram ждёт 200 — иначе он ретраит (и будет дубль)
-    return new Response('ok', { status: 200 });
+    return new Response('ok', { status: 200 }); // не провоцируем ретраи
   }
 }
