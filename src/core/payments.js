@@ -1,7 +1,16 @@
-// Укажете нужные реквизиты здесь
-const CARD_NUMBER = '8600 1234 5678 9012';
+// src/core/payments.js
+// Единая точка для реквизитов оплаты.
+// При необходимости можно переключать провайдера/карту по окружению/региону.
 
-export function getPayCardNumber(){
-  // Можно расширить: разные провайдеры, валюты и т.п.
-  return CARD_NUMBER;
+export function getPayRequisites() {
+  return {
+    cardNumber: '9860 3501 4075 6320',
+    holder: 'Temur Khidayatkhanov',
+    provider: 'Humo', // будет показан бейджем; можно оставить '' чтобы скрыть
+  };
+}
+
+// Для обратной совместимости старых импортов (если где-то ещё используется)
+export function getPayCardNumber() {
+  return getPayRequisites().cardNumber;
 }

@@ -665,26 +665,19 @@
       }
     }
   ],
-  "categories": [
-    {
-      "id": "outerwear",
-      "slug": "outerwear",
-      "name": "Верхняя одежда",
-      "children": [
-        { "id": "bombers", "slug": "bombers", "name": "Бомберы" },
-        { "id": "jackets", "slug": "jackets", "name": "Куртки" },
-        { "id": "coats", "slug": "coats", "name": "Пальто" }
-      ]
-    },
+   "categories": [
     {
       "id": "tops",
       "slug": "tops",
       "name": "Верх",
       "children": [
-        { "id": "hoodies", "slug": "hoodies", "name": "Худи" },
-        { "id": "sweatshirts", "slug": "sweatshirts", "name": "Свитшоты" },
-        { "id": "tshirts", "slug": "tshirts", "name": "Футболки" },
-        { "id": "polo", "slug": "polo", "name": "Поло" }
+        { "id": "hoodies",   "slug": "hoodies",   "name": "Худи" },
+        { "id": "sweatshirts","slug": "sweatshirts","name": "Свитшоты" },
+        { "id": "tshirts",   "slug": "tshirts",   "name": "Футболки" },
+        { "id": "polo",      "slug": "polo",      "name": "Поло" },
+        { "id": "bombers",   "slug": "bombers",   "name": "Бомберы" },
+        { "id": "jackets",   "slug": "jackets",   "name": "Куртки" },
+        { "id": "coats",     "slug": "coats",     "name": "Пальто" }
       ]
     },
     {

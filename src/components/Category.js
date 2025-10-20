@@ -77,21 +77,20 @@ function drawProducts(list){
 }
 
 /**
- * Рендер экрана категории по slug: объединяем все дочерние
- * подкатегории выбранной группы и рисуем сетку товаров.
+ * Рендер экрана категории по slug: агрегируем дочерние подкатегории.
+ * Допустимы только группы: tops, bottoms, shoes, bags, misc (+ спец: all/new).
  * @param {{slug:string}} params
  */
 export function renderCategory(params){
   const slug = params?.slug || 'all';
   state.filters.category = slug;
 
-  const v = document.getElementById('view');
-  v.innerHTML = `
-    <div class="section">
-      <h2 style="margin:8px 12px">${categoryNameBySlug(slug) || 'Категория'}</h2>
-    </div>
-    <div class="grid home-bottom-pad" id="productGrid"></div>
-  `;
+v.innerHTML = `
+  <div class="section">
+    <h2 style="margin:8px 12px">${categoryNameBySlug(slug) || 'Категория'}</h2>
+  </div>
+  <div class="grid home-bottom-pad" id="productGrid"></div>
+`;
 
   let list;
   if (slug === 'all') {

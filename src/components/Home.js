@@ -31,8 +31,7 @@ export function renderHome(router){
 }
 
 /**
- * Рендер чипов категорий (только ОБЩИЕ группы + служебные).
- * Клик по группе агрегирует все её подкатегории.
+ * Рендер чипов категорий (только верхние группы + «Все», «Новинки»).
  */
 export function drawCategoriesChips(router){
   const wrap = document.getElementById('catChips');
@@ -44,7 +43,7 @@ export function drawCategoriesChips(router){
   wrap.insertAdjacentHTML('beforeend', mk('all','Все товары', state.filters.category==='all'));
   wrap.insertAdjacentHTML('beforeend', mk('new','Новинки', state.filters.category==='new'));
 
-  // только верхний уровень (общие категории)
+  // верхний уровень (Верх, Низ, Обувь, Сумки, Разное)
   state.categories.forEach(c=>{
     if (c.slug === 'new') return;
     wrap.insertAdjacentHTML('beforeend', mk(c.slug, c.name, state.filters.category===c.slug));

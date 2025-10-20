@@ -1,9 +1,8 @@
-// src/components/Cart.js
 import { state, persistCart, updateCartBadge } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 import { addOrder } from '../core/orders.js';
-import { getPayCardNumber } from '../core/payments.js';
+import { getPayRequisites } from '../core/payments.js';
 import { persistProfile } from '../core/state.js';
 import { getUID } from '../core/state.js';
 
@@ -53,6 +52,7 @@ export function renderCart(){
           <button class="ctrl inc" aria-label="Плюс"><i data-lucide="plus"></i></button>
         </div>
       </div>`).join('')}
+
 
     <div class="shipping">
       <div class="address-row">
@@ -284,7 +284,7 @@ function openPayModal({ items, address, phone, payer, total }){
   const mt = document.getElementById('modalTitle');
   const ma = document.getElementById('modalActions');
 
-  const card = getPayCardNumber();
+  const pay = getPayRequisites();
 
   // переменные для файла чека (предпросмотр/сжатие)
   let shotDataUrl = '';   // data:image/jpeg;base64,...
@@ -297,6 +297,7 @@ function openPayModal({ items, address, phone, payer, total }){
       .shot-preview{ display:flex; align-items:center; gap:10px; }
       .shot-preview img{ width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid var(--border, rgba(0,0,0,.1)); }
       .badge{ font-size:.8rem; padding:2px 6px; border-radius:999px; background:rgba(0,0,0,.06); }
+      .note-sub.muted{ color:var(--muted,#6b7280); }
       .spin{ width:16px; height:16px; border:2px solid rgba(0,0,0,.2); border-top-color:rgba(0,0,0,.6); border-radius:50%; animation:spin .8s linear infinite; }
       @keyframes spin{to{transform:rotate(360deg)}}
     </style>
@@ -306,7 +307,11 @@ function openPayModal({ items, address, phone, payer, total }){
         <i data-lucide="credit-card"></i>
         <div>
           <div class="note-title">Переведите на карту</div>
-          <div class="note-sub" style="user-select:all">${escapeHtml(card)}</div>
+          <div class="note-sub" style="user-select:all">${escapeHtml(pay.cardNumber)}</div>
+          <div class="note-sub muted">
+            ${escapeHtml(pay.holder || '')}
+            ${pay.provider ? ` · <span class="badge">${escapeHtml(pay.provider)}</span>` : ''}
+          </div>
         </div>
       </div>
       <div class="field shot-wrap">
@@ -349,15 +354,13 @@ function openPayModal({ items, address, phone, payer, total }){
 
     try{
       shotBusy = true; busyBar.style.display='flex';
-      // сжатие до макс 1600px по длинной стороне
       const { dataUrl, outW, outH } = await compressImageToDataURL(file, 1600, 1600, 0.82);
       shotDataUrl = dataUrl;
-      // предпросмотр
       pv.style.display = '';
       thumbWrap.innerHTML = `<img alt="Чек" src="${shotDataUrl}">`;
       const kb = Math.round((dataUrl.length * 3 / 4) / 1024);
       meta.textContent = `Предпросмотр ${outW}×${outH} · ~${kb} KB`;
-      urlInput.value = ''; // приоритезируем файл — очищаем URL
+      urlInput.value = '';
     }catch(err){
       console.error(err);
       toast('Не удалось обработать изображение');
@@ -388,9 +391,8 @@ function openPayModal({ items, address, phone, payer, total }){
     let paymentScreenshot = '';
 
     if (shotDataUrl){
-      paymentScreenshot = shotDataUrl; // загруженный файл (dataURL)
+      paymentScreenshot = shotDataUrl;
     }else if (urlRaw){
-      // простая проверка URL
       if (!/^https?:\/\//i.test(urlRaw)){ toast('Некорректный URL чека'); return; }
       paymentScreenshot = urlRaw;
     }else{
@@ -399,7 +401,6 @@ function openPayModal({ items, address, phone, payer, total }){
     }
 
     const first = items[0];
-    // === ВАЖНО: теперь addOrder — async (сервер-первый)
     const orderId = await addOrder({
       cart: items.map(x=>({
         id: x.product.id,
@@ -419,10 +420,9 @@ function openPayModal({ items, address, phone, payer, total }){
       address,
       phone,
       username: state.user?.username || '',
-      // КРИТИЧЕСКИЙ ФИКС: корректно проставляем userId всем, включая анонимов
       userId: getUID(),
       payerFullName: payer || '',
-      paymentScreenshot, // <== теперь реально сохранённый снимок (dataURL или внешний URL)
+      paymentScreenshot,
       status: 'новый',
       accepted: false
     });
@@ -431,8 +431,6 @@ function openPayModal({ items, address, phone, payer, total }){
     persistCart(); updateCartBadge();
 
     close();
-
-    // Вместо тоста — структурированное модальное окно подтверждения
     showOrderConfirmationModal(orderId);
 
     try{
@@ -444,7 +442,7 @@ function openPayModal({ items, address, phone, payer, total }){
   function close(){ modal.classList.remove('show'); }
 }
 
-/** Модалка «Заказ принят» — красивая, структурированная */
+/** Модалка «Заказ принят» */
 function showOrderConfirmationModal(orderId){
   const modal = document.getElementById('modal');
   const mb = document.getElementById('modalBody');
@@ -498,7 +496,6 @@ function showOrderConfirmationModal(orderId){
     </div>
   `;
 
-  // две кнопки — чат оператора и переход к заказам
   ma.innerHTML = `
     <button id="okOperator" class="pill">Написать оператору</button>
     <button id="okOrders" class="pill primary">К моим заказам</button>
@@ -507,7 +504,6 @@ function showOrderConfirmationModal(orderId){
   modal.classList.add('show');
   window.lucide?.createIcons && lucide.createIcons();
 
-  // Кнопки
   document.getElementById('modalClose').onclick = close;
   document.getElementById('okOrders').onclick = ()=>{
     close();
@@ -550,7 +546,6 @@ function compressImageToDataURL(file, maxW=1600, maxH=1600, quality=0.82){
         const canvas = document.createElement('canvas');
         canvas.width = outW; canvas.height = outH;
         const ctx = canvas.getContext('2d', { alpha:false });
-        // немного сглаживания
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, outW, outH);

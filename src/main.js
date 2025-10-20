@@ -33,7 +33,7 @@ import { renderAdminLogin } from './components/AdminLogin.js';
 import { getOrders, getStatusLabel } from './core/orders.js';
 import { canAccessAdmin, tryUnlockFromStartParam } from './core/auth.js';
 
-// Пинг в бота
+// Пинг в бота (маркетинг/события)
 import {
   notifyOrderPlaced,
   notifyOrderAccepted,
@@ -45,6 +45,7 @@ import {
 
 /* ===== «богатые» уведомления через Netlify Function ===== */
 const NOTIF_API = '/.netlify/functions/notifs';
+const USER_JOIN_API = '/.netlify/functions/user-join';
 
 async function notifApiList(uid){
   const url = `${NOTIF_API}?op=list&uid=${encodeURIComponent(uid)}`;
@@ -464,9 +465,15 @@ async function router(){
 
 /* ---------- ИНИЦИАЛИЗАЦИЯ ---------- */
 async function init(){
-  const res = await fetch('data/products.json'); const data = await res.json();
-  state.products   = data.products;
-  state.categories = data.categories.map(c=>({ ...c, name: c.name }));
+  // загрузка каталога
+  try{
+    const res = await fetch('data/products.json');
+    const data = await res.json();
+    state.products   = Array.isArray(data?.products)   ? data.products   : [];
+    state.categories = Array.isArray(data?.categories) ? data.categories.map(c=>({ ...c, name: c.name })) : [];
+  }catch{
+    state.products = []; state.categories = [];
+  }
 
   try{ state.orders = await getOrders(); }catch{ state.orders = []; }
 
@@ -476,6 +483,7 @@ async function init(){
   drawCategoriesChips(router);
   renderActiveFilterChips();
 
+  // запоминаем стартовый роут
   let startRoute = null;
   try{
     const tg = window.Telegram?.WebApp;
@@ -484,6 +492,9 @@ async function init(){
     sessionStorage.removeItem('nas_start_route');
   }catch{}
   if (startRoute){ location.hash = startRoute; }
+
+  // одноразовый пинг о новом пользователе (только для Telegram-пользователя)
+  await ensureUserJoinReported();
 
   await router();
 
@@ -713,4 +724,36 @@ function scheduleMarketingBotPings(){
   setInterval(tick, TIMER_MS);
 
   document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) tick(); });
+}
+
+/* ===== одноразовый пинг «новый пользователь» для Telegram ===== */
+async function ensureUserJoinReported(){
+  try{
+    const tgUser = window?.Telegram?.WebApp?.initDataUnsafe?.user;
+    if (!tgUser) return; // только для Telegram-пользователей
+
+    const uid = String(tgUser.id);
+    const FLAG = `user_join_sent__${uid}`;
+    if (localStorage.getItem(FLAG) === '1') return;
+
+    const payload = {
+      uid,
+      first_name: String(tgUser.first_name || '').trim(),
+      last_name: String(tgUser.last_name || '').trim(),
+      username: String(tgUser.username || '').trim(),
+    };
+
+    const r = await fetch(USER_JOIN_API, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify(payload),
+    });
+    // даже при ответе ok/not-ok — фиксируем, чтобы не ддосить
+    localStorage.setItem(FLAG, '1');
+
+    // необязательно: можно обработать ответ
+    await r.json().catch(()=> ({}));
+  }catch{
+    // тихо игнорируем — в следующий раз не будем спамить
+  }
 }
