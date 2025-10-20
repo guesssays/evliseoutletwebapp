@@ -1,6 +1,6 @@
 // netlify/functions/bot-webhook.js
-// Бот: /broadcast с предпросмотром и подтверждением, учёт пользователей,
-// web_app-кнопка «Открыть приложение», без автоспама подсказками.
+// Бот: рассылка /broadcast (текст/фото/видео) с предпросмотром и подтверждением,
+// учёт пользователей, web_app-кнопка, устойчивая машина состояний без спама.
 //
 // ENV:
 //   TG_BOT_TOKEN   — токен бота (без "bot")                                [обяз.]
@@ -46,17 +46,20 @@ async function tg(method, payload) {
 }
 const isAdmin = (id) => ADMIN_IDS.includes(String(id));
 
-/* ----------------------- Дедуп апдейтов ---------------------- */
-const DEDUPE_KEY = 'updates_dedupe.json';
-async function seenUpdate(store, updateId) {
-  const bag = await readJSON(store, DEDUPE_KEY, { ids: [] });
-  const id = Number(updateId);
-  if (!Number.isFinite(id)) return false;
-  if (bag.ids.includes(id)) return true;
-  bag.ids.push(id);
-  if (bag.ids.length > 200) bag.ids = bag.ids.slice(-200);
-  await writeJSON(store, DEDUPE_KEY, bag);
-  return false;
+/* --------- безопасная отправка: с MarkdownV2 и фолбэком ------- */
+async function safeSend(method, base) {
+  try {
+    return await tg(method, base);
+  } catch (e) {
+    const msg = String(e?.message || '');
+    // если сломалась разметка — пробуем без parse_mode
+    if (msg.includes('parse entities') || msg.includes('Wrong entity')) {
+      const clone = { ...base };
+      delete clone.parse_mode;
+      return tg(method, clone);
+    }
+    throw e;
+  }
 }
 
 /* -------------------- Регистрация пользователя --------------- */
@@ -126,9 +129,9 @@ function buildPostFromMessage(msg) {
 /* ---------------------- Отправка поста адресату -------------- */
 async function sendPostTo(chatId, post) {
   const p = post?.payload || {};
-  if (post.type === 'photo') return tg('sendPhoto',  { chat_id: chatId, ...p });
-  if (post.type === 'video') return tg('sendVideo',  { chat_id: chatId, ...p });
-  return tg('sendMessage', { chat_id: chatId, ...p });
+  if (post.type === 'photo') return safeSend('sendPhoto',  { chat_id: chatId, ...p });
+  if (post.type === 'video') return safeSend('sendVideo',  { chat_id: chatId, ...p });
+  return safeSend('sendMessage', { chat_id: chatId, ...p });
 }
 
 /* ---------------------- Массовая рассылка -------------------- */
@@ -155,10 +158,21 @@ async function broadcastToAllUsers({ store, post }) {
 }
 
 /* --------------------- Состояние мастера-рассылки ------------- */
-async function setAdminState(store, adminId, state) {
+/*
+  broadcast_state.json хранит по adminId:
+  {
+    [adminId]: {
+      mode: 'await_post' | 'confirm' | undefined,
+      post?: {...},
+      last_update?: number   // последний обработанный update_id (чтобы не реагировать 2жды)
+    }
+  }
+*/
+async function setAdminState(store, adminId, patch) {
   const key = 'broadcast_state.json';
   const st = await readJSON(store, key, {});
-  if (state === null) delete st[adminId]; else st[adminId] = state;
+  if (patch === null) delete st[adminId];
+  else st[adminId] = { ...(st[adminId]||{}), ...patch };
   await writeJSON(store, key, st);
 }
 async function getAdminState(store, adminId) {
@@ -174,7 +188,6 @@ const confirmKeyboard = () => ({
 
 /* ============================ ВЕБХУК ========================== */
 export default async function handler(req) {
-  // Telegram шлёт только POST; все остальные — 200 ok (чтобы не ретраили)
   if (req.method !== 'POST') return new Response('ok', { status: 200 });
 
   const store = getStore(process.env.BLOB_BUCKET || 'appstore');
@@ -182,11 +195,8 @@ export default async function handler(req) {
   let update;
   try { update = await req.json(); } catch { return new Response('ok', { status: 200 }); }
 
-  // игнорируем правки сообщений — из-за них часто был «лишний» ответ
+  // игнорируем правки сообщений — именно они часто создавали повторные реакции
   if (update.edited_message) return new Response('ok', { status: 200 });
-
-  // анти-дубликаты (повторные доставки тем же update_id)
-  if (await seenUpdate(store, update?.update_id)) return new Response('ok', { status: 200 });
 
   try {
     /* ---------- A) callback_query: подтверждение/отмена ---------- */
@@ -199,6 +209,7 @@ export default async function handler(req) {
         await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Недостаточно прав' });
         return new Response('ok', { status: 200 });
       }
+
       const st = await getAdminState(store, fromId);
       if (!st?.mode || !st?.post) {
         await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Нет активной рассылки' });
@@ -251,8 +262,8 @@ export default async function handler(req) {
       return new Response('ok', { status: 200 });
     }
 
-    // ----- Админ-команды -----
-    if (text && msg.text) {
+    // ----- Админ-команды (только по обычным текстовым сообщениям) -----
+    if (msg.text) {
       if (text.startsWith('/help')) {
         await tg('sendMessage', {
           chat_id: chatId,
@@ -260,7 +271,7 @@ export default async function handler(req) {
             'Команды:',
             '/broadcast — начать рассылку (следующее сообщение будет постом).',
             '/cancel — отменить текущую рассылку.',
-            '/help — эта справка.'
+            '/users — показать число пользователей.'
           ].join('\n')
         });
         return new Response('ok', { status: 200 });
@@ -270,8 +281,13 @@ export default async function handler(req) {
         await tg('sendMessage', { chat_id: chatId, text: 'Состояние сброшено.' });
         return new Response('ok', { status: 200 });
       }
+      if (text.startsWith('/users')) {
+        const users = await readJSON(store, 'users.json', {});
+        await tg('sendMessage', { chat_id: chatId, text: `Пользователей в базе: ${Object.keys(users).length}` });
+        return new Response('ok', { status: 200 });
+      }
       if (text.startsWith('/broadcast')) {
-        await setAdminState(store, chatId, { mode: 'await_post' });
+        await setAdminState(store, chatId, { mode: 'await_post', post: null, last_update: 0 });
         await tg('sendMessage', {
           chat_id: chatId,
           text: [
@@ -289,6 +305,12 @@ export default async function handler(req) {
 
     // состояние мастера-рассылки
     const st = await getAdminState(store, chatId);
+    const updId = Number(update.update_id || 0);
+
+    // защита от дублей: внутри состояния запоминаем последний обработанный update_id
+    if (st?.last_update && updId && updId <= Number(st.last_update)) {
+      return new Response('ok', { status: 200 });
+    }
 
     if (st?.mode === 'await_post') {
       const post = buildPostFromMessage(msg);
@@ -298,12 +320,13 @@ export default async function handler(req) {
         text: 'Отправить это сообщение всем пользователям?',
         reply_markup: confirmKeyboard()
       });
-      await setAdminState(store, chatId, { mode: 'confirm', post });
+      await setAdminState(store, chatId, { mode: 'confirm', post, last_update: updId });
       return new Response('ok', { status: 200 });
     }
 
     if (st?.mode === 'confirm') {
       // на этом шаге игнорируем любые новые сообщения: ждём нажатия кнопки
+      await setAdminState(store, chatId, { last_update: updId });
       await tg('sendMessage', {
         chat_id: chatId,
         text: 'Вы уже на шаге подтверждения. Нажмите «✅ Подтвердить отправку» или «❌ Отменить».'
@@ -311,11 +334,10 @@ export default async function handler(req) {
       return new Response('ok', { status: 200 });
     }
 
-    // по умолчанию НИЧЕГО не пишем (раньше здесь был «хелп»-спам)
+    // режим по умолчанию — молчим (чтобы не было спама)
     return new Response('ok', { status: 200 });
 
   } catch (err) {
-    // стараемся не провоцировать ретраи Телеграма
     try {
       const aid = String(update?.callback_query?.from?.id || update?.message?.chat?.id || '');
       if (aid && isAdmin(aid)) {
