@@ -1,12 +1,12 @@
 // netlify/functions/bot-webhook.js
 // Бот: рассылка /broadcast (текст/фото/видео) с предпросмотром и подтверждением,
 // учёт пользователей, web_app-кнопка, устойчивая машина состояний и анти-дубли.
-// Диагностика Blobs: /diag set, /diag get; Диагностика окружения сайта: /where
+// Диагностика: /diag set, /diag get, /where, /users, /state, /cancel, /addme
 //
 // ENV:
 //   TG_BOT_TOKEN   — токен бота (без "bot")                                [обяз.]
 //   ADMIN_CHAT_ID  — chat_id админов через запятую                          [обяз.]
-//   WEBAPP_URL     — ссылка WebApp (откроется внутри Telegram)              [опц.]
+//   WEBAPP_URL     — ссылка WebApp (внутри Telegram)                         [опц.]
 //   BLOB_BUCKET    — имя стора Netlify Blobs (по умолчанию 'appstore')
 
 import { getStore } from '@netlify/blobs';
@@ -23,7 +23,7 @@ const ADMIN_IDS = admins();
 
 const API = (m) => `https://api.telegram.org/bot${TOKEN}/${m}`;
 
-/* -------- Blobs helpers через get/set (универсально) -------- */
+/* -------- Blobs helpers (универсально для Netlify runtimes) -------- */
 async function readJSON(store, key, fallback = {}) {
   try { const v = await store.get(key, { type:'json' }); return v ?? fallback; }
   catch { return fallback; }
@@ -192,7 +192,7 @@ export default async function handler(req) {
   let update;
   try { update = await req.json(); } catch { return new Response('ok', { status: 200 }); }
 
-  // анти-дубликаты по update_id (чтобы Телеграм ретраями не плодил события)
+  // глобальный анти-дубль
   if (await seenUpdate(store, update?.update_id)) return new Response('ok', { status: 200 });
 
   try {
@@ -206,11 +206,9 @@ export default async function handler(req) {
         await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Недостаточно прав' });
         return new Response('ok', { status: 200 });
       }
+
+      // читаем состояние; даже если не нашли — мягко сбрасываем (устойчиво к eventual consistency)
       const st = await getAdminState(store, fromId);
-      if (!st?.mode || !st?.post) {
-        await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Нет активной рассылки' });
-        return new Response('ok', { status: 200 });
-      }
 
       if (data === 'bc_cancel') {
         await setAdminState(store, fromId, null);
@@ -220,6 +218,10 @@ export default async function handler(req) {
       }
 
       if (data === 'bc_confirm') {
+        if (!st?.post) {
+          await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Состояние не найдено, попробуйте ещё раз' });
+          return new Response('ok', { status: 200 });
+        }
         await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Отправляем…' });
         const res = await broadcastToAllUsers({ store, post: st.post });
         await setAdminState(store, fromId, null);
@@ -258,15 +260,34 @@ export default async function handler(req) {
       return new Response('ok', { status: 200 });
     }
 
-    // --- 2) ВАЖНО: если уже ждём пост — ловим его немедленно (до обработки команд)
+    // --- 2) Если ждём пост — обрабатываем его ПЕРЕД командами
     {
       const st = await getAdminState(store, chatId);
       const updId = Number(update.update_id || 0);
+
       if (st?.mode === 'await_post') {
-        // внутренняя защита от дублей для этого админа
+        // защита от дубля для этого админа
         if (st.last_update && updId && updId <= Number(st.last_update)) {
           return new Response('ok', { status: 200 });
         }
+
+        // если прислали команду — не считаем это постом
+        const isCommand = !!(msgRaw.text && msgRaw.text.startsWith('/'));
+        if (isCommand) {
+          if (text.startsWith('/cancel')) {
+            await setAdminState(store, chatId, null);
+            await tg('sendMessage', { chat_id: chatId, text: 'Рассылка отменена.' });
+            return new Response('ok', { status: 200 });
+          }
+          if (text.startsWith('/broadcast')) {
+            await tg('sendMessage', { chat_id: chatId, text: 'Мы уже ждём пост для текущей рассылки. Пришлите текст/фото/видео или отправьте /cancel.' });
+            return new Response('ok', { status: 200 });
+          }
+          // другие команды игнорируем, чтобы не путать мастера
+          return new Response('ok', { status: 200 });
+        }
+
+        // нормальный пост
         const post = buildPostFromMessage(msgRaw);
         await sendPostTo(chatId, post); // предпросмотр
         await tg('sendMessage', {
@@ -277,6 +298,7 @@ export default async function handler(req) {
         await setAdminState(store, chatId, { mode: 'confirm', post, last_update: updId });
         return new Response('ok', { status: 200 });
       }
+
       if (st?.mode === 'confirm') {
         await setAdminState(store, chatId, { last_update: updId });
         await tg('sendMessage', { chat_id: chatId, text: 'Вы уже на шаге подтверждения. Нажмите «✅ Подтвердить отправку» или «❌ Отменить».' });
@@ -284,7 +306,7 @@ export default async function handler(req) {
       }
     }
 
-    // --- 3) Админ-команды (обрабатываются, когда не ждём пост)
+    // --- 3) Админ-команды (когда ничего не ждём)
     if (update.message && msgRaw.text) {
       if (text.startsWith('/help')) {
         await tg('sendMessage', {
@@ -294,40 +316,61 @@ export default async function handler(req) {
             '/broadcast — начать рассылку (следующее сообщение будет постом).',
             '/cancel — отменить текущую рассылку.',
             '/users — показать число пользователей.',
-            '/state — показать текущее состояние.',
+            '/addme — добавить себя в базу получателей.',
+            '/state — показать текущее состояние мастера.',
             '/diag set — записать тестовый объект в Blobs.',
             '/diag get — прочитать тестовый объект из Blobs.',
-            '/where — показать сайт/окружение/бакет для этого вебхука.'
+            '/where — показать сайт/окружение/бакет.'
           ].join('\n')
         });
         return new Response('ok', { status: 200 });
       }
+
       if (text.startsWith('/cancel')) {
         await setAdminState(store, chatId, null);
         await tg('sendMessage', { chat_id: chatId, text: 'Состояние сброшено.' });
         return new Response('ok', { status: 200 });
       }
+
       if (text.startsWith('/users')) {
         const users = await readJSON(store, 'users.json', {});
         await tg('sendMessage', { chat_id: chatId, text: `Пользователей в базе: ${Object.keys(users).length}` });
         return new Response('ok', { status: 200 });
       }
+
+      // ⬇️ Добавлено: быстрый способ включить себя в рассылку
+      if (text.startsWith('/addme')) {
+        const users = await readJSON(store, 'users.json', {});
+        users[chatId] = users[chatId] || {
+          first_name: String(msgRaw.from?.first_name||''),
+          last_name : String(msgRaw.from?.last_name||''),
+          username  : String(msgRaw.from?.username||''),
+          ts: Date.now(),
+        };
+        await writeJSON(store, 'users.json', users);
+        await tg('sendMessage', { chat_id: chatId, text: 'Добавил вас в список получателей. Проверьте /users.' });
+        return new Response('ok', { status: 200 });
+      }
+
       if (text.startsWith('/state')) {
         const st = await getAdminState(store, chatId);
         await tg('sendMessage', { chat_id: chatId, text: `state: ${JSON.stringify(st || {}, null, 2)}` });
         return new Response('ok', { status: 200 });
       }
+
       if (text.startsWith('/diag set')) {
         const payload = { ts: Date.now(), rand: Math.random(), bucket: process.env.BLOB_BUCKET || 'appstore' };
         await writeJSON(store, 'selftest.json', payload);
         await tg('sendMessage', { chat_id: chatId, text: `diag:set ok in bucket "${payload.bucket}"\n${JSON.stringify(payload)}` });
         return new Response('ok', { status: 200 });
       }
+
       if (text.startsWith('/diag get')) {
         const data = await readJSON(store, 'selftest.json', null);
         await tg('sendMessage', { chat_id: chatId, text: `diag:get from bucket "${process.env.BLOB_BUCKET||'appstore'}"\n${JSON.stringify(data)}` });
         return new Response('ok', { status: 200 });
       }
+
       if (text.startsWith('/where')) {
         const info = {
           bucket: process.env.BLOB_BUCKET || 'appstore',
@@ -339,6 +382,7 @@ export default async function handler(req) {
         await tg('sendMessage', { chat_id: chatId, text: `where:\n${JSON.stringify(info, null, 2)}` });
         return new Response('ok', { status: 200 });
       }
+
       if (text.startsWith('/broadcast')) {
         await setAdminState(store, chatId, { mode: 'await_post', post: null, last_update: 0 });
         await tg('sendMessage', {
