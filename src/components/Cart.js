@@ -293,24 +293,27 @@ function openPayModal({ items, address, phone, payer, total }){
   mt.textContent = 'Оплата заказа';
   mb.innerHTML = `
     <style>
+      /* фиксируем раскладку для заметки с иконкой */
+      .note{ display:grid; grid-template-columns: 24px 1fr; gap:10px; align-items:center; }
       .shot-wrap{ display:grid; gap:8px; }
       .shot-preview{ display:flex; align-items:center; gap:10px; }
       .shot-preview img{ width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid var(--border, rgba(0,0,0,.1)); }
-      .badge{ font-size:.8rem; padding:2px 6px; border-radius:999px; background:rgba(0,0,0,.06); }
+      /* локальный бейдж, чтобы не конфликтовал с глобальным .badge */
+      .pay-badge{ display:inline-block; font-size:.8rem; line-height:1.2; padding:2px 6px; border-radius:999px; background:rgba(0,0,0,.06); vertical-align:middle; }
       .note-sub.muted{ color:var(--muted,#6b7280); }
       .spin{ width:16px; height:16px; border:2px solid rgba(0,0,0,.2); border-top-color:rgba(0,0,0,.6); border-radius:50%; animation:spin .8s linear infinite; }
       @keyframes spin{to{transform:rotate(360deg)}}
     </style>
     <div class="form-grid">
       <div class="cart-title" style="font-size:18px">К оплате: ${priceFmt(total)}</div>
-      <div class="note" style="grid-template-columns: auto 1fr">
+      <div class="note">
         <i data-lucide="credit-card"></i>
         <div>
           <div class="note-title">Переведите на карту</div>
           <div class="note-sub" style="user-select:all">${escapeHtml(pay.cardNumber)}</div>
           <div class="note-sub muted">
             ${escapeHtml(pay.holder || '')}
-            ${pay.provider ? ` · <span class="badge">${escapeHtml(pay.provider)}</span>` : ''}
+            ${pay.provider ? ` · <span class="pay-badge">${escapeHtml(pay.provider)}</span>` : ''}
           </div>
         </div>
       </div>

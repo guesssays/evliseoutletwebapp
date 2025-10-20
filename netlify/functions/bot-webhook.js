@@ -1,18 +1,14 @@
 // netlify/functions/bot-webhook.js
 // Telegram webhook: рассылка админами ВСЕМ пользователям с предпросмотром,
-// подтверждением/отменой и поддержкой медиа (фото/видео).
+// подтверждением/отменой и поддержкой медиа (текст/фото/видео).
 //
 // Флоу:
 // 1) Админ -> /broadcast
-// 2) Следующее сообщение админа — пост:
-//      - Текстовый (MarkdownV2) ИЛИ
-//      - Фото + подпись (MarkdownV2) ИЛИ
-//      - Видео + подпись (MarkdownV2)
+// 2) Следующее сообщение админа — пост (MarkdownV2).
 //    Кнопки указываем markdown-ссылками: [Текст](https://...)
 //    Автокнопка "Открыть приложение", если задан WEBAPP_URL.
-// 3) Бот шлёт предпросмотр (тем же типом сообщения) и отдельное сообщение с
-//    кнопками "Подтвердить" / "Отменить".
-// 4) По "Подтвердить" — рассылка всем chat_id из users.json.
+// 3) Бот шлёт предпросмотр и сообщение с кнопками "Подтвердить"/"Отменить".
+// 4) По "Подтвердить" — рассылаем всем chat_id из users.json.
 //
 // ENV:
 //   TG_BOT_TOKEN   — токен бота (без "bot")                                [обяз.]
@@ -34,6 +30,21 @@ const ADMIN_IDS = admins();
 
 const API = (method) => `https://api.telegram.org/bot${TOKEN}/${method}`;
 
+// ---------- Blobs JSON helpers (совместимы с разными версиями SDK) ----------
+async function readJSON(store, key, fallback = {}) {
+  try {
+    const data = await store.get(key, { type: 'json' });
+    return (data ?? fallback);
+  } catch {
+    return fallback;
+  }
+}
+async function writeJSON(store, key, obj) {
+  const body = JSON.stringify(obj ?? {});
+  await store.set(key, body, { contentType: 'application/json; charset=utf-8' });
+}
+
+// ---------- Telegram helpers ----------
 async function tg(method, payload) {
   const r = await fetch(API(method), {
     method: 'POST',
@@ -47,7 +58,6 @@ async function tg(method, payload) {
   }
   return data.result;
 }
-
 function isAdmin(chatId) {
   return ADMIN_IDS.includes(String(chatId));
 }
@@ -66,18 +76,13 @@ function parseButtonsFromText(mdText) {
     buttons.push({ text: m[1], url: m[2] });
   }
   const keyboard = [];
-  if (buttons.length) {
-    keyboard.push(...buttons.map(b => [b]));
-  }
-  if (WEBAPP_URL) {
-    keyboard.push([{ text: 'Открыть приложение', url: WEBAPP_URL }]);
-  }
+  if (buttons.length) keyboard.push(...buttons.map(b => [b]));
+  if (WEBAPP_URL) keyboard.push([{ text: 'Открыть приложение', url: WEBAPP_URL }]);
   return keyboard.length ? { inline_keyboard: keyboard } : undefined;
 }
 
 // Сконструировать объект «поста» из входящего сообщения админа
 function buildPostFromMessage(msg) {
-  // Данные из разных типов
   const hasPhoto = Array.isArray(msg.photo) && msg.photo.length > 0;
   const hasVideo = !!msg.video;
 
@@ -88,7 +93,6 @@ function buildPostFromMessage(msg) {
   const reply_markup = parseButtonsFromText(bodyText);
 
   if (hasPhoto) {
-    // Берем фото максимального размера — обычно последний элемент
     const largest = msg.photo[msg.photo.length - 1];
     return {
       type: 'photo',
@@ -129,19 +133,14 @@ function buildPostFromMessage(msg) {
 // Отправка поста (конкретному chat_id) по его типу
 async function sendPostTo(chatId, post) {
   const p = post?.payload || {};
-  if (post.type === 'photo') {
-    return tg('sendPhoto', { chat_id: chatId, ...p });
-  }
-  if (post.type === 'video') {
-    return tg('sendVideo', { chat_id: chatId, ...p });
-  }
-  // text (по умолчанию)
-  return tg('sendMessage', { chat_id: chatId, ...p });
+  if (post.type === 'photo') return tg('sendPhoto', { chat_id: chatId, ...p });
+  if (post.type === 'video') return tg('sendVideo', { chat_id: chatId, ...p });
+  return tg('sendMessage', { chat_id: chatId, ...p }); // text по умолчанию
 }
 
 // Рассылка ВСЕМ пользователям (всем ключам из users.json)
 async function broadcastToAllUsers({ store, post }) {
-  const users = (await store.getJSON('users.json')) || {};
+  const users = await readJSON(store, 'users.json', {});
   const ids = Object.keys(users); // uid == chat_id
 
   if (!ids.length) return { total: 0, ok: 0, fail: 0 };
@@ -168,14 +167,14 @@ async function broadcastToAllUsers({ store, post }) {
 // Состояние ожидания поста/подтверждения на админа
 async function setAdminState(store, adminId, state) {
   const key = 'broadcast_state.json';
-  const st = (await store.getJSON(key)) || {};
+  const st = await readJSON(store, key, {});
   if (state === null) delete st[adminId];
   else st[adminId] = state;
-  await store.setJSON(key, st);
+  await writeJSON(store, key, st);
 }
 async function getAdminState(store, adminId) {
   const key = 'broadcast_state.json';
-  const st = (await store.getJSON(key)) || {};
+  const st = await readJSON(store, key, {});
   return st[adminId] || null;
 }
 
@@ -189,7 +188,7 @@ function confirmKeyboard() {
 }
 
 export default async function handler(req) {
-  // Telegram шлёт POST с JSON апдейтом
+  // Telegram шлёт только POST
   if (req.method !== 'POST') {
     return new Response('ok', { status: 200 });
   }
@@ -206,7 +205,6 @@ export default async function handler(req) {
     const fromId = String(cq.from?.id || '');
     const data = cq.data || '';
 
-    // Всегда отвечаем, чтобы не висел спиннер
     if (!isAdmin(fromId)) {
       await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Недостаточно прав' });
       return new Response('ok', { status: 200 });
@@ -247,8 +245,8 @@ export default async function handler(req) {
   if (!msg) return new Response('ok', { status: 200 });
 
   const chatId = String(msg.chat?.id || '');
-  // Личные сообщения админа
   if (!isAdmin(chatId)) {
+    // молча игнорируем не-админов
     return new Response('ok', { status: 200 });
   }
 
