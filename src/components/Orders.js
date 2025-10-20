@@ -109,7 +109,6 @@ export async function renderTrack({id}){
 
   v.innerHTML = `
     <style>
-      /* === mobile-first адаптация заказа === */
       .order-detail-page{overflow-x:hidden; max-width:100%;}
       .order-detail-page *{box-sizing:border-box;}
 
@@ -133,8 +132,8 @@ export async function renderTrack({id}){
       /* список позиций */
       .order-item{
         display:grid;
-        /* FIX: 4 колонки — qty не переносится вниз */
-        grid-template-columns: 56px minmax(0,1fr) auto auto;
+        /* теперь 3 колонки: img | meta (включая qty inline) | sum */
+        grid-template-columns: 56px minmax(0,1fr) auto;
         gap:10px;
         align-items:center;
         margin-top:10px;
@@ -142,32 +141,23 @@ export async function renderTrack({id}){
       }
       .order-item .cart-img img{width:56px;height:56px;object-fit:cover;border-radius:10px}
       .order-item__meta .cart-title{word-break:break-word; overflow-wrap:anywhere}
-      .order-item__meta .cart-sub{color:var(--muted); font-size:.92rem; overflow-wrap:anywhere}
-      .order-item__qty{justify-self:end; color:var(--muted); padding-left:8px; white-space:nowrap}
+      .order-item__meta .cart-sub{color:var(--muted); font-size:.92rem; overflow-wrap:anywhere; display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+      .order-item__qty-inline{white-space:nowrap; color:var(--muted)}
       .order-item__sum{justify-self:end; font-weight:700; padding-left:8px; white-space:nowrap}
 
-      /* компактная верстка на узких экранах: qty и sum – в строку под метаданными */
+      /* узкие экраны: всё уже в одной колонке меты — ничего переносить не нужно */
       @media (max-width: 420px){
         .order-item{
-          grid-template-columns: 56px minmax(0,1fr);
-          grid-auto-rows:auto;
+          grid-template-columns: 56px minmax(0,1fr) auto;
         }
-        .order-item__qty, .order-item__sum{
-          grid-column: 2 / 3;
-        }
-        .order-item__qty{justify-self:start}
-        .order-item__sum{justify-self:end}
       }
 
-      /* таблицы/kv-блоки не должны распирать ширину */
       .kv{display:block; width:100%;}
       .kv__row{display:grid; grid-template-columns:minmax(80px, 40%) minmax(0,1fr); gap:10px; align-items:start; margin:6px 0}
       .kv__row dt{color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
       .kv__row dd{margin:0; word-break:break-word; overflow-wrap:anywhere}
 
       .subsection-title{font-weight:700;margin:10px 0 6px}
-
-      /* кнопки/бейджи не должны задавать фикс мин-ширину */
       .pill, .btn{max-width:100%; white-space:nowrap; text-overflow:ellipsis; overflow:hidden}
     </style>
 
@@ -233,15 +223,18 @@ function itemsBlock(o){
       x.size ? `Размер: ${escapeHtml(x.size)}` : '',
       x.color ? `Цвет: ${escapeHtml(x.color)}` : '',
     ].filter(Boolean).join(' · ');
+    const qty = `×${escapeHtml(String(x.qty||0))}`;
     const line = Number(x.qty||0) * Number(x.price||0);
     return `
       <div class="order-item">
         <div class="cart-img"><img src="${cover}" alt=""></div>
         <div class="order-item__meta">
           <div class="cart-title">${escapeHtml(x.title || 'Товар')}</div>
-          ${opts ? `<div class="cart-sub">${escapeHtml(opts)}</div>` : ''}
+          <div class="cart-sub">
+            ${opts ? `<span>${escapeHtml(opts)}</span>` : ''}
+            <span class="order-item__qty-inline">${qty}</span>
+          </div>
         </div>
-        <div class="order-item__qty">×${escapeHtml(String(x.qty||0))}</div>
         <div class="order-item__sum">${priceFmt(line)}</div>
       </div>
     `;
