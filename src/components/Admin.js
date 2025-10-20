@@ -126,6 +126,57 @@ export async function renderAdmin(){
     });
   }
 
+  function itemsBlock(o){
+    const items = Array.isArray(o.cart) ? o.cart : [];
+    if (!items.length) return `
+      <div class="muted" style="margin-top:12px">В заказе нет позиций</div>
+    `;
+
+    const rows = items.map((x,i)=>{
+      const opts = [
+        x.size ? `Размер: ${escapeHtml(x.size)}` : '',
+        x.color ? `Цвет: ${escapeHtml(x.color)}` : '',
+      ].filter(Boolean).join(' · ');
+      const line = Number(x.qty||0) * Number(x.price||0);
+      return `
+        <tr>
+          <td style="text-align:center">${i+1}</td>
+          <td>
+            <div class="cart-title" style="font-weight:600">${escapeHtml(x.title||'Товар')}</div>
+            ${opts ? `<div class="muted mini">${opts}</div>` : ''}
+          </td>
+          <td style="text-align:right">${escapeHtml(String(x.qty||0))}</td>
+          <td style="text-align:right">${priceFmt(x.price||0)}</td>
+          <td style="text-align:right"><b>${priceFmt(line)}</b></td>
+        </tr>
+      `;
+    }).join('');
+
+    return `
+      <div class="subsection-title" style="margin-top:14px">Состав заказа</div>
+      <div class="table-wrap">
+        <table class="size-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Товар</th>
+              <th style="text-align:right">Кол-во</th>
+              <th style="text-align:right">Цена</th>
+              <th style="text-align:right">Сумма</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" style="text-align:right">Итого</td>
+              <td style="text-align:right"><b>${priceFmt(o.total||0)}</b></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    `;
+  }
+
   async function detailView(){
     const orders = await getAll();
     const o = orders.find(x=>String(x.id)===String(selectedId));
@@ -173,7 +224,7 @@ export async function renderAdmin(){
             </div>
             <div class="kv__row">
               <dt>Сумма</dt>
-              <dd>${price}</dd>
+              <dd>${priceFmt(o.total||0)}</dd>
             </div>
             <div class="kv__row">
               <dt>Статус</dt>
@@ -201,6 +252,8 @@ export async function renderAdmin(){
             </div>
           </dl>
 
+          ${itemsBlock(o)}
+
           <div class="order-detail__actions">
             ${isNew ? `
               <button class="btn btn--primary" id="btnAccept" data-id="${o.id}">Принять</button>
@@ -227,7 +280,7 @@ export async function renderAdmin(){
       mode='list'; selectedId=null; render();
     });
 
-    // === чек: предпросмотр в модалке + скачивание ===
+    // чек
     document.querySelector('[data-open]')?.addEventListener('click', (e)=>{
       const url = e.currentTarget.getAttribute('data-open');
       openReceiptPreview(url);
@@ -238,19 +291,17 @@ export async function renderAdmin(){
       await triggerDownload(url, suggestReceiptFilename(url, oid));
     });
 
-    // === действие: принять заказ ===
+    // принять
     document.getElementById('btnAccept')?.addEventListener('click', async ()=>{
       await acceptOrder(o.id);
-      // уведомим приложение о результате — для локальных и бот-уведомлений
       try{
         const ev = new CustomEvent('admin:orderAccepted', { detail:{ id: o.id, userId: o.userId } });
         window.dispatchEvent(ev);
       }catch{}
-      // остаёмся в деталях, но обновим карточку
       mode='detail'; selectedId = o.id; render();
     });
 
-    // === действие: отменить заказ ===
+    // отменить
     document.getElementById('btnCancel')?.addEventListener('click', async ()=>{
       const reason = prompt('Причина отмены (будет видна клиенту):');
       await cancelOrder(o.id, reason||'');
@@ -258,11 +309,10 @@ export async function renderAdmin(){
         const ev = new CustomEvent('admin:orderCanceled', { detail:{ id:o.id, reason:reason||'', userId:o.userId } });
         window.dispatchEvent(ev);
       }catch{}
-      // после отмены логичнее вернуться в «Завершённые»
       mode='list'; tab='done'; render();
     });
 
-    // === действие: смена этапа ===
+    // смена этапа
     document.getElementById('stageList')?.addEventListener('click', async (e)=>{
       const btn = e.target.closest('.stage-btn');
       if (!btn) return;
@@ -285,7 +335,6 @@ export async function renderAdmin(){
     else await listView();
   }
 
-  // Обновления данных теперь мягкие: не сбрасываем вкладку/режим, просто перерисовываем
   const rerenderOnOrders = ()=> render();
   window.addEventListener('admin:refresh', rerenderOnOrders);
   window.addEventListener('orders:updated', rerenderOnOrders);
@@ -301,7 +350,6 @@ function openReceiptPreview(url=''){
   const ma = document.getElementById('modalActions');
 
   if (!modal || !mb || !mt || !ma){
-    // как fallback — откроем в новой вкладке
     return safeOpenInNewTab(url);
   }
 
@@ -309,7 +357,6 @@ function openReceiptPreview(url=''){
   ma.innerHTML = `<button id="rcClose" class="pill">Закрыть</button>
                   <a id="rcDownload" class="pill primary" href="${escapeHtml(url)}" download>Скачать</a>`;
 
-  // Показываем картинку <img> или PDF внутри <iframe>
   const isPdf = isProbablyPdf(url);
   mb.innerHTML = isPdf
     ? `
@@ -331,7 +378,6 @@ function openReceiptPreview(url=''){
   document.getElementById('modalClose')?.addEventListener('click', close, { once:true });
   document.getElementById('rcClose')?.addEventListener('click', close, { once:true });
 
-  // ESC для закрытия
   const onKey = (e)=>{ if (e.key==='Escape'){ close(); window.removeEventListener('keydown', onKey); } };
   window.addEventListener('keydown', onKey);
 }
