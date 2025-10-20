@@ -1,6 +1,7 @@
 // netlify/functions/bot-webhook.js
 // Бот: рассылка /broadcast (текст/фото/видео) с предпросмотром и подтверждением,
 // учёт пользователей, web_app-кнопка, устойчивая машина состояний и анти-дубли.
+// Есть диагностика Blobs: /diag set, /diag get.
 //
 // ENV:
 //   TG_BOT_TOKEN   — токен бота (без "bot")                                [обяз.]
@@ -200,7 +201,7 @@ export default async function handler(req) {
   let update;
   try { update = await req.json(); } catch { return new Response('ok', { status: 200 }); }
 
-  // анти-дубликаты по update_id (ВАЖНО: иначе Telegram ретраит и идёт спам)
+  // анти-дубликаты по update_id (важно: иначе Telegram ретраит и идёт спам)
   if (await seenUpdate(store, update?.update_id)) return new Response('ok', { status: 200 });
 
   try {
@@ -245,7 +246,7 @@ export default async function handler(req) {
     }
 
     /* ---------- B) обычные/отредактированные сообщения ---------- */
-    const msgRaw = update.message || update.edited_message; // <— ключевой момент
+    const msgRaw = update.message || update.edited_message; // caption часто приходит как edit
     if (!msgRaw) return new Response('ok', { status: 200 });
 
     const chatId = String(msgRaw.chat?.id || '');
@@ -276,7 +277,9 @@ export default async function handler(req) {
             '/broadcast — начать рассылку (следующее сообщение будет постом).',
             '/cancel — отменить текущую рассылку.',
             '/users — показать число пользователей.',
-            '/state — показать текущее состояние.'
+            '/state — показать текущее состояние.',
+            '/diag set — записать тестовый объект в Blobs.',
+            '/diag get — прочитать тестовый объект из Blobs.'
           ].join('\n')
         });
         return new Response('ok', { status: 200 });
@@ -294,6 +297,19 @@ export default async function handler(req) {
       if (text.startsWith('/state')) {
         const st = await getAdminState(store, chatId);
         await tg('sendMessage', { chat_id: chatId, text: `state: ${JSON.stringify(st || {}, null, 2)}` });
+        return new Response('ok', { status: 200 });
+      }
+      // Диагностика Blobs
+      if (text.startsWith('/diag set')) {
+        const key = 'selftest.json';
+        const payload = { ts: Date.now(), rand: Math.random(), bucket: process.env.BLOB_BUCKET || 'appstore' };
+        await writeJSON(store, key, payload);
+        await tg('sendMessage', { chat_id: chatId, text: `diag:set ok in bucket "${payload.bucket}"\n${JSON.stringify(payload)}` });
+        return new Response('ok', { status: 200 });
+      }
+      if (text.startsWith('/diag get')) {
+        const data = await readJSON(store, 'selftest.json', null);
+        await tg('sendMessage', { chat_id: chatId, text: `diag:get from bucket "${process.env.BLOB_BUCKET||'appstore'}"\n${JSON.stringify(data)}` });
         return new Response('ok', { status: 200 });
       }
       if (text.startsWith('/broadcast')) {
@@ -322,7 +338,7 @@ export default async function handler(req) {
       return new Response('ok', { status: 200 });
     }
 
-    // Когда ждём пост — учитываем и обычное сообщение, и edited_message (Telegram иногда присылает caption как edit)
+    // Когда ждём пост — учитываем и обычное message, и edited_message
     if (st?.mode === 'await_post') {
       const post = buildPostFromMessage(msgRaw);
       await sendPostTo(chatId, post); // предпросмотр
