@@ -17,9 +17,6 @@ export function renderCart(){
   // актуализируем таббар
   window.setTabbarMenu?.('cart');
 
-  // при каждом входе в корзину: удаляем старый FAB поддержки, если был
-  removeSupportFab();
-
   // пустая корзина
   if (!items.length){
     v.innerHTML = `
@@ -77,13 +74,14 @@ export function renderCart(){
       <div class="payrow"><span>Скидка</span><b>${priceFmt(0)}</b></div>
     </div>
 
-    <!-- FAQ перед оформлением (без кнопки поддержки) -->
+    <!-- FAQ перед оформлением (с кнопкой поддержки) -->
     <div class="cart-faq" style="margin-top:14px">
       <style>
         .faq-card{border:1px solid var(--border,rgba(0,0,0,.12));border-radius:14px;padding:12px;background:var(--card,#f9f9f9);display:grid;gap:10px}
         .faq-row{display:grid;grid-template-columns:24px 1fr;gap:10px;align-items:start}
         .faq-q{font-weight:600}
         .faq-a{color:var(--muted,#6b7280)}
+        .faq-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
       </style>
       <div class="faq-card" role="region" aria-label="Частые вопросы перед оформлением">
         <div class="faq-row">
@@ -94,11 +92,21 @@ export function renderCart(){
           </div>
         </div>
         <div class="faq-row">
+          <i data-lucide="message-circle"></i>
+          <div>
+            <div class="faq-q">Есть вопросы?</div>
+            <div class="faq-a">Напишите оператору — поможем с размером, оплатой и статусом заказа.</div>
+          </div>
+        </div>
+        <div class="faq-row">
           <i data-lucide="credit-card"></i>
           <div>
             <div class="faq-q">Как проходит оплата?</div>
-            <div class="faq-a">После подтверждения данных вы переводите на карту и загружаете скриншот оплаты. Мы быстро проверим и запустим заказ в работу.</div>
+            <div class="faq-a">После подтверждения вы переводите на карту и загружаете скриншот оплаты. Мы быстро проверим и запустим заказ.</div>
           </div>
+        </div>
+        <div class="faq-actions">
+          <button id="faqOperator" class="pill outline" type="button">Написать оператору</button>
         </div>
       </div>
     </div>
@@ -121,8 +129,8 @@ export function renderCart(){
     row.querySelector('.dec')?.addEventListener('click', ()=> changeQty(id,size,color, -1));
   });
 
-  // плавающая кнопка поддержки (заметная и в логичном месте)
-  injectSupportFab();
+  // Кнопка «Написать оператору» из FAQ
+  document.getElementById('faqOperator')?.addEventListener('click', ()=> openExternal(OP_CHAT_URL));
 
   // CTA «Оформить заказ» в таббаре
   window.setTabbarCTA?.({
@@ -133,57 +141,11 @@ export function renderCart(){
 
 /* ---------- scroll control: гарантированно в начало ---------- */
 function resetScrollTop(){
-  // снимаем фокус, чтобы не прыгало к интерактивным элементам
-  try{ document.activeElement && document.activeElement.blur && document.activeElement.blur(); }catch{}
-  // два кадра подряд, чтобы поймать отложенные layout/иконки
+  try{ document.activeElement?.blur?.(); }catch{}
   requestAnimationFrame(()=> {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     requestAnimationFrame(()=> window.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
   });
-}
-
-/* ---------- плавающая кнопка поддержки ---------- */
-function injectSupportFab(){
-  // страховка от дублей
-  removeSupportFab();
-
-  const fab = document.createElement('button');
-  fab.id = 'supportFab';
-  fab.className = 'chat-fab';
-  fab.setAttribute('aria-label', 'Поддержка');
-  fab.innerHTML = `<i data-lucide="message-circle"></i><span>Поддержка</span>`;
-
-  // локальные стили
-  const style = document.createElement('style');
-  style.textContent = `
-    .chat-fab{
-      position: fixed;
-      right: 14px;
-      bottom: 84px; /* над таббаром и CTA */
-      z-index: 45;
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 10px 14px; border-radius: 999px;
-      border: 1px solid var(--border, rgba(0,0,0,.12));
-      background: var(--card, #fff); box-shadow: 0 4px 12px rgba(0,0,0,.08);
-      font-weight: 600;
-    }
-    .chat-fab i{ width: 18px; height: 18px; }
-    @supports (bottom: env(safe-area-inset-bottom)){
-      .chat-fab{ bottom: calc(84px + env(safe-area-inset-bottom)); }
-    }
-  `;
-  document.head.appendChild(style);
-
-  fab.addEventListener('click', ()=> openExternal(OP_CHAT_URL));
-  document.body.appendChild(fab);
-
-  // обновляем иконку
-  window.lucide?.createIcons && window.lucide.createIcons();
-}
-
-function removeSupportFab(){
-  document.getElementById('supportFab')?.remove();
-  // оставляем возможный ранее инжектированный <style>, он не мешает
 }
 
 /* ---------- изменение количества / удаление ---------- */

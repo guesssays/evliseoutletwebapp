@@ -11,6 +11,9 @@ export function renderAccount(){
     if (fix){ fix.classList.remove('show'); fix.setAttribute('aria-hidden','true'); }
   }catch{}
 
+  // ✅ фикс активной вкладки в таббаре
+  window.setTabbarMenu?.('account');
+
   const v=document.getElementById('view');
   const u = state.user;
   const isAdmin = canAccessAdmin();
@@ -19,7 +22,7 @@ export function renderAccount(){
     <section class="section">
       <div class="section-title">Личный кабинет</div>
       <div class="account-card">
-        <div class="avatar">${(u?.first_name||'Г')[0]}</div>
+        <div class="avatar">${(u?.first_name||u?.username||'Г').toString().slice(0,1)}</div>
         <div class="info">
           <div class="name">${u ? `${u.first_name||''} ${u.last_name||''}`.trim() || u.username || 'Пользователь' : 'Гость'}</div>
           <div class="muted">${u ? 'Авторизован через Telegram' : 'Анонимный режим'}</div>
@@ -46,9 +49,18 @@ export function renderAccount(){
   document.getElementById('supportBtn')?.addEventListener('click', ()=>{
     openExternal(OP_CHAT_URL);
   });
+
+  // на случай мгновенного перехода по ссылкам из аккаунта — ещё раз фиксируем вкладку
+  // чтобы роутер “по умолчанию” не вернул на home до рендера целевой страницы
+  document.querySelectorAll('.menu a').forEach(a=>{
+    a.addEventListener('click', ()=> window.setTabbarMenu?.('account'));
+  });
 }
 
 export function renderAddresses(){
+  // ✅ фикс активной вкладки в таббаре
+  window.setTabbarMenu?.('account');
+
   const v=document.getElementById('view');
   const list = state.addresses.list.slice();
   const defId = state.addresses.defaultId;
@@ -71,15 +83,10 @@ export function renderAddresses(){
         }
         .addr-list .addr input[type="radio"]{
           margin: 0 4px 0 0;
-          align-self: center; /* ⬅ фикс смещения вверх */
+          align-self: center;
         }
-        .addr-list .addr-body{
-          min-width: 0;
-        }
-        .addr-list .addr-title{
-          font-weight: 700;
-          line-height: 1.2;
-        }
+        .addr-list .addr-body{ min-width: 0; }
+        .addr-list .addr-title{ font-weight: 700; line-height: 1.2; }
         .addr-list .addr-sub{
           color: var(--muted, #777);
           font-size: .92rem;
@@ -94,11 +101,8 @@ export function renderAddresses(){
           justify-content: center;
         }
         .addr-list .addr-ops .icon-btn{
-          display:inline-flex;
-          align-items:center;
-          justify-content:center;
-          width:32px; height:32px;
-          border-radius:8px;
+          display:inline-flex; align-items:center; justify-content:center;
+          width:32px; height:32px; border-radius:8px;
           border:1px solid var(--border, rgba(0,0,0,.08));
           background: var(--btn, #fff);
         }
@@ -107,10 +111,9 @@ export function renderAddresses(){
           background: rgba(220, 53, 69, .06);
         }
         @media (hover:hover){
-          .addr-list .addr-ops .icon-btn:hover{
-            filter: brightness(0.98);
-          }
+          .addr-list .addr-ops .icon-btn:hover{ filter: brightness(0.98); }
         }
+        .addr-actions{ display:flex; gap:10px; margin-top:10px; }
       </style>
 
       <div class="addr-list">
@@ -203,6 +206,9 @@ export function renderAddresses(){
 
 // Настройки оставлены для прямого URL, но не показываются в меню
 export function renderSettings(){
+  // ✅ фикс активной вкладки в таббаре
+  window.setTabbarMenu?.('account');
+
   const v=document.getElementById('view');
   v.innerHTML = `
     <section class="section">
