@@ -1,13 +1,12 @@
 // netlify/functions/bot-webhook.js
-// Бот: рассылка /broadcast (текст/фото/видео) с предпросмотром и подтверждением,
-// учёт пользователей, web_app-кнопка, устойчивая машина состояний и анти-дубли.
-// Диагностика: /diag set, /diag get, /where, /users, /state, /cancel, /addme
+// Рассылка /broadcast с предпросмотром и подтверждением.
+// Персистентная FSM + антидубли, устойчиво к eventual-consistency Netlify Blobs.
 //
 // ENV:
-//   TG_BOT_TOKEN   — токен бота (без "bot")                                [обяз.]
-//   ADMIN_CHAT_ID  — chat_id админов через запятую                          [обяз.]
-//   WEBAPP_URL     — ссылка WebApp (внутри Telegram)                         [опц.]
-//   BLOB_BUCKET    — имя стора Netlify Blobs (по умолчанию 'appstore')
+//   TG_BOT_TOKEN   — токен бота (без "bot") [обяз.]
+//   ADMIN_CHAT_ID  — список chat_id через запятую [обяз.]
+//   WEBAPP_URL     — ссылка WebApp (внутри Telegram) [опц.]
+//   BLOB_BUCKET    — имя стора Blobs (по умолчанию 'appstore')
 
 import { getStore } from '@netlify/blobs';
 
@@ -16,53 +15,49 @@ const WEBAPP_URL = process.env.WEBAPP_URL || '';
 if (!TOKEN) throw new Error('TG_BOT_TOKEN is required');
 
 function admins() {
-  const rawEnv = (process.env.ADMIN_CHAT_ID ?? '').toString();
-  return rawEnv.split(',').map(s => s.trim()).filter(Boolean);
+  const raw = (process.env.ADMIN_CHAT_ID ?? '').toString();
+  return raw.split(',').map(s => s.trim()).filter(Boolean);
 }
 const ADMIN_IDS = admins();
-
+const isAdmin = (id) => ADMIN_IDS.includes(String(id));
 const API = (m) => `https://api.telegram.org/bot${TOKEN}/${m}`;
 
-/* -------- Blobs helpers (универсально для Netlify runtimes) -------- */
+/* -------------------- Blobs helpers -------------------- */
 async function readJSON(store, key, fallback = {}) {
-  try { const v = await store.get(key, { type:'json' }); return v ?? fallback; }
+  try { const v = await store.get(key, { type: 'json' }); return v ?? fallback; }
   catch { return fallback; }
 }
 async function writeJSON(store, key, obj) {
-  await store.set(key, JSON.stringify(obj ?? {}), { contentType:'application/json' });
+  await store.set(key, JSON.stringify(obj ?? {}), { contentType: 'application/json' });
 }
 
-/* ----------------------- Telegram helpers -------------------- */
+/* -------------------- Telegram helpers -------------------- */
 async function tg(method, payload) {
   const r = await fetch(API(method), {
     method: 'POST',
-    headers: { 'Content-Type':'application/json' },
-    body: JSON.stringify(payload)
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   });
-  const data = await r.json().catch(()=> ({}));
+  const data = await r.json().catch(() => ({}));
   if (!r.ok || data.ok === false) {
     const err = data?.description || `${r.status} ${r.statusText}`;
     throw new Error(`Telegram ${method} failed: ${err}`);
   }
   return data.result;
 }
-const isAdmin = (id) => ADMIN_IDS.includes(String(id));
-
-/* --------- безопасная отправка: MarkdownV2 → фолбэк --------- */
 async function safeSend(method, base) {
-  try {
-    return await tg(method, base);
-  } catch (e) {
-    const msg = String(e?.message || '');
-    if (msg.includes('parse entities') || msg.includes('Wrong entity')) {
-      const clone = { ...base }; delete clone.parse_mode;
-      return tg(method, clone);
+  try { return await tg(method, base); }
+  catch (e) {
+    const m = String(e?.message || '');
+    if (m.includes('parse entities') || m.includes('Wrong entity')) {
+      const copy = { ...base }; delete copy.parse_mode;
+      return tg(method, copy);
     }
     throw e;
   }
 }
 
-/* ----------------------- Анти-дубли update_id ---------------- */
+/* --------------- Anti-duplicate by update_id --------------- */
 const DEDUPE_KEY = 'updates_dedupe.json';
 async function seenUpdate(store, updateId) {
   const bag = await readJSON(store, DEDUPE_KEY, { ids: [] });
@@ -75,8 +70,8 @@ async function seenUpdate(store, updateId) {
   return false;
 }
 
-/* -------------------- Регистрация пользователя --------------- */
-async function upsertUserAndMaybeNotify(store, from) {
+/* ---------------- Users registry ---------------- */
+async function upsertUser(store, from) {
   const uid = String(from?.id || '').trim();
   if (!uid) return;
   const users = await readJSON(store, 'users.json', {});
@@ -85,7 +80,7 @@ async function upsertUserAndMaybeNotify(store, from) {
     first_name: String(from.first_name || '').trim(),
     last_name : String(from.last_name  || '').trim(),
     username  : String(from.username   || '').trim(),
-    ts: users[uid]?.ts || Date.now()
+    ts: users[uid]?.ts || Date.now(),
   };
   await writeJSON(store, 'users.json', users);
 
@@ -104,9 +99,9 @@ async function upsertUserAndMaybeNotify(store, from) {
   }
 }
 
-/* -------------------- Кнопки из Markdown + web_app ----------- */
-function parseButtonsFromText(mdText) {
-  const text = (mdText || '').trim();
+/* ---------------- Buttons & post build ---------------- */
+function parseButtonsFromText(md) {
+  const text = (md || '').trim();
   const linkRe = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
   const buttons = [];
   let m; while ((m = linkRe.exec(text)) !== null) buttons.push({ text: m[1], url: m[2] });
@@ -116,28 +111,23 @@ function parseButtonsFromText(mdText) {
   if (WEBAPP_URL) kb.push([{ text: 'Открыть приложение', web_app: { url: WEBAPP_URL } }]);
   return kb.length ? { inline_keyboard: kb } : undefined;
 }
-
-/* -------------------------- Пост из сообщения ---------------- */
 function buildPostFromMessage(msg) {
   const hasPhoto = Array.isArray(msg.photo) && msg.photo.length > 0;
   const hasVideo = !!msg.video;
-
   const caption = (msg.caption || '').trim();
   const text = (msg.text || '').trim();
-  const bodyText = hasPhoto || hasVideo ? caption : text;
-  const reply_markup = parseButtonsFromText(bodyText);
+  const body = hasPhoto || hasVideo ? caption : text;
+  const reply_markup = parseButtonsFromText(body);
 
   if (hasPhoto) {
     const largest = msg.photo[msg.photo.length - 1];
-    return { type: 'photo', payload: { photo: largest.file_id, caption: bodyText || undefined, parse_mode: 'MarkdownV2', disable_notification: false, reply_markup } };
+    return { type: 'photo', payload: { photo: largest.file_id, caption: body || undefined, parse_mode: 'MarkdownV2', disable_notification: false, reply_markup } };
   }
   if (hasVideo) {
-    return { type: 'video', payload: { video: msg.video.file_id, caption: bodyText || undefined, parse_mode: 'MarkdownV2', disable_notification: false, reply_markup } };
+    return { type: 'video', payload: { video: msg.video.file_id, caption: body || undefined, parse_mode: 'MarkdownV2', disable_notification: false, reply_markup } };
   }
-  return { type: 'text', payload: { text: bodyText || ' ', parse_mode: 'MarkdownV2', disable_web_page_preview: true, disable_notification: false, reply_markup } };
+  return { type: 'text', payload: { text: body || ' ', parse_mode: 'MarkdownV2', disable_web_page_preview: true, disable_notification: false, reply_markup } };
 }
-
-/* ---------------------- Отправка поста адресату -------------- */
 async function sendPostTo(chatId, post) {
   const p = post?.payload || {};
   if (post.type === 'photo') return safeSend('sendPhoto',  { chat_id: chatId, ...p });
@@ -145,7 +135,15 @@ async function sendPostTo(chatId, post) {
   return safeSend('sendMessage', { chat_id: chatId, ...p });
 }
 
-/* ---------------------- Массовая рассылка -------------------- */
+/* ---------------- Broadcast helpers ---------------- */
+function confirmKeyboard(sessionId) {
+  return {
+    inline_keyboard: [
+      [{ text: '✅ Подтвердить отправку', callback_data: `bc:confirm:${sessionId}` }],
+      [{ text: '❌ Отменить',             callback_data: `bc:cancel:${sessionId}`  }],
+    ]
+  };
+}
 async function broadcastToAllUsers({ store, post }) {
   const users = await readJSON(store, 'users.json', {});
   const ids = Object.keys(users);
@@ -157,46 +155,41 @@ async function broadcastToAllUsers({ store, post }) {
   for (let i = 0; i < ids.length; i += CHUNK) {
     const slice = ids.slice(i, i + CHUNK);
     await Promise.all(slice.map(uid =>
-      sendPostTo(uid, post).then(()=>{res.ok++;}).catch(()=>{res.fail++;})
+      sendPostTo(uid, post).then(() => { res.ok++; }).catch(() => { res.fail++; })
     ));
     if (i + CHUNK < ids.length) await new Promise(r => setTimeout(r, PAUSE_MS));
   }
   return res;
 }
 
-/* --------------------- Состояние мастера-рассылки ------------- */
-async function setAdminState(store, adminId, patch) {
+/* ------------- Admin state (pointer + sessions) -------------- */
+// pointer by adminId: { mode: 'await_post'|'confirm'|null, sessionId?, last_ping? }
+async function setPointer(store, adminId, patch) {
   const key = 'broadcast_state.json';
   const st = await readJSON(store, key, {});
   if (patch === null) delete st[adminId];
-  else st[adminId] = { ...(st[adminId]||{}), ...patch };
+  else st[adminId] = { ...(st[adminId] || {}), ...patch };
   await writeJSON(store, key, st);
 }
-async function getAdminState(store, adminId) {
+async function getPointer(store, adminId) {
   const st = await readJSON(store, 'broadcast_state.json', {});
   return st[adminId] || null;
 }
-const confirmKeyboard = () => ({
-  inline_keyboard: [
-    [{ text: '✅ Подтвердить отправку', callback_data: 'bc_confirm' }],
-    [{ text: '❌ Отменить',             callback_data: 'bc_cancel'  }]
-  ]
-});
+function sessionKey(adminId, sessionId) {
+  return `broadcast_session_${adminId}_${sessionId}.json`;
+}
 
-/* ============================ ВЕБХУК ========================== */
+/* ============================ Webhook ============================ */
 export default async function handler(req) {
   if (req.method !== 'POST') return new Response('ok', { status: 200 });
-
   const store = getStore(process.env.BLOB_BUCKET || 'appstore');
 
   let update;
   try { update = await req.json(); } catch { return new Response('ok', { status: 200 }); }
-
-  // глобальный анти-дубль
   if (await seenUpdate(store, update?.update_id)) return new Response('ok', { status: 200 });
 
   try {
-    /* ---------- A) callback_query: подтверждение/отмена ---------- */
+    /* --------- A) callback_query (confirm/cancel) --------- */
     if (update.callback_query) {
       const cq = update.callback_query;
       const fromId = String(cq.from?.id || '');
@@ -207,24 +200,31 @@ export default async function handler(req) {
         return new Response('ok', { status: 200 });
       }
 
-      // читаем состояние; даже если не нашли — мягко сбрасываем (устойчиво к eventual consistency)
-      const st = await getAdminState(store, fromId);
+      const [, action, sid] = String(data).split(':'); // bc:confirm:<sid> | bc:cancel:<sid>
+      const pointer = await getPointer(store, fromId);
 
-      if (data === 'bc_cancel') {
-        await setAdminState(store, fromId, null);
+      // если это не актуальная сессия — мягко сообщаем
+      if (!pointer || pointer.sessionId !== sid) {
+        await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Эта сессия уже неактивна' });
+        return new Response('ok', { status: 200 });
+      }
+
+      if (action === 'cancel') {
+        await setPointer(store, fromId, null);
         await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Отменено' });
         await tg('sendMessage', { chat_id: fromId, text: 'Рассылка отменена.' });
         return new Response('ok', { status: 200 });
       }
 
-      if (data === 'bc_confirm') {
-        if (!st?.post) {
-          await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Состояние не найдено, попробуйте ещё раз' });
+      if (action === 'confirm') {
+        const sess = await readJSON(store, sessionKey(fromId, sid), null);
+        if (!sess?.post) {
+          await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Сессия не найдена' });
           return new Response('ok', { status: 200 });
         }
         await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Отправляем…' });
-        const res = await broadcastToAllUsers({ store, post: st.post });
-        await setAdminState(store, fromId, null);
+        const res = await broadcastToAllUsers({ store, post: sess.post });
+        await setPointer(store, fromId, null);
         await tg('sendMessage', {
           chat_id: fromId,
           text: res.total === 0
@@ -238,16 +238,17 @@ export default async function handler(req) {
       return new Response('ok', { status: 200 });
     }
 
-    /* ---------- B) обычные/отредактированные сообщения ---------- */
-    const msgRaw = update.message || update.edited_message;
-    if (!msgRaw) return new Response('ok', { status: 200 });
+    /* --------- B) обычные сообщения/редактирование --------- */
+    const msg = update.message || update.edited_message;
+    if (!msg) return new Response('ok', { status: 200 });
 
-    const chatId = String(msgRaw.chat?.id || '');
-    const text = (msgRaw.text || msgRaw.caption || '').trim();
+    const chatId = String(msg.chat?.id || '');
+    const text = (msg.text || msg.caption || '').trim();
+    const isCommand = !!(msg.text && msg.text.startsWith('/'));
 
-    // --- 1) не-админы: регистрация и /start
+    // 1) пользователи (не админы)
     if (!isAdmin(chatId)) {
-      await upsertUserAndMaybeNotify(store, msgRaw.from);
+      await upsertUser(store, msg.from);
       if (text?.startsWith('/start')) {
         await tg('sendMessage', {
           chat_id: chatId,
@@ -260,54 +261,59 @@ export default async function handler(req) {
       return new Response('ok', { status: 200 });
     }
 
-    // --- 2) Если ждём пост — обрабатываем его ПЕРЕД командами
-    {
-      const st = await getAdminState(store, chatId);
-      const updId = Number(update.update_id || 0);
+    // 2) состояние администратора
+    const pointer = await getPointer(store, chatId);
 
-      if (st?.mode === 'await_post') {
-        // защита от дубля для этого админа
-        if (st.last_update && updId && updId <= Number(st.last_update)) {
+    // --- если ждём пост: команды обрабатываем ПЕРВЫМИ
+    if (pointer?.mode === 'await_post') {
+      if (isCommand) {
+        if (text.startsWith('/cancel')) {
+          await setPointer(store, chatId, null);
+          await tg('sendMessage', { chat_id: chatId, text: 'Рассылка отменена.' });
           return new Response('ok', { status: 200 });
         }
-
-        // если прислали команду — не считаем это постом
-        const isCommand = !!(msgRaw.text && msgRaw.text.startsWith('/'));
-        if (isCommand) {
-          if (text.startsWith('/cancel')) {
-            await setAdminState(store, chatId, null);
-            await tg('sendMessage', { chat_id: chatId, text: 'Рассылка отменена.' });
-            return new Response('ok', { status: 200 });
-          }
-          if (text.startsWith('/broadcast')) {
-            await tg('sendMessage', { chat_id: chatId, text: 'Мы уже ждём пост для текущей рассылки. Пришлите текст/фото/видео или отправьте /cancel.' });
-            return new Response('ok', { status: 200 });
-          }
-          // другие команды игнорируем, чтобы не путать мастера
+        if (text.startsWith('/broadcast')) {
+          await tg('sendMessage', { chat_id: chatId, text: 'Мы уже ждём пост для текущей рассылки. Пришлите текст/фото/видео или отправьте /cancel.' });
           return new Response('ok', { status: 200 });
         }
-
-        // нормальный пост
-        const post = buildPostFromMessage(msgRaw);
+        // допускаем остальные команды ниже (например /users)
+      } else {
+        // принимаем пост
+        const post = buildPostFromMessage(msg);
+        const sessionId = Date.now().toString(36);
+        await writeJSON(store, sessionKey(chatId, sessionId), { post, created_ts: Date.now() });
+        await setPointer(store, chatId, { mode: 'confirm', sessionId, last_ping: 0 });
         await sendPostTo(chatId, post); // предпросмотр
-        await tg('sendMessage', {
-          chat_id: chatId,
-          text: 'Отправить это сообщение всем пользователям?',
-          reply_markup: confirmKeyboard()
-        });
-        await setAdminState(store, chatId, { mode: 'confirm', post, last_update: updId });
-        return new Response('ok', { status: 200 });
-      }
-
-      if (st?.mode === 'confirm') {
-        await setAdminState(store, chatId, { last_update: updId });
-        await tg('sendMessage', { chat_id: chatId, text: 'Вы уже на шаге подтверждения. Нажмите «✅ Подтвердить отправку» или «❌ Отменить».' });
+        await tg('sendMessage', { chat_id: chatId, text: 'Отправить это сообщение всем пользователям?', reply_markup: confirmKeyboard(sessionId) });
         return new Response('ok', { status: 200 });
       }
     }
 
-    // --- 3) Админ-команды (когда ничего не ждём)
-    if (update.message && msgRaw.text) {
+    // --- если ждём подтверждение: тоже сперва команды
+    if (pointer?.mode === 'confirm') {
+      if (isCommand) {
+        if (text.startsWith('/cancel')) {
+          await setPointer(store, chatId, null);
+          await tg('sendMessage', { chat_id: chatId, text: 'Рассылка отменена.' });
+          return new Response('ok', { status: 200 });
+        }
+        if (text.startsWith('/broadcast')) {
+          await tg('sendMessage', { chat_id: chatId, text: 'Уже на шаге подтверждения. Нажмите «✅ Подтвердить» или «❌ Отменить», либо /cancel.' });
+          return new Response('ok', { status: 200 });
+        }
+        // остальные команды пройдут далее
+      } else {
+        const now = Date.now();
+        if (!pointer.last_ping || now - Number(pointer.last_ping) > 10_000) {
+          await tg('sendMessage', { chat_id: chatId, text: 'Вы уже на шаге подтверждения. Нажмите «✅ Подтвердить отправку» или «❌ Отменить».' });
+          await setPointer(store, chatId, { last_ping: now });
+        }
+        return new Response('ok', { status: 200 });
+      }
+    }
+
+    // 3) команды администратора (всегда работают)
+    if (isCommand) {
       if (text.startsWith('/help')) {
         await tg('sendMessage', {
           chat_id: chatId,
@@ -327,7 +333,7 @@ export default async function handler(req) {
       }
 
       if (text.startsWith('/cancel')) {
-        await setAdminState(store, chatId, null);
+        await setPointer(store, chatId, null);
         await tg('sendMessage', { chat_id: chatId, text: 'Состояние сброшено.' });
         return new Response('ok', { status: 200 });
       }
@@ -338,13 +344,12 @@ export default async function handler(req) {
         return new Response('ok', { status: 200 });
       }
 
-      // ⬇️ Добавлено: быстрый способ включить себя в рассылку
       if (text.startsWith('/addme')) {
         const users = await readJSON(store, 'users.json', {});
         users[chatId] = users[chatId] || {
-          first_name: String(msgRaw.from?.first_name||''),
-          last_name : String(msgRaw.from?.last_name||''),
-          username  : String(msgRaw.from?.username||''),
+          first_name: String(msg.from?.first_name || ''),
+          last_name : String(msg.from?.last_name  || ''),
+          username  : String(msg.from?.username   || ''),
           ts: Date.now(),
         };
         await writeJSON(store, 'users.json', users);
@@ -353,8 +358,8 @@ export default async function handler(req) {
       }
 
       if (text.startsWith('/state')) {
-        const st = await getAdminState(store, chatId);
-        await tg('sendMessage', { chat_id: chatId, text: `state: ${JSON.stringify(st || {}, null, 2)}` });
+        const p = await getPointer(store, chatId);
+        await tg('sendMessage', { chat_id: chatId, text: `state: ${JSON.stringify(p || {}, null, 2)}` });
         return new Response('ok', { status: 200 });
       }
 
@@ -384,7 +389,7 @@ export default async function handler(req) {
       }
 
       if (text.startsWith('/broadcast')) {
-        await setAdminState(store, chatId, { mode: 'await_post', post: null, last_update: 0 });
+        await setPointer(store, chatId, { mode: 'await_post', sessionId: null, last_ping: 0 });
         await tg('sendMessage', {
           chat_id: chatId,
           text: [
@@ -400,7 +405,6 @@ export default async function handler(req) {
       }
     }
 
-    // по умолчанию — молчим
     return new Response('ok', { status: 200 });
 
   } catch (err) {
