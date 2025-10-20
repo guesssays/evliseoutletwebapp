@@ -14,8 +14,13 @@ export function renderCart(){
     .map(it => ({ ...it, product: state.products.find(p => String(p.id) === String(it.productId)) }))
     .filter(x => x.product);
 
+  // актуализируем таббар
   window.setTabbarMenu?.('cart');
 
+  // при каждом входе в корзину: удаляем старый FAB поддержки, если был
+  removeSupportFab();
+
+  // пустая корзина
   if (!items.length){
     v.innerHTML = `
       <div class="section-title" style="display:flex;align-items:center;gap:10px">
@@ -25,7 +30,8 @@ export function renderCart(){
       <section class="checkout"><div class="cart-sub">Корзина пуста</div></section>`;
     window.lucide?.createIcons && lucide.createIcons();
     document.getElementById('cartBack')?.addEventListener('click', ()=>history.back());
-    window.setTabbarMenu?.('cart');
+    // гарантированно в начало
+    resetScrollTop();
     return;
   }
 
@@ -37,6 +43,7 @@ export function renderCart(){
     <button class="square-btn" id="cartBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
     Оформление
   </div>
+
   <section class="checkout" id="cList">
     ${items.map(x=>`
       <div class="cart-row" data-id="${String(x.product.id)}" data-size="${x.size||''}" data-color="${x.color||''}">
@@ -52,7 +59,6 @@ export function renderCart(){
           <button class="ctrl inc" aria-label="Плюс"><i data-lucide="plus"></i></button>
         </div>
       </div>`).join('')}
-
 
     <div class="shipping">
       <div class="address-row">
@@ -71,14 +77,13 @@ export function renderCart(){
       <div class="payrow"><span>Скидка</span><b>${priceFmt(0)}</b></div>
     </div>
 
-    <!-- FAQ перед оформлением -->
+    <!-- FAQ перед оформлением (без кнопки поддержки) -->
     <div class="cart-faq" style="margin-top:14px">
       <style>
         .faq-card{border:1px solid var(--border,rgba(0,0,0,.12));border-radius:14px;padding:12px;background:var(--card,#f9f9f9);display:grid;gap:10px}
         .faq-row{display:grid;grid-template-columns:24px 1fr;gap:10px;align-items:start}
         .faq-q{font-weight:600}
         .faq-a{color:var(--muted,#6b7280)}
-        .faq-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
       </style>
       <div class="faq-card" role="region" aria-label="Частые вопросы перед оформлением">
         <div class="faq-row">
@@ -89,27 +94,21 @@ export function renderCart(){
           </div>
         </div>
         <div class="faq-row">
-          <i data-lucide="message-circle"></i>
-          <div>
-            <div class="faq-q">Есть вопросы?</div>
-            <div class="faq-a">Можете написать оператору — поможем с размером, оплатой и статусом заказа.</div>
-          </div>
-        </div>
-        <div class="faq-row">
           <i data-lucide="credit-card"></i>
           <div>
             <div class="faq-q">Как проходит оплата?</div>
             <div class="faq-a">После подтверждения данных вы переводите на карту и загружаете скриншот оплаты. Мы быстро проверим и запустим заказ в работу.</div>
           </div>
         </div>
-        <div class="faq-actions">
-          <button id="faqOperator" class="pill outline" type="button">Написать оператору</button>
-        </div>
       </div>
     </div>
     <!-- /FAQ -->
   </section>`;
+
   window.lucide?.createIcons && lucide.createIcons();
+
+  // гарантированно фиксируем скролл на начало после рендера
+  resetScrollTop();
 
   document.getElementById('cartBack')?.addEventListener('click', ()=>history.back());
 
@@ -122,15 +121,72 @@ export function renderCart(){
     row.querySelector('.dec')?.addEventListener('click', ()=> changeQty(id,size,color, -1));
   });
 
-  // Кнопка «Написать оператору» из FAQ
-  document.getElementById('faqOperator')?.addEventListener('click', ()=> openExternal(OP_CHAT_URL));
+  // плавающая кнопка поддержки (заметная и в логичном месте)
+  injectSupportFab();
 
+  // CTA «Оформить заказ» в таббаре
   window.setTabbarCTA?.({
     html: `<i data-lucide="credit-card"></i><span>Оформить заказ</span>`,
     onClick(){ checkoutFlow(items, ad, total); }
   });
 }
 
+/* ---------- scroll control: гарантированно в начало ---------- */
+function resetScrollTop(){
+  // снимаем фокус, чтобы не прыгало к интерактивным элементам
+  try{ document.activeElement && document.activeElement.blur && document.activeElement.blur(); }catch{}
+  // два кадра подряд, чтобы поймать отложенные layout/иконки
+  requestAnimationFrame(()=> {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    requestAnimationFrame(()=> window.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
+  });
+}
+
+/* ---------- плавающая кнопка поддержки ---------- */
+function injectSupportFab(){
+  // страховка от дублей
+  removeSupportFab();
+
+  const fab = document.createElement('button');
+  fab.id = 'supportFab';
+  fab.className = 'chat-fab';
+  fab.setAttribute('aria-label', 'Поддержка');
+  fab.innerHTML = `<i data-lucide="message-circle"></i><span>Поддержка</span>`;
+
+  // локальные стили
+  const style = document.createElement('style');
+  style.textContent = `
+    .chat-fab{
+      position: fixed;
+      right: 14px;
+      bottom: 84px; /* над таббаром и CTA */
+      z-index: 45;
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 14px; border-radius: 999px;
+      border: 1px solid var(--border, rgba(0,0,0,.12));
+      background: var(--card, #fff); box-shadow: 0 4px 12px rgba(0,0,0,.08);
+      font-weight: 600;
+    }
+    .chat-fab i{ width: 18px; height: 18px; }
+    @supports (bottom: env(safe-area-inset-bottom)){
+      .chat-fab{ bottom: calc(84px + env(safe-area-inset-bottom)); }
+    }
+  `;
+  document.head.appendChild(style);
+
+  fab.addEventListener('click', ()=> openExternal(OP_CHAT_URL));
+  document.body.appendChild(fab);
+
+  // обновляем иконку
+  window.lucide?.createIcons && window.lucide.createIcons();
+}
+
+function removeSupportFab(){
+  document.getElementById('supportFab')?.remove();
+  // оставляем возможный ранее инжектированный <style>, он не мешает
+}
+
+/* ---------- изменение количества / удаление ---------- */
 function changeQty(productId,size,color,delta){
   const it = state.cart.items.find(a =>
     String(a.productId)===String(productId) &&
@@ -293,12 +349,10 @@ function openPayModal({ items, address, phone, payer, total }){
   mt.textContent = 'Оплата заказа';
   mb.innerHTML = `
     <style>
-      /* фиксируем раскладку для заметки с иконкой */
       .note{ display:grid; grid-template-columns: 24px 1fr; gap:10px; align-items:center; }
       .shot-wrap{ display:grid; gap:8px; }
       .shot-preview{ display:flex; align-items:center; gap:10px; }
       .shot-preview img{ width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid var(--border, rgba(0,0,0,.1)); }
-      /* локальный бейдж, чтобы не конфликтовал с глобальным .badge */
       .pay-badge{ display:inline-block; font-size:.8rem; line-height:1.2; padding:2px 6px; border-radius:999px; background:rgba(0,0,0,.06); vertical-align:middle; }
       .note-sub.muted{ color:var(--muted,#6b7280); }
       .spin{ width:16px; height:16px; border:2px solid rgba(0,0,0,.2); border-top-color:rgba(0,0,0,.6); border-radius:50%; animation:spin .8s linear infinite; }
