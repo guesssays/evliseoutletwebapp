@@ -73,77 +73,43 @@ export function renderCart(){
       <div class="payrow"><span>Доставка</span><b>${priceFmt(0)}</b></div>
       <div class="payrow"><span>Скидка</span><b>${priceFmt(0)}</b></div>
     </div>
-    <!-- FAQ перед оформлением (адаптивный, без переполнений) -->
+        <!-- FAQ перед оформлением -->
     <div class="cart-faq" style="margin-top:14px">
       <style>
-        .faq-card{
-          border:1px solid var(--border,rgba(0,0,0,.12));
-          border-radius:14px;
-          padding:12px;
-          background:var(--card,#f9f9f9);
-          display:grid;
-          gap:12px;
-          overflow:hidden;           /* не выходим за края карточки */
-          max-width:100%;
-        }
-        .faq-row{
-          display:grid;
-          grid-template-columns:24px 1fr;
-          column-gap:10px;
-          align-items:start;
-        }
-        .faq-row.has-action{
-          grid-template-columns:24px 1fr auto; /* кнопка — отдельная колонка справа */
-          align-items:center;
-        }
-        .faq-icon{ width:24px; height:24px; }
-        .faq-text{ min-width:0; }              /* позволяет переносить текст */
-        .faq-q{ font-weight:600; line-height:1.25; }
-        .faq-a{ color:var(--muted,#6b7280); line-height:1.35; margin-top:4px; }
-
-        /* компактная пилюля справа */
-        .btn-operator{
-          display:inline-flex; align-items:center; gap:8px;
-          padding:6px 10px; border-radius:999px;
-          border:1px solid var(--border,rgba(0,0,0,.12));
-          background:var(--card,#fff);
-          font-size:.92rem; font-weight:600;
-          max-width:48vw;                /* не шире половины экрана */
-          white-space:nowrap;
-          overflow:hidden; text-overflow:ellipsis;
-        }
-        .btn-operator i{ width:16px; height:16px; flex:0 0 16px; }
-
-        /* очень узкие экраны: чуть уже кнопка и размер шрифта */
-        @media (max-width: 360px){
-          .btn-operator{ max-width:56vw; font-size:.88rem; padding:6px 9px; }
-        }
+        .faq-card{border:1px solid var(--border,rgba(0,0,0,.12));border-radius:14px;padding:12px;background:var(--card,#f9f9f9);display:grid;gap:12px;max-width:100%}
+        .faq-row{display:grid;grid-template-columns:24px 1fr;column-gap:10px;align-items:start}
+        .faq-q{font-weight:600}
+        .faq-a{color:var(--muted,#6b7280);margin-top:4px;line-height:1.35}
+        .faq-actions{margin-top:8px}
+        .faq-actions .pill{display:inline-flex;align-items:center;gap:8px}
+        .faq-actions .pill i{width:16px;height:16px}
       </style>
 
       <div class="faq-card" role="region" aria-label="Частые вопросы перед оформлением">
         <div class="faq-row">
-          <i class="faq-icon" data-lucide="clock"></i>
-          <div class="faq-text">
+          <i data-lucide="clock"></i>
+          <div>
             <div class="faq-q">Сроки доставки</div>
             <div class="faq-a">Обычно <b>14–16 дней</b> с момента подтверждения. Если срок изменится — мы уведомим.</div>
           </div>
         </div>
 
-        <!-- строка с вопросом и кнопкой справа -->
-        <div class="faq-row has-action">
-          <i class="faq-icon" data-lucide="message-circle"></i>
-          <div class="faq-text">
+        <div class="faq-row">
+          <i data-lucide="message-circle"></i>
+          <div>
             <div class="faq-q">Есть вопросы?</div>
             <div class="faq-a">Ответим по размеру, оплате и статусу — просто напишите нам.</div>
+            <div class="faq-actions">
+              <button id="faqOperator" class="pill outline" type="button" aria-label="Написать оператору в Telegram">
+                <i data-lucide="send"></i><span>Написать оператору</span>
+              </button>
+            </div>
           </div>
-          <button id="faqOperator" class="btn-operator" type="button" aria-label="Написать оператору в Telegram">
-            <i data-lucide="send"></i><span>Написать оператору</span>
-          </button>
         </div>
 
         <div class="faq-row">
-          <i class="faq-icon" data-lucide="credit-card"></i>
-          <div class="faq-text">
+          <i data-lucide="credit-card"></i>
+          <div>
             <div class="faq-q">Как проходит оплата?</div>
             <div class="faq-a">После подтверждения вы переводите на карту и загружаете скриншот оплаты. Мы быстро проверим и запустим заказ.</div>
           </div>
@@ -151,6 +117,7 @@ export function renderCart(){
       </div>
     </div>
     <!-- /FAQ -->
+
 
   </section>`;
 
