@@ -1,7 +1,6 @@
 // Бот: рассылка /broadcast (текст/фото/видео) с предпросмотром и подтверждением,
 // учёт пользователей, web_app-кнопка, устойчивая машина состояний и анти-дубли.
-// Диагностика Blobs: /diag set, /diag get, /kv set <k> <v>, /kv get <k>
-// Диагностика окружения: /where
+// Диагностика Blobs: /diag set, /diag get; Диагностика окружения сайта: /where
 //
 // ENV:
 //   TG_BOT_TOKEN   — токен бота (без "bot")                                [обяз.]
@@ -24,11 +23,17 @@ const ADMIN_IDS = admins();
 const API = (m) => `https://api.telegram.org/bot${TOKEN}/${m}`;
 
 /* ----------------------- Blobs helpers ----------------------- */
+// ❗️Используем универсальные методы get/set с { type: 'json' }
 async function readJSON(store, key, fallback = {}) {
-  try { return (await store.getJSON(key)) ?? fallback; } catch { return fallback; }
+  try {
+    const v = await store.get(key, { type: 'json' });
+    return (v === undefined || v === null) ? fallback : v;
+  } catch {
+    return fallback;
+  }
 }
 async function writeJSON(store, key, obj) {
-  await store.setJSON(key, obj ?? {});
+  await store.set(key, obj ?? {}, { type: 'json' });
 }
 
 /* ----------------------- Telegram helpers -------------------- */
@@ -191,11 +196,11 @@ export default async function handler(req) {
   let update;
   try { update = await req.json(); } catch { return new Response('ok', { status: 200 }); }
 
-  // анти-дубликаты по update_id
+  // анти-дубликаты
   if (await seenUpdate(store, update?.update_id)) return new Response('ok', { status: 200 });
 
   try {
-    /* ---------- A) callback_query: подтверждение/отмена ---------- */
+    /* ---------- A) callback_query ---------- */
     if (update.callback_query) {
       const cq = update.callback_query;
       const fromId = String(cq.from?.id || '');
@@ -242,7 +247,7 @@ export default async function handler(req) {
     const chatId = String(msgRaw.chat?.id || '');
     const text = (msgRaw.text || msgRaw.caption || '').trim();
 
-    // не-админы: регистрируем и даём кнопку /start
+    // не-админы
     if (!isAdmin(chatId)) {
       await upsertUserAndMaybeNotify(store, msgRaw.from);
       if (text?.startsWith('/start')) {
@@ -257,7 +262,7 @@ export default async function handler(req) {
       return new Response('ok', { status: 200 });
     }
 
-    // ----- Админ-команды (только для обычных "message", не edit) -----
+    // ----- Админ-команды (только для обычных message) -----
     if (update.message && msgRaw.text) {
       if (text.startsWith('/help')) {
         await tg('sendMessage', {
@@ -270,8 +275,6 @@ export default async function handler(req) {
             '/state — показать текущее состояние.',
             '/diag set — записать тестовый объект в Blobs.',
             '/diag get — прочитать тестовый объект из Blobs.',
-            '/kv set <k> <v> — записать произвольный ключ.',
-            '/kv get <k> — прочитать произвольный ключ.',
             '/where — показать сайт/окружение/бакет для этого вебхука.'
           ].join('\n')
         });
@@ -292,7 +295,6 @@ export default async function handler(req) {
         await tg('sendMessage', { chat_id: chatId, text: `state: ${JSON.stringify(st || {}, null, 2)}` });
         return new Response('ok', { status: 200 });
       }
-      // Диагностика Blobs (selftest)
       if (text.startsWith('/diag set')) {
         const key = 'selftest.json';
         const payload = { ts: Date.now(), rand: Math.random(), bucket: process.env.BLOB_BUCKET || 'appstore' };
@@ -303,20 +305,6 @@ export default async function handler(req) {
       if (text.startsWith('/diag get')) {
         const data = await readJSON(store, 'selftest.json', null);
         await tg('sendMessage', { chat_id: chatId, text: `diag:get from bucket "${process.env.BLOB_BUCKET||'appstore'}"\n${JSON.stringify(data)}` });
-        return new Response('ok', { status: 200 });
-      }
-      // Произвольные ключи — чтобы исключить «мистические» рассинхроны
-      if (text.startsWith('/kv set ')) {
-        const [, , , k, ...rest] = text.split(' ');
-        const val = rest.join(' ') || '';
-        await writeJSON(store, k, { val, ts: Date.now() });
-        await tg('sendMessage', { chat_id: chatId, text: `kv:set "${k}" = ${JSON.stringify({ val })}` });
-        return new Response('ok', { status: 200 });
-      }
-      if (text.startsWith('/kv get ')) {
-        const k = text.split(' ')[3];
-        const data = await readJSON(store, k, null);
-        await tg('sendMessage', { chat_id: chatId, text: `kv:get "${k}" → ${JSON.stringify(data)}` });
         return new Response('ok', { status: 200 });
       }
       if (text.startsWith('/where')) {
@@ -352,7 +340,6 @@ export default async function handler(req) {
     const st = await getAdminState(store, chatId);
     const updId = Number(update.update_id || 0);
 
-    // внутренняя защита от дубля для этого админа
     if (st?.last_update && updId && updId <= Number(st.last_update)) {
       return new Response('ok', { status: 200 });
     }

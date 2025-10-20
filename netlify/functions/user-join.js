@@ -1,7 +1,4 @@
 // Регистрируем нового пользователя и уведомляем админов в Telegram.
-// Плюс диагностические GET-операции:
-//   ?op=where — показать окружение
-//   ?op=test&uid=123&first_name=Ivan[&last_name=&username=] — записать юзера «вручную»
 // ENV:
 //   TG_BOT_TOKEN     — токен бота (без "bot" префикса)                  [обязателен]
 //   ADMIN_CHAT_ID    — chat_id администратора(ов); можно через запятую  [обязателен]
@@ -38,11 +35,12 @@ function buildCorsHeaders(origin) {
              parseAllowed().some(rule => originMatches(origin, rule));
   return {
     'Access-Control-Allow-Origin': ok ? (allowAll ? '*' : origin || '') : 'null',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, HEAD',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
 }
 
+// Читаем список админов
 function admins() {
   const rawEnv = (process.env.ADMIN_CHAT_ID ?? process.env.ADMIN_CHAT_IDS ?? '').toString();
   return rawEnv.split(',').map(s => s.trim()).filter(Boolean);
@@ -66,15 +64,14 @@ export default async function handler(req) {
   const origin = req.headers.get('origin') || '';
   const cors = buildCorsHeaders(origin);
 
-  if (req.method === 'OPTIONS' || req.method === 'HEAD') {
+  if (req.method === 'OPTIONS') {
     return new Response('', { status: 200, headers: cors });
   }
 
-  // ===== DIAG: GET
+  // ===== DIAG: GET ?op=where =====
   if (req.method === 'GET') {
-    const url = new URL(req.url);
-    const op = String(url.searchParams.get('op') || '').toLowerCase();
-    if (op === 'where') {
+    const op = String(new URL(req.url).searchParams.get('op') || '');
+    if (op.toLowerCase() === 'where') {
       const info = {
         bucket: process.env.BLOB_BUCKET || 'appstore',
         site_url: process.env.URL || '',
@@ -83,31 +80,6 @@ export default async function handler(req) {
         context: process.env.CONTEXT || '',
       };
       return new Response(JSON.stringify({ ok:true, where: info }), {
-        status: 200, headers: { ...cors, 'Content-Type':'application/json' }
-      });
-    }
-    if (op === 'test') {
-      const bucket = process.env.BLOB_BUCKET || 'appstore';
-      const store = getStore(bucket);
-      const key = 'users.json';
-      const users = (await store.getJSON(key)) || {};
-
-      const uid = String(url.searchParams.get('uid') || '').trim();
-      const first = String(url.searchParams.get('first_name') || '').trim();
-      const last  = String(url.searchParams.get('last_name')  || '').trim();
-      const uname = String(url.searchParams.get('username')   || '').trim();
-
-      if (!uid || !first) {
-        return new Response(JSON.stringify({ ok:false, error:'uid and first_name required' }), {
-          status: 400, headers: { ...cors, 'Content-Type':'application/json' }
-        });
-      }
-
-      const isNew = !users[uid];
-      users[uid] = { first_name:first, last_name:last, username:uname, ts: users[uid]?.ts || Date.now() };
-      await store.setJSON(key, users);
-
-      return new Response(JSON.stringify({ ok:true, isNew, total: Object.keys(users).length }), {
         status: 200, headers: { ...cors, 'Content-Type':'application/json' }
       });
     }
@@ -138,6 +110,7 @@ export default async function handler(req) {
     });
   }
 
+  // ожидаем { uid, first_name, last_name?, username? }
   const uid = String(body?.uid || '').trim();
   const first = String(body?.first_name || '').trim();
   const last  = String(body?.last_name || '').trim();
@@ -153,12 +126,19 @@ export default async function handler(req) {
     const bucket = process.env.BLOB_BUCKET || 'appstore';
     const store = getStore(bucket);
     const key = 'users.json';
-    const users = (await store.getJSON(key)) || {};
+
+    // ❗️замена getJSON/setJSON → get/set с type:'json'
+    const users = (await store.get(key, { type: 'json' })) || {};
 
     const isNew = !users[uid];
     if (isNew) {
-      users[uid] = { first_name:first, last_name:last || '', username:uname || '', ts: Date.now() };
-      await store.setJSON(key, users);
+      users[uid] = {
+        first_name: first,
+        last_name: last || '',
+        username: uname || '',
+        ts: Date.now()
+      };
+      await store.set(key, users, { type: 'json' });
     }
 
     const totalUsers = Object.keys(users).length;
@@ -171,6 +151,7 @@ export default async function handler(req) {
         `\nID: <code>${uid}</code>`,
         `\nВсего пользователей сейчас: <b>${totalUsers}</b>`
       ].join(' ').replace(/\s+/g, ' ');
+
       await Promise.allSettled(ADMIN_IDS.map(id => tgSend(TG_BOT_TOKEN, id, display)));
     }
 
