@@ -40,7 +40,7 @@ function buildCorsHeaders(origin) {
   };
 }
 
-// Читаем список админов
+// Читаем список админов из ADMIN_CHAT_ID
 function admins() {
   const rawEnv = (process.env.ADMIN_CHAT_ID ?? process.env.ADMIN_CHAT_IDS ?? '').toString();
   return rawEnv.split(',').map(s => s.trim()).filter(Boolean);
@@ -58,6 +58,21 @@ async function tgSend(token, chatId, text) {
     const err = data?.description || `${r.status} ${r.statusText}`;
     throw new Error(`Telegram sendMessage failed: ${err}`);
   }
+}
+
+/* ---------- Blobs helpers (универсальные) ---------- */
+async function readJSON(store, key, fallback = {}) {
+  try {
+    const val = await store.get(key, { type: 'json' });
+    return (val ?? fallback);
+  } catch {
+    return fallback;
+  }
+}
+async function writeJSON(store, key, obj) {
+  await store.set(key, JSON.stringify(obj ?? {}), {
+    contentType: 'application/json',
+  });
 }
 
 export default async function handler(req) {
@@ -126,9 +141,7 @@ export default async function handler(req) {
     const bucket = process.env.BLOB_BUCKET || 'appstore';
     const store = getStore(bucket);
     const key = 'users.json';
-
-    // ❗️замена getJSON/setJSON → get/set с type:'json'
-    const users = (await store.get(key, { type: 'json' })) || {};
+    const users = await readJSON(store, key, {});
 
     const isNew = !users[uid];
     if (isNew) {
@@ -138,7 +151,7 @@ export default async function handler(req) {
         username: uname || '',
         ts: Date.now()
       };
-      await store.set(key, users, { type: 'json' });
+      await writeJSON(store, key, users);
     }
 
     const totalUsers = Object.keys(users).length;

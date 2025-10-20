@@ -22,18 +22,21 @@ const ADMIN_IDS = admins();
 
 const API = (m) => `https://api.telegram.org/bot${TOKEN}/${m}`;
 
-/* ----------------------- Blobs helpers ----------------------- */
-// ❗️Используем универсальные методы get/set с { type: 'json' }
+/* ----------------------- Blobs helpers (универсальные) ------- */
 async function readJSON(store, key, fallback = {}) {
   try {
-    const v = await store.get(key, { type: 'json' });
-    return (v === undefined || v === null) ? fallback : v;
+    // Работает в обычных Netlify Functions
+    const val = await store.get(key, { type: 'json' });
+    return (val ?? fallback);
   } catch {
     return fallback;
   }
 }
 async function writeJSON(store, key, obj) {
-  await store.set(key, obj ?? {}, { type: 'json' });
+  // Сохраняем как строку JSON
+  await store.set(key, JSON.stringify(obj ?? {}), {
+    contentType: 'application/json',
+  });
 }
 
 /* ----------------------- Telegram helpers -------------------- */
@@ -196,7 +199,7 @@ export default async function handler(req) {
   let update;
   try { update = await req.json(); } catch { return new Response('ok', { status: 200 }); }
 
-  // анти-дубликаты
+  // анти-дубликаты по update_id
   if (await seenUpdate(store, update?.update_id)) return new Response('ok', { status: 200 });
 
   try {
@@ -247,7 +250,7 @@ export default async function handler(req) {
     const chatId = String(msgRaw.chat?.id || '');
     const text = (msgRaw.text || msgRaw.caption || '').trim();
 
-    // не-админы
+    // не-админы: регистрируем и даём кнопку /start
     if (!isAdmin(chatId)) {
       await upsertUserAndMaybeNotify(store, msgRaw.from);
       if (text?.startsWith('/start')) {
@@ -262,7 +265,7 @@ export default async function handler(req) {
       return new Response('ok', { status: 200 });
     }
 
-    // ----- Админ-команды (только для обычных message) -----
+    // ----- Админ-команды (только для "message", не edit) -----
     if (update.message && msgRaw.text) {
       if (text.startsWith('/help')) {
         await tg('sendMessage', {
@@ -295,6 +298,7 @@ export default async function handler(req) {
         await tg('sendMessage', { chat_id: chatId, text: `state: ${JSON.stringify(st || {}, null, 2)}` });
         return new Response('ok', { status: 200 });
       }
+      // Диагностика Blobs
       if (text.startsWith('/diag set')) {
         const key = 'selftest.json';
         const payload = { ts: Date.now(), rand: Math.random(), bucket: process.env.BLOB_BUCKET || 'appstore' };
@@ -307,6 +311,7 @@ export default async function handler(req) {
         await tg('sendMessage', { chat_id: chatId, text: `diag:get from bucket "${process.env.BLOB_BUCKET||'appstore'}"\n${JSON.stringify(data)}` });
         return new Response('ok', { status: 200 });
       }
+      // Где крутится вебхук/какой бакет
       if (text.startsWith('/where')) {
         const info = {
           bucket: process.env.BLOB_BUCKET || 'appstore',
