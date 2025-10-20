@@ -1,4 +1,3 @@
-// netlify/functions/user-join.js
 // Регистрируем нового пользователя и уведомляем админов в Telegram.
 // ENV:
 //   TG_BOT_TOKEN     — токен бота (без "bot" префикса)                  [обязателен]
@@ -36,13 +35,12 @@ function buildCorsHeaders(origin) {
              parseAllowed().some(rule => originMatches(origin, rule));
   return {
     'Access-Control-Allow-Origin': ok ? (allowAll ? '*' : origin || '') : 'null',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
 }
 
 // Читаем список админов из ADMIN_CHAT_ID (может быть 1 id или список через запятую).
-// Для совместимости поддерживаем и старую переменную ADMIN_CHAT_IDS, но приоритет у новой.
 function admins() {
   const rawEnv = (process.env.ADMIN_CHAT_ID ?? process.env.ADMIN_CHAT_IDS ?? '').toString();
   return rawEnv.split(',').map(s => s.trim()).filter(Boolean);
@@ -69,6 +67,27 @@ export default async function handler(req) {
   if (req.method === 'OPTIONS') {
     return new Response('', { status: 200, headers: cors });
   }
+
+  // ===== DIAG: GET ?op=where =====
+  if (req.method === 'GET') {
+    const op = String(new URL(req.url).searchParams.get('op') || '');
+    if (op.toLowerCase() === 'where') {
+      const info = {
+        bucket: process.env.BLOB_BUCKET || 'appstore',
+        site_url: process.env.URL || '',
+        deploy_url: process.env.DEPLOY_URL || '',
+        site_name: process.env.SITE_NAME || '',
+        context: process.env.CONTEXT || '',
+      };
+      return new Response(JSON.stringify({ ok:true, where: info }), {
+        status: 200, headers: { ...cors, 'Content-Type':'application/json' }
+      });
+    }
+    return new Response(JSON.stringify({ ok:false, error:'unknown op' }), {
+      status: 400, headers: { ...cors, 'Content-Type':'application/json' }
+    });
+  }
+
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405, headers: { ...cors, 'Content-Type': 'application/json' }
@@ -106,7 +125,6 @@ export default async function handler(req) {
   try {
     const bucket = process.env.BLOB_BUCKET || 'appstore';
     const store = getStore(bucket);
-    // Храним пользователей словарём: { [uid]: { first_name, last_name, username, ts } }
     const key = 'users.json';
     const users = (await store.getJSON(key)) || {};
 
@@ -132,7 +150,6 @@ export default async function handler(req) {
         `\nВсего пользователей сейчас: <b>${totalUsers}</b>`
       ].join(' ').replace(/\s+/g, ' ');
 
-      // Рассылаем всем админам
       await Promise.allSettled(ADMIN_IDS.map(id => tgSend(TG_BOT_TOKEN, id, display)));
     }
 

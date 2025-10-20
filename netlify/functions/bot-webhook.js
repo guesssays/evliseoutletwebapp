@@ -163,16 +163,6 @@ async function broadcastToAllUsers({ store, post }) {
 }
 
 /* --------------------- Состояние мастера-рассылки ------------- */
-/*
-  broadcast_state.json:
-  {
-    [adminId]: {
-      mode: 'await_post' | 'confirm' | undefined,
-      post?: {...},
-      last_update?: number // последний обработанный update_id (защита от дублей)
-    }
-  }
-*/
 async function setAdminState(store, adminId, patch) {
   const key = 'broadcast_state.json';
   const st = await readJSON(store, key, {});
@@ -312,14 +302,14 @@ export default async function handler(req) {
         await tg('sendMessage', { chat_id: chatId, text: `diag:get from bucket "${process.env.BLOB_BUCKET||'appstore'}"\n${JSON.stringify(data)}` });
         return new Response('ok', { status: 200 });
       }
-      // ⬇️ Новая команда — показывает, к КАКОМУ сайту привязан вебхук
+      // ⬇️ Новая команда
       if (text.startsWith('/where')) {
         const info = {
           bucket: process.env.BLOB_BUCKET || 'appstore',
           site_url: process.env.URL || '',
           deploy_url: process.env.DEPLOY_URL || '',
           site_name: process.env.SITE_NAME || '',
-          context: process.env.CONTEXT || '', // production / deploy-preview / branch-deploy
+          context: process.env.CONTEXT || '',
         };
         await tg('sendMessage', { chat_id: chatId, text: `where:\n${JSON.stringify(info, null, 2)}` });
         return new Response('ok', { status: 200 });
