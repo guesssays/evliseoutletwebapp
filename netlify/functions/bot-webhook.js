@@ -235,6 +235,11 @@ export default async function handler(req) {
     const chatId = String(msg.chat?.id || '');
     const text = (msg.text || msg.caption || '').trim();
 
+    // если прилетела edited_message от АДМИНА — игнорируем, чтобы не было дублей
+    if (!update.message && update.edited_message && isAdmin(chatId)) {
+      return new Response('ok', { status: 200 });
+    }
+
     // 1) если НЕ админ — регистрируем пользователя и даём короткий ответ
     if (!isAdmin(chatId)) {
       await upsertUserAndMaybeNotify(store, msg.from);
@@ -249,6 +254,12 @@ export default async function handler(req) {
     }
 
     // 2) админ-команды
+    if (text && msg.text && text.startsWith('/cancel')) {
+      await setAdminState(store, chatId, null);
+      await tg('sendMessage', { chat_id: chatId, text: 'Режим рассылки сброшен.' });
+      return new Response('ok', { status: 200 });
+    }
+
     if (text && msg.text && text.startsWith('/broadcast')) {
       await setAdminState(store, chatId, { mode: 'await_post' });
       await tg('sendMessage', {
@@ -280,6 +291,9 @@ export default async function handler(req) {
       await tg('sendMessage', { chat_id: chatId, text: 'Вы уже на шаге подтверждения. Нажмите «✅ Подтвердить отправку» или «❌ Отменить».' });
       return new Response('ok', { status: 200 });
     }
+
+    // если есть активное состояние — молчим, чтобы не засорять чат
+    if (st?.mode) return new Response('ok', { status: 200 });
 
     // Хелп
     await tg('sendMessage', {
