@@ -1,3 +1,4 @@
+// netlify/functions/bot-webhook.js
 // Бот: рассылка /broadcast (текст/фото/видео) с предпросмотром и подтверждением,
 // учёт пользователей, web_app-кнопка, устойчивая машина состояний и анти-дубли.
 // Диагностика Blobs: /diag set, /diag get; Диагностика окружения сайта: /where
@@ -22,21 +23,13 @@ const ADMIN_IDS = admins();
 
 const API = (m) => `https://api.telegram.org/bot${TOKEN}/${m}`;
 
-/* ----------------------- Blobs helpers (универсальные) ------- */
+/* -------- Blobs helpers через get/set (универсально) -------- */
 async function readJSON(store, key, fallback = {}) {
-  try {
-    // Работает в обычных Netlify Functions
-    const val = await store.get(key, { type: 'json' });
-    return (val ?? fallback);
-  } catch {
-    return fallback;
-  }
+  try { const v = await store.get(key, { type:'json' }); return v ?? fallback; }
+  catch { return fallback; }
 }
 async function writeJSON(store, key, obj) {
-  // Сохраняем как строку JSON
-  await store.set(key, JSON.stringify(obj ?? {}), {
-    contentType: 'application/json',
-  });
+  await store.set(key, JSON.stringify(obj ?? {}), { contentType:'application/json' });
 }
 
 /* ----------------------- Telegram helpers -------------------- */
@@ -199,11 +192,11 @@ export default async function handler(req) {
   let update;
   try { update = await req.json(); } catch { return new Response('ok', { status: 200 }); }
 
-  // анти-дубликаты по update_id
+  // анти-дубликаты по update_id (чтобы Телеграм ретраями не плодил события)
   if (await seenUpdate(store, update?.update_id)) return new Response('ok', { status: 200 });
 
   try {
-    /* ---------- A) callback_query ---------- */
+    /* ---------- A) callback_query: подтверждение/отмена ---------- */
     if (update.callback_query) {
       const cq = update.callback_query;
       const fromId = String(cq.from?.id || '');
@@ -250,7 +243,7 @@ export default async function handler(req) {
     const chatId = String(msgRaw.chat?.id || '');
     const text = (msgRaw.text || msgRaw.caption || '').trim();
 
-    // не-админы: регистрируем и даём кнопку /start
+    // --- 1) не-админы: регистрация и /start
     if (!isAdmin(chatId)) {
       await upsertUserAndMaybeNotify(store, msgRaw.from);
       if (text?.startsWith('/start')) {
@@ -265,7 +258,33 @@ export default async function handler(req) {
       return new Response('ok', { status: 200 });
     }
 
-    // ----- Админ-команды (только для "message", не edit) -----
+    // --- 2) ВАЖНО: если уже ждём пост — ловим его немедленно (до обработки команд)
+    {
+      const st = await getAdminState(store, chatId);
+      const updId = Number(update.update_id || 0);
+      if (st?.mode === 'await_post') {
+        // внутренняя защита от дублей для этого админа
+        if (st.last_update && updId && updId <= Number(st.last_update)) {
+          return new Response('ok', { status: 200 });
+        }
+        const post = buildPostFromMessage(msgRaw);
+        await sendPostTo(chatId, post); // предпросмотр
+        await tg('sendMessage', {
+          chat_id: chatId,
+          text: 'Отправить это сообщение всем пользователям?',
+          reply_markup: confirmKeyboard()
+        });
+        await setAdminState(store, chatId, { mode: 'confirm', post, last_update: updId });
+        return new Response('ok', { status: 200 });
+      }
+      if (st?.mode === 'confirm') {
+        await setAdminState(store, chatId, { last_update: updId });
+        await tg('sendMessage', { chat_id: chatId, text: 'Вы уже на шаге подтверждения. Нажмите «✅ Подтвердить отправку» или «❌ Отменить».' });
+        return new Response('ok', { status: 200 });
+      }
+    }
+
+    // --- 3) Админ-команды (обрабатываются, когда не ждём пост)
     if (update.message && msgRaw.text) {
       if (text.startsWith('/help')) {
         await tg('sendMessage', {
@@ -298,11 +317,9 @@ export default async function handler(req) {
         await tg('sendMessage', { chat_id: chatId, text: `state: ${JSON.stringify(st || {}, null, 2)}` });
         return new Response('ok', { status: 200 });
       }
-      // Диагностика Blobs
       if (text.startsWith('/diag set')) {
-        const key = 'selftest.json';
         const payload = { ts: Date.now(), rand: Math.random(), bucket: process.env.BLOB_BUCKET || 'appstore' };
-        await writeJSON(store, key, payload);
+        await writeJSON(store, 'selftest.json', payload);
         await tg('sendMessage', { chat_id: chatId, text: `diag:set ok in bucket "${payload.bucket}"\n${JSON.stringify(payload)}` });
         return new Response('ok', { status: 200 });
       }
@@ -311,7 +328,6 @@ export default async function handler(req) {
         await tg('sendMessage', { chat_id: chatId, text: `diag:get from bucket "${process.env.BLOB_BUCKET||'appstore'}"\n${JSON.stringify(data)}` });
         return new Response('ok', { status: 200 });
       }
-      // Где крутится вебхук/какой бакет
       if (text.startsWith('/where')) {
         const info = {
           bucket: process.env.BLOB_BUCKET || 'appstore',
@@ -323,7 +339,6 @@ export default async function handler(req) {
         await tg('sendMessage', { chat_id: chatId, text: `where:\n${JSON.stringify(info, null, 2)}` });
         return new Response('ok', { status: 200 });
       }
-
       if (text.startsWith('/broadcast')) {
         await setAdminState(store, chatId, { mode: 'await_post', post: null, last_update: 0 });
         await tg('sendMessage', {
@@ -341,35 +356,7 @@ export default async function handler(req) {
       }
     }
 
-    // состояние мастера-рассылки
-    const st = await getAdminState(store, chatId);
-    const updId = Number(update.update_id || 0);
-
-    if (st?.last_update && updId && updId <= Number(st.last_update)) {
-      return new Response('ok', { status: 200 });
-    }
-
-    if (st?.mode === 'await_post') {
-      const post = buildPostFromMessage(msgRaw);
-      await sendPostTo(chatId, post); // предпросмотр
-      await tg('sendMessage', {
-        chat_id: chatId,
-        text: 'Отправить это сообщение всем пользователям?',
-        reply_markup: confirmKeyboard()
-      });
-      await setAdminState(store, chatId, { mode: 'confirm', post, last_update: updId });
-      return new Response('ok', { status: 200 });
-    }
-
-    if (st?.mode === 'confirm') {
-      await setAdminState(store, chatId, { last_update: updId });
-      await tg('sendMessage', {
-        chat_id: chatId,
-        text: 'Вы уже на шаге подтверждения. Нажмите «✅ Подтвердить отправку» или «❌ Отменить».'
-      });
-      return new Response('ok', { status: 200 });
-    }
-
+    // по умолчанию — молчим
     return new Response('ok', { status: 200 });
 
   } catch (err) {
