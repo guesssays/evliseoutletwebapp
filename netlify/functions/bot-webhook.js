@@ -1,7 +1,6 @@
-// netlify/functions/bot-webhook.js
 // Бот: рассылка /broadcast (текст/фото/видео) с предпросмотром и подтверждением,
 // учёт пользователей, web_app-кнопка, устойчивая машина состояний и анти-дубли.
-// Есть диагностика Blobs: /diag set, /diag get.
+// Диагностика Blobs: /diag set, /diag get; Диагностика окружения сайта: /where
 //
 // ENV:
 //   TG_BOT_TOKEN   — токен бота (без "bot")                                [обяз.]
@@ -279,7 +278,8 @@ export default async function handler(req) {
             '/users — показать число пользователей.',
             '/state — показать текущее состояние.',
             '/diag set — записать тестовый объект в Blobs.',
-            '/diag get — прочитать тестовый объект из Blobs.'
+            '/diag get — прочитать тестовый объект из Blobs.',
+            '/where — показать сайт/окружение/бакет для этого вебхука.'
           ].join('\n')
         });
         return new Response('ok', { status: 200 });
@@ -312,6 +312,19 @@ export default async function handler(req) {
         await tg('sendMessage', { chat_id: chatId, text: `diag:get from bucket "${process.env.BLOB_BUCKET||'appstore'}"\n${JSON.stringify(data)}` });
         return new Response('ok', { status: 200 });
       }
+      // ⬇️ Новая команда — показывает, к КАКОМУ сайту привязан вебхук
+      if (text.startsWith('/where')) {
+        const info = {
+          bucket: process.env.BLOB_BUCKET || 'appstore',
+          site_url: process.env.URL || '',
+          deploy_url: process.env.DEPLOY_URL || '',
+          site_name: process.env.SITE_NAME || '',
+          context: process.env.CONTEXT || '', // production / deploy-preview / branch-deploy
+        };
+        await tg('sendMessage', { chat_id: chatId, text: `where:\n${JSON.stringify(info, null, 2)}` });
+        return new Response('ok', { status: 200 });
+      }
+
       if (text.startsWith('/broadcast')) {
         await setAdminState(store, chatId, { mode: 'await_post', post: null, last_update: 0 });
         await tg('sendMessage', {
