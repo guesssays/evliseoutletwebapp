@@ -6,14 +6,14 @@
 // 1) Админ -> /broadcast
 // 2) Следующее сообщение админа — пост (MarkdownV2).
 //    Кнопки указываем markdown-ссылками: [Текст](https://...)
-//    Автокнопка "Открыть приложение", если задан WEBAPP_URL.
+//    Автокнопка "Открыть приложение" (web_app), если задан WEBAPP_URL.
 // 3) Бот шлёт предпросмотр и сообщение с кнопками "Подтвердить"/"Отменить".
 // 4) По "Подтвердить" — рассылаем всем chat_id из users.json.
 //
 // ENV:
 //   TG_BOT_TOKEN   — токен бота (без "bot")                                [обяз.]
 //   ADMIN_CHAT_ID  — chat_id админов через запятую                          [обяз.]
-//   WEBAPP_URL     — ссылка "Открыть приложение"                            [опц.]
+//   WEBAPP_URL     — ссылка WebApp (откроется внутри Telegram)              [опц.]
 //   BLOB_BUCKET    — имя стора Netlify Blobs (по умолчанию 'appstore')
 
 import { getStore } from '@netlify/blobs';
@@ -65,7 +65,7 @@ function isAdmin(chatId) {
 /** Парсинг "как в PostBot":
  *  - Текст тела: оставляем как есть (MarkdownV2).
  *  - Инлайн-кнопки: из markdown-ссылок [Текст](https://...) —> inline_keyboard.
- *  - Добавляем "Открыть приложение", если есть WEBAPP_URL.
+ *  - Добавляем "Открыть приложение" как web_app, если есть WEBAPP_URL.
  */
 function parseButtonsFromText(mdText) {
   const text = (mdText || '').trim();
@@ -75,9 +75,17 @@ function parseButtonsFromText(mdText) {
   while ((m = linkRe.exec(text)) !== null) {
     buttons.push({ text: m[1], url: m[2] });
   }
+
   const keyboard = [];
-  if (buttons.length) keyboard.push(...buttons.map(b => [b]));
-  if (WEBAPP_URL) keyboard.push([{ text: 'Открыть приложение', url: WEBAPP_URL }]);
+  if (buttons.length) {
+    keyboard.push(...buttons.map(b => [b]));
+  }
+
+  // Главное изменение: web_app-кнопка (открывает WebApp внутри Telegram)
+  if (WEBAPP_URL) {
+    keyboard.push([{ text: 'Открыть приложение', web_app: { url: WEBAPP_URL } }]);
+  }
+
   return keyboard.length ? { inline_keyboard: keyboard } : undefined;
 }
 
@@ -264,7 +272,7 @@ export default async function handler(req) {
         '• фото + подпись',
         '• видео + подпись',
         'Кнопки: [Название](https://link)',
-        WEBAPP_URL ? 'Автокнопка: «Открыть приложение» будет добавлена.' : ''
+        WEBAPP_URL ? 'Автокнопка: «Открыть приложение» откроет WebApp внутри Telegram.' : ''
       ].filter(Boolean).join('\n')
     });
     return new Response('ok', { status: 200 });
@@ -305,7 +313,7 @@ export default async function handler(req) {
       'Команда для рассылки всем пользователям:',
       '/broadcast — затем пришлите текст/фото/видео с подписью (MarkdownV2).',
       'Кнопки: [Название](https://link).',
-      WEBAPP_URL ? 'Автокнопка: «Открыть приложение» будет добавлена.' : ''
+      WEBAPP_URL ? 'Автокнопка: «Открыть приложение» — web_app, откроет приложение внутри Telegram.' : ''
     ].filter(Boolean).join('\n')
   });
   return new Response('ok', { status: 200 });
