@@ -3,15 +3,19 @@
 // Персистентная FSM + антидубли, устойчиво к eventual-consistency Netlify Blobs.
 //
 // ENV:
-//   TG_BOT_TOKEN   — токен бота (без "bot") [обяз.]
-//   ADMIN_CHAT_ID  — список chat_id через запятую [обяз.]
-//   WEBAPP_URL     — ссылка WebApp (внутри Telegram) [опц.]
-//   BLOB_BUCKET    — имя стора Blobs (по умолчанию 'appstore')
+//   TG_BOT_TOKEN        — токен бота (без "bot") [обяз.]
+//   ADMIN_CHAT_ID       — список chat_id через запятую [обяз.]
+//   WEBAPP_URL          — ссылка WebApp (внутри Telegram) [опц.]
+//   BLOB_BUCKET         — имя стора Blobs (по умолчанию 'appstore')
+//   WELCOME_ASSET_PATH  — относительный путь к картинке из билда (по умолчанию assets/images/welcome.jpg)
+//   WELCOME_TEXT        — подпись под картинкой (по умолчанию короткий текст)
 
 import { getStore } from '@netlify/blobs';
 
 const TOKEN = process.env.TG_BOT_TOKEN || '';
 const WEBAPP_URL = process.env.WEBAPP_URL || '';
+const WELCOME_ASSET_PATH = (process.env.WELCOME_ASSET_PATH || 'assets/images/welcome.jpg').replace(/^\/+/, '');
+const WELCOME_TEXT  = process.env.WELCOME_TEXT || 'Добро пожаловать в EVLISE OUTLET! Нажмите кнопку ниже, чтобы открыть приложение. Воспользуйся скидкой до 10%!';
 if (!TOKEN) throw new Error('TG_BOT_TOKEN is required');
 
 function admins() {
@@ -163,7 +167,6 @@ async function broadcastToAllUsers({ store, post }) {
 }
 
 /* ------------- Admin state (pointer + sessions) -------------- */
-// pointer by adminId: { mode: 'await_post'|'confirm'|null, sessionId?, last_ping? }
 async function setPointer(store, adminId, patch) {
   const key = 'broadcast_state.json';
   const st = await readJSON(store, key, {});
@@ -177,6 +180,36 @@ async function getPointer(store, adminId) {
 }
 function sessionKey(adminId, sessionId) {
   return `broadcast_session_${adminId}_${sessionId}.json`;
+}
+
+/* ---------------- Welcome helper (asset from build) ----------- */
+function welcomeKeyboard() {
+  return WEBAPP_URL
+    ? { inline_keyboard: [[{ text: 'Открыть приложение', web_app: { url: WEBAPP_URL } }]] }
+    : undefined;
+}
+function resolveAssetUrl(relPath) {
+  // Абсолютный URL сайта (production/staging), без хвостового слэша
+  const base = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/, '');
+  if (!base) return null;
+  return `${base}/${relPath.replace(/^\/+/, '')}`;
+}
+async function sendWelcome(chatId) {
+  const photoUrl = resolveAssetUrl(WELCOME_ASSET_PATH);
+  if (photoUrl) {
+    return safeSend('sendPhoto', {
+      chat_id: chatId,
+      photo: photoUrl,
+      caption: WELCOME_TEXT,
+      reply_markup: welcomeKeyboard()
+    });
+  }
+  // если вдруг нет URL (локально / dev) — просто текст
+  return safeSend('sendMessage', {
+    chat_id: chatId,
+    text: WELCOME_TEXT,
+    reply_markup: welcomeKeyboard()
+  });
 }
 
 /* ============================ Webhook ============================ */
@@ -203,7 +236,6 @@ export default async function handler(req) {
       const [, action, sid] = String(data).split(':'); // bc:confirm:<sid> | bc:cancel:<sid>
       const pointer = await getPointer(store, fromId);
 
-      // если это не актуальная сессия — мягко сообщаем
       if (!pointer || pointer.sessionId !== sid) {
         await tg('answerCallbackQuery', { callback_query_id: cq.id, text: 'Эта сессия уже неактивна' });
         return new Response('ok', { status: 200 });
@@ -250,13 +282,7 @@ export default async function handler(req) {
     if (!isAdmin(chatId)) {
       await upsertUser(store, msg.from);
       if (text?.startsWith('/start')) {
-        await tg('sendMessage', {
-          chat_id: chatId,
-          text: 'Привет! Это бот EVLISE OUTLET. Откройте приложение кнопкой ниже.',
-          reply_markup: WEBAPP_URL
-            ? { inline_keyboard: [[{ text: 'Открыть приложение', web_app: { url: WEBAPP_URL } }]] }
-            : undefined
-        });
+        await sendWelcome(chatId);
       }
       return new Response('ok', { status: 200 });
     }

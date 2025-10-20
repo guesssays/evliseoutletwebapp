@@ -1,9 +1,5 @@
 // Регистрируем нового пользователя и уведомляем админов в Telegram.
-// ENV:
-//   TG_BOT_TOKEN     — токен бота (без "bot" префикса)                  [обязателен]
-//   ADMIN_CHAT_ID    — chat_id администратора(ов); можно через запятую  [обязателен]
-//   ALLOWED_ORIGINS  — CORS: через запятую ('*', точные origin, '*.dom')
-//   BLOB_BUCKET      — имя стора Blobs (по умолчанию 'appstore')
+// ENV: TG_BOT_TOKEN, ADMIN_CHAT_ID, ALLOWED_ORIGINS, BLOB_BUCKET
 
 import { getStore } from '@netlify/blobs';
 
@@ -40,7 +36,7 @@ function buildCorsHeaders(origin) {
   };
 }
 
-// Читаем список админов из ADMIN_CHAT_ID
+// ADMIN_CHAT_ID → массив
 function admins() {
   const rawEnv = (process.env.ADMIN_CHAT_ID ?? process.env.ADMIN_CHAT_IDS ?? '').toString();
   return rawEnv.split(',').map(s => s.trim()).filter(Boolean);
@@ -60,7 +56,7 @@ async function tgSend(token, chatId, text) {
   }
 }
 
-/* ---------- Blobs helpers (универсальные) ---------- */
+/* ---------- Blobs helpers ---------- */
 async function readJSON(store, key, fallback = {}) {
   try {
     const val = await store.get(key, { type: 'json' });
@@ -75,6 +71,11 @@ async function writeJSON(store, key, obj) {
   });
 }
 
+/* ---------- HTML escape для имени ---------- */
+const esc = (s='') => s.replace(/[&<>"]/g, ch =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch])
+);
+
 export default async function handler(req) {
   const origin = req.headers.get('origin') || '';
   const cors = buildCorsHeaders(origin);
@@ -83,7 +84,7 @@ export default async function handler(req) {
     return new Response('', { status: 200, headers: cors });
   }
 
-  // ===== DIAG: GET ?op=where =====
+  // DIAG
   if (req.method === 'GET') {
     const op = String(new URL(req.url).searchParams.get('op') || '');
     if (op.toLowerCase() === 'where') {
@@ -157,13 +158,16 @@ export default async function handler(req) {
     const totalUsers = Object.keys(users).length;
 
     if (isNew) {
+      // Ссылки
+      const name = `${esc(first)}${last ? ' ' + esc(last) : ''}`;
+      const deepLink = `tg://user?id=${uid}`;
+      const usernameLink = uname ? ` (@<a href="https://t.me/${encodeURIComponent(uname)}">${esc(uname)}</a>)` : '';
       const display = [
         `<b>Новый пользователь</b>`,
-        `${first}${last ? ' ' + last : ''}`,
-        uname ? `( @${uname} )` : '',
+        `<a href="${deepLink}">${name}</a>${usernameLink}`,
         `\nID: <code>${uid}</code>`,
         `\nВсего пользователей сейчас: <b>${totalUsers}</b>`
-      ].join(' ').replace(/\s+/g, ' ');
+      ].join(' ');
 
       await Promise.allSettled(ADMIN_IDS.map(id => tgSend(TG_BOT_TOKEN, id, display)));
     }
