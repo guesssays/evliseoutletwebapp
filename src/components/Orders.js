@@ -133,7 +133,8 @@ export async function renderTrack({id}){
       /* список позиций */
       .order-item{
         display:grid;
-        grid-template-columns: 56px minmax(0,1fr) auto;
+        /* FIX: 4 колонки — qty не переносится вниз */
+        grid-template-columns: 56px minmax(0,1fr) auto auto;
         gap:10px;
         align-items:center;
         margin-top:10px;
@@ -142,8 +143,8 @@ export async function renderTrack({id}){
       .order-item .cart-img img{width:56px;height:56px;object-fit:cover;border-radius:10px}
       .order-item__meta .cart-title{word-break:break-word; overflow-wrap:anywhere}
       .order-item__meta .cart-sub{color:var(--muted); font-size:.92rem; overflow-wrap:anywhere}
-      .order-item__qty{justify-self:end; color:var(--muted); padding-left:8px}
-      .order-item__sum{justify-self:end; font-weight:700; padding-left:8px}
+      .order-item__qty{justify-self:end; color:var(--muted); padding-left:8px; white-space:nowrap}
+      .order-item__sum{justify-self:end; font-weight:700; padding-left:8px; white-space:nowrap}
 
       /* компактная верстка на узких экранах: qty и sum – в строку под метаданными */
       @media (max-width: 420px){
