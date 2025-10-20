@@ -1,6 +1,7 @@
 // Бот: рассылка /broadcast (текст/фото/видео) с предпросмотром и подтверждением,
 // учёт пользователей, web_app-кнопка, устойчивая машина состояний и анти-дубли.
-// Диагностика Blobs: /diag set, /diag get; Диагностика окружения сайта: /where
+// Диагностика Blobs: /diag set, /diag get, /kv set <k> <v>, /kv get <k>
+// Диагностика окружения: /where
 //
 // ENV:
 //   TG_BOT_TOKEN   — токен бота (без "bot")                                [обяз.]
@@ -190,7 +191,7 @@ export default async function handler(req) {
   let update;
   try { update = await req.json(); } catch { return new Response('ok', { status: 200 }); }
 
-  // анти-дубликаты по update_id (важно: иначе Telegram ретраит и идёт спам)
+  // анти-дубликаты по update_id
   if (await seenUpdate(store, update?.update_id)) return new Response('ok', { status: 200 });
 
   try {
@@ -235,7 +236,7 @@ export default async function handler(req) {
     }
 
     /* ---------- B) обычные/отредактированные сообщения ---------- */
-    const msgRaw = update.message || update.edited_message; // caption часто приходит как edit
+    const msgRaw = update.message || update.edited_message;
     if (!msgRaw) return new Response('ok', { status: 200 });
 
     const chatId = String(msgRaw.chat?.id || '');
@@ -269,6 +270,8 @@ export default async function handler(req) {
             '/state — показать текущее состояние.',
             '/diag set — записать тестовый объект в Blobs.',
             '/diag get — прочитать тестовый объект из Blobs.',
+            '/kv set <k> <v> — записать произвольный ключ.',
+            '/kv get <k> — прочитать произвольный ключ.',
             '/where — показать сайт/окружение/бакет для этого вебхука.'
           ].join('\n')
         });
@@ -289,7 +292,7 @@ export default async function handler(req) {
         await tg('sendMessage', { chat_id: chatId, text: `state: ${JSON.stringify(st || {}, null, 2)}` });
         return new Response('ok', { status: 200 });
       }
-      // Диагностика Blobs
+      // Диагностика Blobs (selftest)
       if (text.startsWith('/diag set')) {
         const key = 'selftest.json';
         const payload = { ts: Date.now(), rand: Math.random(), bucket: process.env.BLOB_BUCKET || 'appstore' };
@@ -302,7 +305,20 @@ export default async function handler(req) {
         await tg('sendMessage', { chat_id: chatId, text: `diag:get from bucket "${process.env.BLOB_BUCKET||'appstore'}"\n${JSON.stringify(data)}` });
         return new Response('ok', { status: 200 });
       }
-      // ⬇️ Новая команда
+      // Произвольные ключи — чтобы исключить «мистические» рассинхроны
+      if (text.startsWith('/kv set ')) {
+        const [, , , k, ...rest] = text.split(' ');
+        const val = rest.join(' ') || '';
+        await writeJSON(store, k, { val, ts: Date.now() });
+        await tg('sendMessage', { chat_id: chatId, text: `kv:set "${k}" = ${JSON.stringify({ val })}` });
+        return new Response('ok', { status: 200 });
+      }
+      if (text.startsWith('/kv get ')) {
+        const k = text.split(' ')[3];
+        const data = await readJSON(store, k, null);
+        await tg('sendMessage', { chat_id: chatId, text: `kv:get "${k}" → ${JSON.stringify(data)}` });
+        return new Response('ok', { status: 200 });
+      }
       if (text.startsWith('/where')) {
         const info = {
           bucket: process.env.BLOB_BUCKET || 'appstore',
@@ -341,7 +357,6 @@ export default async function handler(req) {
       return new Response('ok', { status: 200 });
     }
 
-    // Когда ждём пост — учитываем и обычное message, и edited_message
     if (st?.mode === 'await_post') {
       const post = buildPostFromMessage(msgRaw);
       await sendPostTo(chatId, post); // предпросмотр
@@ -363,7 +378,6 @@ export default async function handler(req) {
       return new Response('ok', { status: 200 });
     }
 
-    // по умолчанию — молчим
     return new Response('ok', { status: 200 });
 
   } catch (err) {
