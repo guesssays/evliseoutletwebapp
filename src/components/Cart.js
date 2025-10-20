@@ -74,14 +74,14 @@ export function renderCart(){
       <div class="payrow"><span>Скидка</span><b>${priceFmt(0)}</b></div>
     </div>
 
-    <!-- FAQ перед оформлением (с кнопкой поддержки) -->
+    <!-- FAQ перед оформлением (кнопка прямо в блоке "Есть вопросы?") -->
     <div class="cart-faq" style="margin-top:14px">
       <style>
         .faq-card{border:1px solid var(--border,rgba(0,0,0,.12));border-radius:14px;padding:12px;background:var(--card,#f9f9f9);display:grid;gap:10px}
         .faq-row{display:grid;grid-template-columns:24px 1fr;gap:10px;align-items:start}
         .faq-q{font-weight:600}
         .faq-a{color:var(--muted,#6b7280)}
-        .faq-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+        .faq-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
       </style>
       <div class="faq-card" role="region" aria-label="Частые вопросы перед оформлением">
         <div class="faq-row">
@@ -96,6 +96,9 @@ export function renderCart(){
           <div>
             <div class="faq-q">Есть вопросы?</div>
             <div class="faq-a">Напишите оператору — поможем с размером, оплатой и статусом заказа.</div>
+            <div class="faq-actions">
+              <button id="faqOperator" class="pill outline" type="button">Написать оператору</button>
+            </div>
           </div>
         </div>
         <div class="faq-row">
@@ -104,9 +107,6 @@ export function renderCart(){
             <div class="faq-q">Как проходит оплата?</div>
             <div class="faq-a">После подтверждения вы переводите на карту и загружаете скриншот оплаты. Мы быстро проверим и запустим заказ.</div>
           </div>
-        </div>
-        <div class="faq-actions">
-          <button id="faqOperator" class="pill outline" type="button">Написать оператору</button>
         </div>
       </div>
     </div>
