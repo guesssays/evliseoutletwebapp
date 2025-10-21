@@ -495,3 +495,79 @@ function ensureExt(name, ext){
   return `${base}.${ext}`;
 }
 function escapeHtml(s=''){ return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+// хелпер для склонений: plural(число, 'товар', 'товара', 'товаров')
+function plural(n, one, few, many){
+  n = Math.abs(n) % 100;
+  const n1 = n % 10;
+  if (n > 10 && n < 20) return many;
+  if (n1 > 1 && n1 < 5) return few;
+  if (n1 === 1) return one;
+  return many;
+}
+
+async function listView(){
+  const orders = filterByTab(await getAll());
+  const pmap   = currentProductsMap();
+
+  const html = orders.length ? `
+    <div class="admin-list-mini" id="adminListMini">
+      ${orders.map(o=>{
+        // позиции заказа
+        const items = Array.isArray(o.cart) ? o.cart : [];
+        const itemsCount = items.reduce((s,x)=> s + (Number(x.qty)||0), 0) || (o.qty||0) || (items.length || 0);
+
+        // сумма: берём order.total, а если вдруг нет — считаем из позиций
+        const calcSum = items.reduce((s,x)=> s + (Number(x.price)||0) * (Number(x.qty)||0), 0);
+        const total = Number.isFinite(Number(o.total)) ? Number(o.total) : calcSum;
+        const totalFmt = priceFmt(total);
+
+        // подпись: если одна позиция — её название, если несколько — "N товаров"
+        const prod  = pmap.get(String(o.productId));
+        const singleTitle = items[0]?.title || prod?.title || 'Товар';
+        const nameLine = (items.length > 1 || itemsCount > 1)
+          ? `${itemsCount} ${plural(itemsCount, 'товар', 'товара', 'товаров')}`
+          : escapeHtml(singleTitle);
+
+        return `
+          <article class="order-mini" data-id="${o.id}" tabindex="0" role="button" aria-label="Открыть заказ #${o.id}">
+            <div class="order-mini__left">
+              <div class="order-mini__sum">${totalFmt}</div>
+              <div class="muted mini" style="margin-top:4px">${escapeHtml(nameLine)}</div>
+              <div class="order-mini__meta">
+                <span class="chip-id">#${escapeHtml(o.id)}</span>
+                <span class="chip-user">@${escapeHtml(o.username||'—')}</span>
+                <span class="muted mini">· ${escapeHtml(getStatusLabel(o.status))}</span>
+              </div>
+            </div>
+            <div class="order-mini__right">
+              <i class="arrow" aria-hidden="true"></i>
+            </div>
+          </article>
+        `;
+      }).join('')}
+    </div>
+  ` : `
+    <div class="admin-empty">
+      <i data-lucide="inbox"></i>
+      <div>В этой вкладке пока нет заказов</div>
+    </div>
+  `;
+
+  shell(html);
+
+  const hook = (card)=>{
+    if(!card) return;
+    selectedId = card.getAttribute('data-id');
+    mode = 'detail';
+    render();
+  };
+  document.getElementById('adminListMini')?.addEventListener('click', (e)=> hook(e.target.closest('.order-mini')));
+  document.getElementById('adminListMini')?.addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter' || e.key === ' ') {
+      const card = e.target.closest('.order-mini');
+      if(!card) return;
+      e.preventDefault();
+      hook(card);
+    }
+  });
+}
