@@ -92,9 +92,10 @@ export function renderProduct({id}){
       .mini-tabbar{
         position:fixed;
         left:0; right:0; bottom:0;
-        z-index:1001; /* будет переопределяться из JS */
+        z-index:2147483647; /* максимально поверх всего */
         display:flex; align-items:center;
         padding:8px 12px;
+        padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
 
         /* glassmorphism */
         background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,.18));
@@ -261,7 +262,7 @@ export function renderProduct({id}){
 
   // Галерея: миниатюры -> главное фото
   const thumbs = document.getElementById('thumbs');
-  let mainImg = document.getElementById('mainImg');
+  const mainImg = document.getElementById('mainImg');
   if (thumbs && mainImg){
     thumbs.addEventListener('click', (e)=>{
       const t = e.target.closest('button.thumb'); if (!t) return;
@@ -367,8 +368,8 @@ export function renderProduct({id}){
     return tb ? Math.ceil(tb.getBoundingClientRect().height) : 64;
   }
 
-  // коэффициенты — «слегка шире» основного 50% → 60%
-  const MINI_WIDTH_FACTOR = 0.6; // 60% ширины основного таббара
+  // ширина мини-бара = ~60% ширины основного таббара
+  const MINI_WIDTH_FACTOR = 0.6; // 60%
   const MINI_MIN_WIDTH = 140;
 
   function updateMiniTabbarPosition(){
@@ -378,20 +379,15 @@ export function renderProduct({id}){
     const tb = getTabbarEl();
     const vw = window.innerWidth || document.documentElement.clientWidth || 360;
 
-    // 1) z-index мини-бара: на 1 больше, чем у основного таббара
-    if (tb) {
-      const z = parseInt(getComputedStyle(tb).zIndex || '0', 10) || 0;
-      bar.style.zIndex = String(Math.max(z + 1, 1001));
-    } else {
-      bar.style.zIndex = '1001';
-    }
+    // z-index принудительно максимально высокий (не доверяем вычислению из таббара)
+    bar.style.zIndex = '2147483647';
 
-    // 2) Отступаемся на высоту таббара + небольшой зазор
-    const bottomOffset = getTabbarHeight();
+    // Отступ снизу: высота таббара + небольшой зазор + safe area
     const GAP = 6;
-    bar.style.bottom = `${bottomOffset + GAP}px`;
+    const bottomOffset = getTabbarHeight();
+    bar.style.bottom = `calc(${bottomOffset + GAP}px + env(safe-area-inset-bottom, 0px))`;
 
-    // 3) Подбор ширины/позиции
+    // Ширина / позиция
     let left = 8;
     let width = Math.max(MINI_MIN_WIDTH, Math.floor((vw - 16) * MINI_WIDTH_FACTOR));
 
