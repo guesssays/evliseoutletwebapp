@@ -1,15 +1,21 @@
 // src/components/Product.js
-import { state, isFav, toggleFav } from '../core/state.js';
+import { state, isFav, toggleFav, getUID } from '../core/state.js';
 import { priceFmt, colorToHex } from '../core/utils.js';
 import { addToCart, removeLineFromCart, isInCart } from './cartActions.js';
-import { getUID } from '../core/state.js';
 
 /* ====== КОНСТАНТЫ КЭШБЕКА/РЕФЕРАЛОВ (должны совпадать с корзиной/аккаунтом) ====== */
 const CASHBACK_RATE_BASE  = 0.05; // 5%
 const CASHBACK_RATE_BOOST = 0.10; // 10% для 1-го заказа по реф-ссылке
 
 /* ——— хранилище пер-пользовательских данных ——— */
-function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
+function k(base){
+  try{
+    const uid = getUID?.() || 'guest';
+    return `${base}__${uid}`;
+  }catch{
+    return `${base}__guest`;
+  }
+}
 
 /* Может ли пользователь получить буст x2 на 1-й заказ (если пришёл по реф-ссылке и ещё не оформлял) */
 function hasFirstOrderBoost(){
@@ -18,7 +24,9 @@ function hasFirstOrderBoost(){
     const firstDone = !!ref.firstOrderDone;
     const boost = !!ref.firstOrderBoost; // устанавливается при захвате реф-ссылки
     return boost && !firstDone;
-  }catch{ return false; }
+  }catch{
+    return false;
+  }
 }
 
 function findCategoryBySlug(slug){
@@ -86,7 +94,7 @@ export function renderProduct({id}){
         .p-cb-help:hover{ filter:brightness(1.05); }
       }
 
-      /* ===== Мини-таббар доставки (над основным таббаром) ===== */
+      /* ===== Мини-таббар доставки (над основным таббаром, half-width, glass) ===== */
       .mini-tabbar{
         position:fixed;
         left:0; right:0;
@@ -100,9 +108,11 @@ export function renderProduct({id}){
         -webkit-backdrop-filter: saturate(160%) blur(12px);
         backdrop-filter: saturate(160%) blur(12px);
         border:1px solid rgba(255,255,255,.35);
-        border-radius:12px;
-        box-shadow: 0 10px 30px rgba(0,0,0,.12), 0 -2px 10px rgba(0,0,0,.08) inset;
 
+        /* только верхние углы скруглены */
+        border-radius:12px 12px 0 0;
+
+        box-shadow: 0 10px 30px rgba(0,0,0,.12), 0 -2px 10px rgba(0,0,0,.08) inset;
         color:#0f172a;
         pointer-events:auto;
       }
@@ -224,38 +234,40 @@ export function renderProduct({id}){
   // выбранные опции (без количества)
   let size=null, color=(p.colors||[])[0]||null;
 
-  const sizes=document.getElementById('sizes');
-  if (sizes){
-    sizes.addEventListener('click', e=>{
+  const sizesEl=document.getElementById('sizes');
+  if (sizesEl){
+    sizesEl.addEventListener('click', e=>{
       const b=e.target.closest('.size'); if(!b)return;
-      sizes.querySelectorAll('.size').forEach(x=>x.classList.remove('active'));
+      sizesEl.querySelectorAll('.size').forEach(x=>x.classList.remove('active'));
       b.classList.add('active'); size=b.getAttribute('data-v');
       refreshCTAByState();
     });
   }
-  const colors=document.getElementById('colors');
-  if (colors){
-    colors.addEventListener('click', e=>{
+  const colorsEl=document.getElementById('colors');
+  if (colorsEl){
+    colorsEl.addEventListener('click', e=>{
       const b=e.target.closest('.sw'); if(!b)return;
-      colors.querySelectorAll('.sw').forEach(x=>x.classList.remove('active'));
+      colorsEl.querySelectorAll('.sw').forEach(x=>x.classList.remove('active'));
       b.classList.add('active'); color=b.getAttribute('data-v');
       refreshCTAByState();
     });
-    colors.querySelector('.sw')?.classList.add('active');
+    colorsEl.querySelector('.sw')?.classList.add('active');
   }
 
   // Навигация назад (кнопка на герое)
-  document.getElementById('goBack').onclick=()=> history.back();
+  document.getElementById('goBack')?.addEventListener('click', ()=> history.back());
 
   // Избранное (кнопка на герое)
   const favBtn = document.getElementById('favBtn');
-  favBtn.onclick = ()=>{
-    toggleFav(p.id);
-    const active = isFav(p.id);
-    favBtn.classList.toggle('active', active);
-    favBtn.setAttribute('aria-pressed', String(active));
-    setFixFavActive(active);
-  };
+  if (favBtn){
+    favBtn.onclick = ()=>{
+      toggleFav(p.id);
+      const active = isFav(p.id);
+      favBtn.classList.toggle('active', active);
+      favBtn.setAttribute('aria-pressed', String(active));
+      setFixFavActive(active);
+    };
+  }
 
   // Галерея: миниатюры -> главное фото
   const thumbs = document.getElementById('thumbs');
@@ -365,31 +377,42 @@ export function renderProduct({id}){
     return tb ? Math.ceil(tb.getBoundingClientRect().height) : 64;
   }
 
+  // ширина мини-таббара = 50% от ширины основного таббара, по центру; только верхние углы скруглены (см. CSS)
   function updateMiniTabbarPosition(){
     const bar = document.getElementById('miniTabbar');
     if (!bar) return;
 
-    // отступ сверху от основного таббара
+    // поднять над основным таббаром
     const bottomOffset = getTabbarHeight();
     bar.style.bottom = `${bottomOffset}px`;
 
-    // подгоняем ширину и положение под реальный прямоугольник основного таббара
+    // подгоняем под размеры основного таббара
     const tb = getTabbarEl();
     const vw = window.innerWidth || document.documentElement.clientWidth || 360;
 
     let left = 8;
-    let width = vw - 16;
+    let width = Math.max(140, Math.floor((vw - 16) * 0.5)); // дефолт: 50% вьюпорта
 
     if (tb){
       const rect = tb.getBoundingClientRect();
       const inset = rect.width >= 420 ? 12 : 8;
 
-      left = Math.max(8, rect.left + inset);
-      width = Math.max(140, Math.min(vw - left - inset, rect.width - inset * 2));
+      // целевая ширина = половина ширины основного таббара (мин/макс — с ограничениями)
+      const target = Math.max(140, Math.floor((rect.width - inset * 2) * 0.5));
+      width = Math.min(target, vw - inset * 2);
+
+      // центрируем мини-бар относительно основного таббара
+      left = Math.max(8, Math.floor(rect.left + (rect.width - width) / 2));
+    }
+
+    // запасные значения
+    if (!isFinite(width) || width < 100){
+      width = Math.max(140, Math.floor((vw - 16) * 0.5));
+      left = Math.max(8, Math.floor((vw - width) / 2));
     }
 
     bar.style.left = `${left}px`;
-    bar.style.right = `auto`;
+    bar.style.right = 'auto';
     bar.style.width = `${width}px`;
   }
 
@@ -405,9 +428,10 @@ export function renderProduct({id}){
   /* -------- ДВА РАЗНЫХ ХЕДЕРА: показ/скрытие -------- */
   setupTwoHeaders({ isFav: favActive });
 
+  /* ==== ВНУТРЕННЕЕ: управление двумя хедерами ==== */
   function setupTwoHeaders({ isFav: favAtStart }){
-    const stat = document.querySelector('.app-header');
-    const fix  = document.getElementById('productFixHdr');
+    const stat = document.querySelector('.app-header');           // статичный системный хедер
+    const fix  = document.getElementById('productFixHdr');        // наш фикс-хедер карточки
     const btnBack = document.getElementById('btnFixBack');
     const btnFav  = document.getElementById('btnFixFav');
     if (!stat || !fix || !btnBack || !btnFav) return;
@@ -525,7 +549,9 @@ function showCashbackHelpModal(){
 
 /* ==== вспомогалки ==== */
 function escapeHtml(s=''){
-  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  return String(s).replace(/[&<>"']/g, m=> ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[m]));
 }
 
 /* ===== ЗУМ ВНУТРИ БЛОКА ===== */
