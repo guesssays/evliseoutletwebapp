@@ -32,6 +32,27 @@ export function renderFAQ(){
       html: `Откройте раздел <b>Мои заказы</b> — там виден текущий этап и история изменений по каждому заказу.`
     },
     {
+      icon: 'coins',
+      title: 'Кэшбек: как это работает',
+      html: `
+        <p><b>Начисление.</b> За каждый оплаченный товар вы получаете кэшбек в баллах: обычно <b>5%</b> от цены.</p>
+        <p><b>Дозревание.</b> Баллы становятся доступными через <b>24 часа</b> после оплаты.</p>
+        <p><b>Использование.</b> На шаге оформления заказа можно оплатить часть суммы баллами. Ваш баланс и историю смотрите в разделе
+        <a href="#/account/cashback">«Мой кэшбек»</a>.</p>
+        <p class="muted">Подсказка: если вы пришли по реф-ссылке, на <b>первый заказ — x2</b> кэшбек.</p>
+      `
+    },
+    {
+      icon: 'users',
+      title: 'Реферальная программа',
+      html: `
+        <p><b>Как это работает.</b> Делитесь вашей реф-ссылкой: заказы приглашённых приносят вам <b>5% бонусом</b> от их покупок.</p>
+        <p><b>Бонус для друга.</b> По вашей ссылке первый заказ даёт другу <b>x2 кэшбек</b>.</p>
+        <p><b>Где взять ссылку.</b> В разделе <a href="#/account/referrals">«Мои рефералы»</a> — там же статистика за месяц.</p>
+        <p class="muted">Ограничение: не более 10 новых рефералов в месяц.</p>
+      `
+    },
+    {
       icon: 'shirt',
       title: 'Размеры и консультация',
       html: `Не уверены с размером? Напишите оператору — подскажем по меркам и посадке перед оплатой.`
@@ -60,7 +81,10 @@ export function renderFAQ(){
 
   v.innerHTML = `
     <section class="section">
-      <div class="section-title">Помощь</div>
+      <div class="section-title" style="display:flex;align-items:center;gap:10px">
+        <button class="square-btn" id="faqBack"><i data-lucide="chevron-left"></i></button>
+        Помощь
+      </div>
 
       <style>
         /* ==== A C C O R D I O N  (адаптив) ==== */
@@ -188,6 +212,10 @@ export function renderFAQ(){
 
   window.lucide?.createIcons && lucide.createIcons();
 
+  // Назад
+  document.getElementById('faqBack')?.addEventListener('click', ()=> history.back());
+
+  // Поддержка
   document.getElementById('faqSupport')?.addEventListener('click', ()=>{
     openExternal(OP_CHAT_URL);
   });
