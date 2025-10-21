@@ -42,58 +42,46 @@ export function renderProduct({id}){
 
   const v=document.getElementById('view');
   v.innerHTML = `
-    <!-- Локальные стили для кэшбек-бейджа (адаптив без обрезания/скролла) -->
+    <!-- Локальные стили для компактного кэшбек-бейджа -->
     <style>
       .p-cashback{
-        display:flex; align-items:flex-start; gap:10px;
-        margin:6px 0 8px; padding:10px;
-        border-radius:12px; background:var(--card,rgba(0,0,0,.04));
+        display:flex; align-items:center; gap:10px;
+        margin:8px 0; padding:10px 12px;
+        border-radius:14px;
+        background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+        color:#fff;
         max-width:100%;
-        overflow:visible; /* ничего не обрезаем */
       }
-      .p-cashback i{
-        flex:0 0 auto; width:20px; height:20px; line-height:0;
+      .p-cashback i[data-lucide="coins"]{
+        flex:0 0 auto; width:20px; height:20px; opacity:.95;
       }
-      .p-cb-text{ flex:1 1 auto; min-width:0; }
-
-      /* Главная строка: одна линия, без переноса, динамический размер */
       .p-cb-line{
-        display:flex; align-items:center; gap:6px;
-        white-space:nowrap;
-        font-size: clamp(11px, 3.3vw, 15px);
-        line-height: 1.2;
+        display:flex; align-items:center; gap:8px;
+        white-space:nowrap; /* ни переносов, ни троеточий */
+        overflow:visible;
+        font-weight:700;
+        font-size: clamp(12px, 3.6vw, 16px);
+        line-height:1.2;
       }
-      .p-cb-pts{
-        font-weight:800;
-        font-variant-numeric: tabular-nums;
-      }
-      .p-cb-badge{
+      .p-cb-pts{ font-variant-numeric: tabular-nums; }
+      .p-cb-x2{
         flex:0 0 auto;
         font-size:.78em; line-height:1;
-        padding:2px 6px; border-radius:999px;
-        background:rgba(0,0,0,.08);
+        padding:3px 7px; border-radius:999px;
+        background:rgba(255,255,255,.18);
+        border:1px solid rgba(255,255,255,.28);
+        font-weight:800;
       }
-
-      /* Вторая строка — обычный мини-текст, может переноситься */
-      .p-cb-sub{ color:var(--muted,#6b7280); font-size:.9rem; }
-
-      /* Управляем длиной фраз без JS: длинная/короткая/ультракороткая */
-      .p-cb-line .label-long,
-      .p-cb-line .suffix-long { display:inline; }
-      .p-cb-line .label-short,
-      .p-cb-line .suffix-short,
-      .p-cb-line .label-ultra { display:none; }
-
-      /* <= 380px — оставляем короткие подписи */
-      @media (max-width: 380px){
-        .p-cb-line .label-long, .p-cb-line .suffix-long { display:none; }
-        .p-cb-line .label-short, .p-cb-line .suffix-short { display:inline; }
+      .p-cb-help{
+        margin-left:auto;
+        display:inline-flex; align-items:center; justify-content:center;
+        width:28px; height:28px; border-radius:999px;
+        background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.28);
+        transition:filter .15s ease;
       }
-      /* <= 320px — ещё компактнее: только "Кэшбек" + число */
-      @media (max-width: 320px){
-        .p-cb-line{ font-size: clamp(10px, 3.5vw, 14px); }
-        .p-cb-line .label-short, .p-cb-line .suffix-short { display:none; }
-        .p-cb-line .label-ultra { display:inline; }
+      .p-cb-help i{ width:16px; height:16px; color:#fff; opacity:.95; }
+      @media (hover:hover){
+        .p-cb-help:hover{ filter:brightness(1.05); }
       }
     </style>
 
@@ -132,15 +120,15 @@ export function renderProduct({id}){
         <div class="p-title">${escapeHtml(p.title)}</div>
 
         <!-- Кэшбек-виджет -->
-        <div class="p-cashback">
+        <div class="p-cashback" role="note" aria-label="Информация о кэшбеке">
           <i data-lucide="coins" aria-hidden="true"></i>
-          <div class="p-cb-text">
-            ${cashbackSnippetHTML(p.price)}
-            <div class="p-cb-sub">1 балл = 1 сум · Начисление через 24ч</div>
-          </div>
+          ${cashbackSnippetHTML(p.price)}
+          <button id="cbHelpBtn" class="p-cb-help" type="button" aria-label="Как работает кэшбек?">
+            <i data-lucide="help-circle"></i>
+          </button>
         </div>
 
-        <!-- ВМЕСТО ОПИСАНИЯ: СРОК ДОСТАВКИ -->
+        <!-- Срок доставки -->
         <div class="p-delivery" style="display:flex;align-items:center;gap:8px;margin:6px 0 8px">
           <i data-lucide="clock"></i>
           <span><b>Срок доставки:</b> 14–16 дней</span>
@@ -186,6 +174,9 @@ export function renderProduct({id}){
     </div>`;
 
   window.lucide?.createIcons && lucide.createIcons();
+
+  // help modal (кнопка с вопросом)
+  document.getElementById('cbHelpBtn')?.addEventListener('click', showCashbackHelpModal);
 
   // Требуется ли выбор размера
   const needSize = Array.isArray(p.sizes) && p.sizes.length>0;
@@ -353,26 +344,64 @@ export function renderProduct({id}){
   }
 }
 
-/* ===== МАЛЕНЬКИЙ ВИДЖЕТ «СКОЛЬКО БАЛЛОВ» ===== */
+/* ===== МАЛЕНЬКИЙ БЕЙДЖ «СКОЛЬКО БАЛЛОВ» ===== */
 function cashbackSnippetHTML(price){
-  const boost = hasFirstOrderBoost(); // true только для реферала до первого заказа
+  const boost = hasFirstOrderBoost();
   const rate = boost ? CASHBACK_RATE_BOOST : CASHBACK_RATE_BASE;
   const pts  = Math.floor((Number(price)||0) * rate);
 
-  // Бейдж строим как 1 строку с вариантами подписи под ширину экрана
-  // long: "Кэшбек: +12345 баллов за покупку"
-  // short (<=380px): "Кэшбек +12345 баллов"
-  // ultra (<=320px): "Кэшбек +12345"
+  // Максимально коротко и понятно — «Кэшбек +N»
+  // + компактный ярлык x2, если действует буст
   return `
     <div class="p-cb-line">
-      ${boost ? `<span class="p-cb-badge" aria-label="x2 кэшбек">x2</span>` : ``}
-      <span class="label-long">Кэшбек:</span>
-      <span class="label-short">Кэшбек</span>
-      <span class="label-ultra">Кэшбек</span>
-      &nbsp;+<b class="p-cb-pts">${pts}</b>
-      <span class="suffix-long">&nbsp;баллов за покупку</span>
-      <span class="suffix-short">&nbsp;баллов</span>
+      <span>Кэшбек</span>
+      +<span class="p-cb-pts">${pts}</span>
+      ${boost ? `<span class="p-cb-x2" title="x2 на первый заказ">x2</span>` : ``}
     </div>`;
+}
+
+/* ==== МОДАЛКА «Как работает кэшбек» ==== */
+function showCashbackHelpModal(){
+  const modal = document.getElementById('modal');
+  const mb = document.getElementById('modalBody');
+  const mt = document.getElementById('modalTitle');
+  const ma = document.getElementById('modalActions');
+  if (!modal || !mb || !mt || !ma) return;
+
+  mt.textContent = 'Как работает кэшбек';
+  mb.innerHTML = `
+    <style>
+      .cb-how{ display:grid; gap:10px; }
+      .cb-row{ display:grid; grid-template-columns:24px 1fr; gap:10px; align-items:start; }
+      .cb-row i{ width:20px; height:20px; }
+      .muted{ color:var(--muted,#6b7280); }
+    </style>
+    <div class="cb-how">
+      <div class="cb-row">
+        <i data-lucide="percent"></i>
+        <div><b>Начисляем за покупку.</b> Сумма кэшбека зависит от цены товара.</div>
+      </div>
+      <div class="cb-row">
+        <i data-lucide="clock"></i>
+        <div><b>Зачисление через 24 часа.</b> После этого баллы доступны к оплате.</div>
+      </div>
+      <div class="cb-row">
+        <i data-lucide="badge-check"></i>
+        <div><b>Как использовать.</b> На этапе оформления можно оплатить часть заказа баллами. Ваш баланс и лимит видны в корзине.</div>
+      </div>
+      <div class="cb-row">
+        <i data-lucide="zap"></i>
+        <div class="muted">Если вы пришли по реф-ссылке, на <b>первый заказ действует x2</b>.</div>
+      </div>
+    </div>
+  `;
+  ma.innerHTML = `<button id="cbHelpOk" class="pill primary">Понятно</button>`;
+  modal.classList.add('show');
+  window.lucide?.createIcons && lucide.createIcons();
+  document.getElementById('modalClose')?.addEventListener('click', close, { once:true });
+  document.getElementById('cbHelpOk')?.addEventListener('click', close, { once:true });
+
+  function close(){ modal.classList.remove('show'); }
 }
 
 /* ==== вспомогалки ==== */
