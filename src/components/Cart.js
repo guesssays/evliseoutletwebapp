@@ -205,14 +205,7 @@ export function renderCart(){
 
   v.innerHTML = `
   <style>
-    .c-dot{
-      display:inline-block; width:10px; height:10px;
-      border-radius:999px; vertical-align:middle; margin-right:6px;
-      border:1px solid rgba(0,0,0,.2);
-    }
-    @media (prefers-color-scheme:dark){
-      .c-dot{ border-color: rgba(255,255,255,.25); }
-    }
+    /* кружки цветов в корзине удалены */
   </style>
 
   <div class="section-title" style="display:flex;align-items:center;gap:10px">
@@ -229,7 +222,7 @@ export function renderCart(){
           <div class="cart-sub">
             ${x.size ? `Размер ${escapeHtml(x.size)}` : ''}
             ${x.size && x.color ? ' • ' : ''}
-            ${x.color ? `${colorDot(x.color)}${escapeHtml(colorName(x.color))}` : ''}
+            ${x.color ? `${escapeHtml(colorName(x.color))}` : ''}
           </div>
           <div class="cart-price">${priceFmt(x.product.price)}</div>
         </div>
@@ -481,7 +474,7 @@ function checkoutFlow(items, addr, totalRaw, bill){
           ${items.map(x=>`<li>
             ${escapeHtml(x.product.title)}
             ${x.size ? ` · размер ${escapeHtml(x.size)}` : ''}
-            ${x.color ? ` · ${colorDot(x.color)}${escapeHtml(colorName(x.color))}` : ''}
+            ${x.color ? ` · ${escapeHtml(colorName(x.color))}` : ''}
             ×${x.qty}
           </li>`).join('')}
         </ul>
@@ -916,7 +909,7 @@ function escapeHtml(s=''){
   return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
-/* === Цвет: название и свотч === */
+/* === Цвет: название (кружочки удалены) === */
 function colorName(c=''){
   const key = String(c).toLowerCase();
   const map = {
@@ -938,11 +931,6 @@ function colorName(c=''){
     '#a3a380':'оливковый'
   };
   return map[key] || (key.startsWith('#') ? key : c);
-}
-
-function colorDot(c='#000'){
-  const safe = escapeHtml(c);
-  return `<span class="c-dot" aria-hidden="true" style="background:${safe}"></span>`;
 }
 
 /** Локальный помощник: создать in-app уведомление (любому uid) */
