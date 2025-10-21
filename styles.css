@@ -579,3 +579,22 @@ body.has-cta .tabbar-inner .btn::after{
   display:none !important;
   content:none !important;
 }
+/* было: .p-hero { border-radius:24px; overflow:hidden } */
+.p-hero{
+  border-top-left-radius:24px;
+  border-top-right-radius:24px;
+  border-bottom-left-radius:0;   /* ⬅ убрали низ */
+  border-bottom-right-radius:0;  /* ⬅ убрали низ */
+  overflow:visible;              /* ⬅ не обрезаем миниатюры */
+}
+
+/* главное фото по-прежнему со скруглением и обрезкой */
+.gallery-main{
+  border-radius:24px;
+  overflow:hidden;
+}
+
+/* на всякий случай — контейнер миниатюр без радиусов */
+.thumbs{
+  border-radius:0 !important;
+}
