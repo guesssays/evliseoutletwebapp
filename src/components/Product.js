@@ -165,53 +165,22 @@ export function renderProduct({id}){
         animation: swPulse .25s ease;
       }
       /* УБРАН pseudo-элемент ::after (маленькая «пимпочка») */
-/* — Размеры (ещё старее: «outline-only») — */
+/* ===== ОПЦИИ ТОВАРА: РАЗМЕРЫ (как в той версии) ===== */
+.sizes{ display:flex; gap:10px; flex-wrap:wrap; }
 .size{
-  min-width:44px;
-  height:36px;
-  padding:0 12px;
-  border-radius:10px;
-  background:transparent;                 /* всегда прозрачный фон */
-  color:#0f172a;
-  border:1.5px solid rgba(15,23,42,.28);  /* спокойная обводка */
-  font-weight:800;
-  transition:
-    transform .12s ease,
-    border-color .12s ease,
-    box-shadow .12s ease,
-    color .12s ease;
+  padding:10px 14px;
+  border:1px solid var(--stroke);
+  border-radius:999px;
+  background:#fff;
+  font-weight:700;
+  cursor:pointer;
 }
-.size:hover{
-  transform:translateY(-1px);
-  border-color:rgba(15,23,42,.45);
-}
-.size:focus-visible{
-  outline:3px solid #0ea5e9;
-  outline-offset:2px;
-}
-
-/* выбранный — только яркая обводка и мягкое свечение, без заливки */
 .size.active{
-  background:transparent;
-  color:#0f172a;
-  border-color:#0ea5e9;
-  box-shadow:0 0 0 3px rgba(14,165,233,.22);
+  background:#121111;
+  color:#fff;
+  border-color:#121111;
 }
 
-@media (prefers-color-scheme:dark){
-  .size{
-    color:#fff;
-    border-color:rgba(255,255,255,.28);
-  }
-  .size:hover{
-    border-color:rgba(255,255,255,.5);
-  }
-  .size.active{
-    color:#fff;
-    border-color:#38bdf8;
-    box-shadow:0 0 0 3px rgba(56,189,248,.25);
-  }
-}
 
 
 
