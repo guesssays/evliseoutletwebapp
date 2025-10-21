@@ -44,7 +44,7 @@ export function renderProduct({id}){
 
   const v=document.getElementById('view');
   v.innerHTML = `
-    <!-- Локальные стили (бейдж кэшбека и мини-таббар доставки) -->
+    <!-- Локальные стили (бейдж кэшбека и блок доставки) -->
     <style>
       /* ===== Кэшбек-бейдж ===== */
       .p-cashback{
@@ -82,51 +82,31 @@ export function renderProduct({id}){
         background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.28);
         transition:filter .15s ease;
       }
-      /* Lucide заменяет <i> на <svg>, красим именно svg-иконку (белая) */
       .p-cb-help svg{ width:16px; height:16px; stroke:#fff; }
       @media (hover:hover){
         .p-cb-help:hover{ filter:brightness(1.05); }
       }
 
-      /* ===== Мини-таббар доставки (над основным таббаром) ===== */
-      .mini-tabbar{
-        position:fixed;
-        left:0; right:0; bottom:0;
-        z-index:2147483647; /* максимально поверх всего */
-        display:flex; align-items:center;
-        padding:8px 12px;
-        padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+      /* ===== Блок «Срок доставки» внутри карточки ===== */
+      .p-delivery{
+        display:flex; align-items:center; gap:10px;
+        margin:6px 0 12px; padding:10px 12px;
+        border-radius:12px;
+        background: var(--card-bg, rgba(15,23,42,.04));
+        color: var(--card-fg, #0f172a);
+        border: 1px solid rgba(15,23,42,.08);
+      }
+      .p-delivery i[data-lucide]{ width:18px; height:18px; opacity:.9; }
+      .p-delivery__title{ font-weight:800; margin-right:4px; }
+      .p-delivery .muted{ opacity:.85; font-weight:700; }
 
-        /* glassmorphism */
-        background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,.18));
-        -webkit-backdrop-filter: saturate(160%) blur(12px);
-        backdrop-filter: saturate(160%) blur(12px);
-        border:1px solid rgba(255,255,255,.35);
-        border-top-left-radius:12px; border-top-right-radius:12px;
-        border-bottom-left-radius:0; border-bottom-right-radius:0;
-        box-shadow: 0 10px 30px rgba(0,0,0,.12), 0 -2px 10px rgba(0,0,0,.08) inset;
-
-        color:#0f172a;
-        pointer-events:auto;
-      }
-      .mini-tabbar__inner{
-        display:flex; align-items:center; gap:8px; width:100%;
-        font-size:14px; font-weight:800;
-      }
-      .mini-tabbar__inner i{ width:18px; height:18px; }
-      .mini-tabbar__inner svg{ stroke:#0f172a; opacity:.9; }
-      .mini-tabbar .muted{ font-weight:700; opacity:.85; }
-      @media (max-width:420px){
-        .mini-tabbar__inner{ font-size:13px; }
-      }
       @media (prefers-color-scheme: dark){
-        .mini-tabbar{
-          background: linear-gradient(180deg, rgba(15,23,42,.65), rgba(15,23,42,.45));
-          border-color: rgba(255,255,255,.18);
+        .p-delivery{
+          background: rgba(255,255,255,.06);
+          border-color: rgba(255,255,255,.12);
           color:#fff;
         }
-        .mini-tabbar__inner svg{ stroke:#fff; }
-        .mini-tabbar .muted{ opacity:.95; }
+        .p-delivery .muted{ opacity:.95; }
       }
     </style>
 
@@ -173,7 +153,12 @@ export function renderProduct({id}){
           </button>
         </div>
 
-        <!-- Блок «Срок доставки» убран из карточки. Теперь он показывается мини-таббаром над CTA. -->
+        <!-- Срок доставки внутри карточки -->
+        <div class="p-delivery" role="note" aria-label="Срок доставки">
+          <i data-lucide="clock"></i>
+          <span class="p-delivery__title">Срок доставки:</span>
+          <span class="muted"><b>14–16 дней</b></span>
+        </div>
 
         <!-- СТАРЫЕ СТРОКИ ХАРАКТЕРИСТИК -->
         <div class="specs"><b>Категория:</b> ${escapeHtml(findCategoryBySlug(p.categoryId)?.name || '—')}</div>
@@ -293,9 +278,6 @@ export function renderProduct({id}){
     });
     const btn = document.getElementById('ctaAdd');
     if (btn) btn.disabled = needPick;
-
-    // показать мини-таббар доставки поверх основного CTA
-    try{ showDeliveryMiniBar(); }catch{}
   }
 
   function showInCartCTAs(){
@@ -309,7 +291,6 @@ export function renderProduct({id}){
         onClick(){ location.hash = '#/cart'; }
       }
     );
-    try{ showDeliveryMiniBar(); }catch{}
   }
 
   function refreshCTAByState(){
@@ -317,101 +298,6 @@ export function renderProduct({id}){
     if (isInCart(p.id, size||null, color||null)) showInCartCTAs(); else showAddCTA();
   }
   refreshCTAByState();
-
-  /* -------- Мини-таббар «Срок доставки» -------- */
-  function showDeliveryMiniBar(){
-    ensureMiniTabbar();
-    updateMiniTabbarPosition();
-    const inner = document.getElementById('miniTabbarInner');
-    if (inner){
-      inner.innerHTML = `
-        <i data-lucide="clock"></i>
-        <span>Срок доставки:</span>
-        <span class="muted"><b>14–16 дней</b></span>
-      `;
-      window.lucide?.createIcons && lucide.createIcons();
-    }
-  }
-
-  function ensureMiniTabbar(){
-    if (document.getElementById('miniTabbar')) return;
-    const bar = document.createElement('div');
-    bar.id = 'miniTabbar';
-    bar.className = 'mini-tabbar';
-    bar.innerHTML = `<div id="miniTabbarInner" class="mini-tabbar__inner"></div>`;
-    document.body.appendChild(bar);
-
-    const onResize = ()=> { try{ updateMiniTabbarPosition(); }catch{} };
-    window.addEventListener('resize', onResize);
-    window.addEventListener('scroll', onResize, { passive:true });
-
-    const cleanup = ()=>{
-      try{ bar.remove(); }catch{}
-      window.removeEventListener('resize', onResize);
-      window.removeEventListener('scroll', onResize);
-      window.removeEventListener('hashchange', cleanup);
-      window.removeEventListener('popstate', cleanup);
-      window.removeEventListener('beforeunload', cleanup);
-    };
-    window.addEventListener('hashchange', cleanup);
-    window.addEventListener('popstate', cleanup);
-    window.addEventListener('beforeunload', cleanup);
-  }
-
-  function getTabbarEl(){
-    return document.querySelector('.tabbar')
-        || document.querySelector('.app-tabbar')
-        || document.getElementById('tabbar');
-  }
-  function getTabbarHeight(){
-    const tb = getTabbarEl();
-    return tb ? Math.ceil(tb.getBoundingClientRect().height) : 64;
-  }
-
-  // ширина мини-бара = ~60% ширины основного таббара
-  const MINI_WIDTH_FACTOR = 0.6; // 60%
-  const MINI_MIN_WIDTH = 140;
-
-  function updateMiniTabbarPosition(){
-    const bar = document.getElementById('miniTabbar');
-    if (!bar) return;
-
-    const tb = getTabbarEl();
-    const vw = window.innerWidth || document.documentElement.clientWidth || 360;
-
-    // z-index принудительно максимально высокий (не доверяем вычислению из таббара)
-    bar.style.zIndex = '2147483647';
-
-    // Отступ снизу: высота таббара + небольшой зазор + safe area
-    const GAP = 6;
-    const bottomOffset = getTabbarHeight();
-    bar.style.bottom = `calc(${bottomOffset + GAP}px + env(safe-area-inset-bottom, 0px))`;
-
-    // Ширина / позиция
-    let left = 8;
-    let width = Math.max(MINI_MIN_WIDTH, Math.floor((vw - 16) * MINI_WIDTH_FACTOR));
-
-    if (tb){
-      const rect = tb.getBoundingClientRect();
-      const inset = rect.width >= 420 ? 12 : 8;
-
-      const target = Math.max(
-        MINI_MIN_WIDTH,
-        Math.floor((rect.width - inset * 2) * MINI_WIDTH_FACTOR)
-      );
-      width = Math.min(target, vw - inset * 2);
-
-      // центрируем мини-бар относительно основного таббара
-      left = Math.max(8, Math.floor(rect.left + (rect.width - width) / 2));
-    } else {
-      // центр относительно экрана
-      left = Math.max(8, Math.floor((vw - width) / 2));
-    }
-
-    bar.style.left = `${left}px`;
-    bar.style.right = 'auto';
-    bar.style.width = `${width}px`;
-  }
 
   /* -------- Зум/панорамирование -------- */
   ensureZoomOverlay();
