@@ -42,11 +42,12 @@ export function renderProduct({id}){
 
   const v=document.getElementById('view');
   v.innerHTML = `
-    <!-- Локальные стили для компактного кэшбек-бейджа -->
+    <!-- Локальные стили для UX/UI карточки -->
     <style>
+      /* ===== Кэшбек-бейдж ===== */
       .p-cashback{
         display:flex; align-items:center; gap:10px;
-        margin:8px 0; padding:10px 12px;
+        margin:8px 0; padding:12px 14px;
         border-radius:14px;
         background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
         color:#fff;
@@ -57,9 +58,9 @@ export function renderProduct({id}){
       }
       .p-cb-line{
         display:flex; align-items:center; gap:8px;
-        white-space:nowrap; /* ни переносов, ни троеточий */
+        white-space:nowrap; /* без переносов/скролла/обрезания */
         overflow:visible;
-        font-weight:700;
+        font-weight:800;
         font-size: clamp(12px, 3.6vw, 16px);
         line-height:1.2;
       }
@@ -79,10 +80,69 @@ export function renderProduct({id}){
         background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.28);
         transition:filter .15s ease;
       }
-      .p-cb-help i{ width:16px; height:16px; color:#fff; opacity:.95; }
+      .p-cb-help i{ width:16px; height:16px; color:#fff; opacity:1; } /* белая иконка */
       @media (hover:hover){
         .p-cb-help:hover{ filter:brightness(1.05); }
       }
+
+      /* ===== Универсальные секции товара ===== */
+      .p-section{
+        margin:10px 0;
+        padding:12px;
+        border:1px solid var(--border,rgba(0,0,0,.10));
+        border-radius:12px;
+        background:var(--card,rgba(0,0,0,.03));
+      }
+      .p-section__head{
+        display:flex; align-items:center; gap:8px;
+        font-weight:800;
+        font-size:14px;
+        margin-bottom:8px;
+      }
+      .p-section__head i{ width:18px; height:18px; color:var(--muted,#6b7280); }
+      .p-section__body{ font-size:14px; line-height:1.35; }
+
+      /* ===== Инфо-сетка (категория/материал) ===== */
+      .p-info-grid{
+        display:grid; grid-template-columns:1fr 1fr; gap:8px;
+      }
+      @media (max-width: 420px){ .p-info-grid{ grid-template-columns:1fr; } }
+      .info-chip{
+        display:flex; align-items:center; gap:8px;
+        padding:10px 12px;
+        border:1px dashed var(--border,rgba(0,0,0,.12));
+        border-radius:10px;
+        background:var(--bg,#fff);
+      }
+      .info-chip i{ width:16px; height:16px; color:var(--muted,#6b7280); }
+      .info-chip b{ font-weight:700; margin-right:6px; }
+
+      /* ===== Опции (размер/цвет) ===== */
+      .opt-block{ margin-top:6px; }
+      .opt-title-row{
+        display:flex; align-items:center; gap:8px; margin-bottom:8px;
+        font-weight:800; font-size:14px;
+      }
+      .opt-title-row i{ width:18px; height:18px; color:var(--muted,#6b7280); }
+
+      .sizes, .colors{ display:flex; flex-wrap:wrap; gap:8px; }
+
+      .size{
+        min-width:40px; padding:8px 10px; border-radius:10px;
+        border:1px solid var(--border,rgba(0,0,0,.14));
+        background:#fff;
+        font-weight:700;
+      }
+      .size.active{ border-color:#111; background:rgba(0,0,0,.06); }
+
+      .sw{
+        width:28px; height:28px; border-radius:999px; border:2px solid #fff;
+        box-shadow:0 0 0 1px rgba(0,0,0,.15);
+      }
+      .sw.active{ box-shadow:0 0 0 2px #111; }
+
+      /* Реальные фото — чуть больше отступ сверху */
+      .opt-title{ font-weight:800; margin-top:8px; }
     </style>
 
     <!-- Фикс-хедер карточки (показывается при прокрутке) -->
@@ -129,25 +189,35 @@ export function renderProduct({id}){
         </div>
 
         <!-- Срок доставки -->
-        <div class="p-delivery" style="display:flex;align-items:center;gap:8px;margin:6px 0 8px">
-          <i data-lucide="clock"></i>
-          <span><b>Срок доставки:</b> 14–16 дней</span>
-        </div>
+        <section class="p-section">
+          <div class="p-section__head"><i data-lucide="clock"></i><span>Срок доставки</span></div>
+          <div class="p-section__body"><b>14–16 дней</b></div>
+        </section>
 
-        <div class="specs"><b>Категория:</b> ${escapeHtml(findCategoryBySlug(p.categoryId)?.name || '—')}</div>
-        <div class="specs"><b>Материал:</b> ${p.material ? escapeHtml(p.material) : '—'}</div>
+        <!-- Информация (категория/материал) -->
+        <section class="p-section">
+          <div class="p-section__head"><i data-lucide="info"></i><span>Характеристики</span></div>
+          <div class="p-info-grid">
+            <div class="info-chip"><i data-lucide="layers"></i><div><b>Категория:</b> ${escapeHtml(findCategoryBySlug(p.categoryId)?.name || '—')}</div></div>
+            <div class="info-chip"><i data-lucide="fabric"></i><div><b>Материал:</b> ${p.material ? escapeHtml(p.material) : '—'}</div></div>
+          </div>
+        </section>
 
-        <div class="p-options">
+        <!-- Опции (размер/цвет) -->
+        <section class="p-section">
+          <div class="p-section__head"><i data-lucide="sliders-horizontal"></i><span>Опции</span></div>
+
           ${(p.sizes?.length||0) ? `
-          <div>
-            <div class="opt-title">Размер</div>
+          <div class="opt-block">
+            <div class="opt-title-row"><i data-lucide="ruler"></i><span>Размер</span></div>
             <div class="sizes" id="sizes">${p.sizes.map(s=>`<button class="size" data-v="${s}">${s}</button>`).join('')}</div>
           </div>`:''}
-          <div>
-            <div class="opt-title">Цвет</div>
+
+          <div class="opt-block">
+            <div class="opt-title-row"><i data-lucide="palette"></i><span>Цвет</span></div>
             <div class="colors" id="colors">${(p.colors||[]).map(c=>`<button class="sw" title="${c}" data-v="${c}" style="background:${colorToHex(c)}"></button>`).join('')}</div>
           </div>
-        </div>
+        </section>
 
         ${p.sizeChart ? `
         <div class="opt-title" style="margin-top:8px">Размерная сетка</div>
@@ -344,18 +414,16 @@ export function renderProduct({id}){
   }
 }
 
-/* ===== МАЛЕНЬКИЙ БЕЙДЖ «СКОЛЬКО БАЛЛОВ» ===== */
+/* ===== Короткий бейдж: «Кэшбек + N баллов» ===== */
 function cashbackSnippetHTML(price){
   const boost = hasFirstOrderBoost();
   const rate = boost ? CASHBACK_RATE_BOOST : CASHBACK_RATE_BASE;
   const pts  = Math.floor((Number(price)||0) * rate);
 
-  // Максимально коротко и понятно — «Кэшбек +N»
-  // + компактный ярлык x2, если действует буст
   return `
     <div class="p-cb-line">
       <span>Кэшбек</span>
-      +<span class="p-cb-pts">${pts}</span>
+      +<span class="p-cb-pts">${pts}</span>&nbsp;баллов
       ${boost ? `<span class="p-cb-x2" title="x2 на первый заказ">x2</span>` : ``}
     </div>`;
 }
@@ -387,11 +455,11 @@ function showCashbackHelpModal(){
       </div>
       <div class="cb-row">
         <i data-lucide="badge-check"></i>
-        <div><b>Как использовать.</b> На этапе оформления можно оплатить часть заказа баллами. Ваш баланс и лимит видны в корзине.</div>
+        <div><b>Как использовать.</b> На этапе оформления можно оплатить часть заказа баллами. Баланс и лимит — в корзине.</div>
       </div>
       <div class="cb-row">
         <i data-lucide="zap"></i>
-        <div class="muted">Если вы пришли по реф-ссылке, на <b>первый заказ действует x2</b>.</div>
+        <div class="muted">Если вы пришли по реф-ссылке, на <b>первый заказ — x2</b>.</div>
       </div>
     </div>
   `;
@@ -406,7 +474,7 @@ function showCashbackHelpModal(){
 
 /* ==== вспомогалки ==== */
 function escapeHtml(s=''){
-  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
 /* ===== ЗУМ ВНУТРИ БЛОКА ===== */
