@@ -18,7 +18,7 @@ function hasFirstOrderBoost(){
   try{
     const ref = JSON.parse(localStorage.getItem(k('ref_profile')) || '{}');
     const firstDone = !!ref.firstOrderDone;
-    const boost = !!ref.firstOrderBoost; // устанавливается при захвате реф-ссылки
+    const boost = !!ref.firstOrderBoost;
     return boost && !firstDone;
   }catch{ return false; }
 }
@@ -45,6 +45,13 @@ export function renderProduct({id}){
   const images = Array.isArray(p.images) && p.images.length ? p.images : [p.images?.[0] || ''];
   const realPhotos = Array.isArray(p.realPhotos) ? p.realPhotos : [];
 
+  // ОБЪЕДИНЁННАЯ ГАЛЕРЕЯ: сначала офф. фото, затем реальные
+  const gallery = [
+    ...images.map(src => ({ src, isReal:false })),
+    ...realPhotos.map(src => ({ src, isReal:true })),
+  ];
+  const first = gallery[0] || { src:'', isReal:false };
+
   // Подбор «Похожие» по той же подкатегории
   const related = state.products
     .filter(x => x.categoryId === p.categoryId && String(x.id) !== String(p.id))
@@ -52,97 +59,60 @@ export function renderProduct({id}){
 
   const v=document.getElementById('view');
   v.innerHTML = `
-    <!-- Локальные стили (бейдж кэшбека, блок доставки и «Похожие») -->
     <style>
-      /* ===== Кэшбек-бейдж ===== */
-      .p-cashback{
-        display:flex; align-items:center; gap:10px;
-        margin:8px 0; padding:12px 14px;
-        border-radius:14px;
-        background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
-        color:#fff;
-        max-width:100%;
-      }
-      .p-cashback i[data-lucide="coins"]{
-        flex:0 0 auto; width:20px; height:20px; opacity:.95;
-      }
-      .p-cb-line{
-        display:flex; align-items:center; gap:8px;
-        white-space:nowrap;
-        overflow:visible;
-        font-weight:800;
-        font-size: clamp(12px, 3.6vw, 16px);
-        line-height:1.2;
-      }
-      .p-cb-pts{ font-variant-numeric: tabular-nums; }
-      .p-cb-x2{
-        flex:0 0 auto;
-        font-size:.78em; line-height:1;
-        padding:3px 7px; border-radius:999px;
-        background:rgba(255,255,255,.18);
-        border:1px solid rgba(255,255,255,.28);
-        font-weight:800;
-      }
-      .p-cb-help{
-        margin-left:auto;
-        display:inline-flex; align-items:center; justify-content:center;
-        width:28px; height:28px; border-radius:999px;
-        background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.28);
-        transition:filter .15s ease;
-      }
-      .p-cb-help svg{ width:16px; height:16px; stroke:#fff; }
-      @media (hover:hover){
-        .p-cb-help:hover{ filter:brightness(1.05); }
+      /* ===== Кэшбек ===== */
+      .p-cashback{display:flex;align-items:center;gap:10px;margin:8px 0;padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#f59e0b 0%,#ef4444 100%);color:#fff;max-width:100%;}
+      .p-cashback i[data-lucide="coins"]{flex:0 0 auto;width:20px;height:20px;opacity:.95;}
+      .p-cb-line{display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:visible;font-weight:800;font-size:clamp(12px,3.6vw,16px);line-height:1.2;}
+      .p-cb-pts{font-variant-numeric:tabular-nums;}
+      .p-cb-x2{flex:0 0 auto;font-size:.78em;line-height:1;padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);font-weight:800;}
+      .p-cb-help{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);transition:filter .15s ease;}
+      .p-cb-help svg{width:16px;height:16px;stroke:#fff;}
+      @media(hover:hover){.p-cb-help:hover{filter:brightness(1.05);} }
+
+      /* ===== Срок доставки ===== */
+      .p-delivery{display:flex;align-items:center;gap:10px;margin:6px 0 12px;padding:10px 12px;border-radius:12px;background:#ffffff;color:#0f172a;border:1px solid rgba(15,23,42,.12);}
+      .p-delivery svg{width:18px;height:18px;stroke:currentColor;opacity:1;}
+      .p-delivery__title{font-weight:800;margin-right:4px;color:#0b1220;}
+      .p-delivery .muted{color:#0b1220;opacity:1;font-weight:800;}
+      @media (prefers-color-scheme:dark){
+        .p-delivery{background:#111827;border-color:rgba(255,255,255,.14);color:#ffffff;}
+        .p-delivery__title{color:#ffffff;}
+        .p-delivery .muted{color:#ffffff;opacity:1;}
       }
 
-      /* ===== Блок «Срок доставки» внутри карточки ===== */
-      .p-delivery{
-        display:flex; align-items:center; gap:10px;
-        margin:6px 0 12px; padding:10px 12px;
-        border-radius:12px;
-        background:#ffffff;           /* явный светлый фон */
-        color:#0f172a;                /* тёмный текст */
-        border:1px solid rgba(15,23,42,.12);
+      /* ===== Бейдж «Реальное фото товара» ===== */
+      .real-badge{
+        position:absolute; left:8px; top:8px; z-index:2;
+        padding:6px 8px; border-radius:10px;
+        font-size:11px; font-weight:800; line-height:1;
+        color:#0f172a; background:#fff; border:1px solid rgba(15,23,42,.12);
+        box-shadow:0 2px 10px rgba(15,23,42,.08);
       }
-      .p-delivery svg{ width:18px; height:18px; stroke:currentColor; opacity:1; }
-      .p-delivery__title{ font-weight:800; margin-right:4px; color:#0b1220; }
-      .p-delivery .muted{ color:#0b1220; opacity:1; font-weight:800; }
-
-      @media (prefers-color-scheme: dark){
-        .p-delivery{
-          background:#111827;
-          border-color:rgba(255,255,255,.14);
-          color:#ffffff;
-        }
-        .p-delivery__title{ color:#ffffff; }
-        .p-delivery .muted{ color:#ffffff; opacity:1; }
+      @media (prefers-color-scheme:dark){
+        .real-badge{ color:#fff; background:#0b1220; border-color:rgba(255,255,255,.18); }
+      }
+      .thumb .real-dot{
+        position:absolute; left:6px; top:6px;
+        font-size:10px; font-weight:800;
+        padding:3px 6px; border-radius:999px;
+        background:#ffffff; color:#0f172a; border:1px solid rgba(15,23,42,.12);
+      }
+      @media (prefers-color-scheme:dark){
+        .thumb .real-dot{ background:#0b1220; color:#fff; border-color:rgba(255,255,255,.18); }
       }
 
-      /* ===== Раздел «Похожие» (ВИЗУАЛЬНО ОТДЕЛЁН) ===== */
-      .related-wrap{
-        margin: 18px -12px -8px;          /* растягиваем в край, как секции */
-        padding: 14px 12px 10px;
-        background: linear-gradient(0deg, rgba(15,23,42,0.04), rgba(15,23,42,0.04));
-        border-top: 1px solid rgba(15,23,42,.10);
+      /* ===== Раздел «Похожие» ===== */
+      .related-wrap{margin:18px -12px -8px;padding:14px 12px 10px;background:linear-gradient(0deg,rgba(15,23,42,.04),rgba(15,23,42,.04));border-top:1px solid rgba(15,23,42,.10);}
+      .related-head{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-weight:800;font-size:clamp(16px,4.2vw,18px);}
+      .related-head i{width:18px;height:18px;opacity:.9;}
+      @media (prefers-color-scheme:dark){
+        .related-wrap{background:linear-gradient(0deg,rgba(255,255,255,.04),rgba(255,255,255,.04));border-top-color:rgba(255,255,255,.14);}
       }
-      .related-head{
-        display:flex; align-items:center; gap:8px;
-        margin: 0 0 8px;
-        font-weight: 800;
-        font-size: clamp(16px, 4.2vw, 18px);
-      }
-      .related-head i{ width:18px; height:18px; opacity:.9; }
-      @media (prefers-color-scheme: dark){
-        .related-wrap{
-          background: linear-gradient(0deg, rgba(255,255,255,0.04), rgba(255,255,255,0.04));
-          border-top-color: rgba(255,255,255,.14);
-        }
-      }
-      /* сетка берём такую же, как на главной: .grid */
-      .grid.related-grid{ margin-top: 6px; }
+      .grid.related-grid{margin-top:6px;}
     </style>
 
-    <!-- Фикс-хедер карточки (показывается при прокрутке) -->
+    <!-- Фикс-хедер карточки -->
     <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
       <button id="btnFixBack" class="fixbtn" aria-label="Назад"><i data-lucide="arrow-left"></i></button>
       <div class="fix-title">
@@ -157,16 +127,18 @@ export function renderProduct({id}){
       <div class="p-hero">
         <div class="gallery" role="region" aria-label="Галерея товара">
           <div class="gallery-main">
-            <img id="mainImg" class="zoomable" src="${images[0]||''}" alt="${escapeHtml(p.title)}">
+            ${first.isReal ? `<span class="real-badge">Реальное фото товара</span>` : ``}
+            <img id="mainImg" class="zoomable" src="${first.src||''}" alt="${escapeHtml(p.title)}${first.isReal?' (реальное фото)':''}">
             <button class="hero-btn hero-back" id="goBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
             <button class="hero-btn hero-fav ${favActive?'active':''}" id="favBtn" aria-pressed="${favActive?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
           </div>
 
-          ${images.length>1 ? `
+          ${gallery.length>1 ? `
           <div class="thumbs" id="thumbs" role="tablist" aria-label="Миниатюры">
-            ${images.map((src, i)=>`
-              <button class="thumb ${i===0?'active':''}" role="tab" aria-selected="${i===0?'true':'false'}" data-index="${i}" aria-controls="mainImg">
-                <img loading="lazy" src="${src}" alt="Фото ${i+1}">
+            ${gallery.map((it, i)=>`
+              <button class="thumb ${i===0?'active':''}" role="tab" aria-selected="${i===0?'true':'false'}" data-index="${i}" aria-controls="mainImg" style="position:relative">
+                ${it.isReal ? `<span class="real-dot">REAL</span>` : ``}
+                <img loading="lazy" src="${it.src}" alt="Фото ${i+1}${it.isReal?' (реальное)':''}">
               </button>
             `).join('')}
           </div>` : '' }
@@ -176,7 +148,7 @@ export function renderProduct({id}){
       <div class="p-body home-bottom-pad">
         <div class="p-title">${escapeHtml(p.title)}</div>
 
-        <!-- Кэшбек-виджет -->
+        <!-- Кэшбек -->
         <div class="p-cashback" role="note" aria-label="Информация о кэшбеке">
           <i data-lucide="coins" aria-hidden="true"></i>
           ${cashbackSnippetHTML(p.price)}
@@ -185,7 +157,7 @@ export function renderProduct({id}){
           </button>
         </div>
 
-        <!-- Срок доставки внутри карточки -->
+        <!-- Срок доставки -->
         <div class="p-delivery" role="note" aria-label="Срок доставки">
           <i data-lucide="clock"></i>
           <span class="p-delivery__title">Срок доставки:</span>
@@ -196,7 +168,7 @@ export function renderProduct({id}){
         <div class="specs"><b>Категория:</b> ${escapeHtml(findCategoryBySlug(p.categoryId)?.name || '—')}</div>
         <div class="specs"><b>Материал:</b> ${p.material ? escapeHtml(p.material) : '—'}</div>
 
-        <!-- Опции (РАЗМЕР/ЦВЕТ) -->
+        <!-- Опции -->
         <div class="p-options">
           ${(p.sizes?.length||0) ? `
           <div>
@@ -220,16 +192,7 @@ export function renderProduct({id}){
           </table>
         </div>`:''}
 
-        ${realPhotos.length ? `
-        <div class="opt-title" style="margin-top:14px">Реальные фото</div>
-        <div class="real-photos">
-          ${realPhotos.map((src,i)=>`
-            <div class="real-photo">
-              <img loading="lazy" class="zoomable" src="${src}" alt="Реальное фото ${i+1}">
-            </div>
-          `).join('')}
-        </div>` : ''}
-
+        <!-- БЛОК «Похожие» -->
         ${related.length ? `
         <section class="related-wrap" aria-label="Похожие товары">
           <div class="related-head">
@@ -244,13 +207,10 @@ export function renderProduct({id}){
 
   window.lucide?.createIcons && lucide.createIcons();
 
-  // help modal (кнопка с вопросом)
+  // help modal
   document.getElementById('cbHelpBtn')?.addEventListener('click', showCashbackHelpModal);
 
-  // Требуется ли выбор размера
   const needSize = Array.isArray(p.sizes) && p.sizes.length>0;
-
-  // выбранные опции (без количества)
   let size=null, color=(p.colors||[])[0]||null;
 
   const sizes=document.getElementById('sizes');
@@ -273,10 +233,10 @@ export function renderProduct({id}){
     colors.querySelector('.sw')?.classList.add('active');
   }
 
-  // Навигация назад (кнопка на герое)
+  // Навигация назад
   document.getElementById('goBack').onclick=()=> history.back();
 
-  // Избранное (кнопка на герое)
+  // Избранное
   const favBtn = document.getElementById('favBtn');
   favBtn.onclick = ()=>{
     toggleFav(p.id);
@@ -286,14 +246,28 @@ export function renderProduct({id}){
     setFixFavActive(active);
   };
 
-  // Галерея: миниатюры -> главное фото
+  // Галерея: миниатюры -> главное фото (учитываем реальные)
   const thumbs = document.getElementById('thumbs');
   const mainImg = document.getElementById('mainImg');
-  if (thumbs && mainImg){
+  const galleryMain = document.querySelector('.gallery-main');
+  if (thumbs && mainImg && gallery.length){
     thumbs.addEventListener('click', (e)=>{
       const t = e.target.closest('button.thumb'); if (!t) return;
       const idx = Number(t.getAttribute('data-index'))||0;
-      mainImg.src = images[idx] || images[0] || '';
+      const it = gallery[idx] || gallery[0];
+      // переключаем картинку
+      mainImg.src = it.src || '';
+      mainImg.alt = `${p.title}${it.isReal ? ' (реальное фото)' : ''}`;
+      // бейдж
+      const old = galleryMain.querySelector('.real-badge');
+      if (old) old.remove();
+      if (it.isReal){
+        const b = document.createElement('span');
+        b.className='real-badge';
+        b.textContent='Реальное фото товара';
+        galleryMain.prepend(b);
+      }
+      // активная миниатюра
       thumbs.querySelectorAll('.thumb').forEach(x=>{
         x.classList.toggle('active', x===t);
         x.setAttribute('aria-selected', x===t ? 'true':'false');
@@ -323,14 +297,10 @@ export function renderProduct({id}){
 
   function showInCartCTAs(){
     window.setTabbarCTAs?.(
-      {
-        html:`<i data-lucide="x"></i><span>Убрать из корзины</span>`,
-        onClick(){ removeLineFromCart(p.id, size||null, color||null); showAddCTA(); }
-      },
-      {
-        html:`<i data-lucide="shopping-bag"></i><span>Перейти в корзину</span>`,
-        onClick(){ location.hash = '#/cart'; }
-      }
+      { html:`<i data-lucide="x"></i><span>Убрать из корзины</span>`,
+        onClick(){ removeLineFromCart(p.id, size||null, color||null); showAddCTA(); } },
+      { html:`<i data-lucide="shopping-bag"></i><span>Перейти в корзину</span>`,
+        onClick(){ location.hash = '#/cart'; } }
     );
   }
 
@@ -340,18 +310,17 @@ export function renderProduct({id}){
   }
   refreshCTAByState();
 
-  /* -------- Зум/панорамирование -------- */
+  /* -------- Зум -------- */
   ensureZoomOverlay();
   initZoomableInPlace(mainImg);
-  document.querySelectorAll('.real-photos img.zoomable').forEach(initZoomableInPlace);
+  // убрали отдельный рендер real-photos — дополнительных инициализаций не требуется
   document.querySelectorAll('img.zoomable').forEach(img=>{
     img.addEventListener('click', ()=> openZoomOverlay(img.src));
   });
   function resetZoom(){ if (!mainImg) return; mainImg.style.transform=''; mainImg.dataset.zoom='1'; }
 
-  /* -------- ДВА РАЗНЫХ ХЕДЕРА: показ/скрытие -------- */
+  /* -------- Два хедера -------- */
   setupTwoHeaders({ isFav: favActive });
-
   function setupTwoHeaders({ isFav: favAtStart }){
     const stat = document.querySelector('.app-header');
     const fix  = document.getElementById('productFixHdr');
@@ -411,13 +380,12 @@ export function renderProduct({id}){
     btnFav.setAttribute('aria-pressed', String(!!active));
   }
 
-  /* ----- РЕНДЕР «Похожие» теми же карточками, что и в каталоге ----- */
   if (related.length){
     drawRelatedCards(related);
   }
 }
 
-/* карточки «Похожие» — используем шаблон #product-card, как на главной */
+/* карточки «Похожие» — используем шаблон #product-card (как в каталоге) */
 function drawRelatedCards(list){
   const grid = document.getElementById('relatedGrid');
   if (!grid) return;
@@ -427,7 +395,6 @@ function drawRelatedCards(list){
   for (const p of list){
     const t = document.getElementById('product-card');
     if (t && t.content?.firstElementChild){
-      // 1-в-1 как в Home.drawProducts
       const node = t.content.firstElementChild.cloneNode(true);
 
       node.href = `#/product/${p.id}`;
@@ -452,18 +419,14 @@ function drawRelatedCards(list){
         const active = isFav(p.id);
         favBtn.classList.toggle('active', active);
         favBtn.setAttribute('aria-pressed', String(active));
-        favBtn.onclick = (ev)=>{
-          ev.preventDefault();
-          toggleFav(p.id);
-        };
+        favBtn.onclick = (ev)=>{ ev.preventDefault(); toggleFav(p.id); };
       }
 
       frag.appendChild(node);
     } else {
-      // Fallback, если шаблон отсутствует
       const a = document.createElement('a');
       a.href = `#/product/${p.id}`;
-      a.className = 'card'; // будет выглядеть прилично, если есть базовые стили
+      a.className = 'card';
       a.innerHTML = `
         <img src="${p.images?.[0]||''}" alt="${escapeHtml(p.title)}">
         <div class="title">${escapeHtml(p.title)}</div>
@@ -477,12 +440,11 @@ function drawRelatedCards(list){
   window.lucide?.createIcons && lucide.createIcons();
 }
 
-/* ===== Короткий бейдж: «Кэшбек + N баллов» ===== */
+/* ===== Кэшбек бейдж ===== */
 function cashbackSnippetHTML(price){
   const boost = hasFirstOrderBoost();
   const rate = boost ? CASHBACK_RATE_BOOST : CASHBACK_RATE_BASE;
   const pts  = Math.floor((Number(price)||0) * rate);
-
   return `
     <div class="p-cb-line">
       <span>Кэшбек</span>
