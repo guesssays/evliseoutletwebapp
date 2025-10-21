@@ -58,7 +58,7 @@ export function renderProduct({id}){
       }
       .p-cb-line{
         display:flex; align-items:center; gap:8px;
-        white-space:nowrap; /* без переносов и обрезания */
+        white-space:nowrap;
         overflow:visible;
         font-weight:800;
         font-size: clamp(12px, 3.6vw, 16px);
@@ -80,7 +80,7 @@ export function renderProduct({id}){
         background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.28);
         transition:filter .15s ease;
       }
-      /* Lucide заменяет <i> на <svg>, красим именно svg-иконку */
+      /* Lucide заменяет <i> на <svg>, красим именно svg-иконку (белая) */
       .p-cb-help svg{ width:16px; height:16px; stroke:#fff; }
       @media (hover:hover){
         .p-cb-help:hover{ filter:brightness(1.05); }
@@ -89,9 +89,9 @@ export function renderProduct({id}){
       /* ===== Мини-таббар доставки (над основным таббаром) ===== */
       .mini-tabbar{
         position:fixed;
-        left:0; right:0; /* фактические left/width задаём из JS под габариты основного таббара */
-        bottom:0;        /* смещаем над основным таббаром через JS */
-        z-index: 1001;
+        left:0; right:0;
+        bottom:0;
+        z-index:1001;
         display:flex; align-items:center;
         padding:8px 12px;
 
@@ -101,16 +101,14 @@ export function renderProduct({id}){
         backdrop-filter: saturate(160%) blur(12px);
         border:1px solid rgba(255,255,255,.35);
         border-radius:12px;
-        box-shadow:
-          0 10px 30px rgba(0,0,0,.12),
-          0 -2px 10px rgba(0,0,0,.08) inset;
+        box-shadow: 0 10px 30px rgba(0,0,0,.12), 0 -2px 10px rgba(0,0,0,.08) inset;
 
         color:#0f172a;
         pointer-events:auto;
       }
       .mini-tabbar__inner{
         display:flex; align-items:center; gap:8px; width:100%;
-        font-size: 14px; font-weight: 800;
+        font-size:14px; font-weight:800;
       }
       .mini-tabbar__inner i{ width:18px; height:18px; }
       .mini-tabbar__inner svg{ stroke:#0f172a; opacity:.9; }
@@ -118,7 +116,6 @@ export function renderProduct({id}){
       @media (max-width:420px){
         .mini-tabbar__inner{ font-size:13px; }
       }
-      /* Тёмная тема — чуть уменьшаем прозрачность и делаем текст светлым */
       @media (prefers-color-scheme: dark){
         .mini-tabbar{
           background: linear-gradient(180deg, rgba(15,23,42,.65), rgba(15,23,42,.45));
@@ -279,7 +276,7 @@ export function renderProduct({id}){
   /* -------- CTA в таббаре -------- */
   function showAddCTA(){
     const needPick = needSize && !size;
-    window.setTabbarCTA({
+    window.setTabbarCTA?.({
       id: 'ctaAdd',
       html: `<i data-lucide="shopping-bag"></i><span>${needPick ? 'Выберите размер' : 'Добавить в корзину&nbsp;|&nbsp;'+priceFmt(p.price)}</span>`,
       onClick(){
@@ -293,11 +290,13 @@ export function renderProduct({id}){
     });
     const btn = document.getElementById('ctaAdd');
     if (btn) btn.disabled = needPick;
-    showDeliveryMiniBar(); // показать мини-таббар доставки поверх основного CTA
+
+    // показать мини-таббар доставки поверх основного CTA
+    try{ showDeliveryMiniBar(); }catch{}
   }
 
   function showInCartCTAs(){
-    window.setTabbarCTAs(
+    window.setTabbarCTAs?.(
       {
         html:`<i data-lucide="x"></i><span>Убрать из корзины</span>`,
         onClick(){ removeLineFromCart(p.id, size||null, color||null); showAddCTA(); }
@@ -307,7 +306,7 @@ export function renderProduct({id}){
         onClick(){ location.hash = '#/cart'; }
       }
     );
-    showDeliveryMiniBar(); // держим мини-бар и при состоянии «в корзине»
+    try{ showDeliveryMiniBar(); }catch{}
   }
 
   function refreshCTAByState(){
@@ -339,14 +338,12 @@ export function renderProduct({id}){
     bar.innerHTML = `<div id="miniTabbarInner" class="mini-tabbar__inner"></div>`;
     document.body.appendChild(bar);
 
-    // пересчитываем позицию при изменениях окна и прокрутке
-    const onResize = ()=> updateMiniTabbarPosition();
+    const onResize = ()=> { try{ updateMiniTabbarPosition(); }catch{} };
     window.addEventListener('resize', onResize);
     window.addEventListener('scroll', onResize, { passive:true });
 
-    // подчистка при уходе со страницы
     const cleanup = ()=>{
-      bar.remove();
+      try{ bar.remove(); }catch{}
       window.removeEventListener('resize', onResize);
       window.removeEventListener('scroll', onResize);
       window.removeEventListener('hashchange', cleanup);
@@ -378,25 +375,17 @@ export function renderProduct({id}){
 
     // подгоняем ширину и положение под реальный прямоугольник основного таббара
     const tb = getTabbarEl();
-    const vw = window.innerWidth;
+    const vw = window.innerWidth || document.documentElement.clientWidth || 360;
 
-    // базовый контейнер — весь вьюпорт, но если есть таббар, ориентируемся по нему
-    let left = 0, width = vw;
+    let left = 8;
+    let width = vw - 16;
 
     if (tb){
       const rect = tb.getBoundingClientRect();
-      // внутренний отступ: 12px на широких, 8px на узких
       const inset = rect.width >= 420 ? 12 : 8;
 
-      left = Math.max(0, rect.left + inset);
-      width = Math.min(vw - left, rect.width - inset * 2);
-
-      // если из-за расчётов ширина получилась некорректной — запасной план
-      if (!isFinite(width) || width <= 100){
-        left = 8; width = vw - 16;
-      }
-    }else{
-      left = 8; width = vw - 16;
+      left = Math.max(8, rect.left + inset);
+      width = Math.max(140, Math.min(vw - left - inset, rect.width - inset * 2));
     }
 
     bar.style.left = `${left}px`;
@@ -406,7 +395,6 @@ export function renderProduct({id}){
 
   /* -------- Зум/панорамирование -------- */
   ensureZoomOverlay();
-  const mainImg = document.getElementById('mainImg');
   initZoomableInPlace(mainImg);
   document.querySelectorAll('.real-photos img.zoomable').forEach(initZoomableInPlace);
   document.querySelectorAll('img.zoomable').forEach(img=>{
@@ -417,10 +405,9 @@ export function renderProduct({id}){
   /* -------- ДВА РАЗНЫХ ХЕДЕРА: показ/скрытие -------- */
   setupTwoHeaders({ isFav: favActive });
 
-  /* ==== ВНУТРЕННЕЕ: управление двумя хедерами ==== */
   function setupTwoHeaders({ isFav: favAtStart }){
-    const stat = document.querySelector('.app-header');           // статичный системный хедер
-    const fix  = document.getElementById('productFixHdr');        // наш фикс-хедер карточки
+    const stat = document.querySelector('.app-header');
+    const fix  = document.getElementById('productFixHdr');
     const btnBack = document.getElementById('btnFixBack');
     const btnFav  = document.getElementById('btnFixFav');
     if (!stat || !fix || !btnBack || !btnFav) return;
