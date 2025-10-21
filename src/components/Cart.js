@@ -311,8 +311,6 @@ export function renderCart(){
 </div>
 <!-- /FAQ -->
 
-
-
   </section>`;
 
   window.lucide?.createIcons && lucide.createIcons();
@@ -574,8 +572,14 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       <div class="note">
         <i data-lucide="credit-card"></i>
         <div>
-          <div class="note-title">Переведите на карту</div>
-          <div class="note-sub" style="user-select:all">${escapeHtml(pay.cardNumber)}</div>
+          <div class="note-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span>Переведите на карту</span>
+            <button id="copyCardBtn" class="pill" type="button" style="height:28px;padding:0 10px;line-height:1;display:inline-flex;align-items:center;gap:6px">
+              <i data-lucide="copy" style="width:16px;height:16px"></i><span>Скопировать</span>
+            </button>
+            <span id="copyCardHint" class="muted-mini" style="display:none">Скопировано!</span>
+          </div>
+          <div id="cardNumber" class="note-sub" style="user-select:all">${escapeHtml(pay.cardNumber)}</div>
           <div class="note-sub muted">
             ${escapeHtml(pay.holder || '')}
             ${pay.provider ? ` · <span class="pay-badge">${escapeHtml(pay.provider)}</span>` : ''}
@@ -605,6 +609,45 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
   `;
   modal.classList.add('show');
   window.lucide?.createIcons && lucide.createIcons();
+
+  // Копирование номера карты
+  const copyBtn = document.getElementById('copyCardBtn');
+  const copyHint = document.getElementById('copyCardHint');
+  const cardEl = document.getElementById('cardNumber');
+
+  copyBtn?.addEventListener('click', async ()=>{
+    const text = (cardEl?.textContent || String(pay.cardNumber || '')).trim();
+    if (!text) return;
+    let ok = false;
+    try{
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    }catch{
+      try{
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position='fixed'; ta.style.left='-9999px';
+        document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+        ok = true;
+      }catch{}
+    }
+    if (ok){
+      // короткий визуальный фидбек
+      const icon = copyBtn.querySelector('i[data-lucide]');
+      const label = copyBtn.querySelector('span');
+      const prev = { label: label?.textContent || 'Скопировать', icon: icon?.getAttribute('data-lucide') || 'copy' };
+      if (label) label.textContent = 'Скопировано!';
+      if (icon){ icon.setAttribute('data-lucide','check'); window.lucide?.createIcons && lucide.createIcons(); }
+      if (copyHint) copyHint.style.display = '';
+      setTimeout(()=>{
+        if (label) label.textContent = prev.label;
+        if (icon){ icon.setAttribute('data-lucide', prev.icon); window.lucide?.createIcons && lucide.createIcons(); }
+        if (copyHint) copyHint.style.display = 'none';
+      }, 1400);
+    }
+  });
 
   // обработка файла: сжатие -> dataURL + предпросмотр
   const fileInput   = document.getElementById('payShot');
