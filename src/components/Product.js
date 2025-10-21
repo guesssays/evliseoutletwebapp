@@ -81,21 +81,36 @@ export function renderProduct({id}){
         .p-delivery .muted{color:#ffffff;opacity:1;}
       }
 
-      /* ===== Бейдж «Реальное фото товара» ===== */
+      /* ===== Бейдж «Реальное фото товара» (main) ===== */
       .real-badge{
-        position:absolute; left:8px; top:8px; z-index:2;
-        padding:6px 8px; border-radius:10px;
-        font-size:11px; font-weight:800; line-height:1;
-        color:#0f172a; background:#fff; border:1px solid rgba(15,23,42,.12);
-        box-shadow:0 2px 10px rgba(15,23,42,.08);
+        position:absolute; right:10px; bottom:10px; z-index:2;
+        display:inline-flex; align-items:center; gap:6px;
+        padding:8px 10px; border-radius:999px;
+        font-size:12px; font-weight:800; line-height:1;
+        color:#0f172a;
+        background:rgba(255,255,255,.72);
+        backdrop-filter:saturate(1.4) blur(8px);
+        -webkit-backdrop-filter:saturate(1.4) blur(8px);
+        border:1px solid rgba(15,23,42,.12);
+        box-shadow:0 8px 24px rgba(15,23,42,.12);
+        letter-spacing:.2px;
+      }
+      .real-badge i{
+        width:14px; height:14px; opacity:.9; stroke-width:2.2;
       }
       @media (prefers-color-scheme:dark){
-        .real-badge{ color:#fff; background:#0b1220; border-color:rgba(255,255,255,.18); }
+        .real-badge{
+          color:#fff;
+          background:rgba(11,18,32,.66);
+          border-color:rgba(255,255,255,.18);
+          box-shadow:0 8px 24px rgba(0,0,0,.35);
+        }
       }
+      /* Мини-бейдж на миниатюрах */
       .thumb .real-dot{
-        position:absolute; left:6px; top:6px;
-        font-size:10px; font-weight:800;
-        padding:3px 6px; border-radius:999px;
+        position:absolute; left:6px; top:6px; z-index:1;
+        font-size:10px; font-weight:900; letter-spacing:.3px;
+        padding:3px 7px; border-radius:999px;
         background:#ffffff; color:#0f172a; border:1px solid rgba(15,23,42,.12);
       }
       @media (prefers-color-scheme:dark){
@@ -127,7 +142,7 @@ export function renderProduct({id}){
       <div class="p-hero">
         <div class="gallery" role="region" aria-label="Галерея товара">
           <div class="gallery-main">
-            ${first.isReal ? `<span class="real-badge">Реальное фото товара</span>` : ``}
+            ${first.isReal ? `<span class="real-badge"><i data-lucide="camera"></i><span>Реальное фото товара</span></span>` : ``}
             <img id="mainImg" class="zoomable" src="${first.src||''}" alt="${escapeHtml(p.title)}${first.isReal?' (реальное фото)':''}">
             <button class="hero-btn hero-back" id="goBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
             <button class="hero-btn hero-fav ${favActive?'active':''}" id="favBtn" aria-pressed="${favActive?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
@@ -137,7 +152,7 @@ export function renderProduct({id}){
           <div class="thumbs" id="thumbs" role="tablist" aria-label="Миниатюры">
             ${gallery.map((it, i)=>`
               <button class="thumb ${i===0?'active':''}" role="tab" aria-selected="${i===0?'true':'false'}" data-index="${i}" aria-controls="mainImg" style="position:relative">
-                ${it.isReal ? `<span class="real-dot">REAL</span>` : ``}
+                ${it.isReal ? `<span class="real-dot">LIVE</span>` : ``}
                 <img loading="lazy" src="${it.src}" alt="Фото ${i+1}${it.isReal?' (реальное)':''}">
               </button>
             `).join('')}
@@ -264,8 +279,10 @@ export function renderProduct({id}){
       if (it.isReal){
         const b = document.createElement('span');
         b.className='real-badge';
-        b.textContent='Реальное фото товара';
-        galleryMain.prepend(b);
+        b.innerHTML = '<i data-lucide="camera"></i><span>Реальное фото товара</span>';
+        galleryMain.appendChild(b);
+        // иконка lucide, добавленная динамически
+        window.lucide?.createIcons && lucide.createIcons();
       }
       // активная миниатюра
       thumbs.querySelectorAll('.thumb').forEach(x=>{
@@ -313,7 +330,6 @@ export function renderProduct({id}){
   /* -------- Зум -------- */
   ensureZoomOverlay();
   initZoomableInPlace(mainImg);
-  // убрали отдельный рендер real-photos — дополнительных инициализаций не требуется
   document.querySelectorAll('img.zoomable').forEach(img=>{
     img.addEventListener('click', ()=> openZoomOverlay(img.src));
   });
