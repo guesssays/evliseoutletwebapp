@@ -42,28 +42,59 @@ export function renderProduct({id}){
 
   const v=document.getElementById('view');
   v.innerHTML = `
-    <!-- Локальные стили для бейджа кэшбека -->
+    <!-- Локальные стили для кэшбек-бейджа (адаптив без обрезания/скролла) -->
     <style>
       .p-cashback{
         display:flex; align-items:flex-start; gap:10px;
         margin:6px 0 8px; padding:10px;
         border-radius:12px; background:var(--card,rgba(0,0,0,.04));
-        max-width:100%; overflow:hidden;
+        max-width:100%;
+        overflow:visible; /* ничего не обрезаем */
       }
       .p-cashback i{
         flex:0 0 auto; width:20px; height:20px; line-height:0;
       }
       .p-cb-text{ flex:1 1 auto; min-width:0; }
-      .p-cb-text .cart-title{
-        font-size:15px; line-height:1.25;
-        word-break:break-word; overflow-wrap:anywhere;
-        max-width:100%;
+
+      /* Главная строка: одна линия, без переноса, динамический размер */
+      .p-cb-line{
+        display:flex; align-items:center; gap:6px;
+        white-space:nowrap;
+        font-size: clamp(11px, 3.3vw, 15px);
+        line-height: 1.2;
       }
-      .p-cb-text .muted.mini{
-        white-space:normal; word-break:break-word; overflow-wrap:anywhere;
+      .p-cb-pts{
+        font-weight:800;
+        font-variant-numeric: tabular-nums;
       }
-      /* на очень узких экранах позволяем переносить число баллов */
-      .p-cb-text b{ word-break:break-all; }
+      .p-cb-badge{
+        flex:0 0 auto;
+        font-size:.78em; line-height:1;
+        padding:2px 6px; border-radius:999px;
+        background:rgba(0,0,0,.08);
+      }
+
+      /* Вторая строка — обычный мини-текст, может переноситься */
+      .p-cb-sub{ color:var(--muted,#6b7280); font-size:.9rem; }
+
+      /* Управляем длиной фраз без JS: длинная/короткая/ультракороткая */
+      .p-cb-line .label-long,
+      .p-cb-line .suffix-long { display:inline; }
+      .p-cb-line .label-short,
+      .p-cb-line .suffix-short,
+      .p-cb-line .label-ultra { display:none; }
+
+      /* <= 380px — оставляем короткие подписи */
+      @media (max-width: 380px){
+        .p-cb-line .label-long, .p-cb-line .suffix-long { display:none; }
+        .p-cb-line .label-short, .p-cb-line .suffix-short { display:inline; }
+      }
+      /* <= 320px — ещё компактнее: только "Кэшбек" + число */
+      @media (max-width: 320px){
+        .p-cb-line{ font-size: clamp(10px, 3.5vw, 14px); }
+        .p-cb-line .label-short, .p-cb-line .suffix-short { display:none; }
+        .p-cb-line .label-ultra { display:inline; }
+      }
     </style>
 
     <!-- Фикс-хедер карточки (показывается при прокрутке) -->
@@ -105,7 +136,7 @@ export function renderProduct({id}){
           <i data-lucide="coins" aria-hidden="true"></i>
           <div class="p-cb-text">
             ${cashbackSnippetHTML(p.price)}
-            <div class="muted mini">1 балл = 1 сум · Начисление через 24ч</div>
+            <div class="p-cb-sub">1 балл = 1 сум · Начисление через 24ч</div>
           </div>
         </div>
 
@@ -328,12 +359,20 @@ function cashbackSnippetHTML(price){
   const rate = boost ? CASHBACK_RATE_BOOST : CASHBACK_RATE_BASE;
   const pts  = Math.floor((Number(price)||0) * rate);
 
-  // Для нереферала — просто сумма баллов без упоминания x2.
-  // Для реферала — сразу указываем x2 и что действует только на первый заказ.
-  const tail = boost ? ' (x2 кэшбек — только на первый заказ)' : '';
-  return `<div class="cart-title">
-    За покупку вы получите <b>${pts}</b> баллов${tail}.
-  </div>`;
+  // Бейдж строим как 1 строку с вариантами подписи под ширину экрана
+  // long: "Кэшбек: +12345 баллов за покупку"
+  // short (<=380px): "Кэшбек +12345 баллов"
+  // ultra (<=320px): "Кэшбек +12345"
+  return `
+    <div class="p-cb-line">
+      ${boost ? `<span class="p-cb-badge" aria-label="x2 кэшбек">x2</span>` : ``}
+      <span class="label-long">Кэшбек:</span>
+      <span class="label-short">Кэшбек</span>
+      <span class="label-ultra">Кэшбек</span>
+      &nbsp;+<b class="p-cb-pts">${pts}</b>
+      <span class="suffix-long">&nbsp;баллов за покупку</span>
+      <span class="suffix-short">&nbsp;баллов</span>
+    </div>`;
 }
 
 /* ==== вспомогалки ==== */

@@ -236,19 +236,56 @@ export function renderReferrals(){
         Мои рефералы
       </div>
 
-      <div class="ref-card" style="padding:10px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:12px;background:var(--card,rgba(0,0,0,.03));display:grid;gap:8px">
+      <style>
+        /* ——— Реф-карточка ——— */
+        .ref-card{
+          padding:12px;
+          border:1px solid var(--border,rgba(0,0,0,.12));
+          border-radius:12px;
+          background:var(--card,rgba(0,0,0,.03));
+          display:grid; gap:10px;
+        }
+        .ref-grid{
+          display:grid;
+          grid-template-columns: minmax(0,1fr) auto;
+          align-items: stretch;
+          gap:10px;
+        }
+        .ref-linkbox{
+          min-height:42px;
+          padding:10px 12px;
+          border:1px solid var(--border,rgba(0,0,0,.12));
+          border-radius:10px;
+          background:var(--bg,#fff);
+          overflow-x:auto;
+          overflow-y:hidden;
+          white-space:nowrap;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+          font-size:.92rem;
+          line-height:1.2;
+          user-select:all;
+        }
+        .ref-actions .pill{
+          height:42px;
+          display:inline-flex; align-items:center; gap:8px;
+          white-space:nowrap;
+        }
+        .ref-hint{ color:var(--muted,#6b7280); font-size:.9rem; }
+        @media (max-width: 460px){
+          .ref-grid{ grid-template-columns: 1fr; }
+          .ref-actions .pill{ width:100%; justify-content:center; }
+        }
+      </style>
+
+      <div class="ref-card">
         <div class="muted mini">Ваша реф-ссылка</div>
 
-        <div class="input" style="display:flex;gap:8px;align-items:stretch;flex-wrap:wrap">
-          <div id="refLinkBox" class="input" style="flex:1 1 220px;min-width:0;max-width:100%;overflow:auto;user-select:all;padding:8px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:10px;background:var(--bg,#fff)">
-            ${escapeHtml(link)}
-          </div>
-          <button id="copyRef" class="pill" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
-            <i data-lucide="copy"></i><span>Скопировать</span>
-          </button>
+        <div class="ref-grid">
+          <div id="refLinkBox" class="ref-linkbox">${escapeHtml(link)}</div>
+          <div class="ref-actions"><button id="copyRef" class="pill"><i data-lucide="copy"></i><span>Скопировать</span></button></div>
         </div>
 
-        <div id="copyHint" class="muted mini" style="display:none">Скопировано!</div>
+        <div id="copyHint" class="ref-hint" style="display:none">Скопировано!</div>
 
         <div class="muted mini">Первый заказ по этой ссылке даёт рефералу x2 кэшбек, а вам — 5% с каждого его заказа. Лимит — не более 10 новых рефералов в месяц.</div>
         <div class="muted mini">В этом месяце новых рефералов: <b>${monthCount}</b> / 10</div>
