@@ -421,7 +421,6 @@ function checkoutFlow(items, addr, totalRaw, bill){
   const ma = document.getElementById('modalActions');
 
   const savedPhone = state.profile?.phone || '';
-  theSavedPayer:
   const savedPayer = state.profile?.payerFullName || '';
 
   mt.textContent = 'Подтверждение данных';
