@@ -132,102 +132,99 @@ export function renderProduct({id}){
       }
 
       /* ====== СВОТЧИ И РАЗМЕРЫ ====== */
-.p-options{
-  display:grid;
-  grid-template-columns:1fr;
-  gap:16px;
-  margin:14px 0;
-}
-.opt-title{ font-weight:800; margin:6px 0 8px; }
-.sizes,.colors{ display:flex; flex-wrap:wrap; gap:10px; }
+      .p-options{
+        display:grid;
+        grid-template-columns:1fr;
+        gap:16px;
+        margin:14px 0;
+      }
+      .opt-title{ font-weight:800; margin:6px 0 8px; }
+      .sizes,.colors{ display:flex; flex-wrap:wrap; gap:10px; }
 
-/* — Цвета — */
-.sw{
-  position:relative;
-  width:38px; height:38px;
-  border-radius:999px;
-  border:2px solid rgba(15,23,42,.18);
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.7);
-  outline:none; cursor:pointer;
-  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, outline-color .12s ease;
-}
-@media (prefers-color-scheme:dark){
-  .sw{
-    border-color: rgba(255,255,255,.22);
-    box-shadow: inset 0 0 0 2px rgba(0,0,0,.55);
-  }
-}
-.sw:focus-visible{ outline:3px solid #0ea5e9; outline-offset:2px; }
-.sw:hover{ transform:translateY(-1px); }
+      /* — Цвета — */
+      .sw{
+        position:relative;
+        width:38px; height:38px;
+        border-radius:999px;
+        border:2px solid rgba(15,23,42,.18);
+        box-shadow: inset 0 0 0 2px rgba(255,255,255,.7);
+        outline:none; cursor:pointer;
+        transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, outline-color .12s ease;
+      }
+      @media (prefers-color-scheme:dark){
+        .sw{
+          border-color: rgba(255,255,255,.22);
+          box-shadow: inset 0 0 0 2px rgba(0,0,0,.55);
+        }
+      }
+      .sw:focus-visible{ outline:3px solid #0ea5e9; outline-offset:2px; }
+      .sw:hover{ transform:translateY(-1px); }
 
-/* Активный цвет — только усиленная обводка + лёгкая анимация */
-@keyframes swPulse { from{ transform:scale(1.04); } to{ transform:scale(1); } }
-.sw.active{
-  border-color:#0ea5e9 !important;
-  box-shadow:
-    inset 0 0 0 2px rgba(255,255,255,.85),
-    0 0 0 3px rgba(14,165,233,.28);
-  animation: swPulse .25s ease;
-}
+      /* Активный цвет — только усиленная обводка + лёгкая анимация */
+      @keyframes swPulse { from{ transform:scale(1.04); } to{ transform:scale(1); } }
+      .sw.active{
+        border-color:#0ea5e9 !important;
+        box-shadow:
+          inset 0 0 0 2px rgba(255,255,255,.85),
+          0 0 0 3px rgba(14,165,233,.28);
+        animation: swPulse .25s ease;
+      }
 
-/* — Размеры — */
-.size{
-  padding:10px 14px;
-  border:1px solid var(--stroke);
-  border-radius:999px;
-  background:#fff;
-  font-weight:700;
-  cursor:pointer;
-}
-.size:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
-.size.active{
-  background:#121111;
-  color:#fff;
-  border-color:#121111;
-}
+      /* — Размеры — */
+      .size{
+        padding:10px 14px;
+        border:1px solid var(--stroke);
+        border-radius:999px;
+        background:#fff;
+        font-weight:700;
+        cursor:pointer;
+      }
+      .size:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
+      .size.active{
+        background:#121111;
+        color:#fff;
+        border-color:#121111;
+      }
 
+      /* ===== Размерная сетка (центрирование значений) ===== */
+      .table-wrap{
+        overflow:auto;
+        -webkit-overflow-scrolling:touch;
+        margin-top:10px;
+        border:1px solid var(--stroke);
+        border-radius:16px;
+      }
 
-/* ===== Размерная сетка (центрирование значений) ===== */
-.table-wrap{
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
-  margin-top:10px;
-  border:1px solid var(--stroke);
-  border-radius:16px;
-}
+      .size-table{
+        width:100%;
+        border-collapse:separate;
+        border-spacing:0;
+      }
 
-.size-table{
-  width:100%;
-  border-collapse:separate;
-  border-spacing:0;
-}
+      .size-table th,
+      .size-table td{
+        padding:10px 12px;
+        white-space:nowrap;
+        font-size:14px;
+        text-align:center;                 /* центрируем значения */
+        font-variant-numeric: tabular-nums;/* ровные цифры по сетке */
+      }
 
-.size-table th,
-.size-table td{
-  padding:10px 12px;
-  white-space:nowrap;
-  font-size:14px;
-  text-align:center;                 /* центрируем значения */
-  font-variant-numeric: tabular-nums;/* ровные цифры по сетке */
-}
+      .size-table thead th{
+        background:#f8f8f8;
+        font-weight:800;
+        text-align:center;                 /* заголовки тоже по центру */
+      }
 
-.size-table thead th{
-  background:#f8f8f8;
-  font-weight:800;
-  text-align:center;                 /* заголовки тоже по центру */
-}
+      /* если первая колонка — названия/размер (а не число), оставим её слева */
+      .size-table th:first-child,
+      .size-table td:first-child{
+        text-align:left;
+      }
 
-/* если первая колонка — названия/размер (а не число), оставим её слева */
-.size-table th:first-child,
-.size-table td:first-child{
-  text-align:left;
-}
-
-.size-table tbody tr:not(:last-child) td{
-  border-bottom:1px solid var(--stroke);
-}
-
-
+      .size-table tbody tr:not(:last-child) td{
+        border-bottom:1px solid var(--stroke);
+      }
     </style>
 
     <!-- Фикс-хедер карточки -->
@@ -290,8 +287,12 @@ export function renderProduct({id}){
         <div class="p-options">
           ${(p.sizes?.length||0) ? `
           <div>
-            <div class="opt-title">Размер</div>
+            <div class="opt-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span>Размер</span>
+              ${p.sizeChart ? `<button id="btnSizeCalc" class="pill small" type="button"><i data-lucide="ruler"></i><span>Подобрать размер</span></button>` : ``}
+            </div>
             <div class="sizes" id="sizes">${p.sizes.map(s=>`<button class="size" data-v="${s}">${s}</button>`).join('')}</div>
+            ${!p.sizeChart ? `<div class="muted" style="font-size:12px;margin-top:6px">Таблица размеров недоступна для этого товара.</div>` : ``}
           </div>`:''}
           <div>
             <div class="opt-title">Цвет</div>
@@ -338,6 +339,9 @@ export function renderProduct({id}){
 
   // help modal
   document.getElementById('cbHelpBtn')?.addEventListener('click', showCashbackHelpModal);
+
+  // Size calculator open
+  document.getElementById('btnSizeCalc')?.addEventListener('click', ()=> openSizeCalculator(p));
 
   const needSize = Array.isArray(p.sizes) && p.sizes.length>0;
   let size=null, color=(p.colors||[])[0]||null;
@@ -775,4 +779,303 @@ function openZoomOverlay(src){
   }
   close.onclick = closeOv;
   ov.onclick = (e)=>{ if(e.target===ov) closeOv(); };
+}
+
+/* ========= SIZE CALCULATOR ========= */
+
+/* Определяем тип сетки по заголовкам */
+function inferSizeChartType(headers=[]) {
+  const hs = headers.map(h=>String(h).toLowerCase());
+  const shoeHints = ['стопа','длина стопы','foot','cm','mm','eu','us','uk','длина, см','eu size','eur'];
+  const clothHints = ['груд','плеч','тал','бедр','waist','hip','hips','bust','chest','shoulder','sleeve','длина по спине','рост','height'];
+
+  const hasShoe = hs.some(h=> shoeHints.some(k=> h.includes(k)));
+  const hasCloth = hs.some(h=> clothHints.some(k=> h.includes(k)));
+
+  if (hasShoe && !hasCloth) return 'shoes';
+  if (hasCloth) return 'clothes';
+  return 'clothes';
+}
+
+/* Открываем модалку с формой и считаем размер */
+function openSizeCalculator(p){
+  const modal = document.getElementById('modal');
+  const mb = document.getElementById('modalBody');
+  const mt = document.getElementById('modalTitle');
+  const ma = document.getElementById('modalActions');
+  if (!modal || !mb || !mt || !ma) return;
+
+  const chart = p.sizeChart;
+  if (!chart){ window.toast?.('Для этого товара таблица размеров недоступна'); return; }
+
+  const type = inferSizeChartType(chart.headers || []);
+
+  mt.textContent = 'Подбор размера';
+  mb.innerHTML = `
+    <style>
+      .sz-form{ display:grid; gap:10px; }
+      .sz-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+      .sz-row-3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+      @media (max-width:520px){ .sz-row, .sz-row-3{ grid-template-columns:1fr; } }
+      .sz-note{ color:var(--muted,#6b7280); font-size:12px; }
+      .sz-res{ display:none; border:1px solid var(--stroke); border-radius:12px; padding:12px; }
+      .sz-res.show{ display:block; }
+      .sz-chip{ display:inline-flex; gap:6px; align-items:center; padding:6px 10px; border-radius:999px; border:1px solid var(--stroke); }
+    </style>
+
+    <div class="sz-form">
+      ${type==='shoes' ? `
+        <div class="field">
+          <span>Длина стопы (см)</span>
+          <input id="inFoot" class="input" type="number" step="0.1" min="10" max="35" placeholder="Например, 25.2">
+          <div class="sz-note">Поставьте ногу на лист бумаги, отметьте самую длинную точку, измерьте линейкой.</div>
+        </div>
+      ` : `
+        <div class="sz-row">
+          <div class="field">
+            <span>Грудь (см)</span>
+            <input id="inBust" class="input" type="number" step="0.5" min="60" max="150" placeholder="Например, 92">
+          </div>
+          <div class="field">
+            <span>Талия (см)</span>
+            <input id="inWaist" class="input" type="number" step="0.5" min="50" max="140" placeholder="Например, 74">
+          </div>
+        </div>
+        <div class="sz-row">
+          <div class="field">
+            <span>Бёдра (см)</span>
+            <input id="inHips" class="input" type="number" step="0.5" min="70" max="160" placeholder="Например, 98">
+          </div>
+          <div class="field">
+            <span>Рост (см)</span>
+            <input id="inHeight" class="input" type="number" step="1" min="140" max="210" placeholder="Например, 175">
+          </div>
+        </div>
+        <div class="field">
+          <span>Вес (кг)</span>
+          <input id="inWeight" class="input" type="number" step="0.5" min="35" max="160" placeholder="Например, 72.5">
+          <div class="sz-note">Рост и вес помогают уточнить размер при граничных значениях.</div>
+        </div>
+      `}
+      <div id="szResult" class="sz-res" role="status" aria-live="polite"></div>
+    </div>
+  `;
+
+  ma.innerHTML = `
+    <button id="szCancel" class="pill">Отмена</button>
+    <button id="szCalc" class="pill primary">Рассчитать</button>
+  `;
+
+  modal.classList.add('show');
+  window.lucide?.createIcons && lucide.createIcons();
+
+  document.getElementById('szCancel')?.addEventListener('click', ()=> modal.classList.remove('show'), { once:true });
+  document.getElementById('modalClose')?.addEventListener('click', ()=> modal.classList.remove('show'), { once:true });
+
+  document.getElementById('szCalc')?.addEventListener('click', ()=>{
+    const resBox = document.getElementById('szResult');
+
+    const rec = (type==='shoes')
+      ? computeShoeSize(chart, Number(document.getElementById('inFoot')?.value))
+      : computeClothSize(
+          chart,
+          Number(document.getElementById('inBust')?.value),
+          Number(document.getElementById('inWaist')?.value),
+          Number(document.getElementById('inHips')?.value),
+          Number(document.getElementById('inHeight')?.value),
+          Number(document.getElementById('inWeight')?.value),
+          Array.isArray(p.sizes) ? p.sizes.slice() : []
+        );
+
+    if (!resBox) return;
+
+    if (!rec){
+      resBox.classList.add('show');
+      resBox.innerHTML = `<div>Нужный размер не найден. Проверьте мерки или ориентируйтесь на таблицу выше.</div>`;
+      return;
+    }
+
+    resBox.classList.add('show');
+    resBox.innerHTML = `
+      <div style="display:grid; gap:8px">
+        <div><b>Рекомендуемый размер:</b> <span class="sz-chip">${rec.size}</span></div>
+        ${rec.reason ? `<div class="sz-note">${escapeHtml(rec.reason)}</div>` : ``}
+        <div><button id="szApply" class="pill primary">Выбрать ${rec.size}</button></div>
+      </div>
+    `;
+
+    document.getElementById('szApply')?.addEventListener('click', ()=>{
+      const sizesEl = document.getElementById('sizes');
+      const btn = sizesEl?.querySelector(`.size[data-v="${CSS.escape(rec.size)}"]`);
+      if (btn){
+        // кликнем на кнопку, чтобы сработала общая логика выбора/CTA
+        btn.click();
+        btn.scrollIntoView({ behavior:'smooth', block:'center' });
+      }
+      modal.classList.remove('show');
+    }, { once:true });
+  });
+}
+
+/* === Подбор размера для ОБУВИ по колонке длины стопы (см) === */
+function computeShoeSize(chart, footCm){
+  if (!footCm || !isFinite(footCm)) return null;
+
+  // Ищем колонку длины в см/мм
+  const h = chart.headers || [];
+  const idxLen = getColumnIndex(h, ['длина стопы','foot length','длина, см','см','cm','mm']);
+  if (idxLen===-1) return null;
+
+  // Индекс колонки «Размер»
+  const idxSize = guessSizeColIndex(h);
+
+  let best = null, bestDiff = Infinity;
+  for (const row of chart.rows || []){
+    const lenRaw = row[idxLen];
+    const len = takeNumber(lenRaw);
+    if (!len) continue;
+    const isMM = String(h[idxLen]).toLowerCase().includes('mm') || String(lenRaw).toLowerCase().includes('мм');
+    const cm = isMM ? (len/10) : len;
+
+    const diff = Math.abs(cm - footCm);
+    if (diff < bestDiff){
+      bestDiff = diff;
+      best = { size: String(row[idxSize] ?? row[0] ?? '').trim(), reason: `Ближайшая длина стопы: ${cm.toFixed(1)} см` };
+    }
+  }
+  return best;
+}
+
+/* === Подбор размера для ОДЕЖДЫ с учётом роста/веса === */
+function computeClothSize(chart, bust, waist, hips, height, weight, sizesOrder=[]){
+  const h = chart.headers || [];
+  const idxSize   = guessSizeColIndex(h);
+  if (idxSize===-1) return null;
+
+  const idxBust   = getColumnIndex(h, ['грудь','обхват груди','bust','chest']);
+  const idxWaist  = getColumnIndex(h, ['талия','обхват талии','waist']);
+  const idxHips   = getColumnIndex(h, ['бедра','обхват бедер','hips','hip']);
+  const idxHeight = getColumnIndex(h, ['рост','height']);
+
+  if (idxBust===-1 && idxWaist===-1 && idxHips===-1 && (idxHeight===-1 || !height)) {
+    return null; // совсем нечего сравнивать
+  }
+
+  let best=null, bestScore=Infinity, bestRow=null;
+  let second=null, secondScore=Infinity, secondRow=null;
+  let bestReasons='';
+
+  for (const row of chart.rows || []){
+    let score = 0, weightSum = 0;
+    const rs = [];
+
+    if (idxBust>-1 && bust){
+      const v = closestOfCell(row[idxBust], bust);
+      score += Math.abs(v - bust); weightSum += 1;
+      rs.push(`грудь: ${isFinite(v)?v.toFixed(0):'—'} см`);
+    }
+    if (idxWaist>-1 && waist){
+      const v = closestOfCell(row[idxWaist], waist);
+      score += Math.abs(v - waist); weightSum += 1;
+      rs.push(`талия: ${isFinite(v)?v.toFixed(0):'—'} см`);
+    }
+    if (idxHips>-1 && hips){
+      const v = closestOfCell(row[idxHips], hips);
+      score += Math.abs(v - hips); weightSum += 1;
+      rs.push(`бёдра: ${isFinite(v)?v.toFixed(0):'—'} см`);
+    }
+    // Рост учитываем с половинным весом, чтобы не «перебивал» обхваты
+    if (idxHeight>-1 && height){
+      const v = closestOfCell(row[idxHeight], height);
+      score += 0.5 * Math.abs(v - height); weightSum += 0.5;
+      rs.push(`рост: ${isFinite(v)?v.toFixed(0):'—'} см`);
+    }
+
+    if (!weightSum) continue;
+    const norm = score / weightSum;
+    const sizeLabel = String(row[idxSize] ?? row[0] ?? '').trim();
+
+    if (norm < bestScore){
+      // сдвигаем текущий best в second
+      second = best; secondScore = bestScore; secondRow = bestRow;
+      best = sizeLabel; bestScore = norm; bestRow = row; bestReasons = rs.join(', ');
+    }else if (norm < secondScore){
+      second = sizeLabel; secondScore = norm; secondRow = row;
+    }
+  }
+
+  if (!best) return null;
+
+  // Мягкая корректировка по росту/весу, если второй вариант близко
+  let finalSize = best;
+  let adj = '';
+  const close = isFinite(secondScore) && Math.abs(secondScore - bestScore) <= 1.8; // «рядом по таблице»
+  const tallOrHeavy = (height && height >= 188) || (weight && weight >= 95);
+  const shortOrLight = (height && height <= 160) || (weight && weight <= 50);
+
+  if (close && sizesOrder && sizesOrder.length){
+    const iBest = sizesOrder.indexOf(best);
+    const iSecond = sizesOrder.indexOf(second);
+    // если порядок понятен, аккуратно смещаемся
+    if (tallOrHeavy && iBest>-1 && iBest < sizesOrder.length-1){
+      finalSize = sizesOrder[iBest+1];
+      adj = ' (учли рост/вес — взяли на полразмера больше)';
+    }else if (shortOrLight && iBest>-1 && iBest > 0){
+      finalSize = sizesOrder[iBest-1];
+      adj = ' (учли рост/вес — взяли на полразмера меньше)';
+    }
+  }
+
+  // Если в таблице есть явная колонка «рост», можем уточнить рекомендацию текстом
+  if (!adj && idxHeight>-1 && height){
+    if (height >= 190) adj = ' (рост высокий, ориентировались на длину/рост из таблицы)';
+    else if (height <= 160) adj = ' (рост невысокий, ориентировались на длину/рост из таблицы)';
+  }
+
+  const reason = `Ближе всего по меркам: ${bestReasons}${adj}`;
+  return { size: finalSize, reason };
+}
+
+/* == ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ РАЗБОРА ТАБЛИЦЫ == */
+
+/* Возвращает индекс колонки, если заголовок содержит один из ключей */
+function getColumnIndex(headers=[], keys=[]){
+  const hs = headers.map(h=> String(h||'').toLowerCase());
+  for (let i=0;i<hs.length;i++){
+    const h = hs[i];
+    if (keys.some(k=> h.includes(k))) return i;
+  }
+  return -1;
+}
+
+/* Пытаемся угадать колонку с обозначением размера (S/M/L, EU, US, число и т.п.) */
+function guessSizeColIndex(headers=[]){
+  const hs = headers.map(h=> String(h||'').toLowerCase());
+  const keys = ['размер','size','eu','us','ru','cn','intl'];
+  for (let i=0;i<hs.length;i++){
+    if (keys.some(k=> hs[i].includes(k))) return i;
+  }
+  return 0;
+}
+
+/* Берём число из ячейки (поддержка диапазонов "80-84" или "80—84") */
+function takeNumber(cell){
+  if (cell==null) return null;
+  const s = String(cell).replace(',', '.').trim();
+  const m = s.match(/(\d+(?:\.\d+)?)/);
+  return m ? Number(m[1]) : null;
+}
+
+/* Для одежды: если в ячейке "80–84", возвращаем ближайшее к target */
+function closestOfCell(cell, target){
+  if (!cell) return NaN;
+  const s = String(cell).replace(',', '.');
+  const nums = s.match(/\d+(?:\.\d+)?/g)?.map(Number) || [];
+  if (!nums.length) return NaN;
+  if (nums.length===1) return nums[0];
+  const lo = Math.min(nums[0], nums[1]);
+  const hi = Math.max(nums[0], nums[1]);
+  if (target < lo) return lo;
+  if (target > hi) return hi;
+  return target; // внутри диапазона — идеально
 }
