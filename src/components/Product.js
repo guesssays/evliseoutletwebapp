@@ -132,41 +132,45 @@ export function renderProduct({id}){
       }
 
       /* ====== СВОТЧИ И РАЗМЕРЫ ====== */
-      .p-options{display:grid;grid-template-columns:1fr;gap:16px;margin:14px 0;}
-      .opt-title{font-weight:800;margin:6px 0 8px;}
-      .sizes,.colors{display:flex;flex-wrap:wrap;gap:10px;}
+.p-options{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:16px;
+  margin:14px 0;
+}
+.opt-title{ font-weight:800; margin:6px 0 8px; }
+.sizes,.colors{ display:flex; flex-wrap:wrap; gap:10px; }
 
-      /* — Цвета — */
-      .sw{
-        position:relative;
-        width:38px; height:38px;
-        border-radius:999px;
-        border:2px solid rgba(15,23,42,.18);
-        box-shadow: inset 0 0 0 2px rgba(255,255,255,.7);
-        outline:none; cursor:pointer;
-        transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, outline-color .12s ease;
-      }
-      @media (prefers-color-scheme:dark){
-        .sw{
-          border-color: rgba(255,255,255,.22);
-          box-shadow: inset 0 0 0 2px rgba(0,0,0,.55);
-        }
-      }
-      .sw:focus-visible{ outline:3px solid #0ea5e9; outline-offset:2px; }
-      .sw:hover{ transform:translateY(-1px); }
+/* — Цвета — */
+.sw{
+  position:relative;
+  width:38px; height:38px;
+  border-radius:999px;
+  border:2px solid rgba(15,23,42,.18);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.7);
+  outline:none; cursor:pointer;
+  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, outline-color .12s ease;
+}
+@media (prefers-color-scheme:dark){
+  .sw{
+    border-color: rgba(255,255,255,.22);
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,.55);
+  }
+}
+.sw:focus-visible{ outline:3px solid #0ea5e9; outline-offset:2px; }
+.sw:hover{ transform:translateY(-1px); }
 
-      /* Активный цвет — ТОЛЬКО обводка + лёгкая анимация (без внутреннего бейджа) */
-      @keyframes swPulse { from{ transform:scale(1.04); } to{ transform:scale(1); } }
-      .sw.active{
-        border-color:#0ea5e9 !important;
-        box-shadow:
-          inset 0 0 0 2px rgba(255,255,255,.85),
-          0 0 0 3px rgba(14,165,233,.28);
-        animation: swPulse .25s ease;
-      }
-      /* УБРАН pseudo-элемент ::after (маленькая «пимпочка») */
-/* ===== ОПЦИИ ТОВАРА: РАЗМЕРЫ (как в той версии) ===== */
-.sizes{ display:flex; gap:10px; flex-wrap:wrap; }
+/* Активный цвет — только усиленная обводка + лёгкая анимация */
+@keyframes swPulse { from{ transform:scale(1.04); } to{ transform:scale(1); } }
+.sw.active{
+  border-color:#0ea5e9 !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,.85),
+    0 0 0 3px rgba(14,165,233,.28);
+  animation: swPulse .25s ease;
+}
+
+/* — Размеры — */
 .size{
   padding:10px 14px;
   border:1px solid var(--stroke);
@@ -175,6 +179,7 @@ export function renderProduct({id}){
   font-weight:700;
   cursor:pointer;
 }
+.size:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
 .size.active{
   background:#121111;
   color:#fff;
