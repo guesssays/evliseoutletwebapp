@@ -42,6 +42,30 @@ export function renderProduct({id}){
 
   const v=document.getElementById('view');
   v.innerHTML = `
+    <!-- Локальные стили для бейджа кэшбека -->
+    <style>
+      .p-cashback{
+        display:flex; align-items:flex-start; gap:10px;
+        margin:6px 0 8px; padding:10px;
+        border-radius:12px; background:var(--card,rgba(0,0,0,.04));
+        max-width:100%; overflow:hidden;
+      }
+      .p-cashback i{
+        flex:0 0 auto; width:20px; height:20px; line-height:0;
+      }
+      .p-cb-text{ flex:1 1 auto; min-width:0; }
+      .p-cb-text .cart-title{
+        font-size:15px; line-height:1.25;
+        word-break:break-word; overflow-wrap:anywhere;
+        max-width:100%;
+      }
+      .p-cb-text .muted.mini{
+        white-space:normal; word-break:break-word; overflow-wrap:anywhere;
+      }
+      /* на очень узких экранах позволяем переносить число баллов */
+      .p-cb-text b{ word-break:break-all; }
+    </style>
+
     <!-- Фикс-хедер карточки (показывается при прокрутке) -->
     <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
       <button id="btnFixBack" class="fixbtn" aria-label="Назад"><i data-lucide="arrow-left"></i></button>
@@ -77,9 +101,9 @@ export function renderProduct({id}){
         <div class="p-title">${escapeHtml(p.title)}</div>
 
         <!-- Кэшбек-виджет -->
-        <div class="p-cashback" style="display:flex;align-items:center;gap:8px;margin:6px 0 8px;padding:8px;border-radius:12px;background:var(--card,rgba(0,0,0,.04))">
+        <div class="p-cashback">
           <i data-lucide="coins" aria-hidden="true"></i>
-          <div>
+          <div class="p-cb-text">
             ${cashbackSnippetHTML(p.price)}
             <div class="muted mini">1 балл = 1 сум · Начисление через 24ч</div>
           </div>
@@ -307,7 +331,7 @@ function cashbackSnippetHTML(price){
   // Для нереферала — просто сумма баллов без упоминания x2.
   // Для реферала — сразу указываем x2 и что действует только на первый заказ.
   const tail = boost ? ' (x2 кэшбек — только на первый заказ)' : '';
-  return `<div class="cart-title" style="font-size:15px">
+  return `<div class="cart-title">
     За покупку вы получите <b>${pts}</b> баллов${tail}.
   </div>`;
 }
