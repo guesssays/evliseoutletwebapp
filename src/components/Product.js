@@ -5,8 +5,8 @@ import { addToCart, removeLineFromCart, isInCart } from './cartActions.js';
 import { getUID } from '../core/state.js';
 
 /* ====== КОНСТАНТЫ КЭШБЕКА/РЕФЕРАЛОВ (должны совпадать с корзиной/аккаунтом) ====== */
-const CASHBACK_RATE_BASE = 0.05;      // 5%
-const CASHBACK_RATE_BOOST = 0.10;     // 10% для 1-го заказа по реф-ссылке
+const CASHBACK_RATE_BASE  = 0.05; // 5%
+const CASHBACK_RATE_BOOST = 0.10; // 10% для 1-го заказа по реф-ссылке
 
 /* ——— хранилище пер-пользовательских данных ——— */
 function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
@@ -16,7 +16,7 @@ function hasFirstOrderBoost(){
   try{
     const ref = JSON.parse(localStorage.getItem(k('ref_profile')) || '{}');
     const firstDone = !!ref.firstOrderDone;
-    const boost = !!ref.firstOrderBoost;        // установлен в main.js при захвате ?ref=...
+    const boost = !!ref.firstOrderBoost; // устанавливается при захвате реф-ссылки
     return boost && !firstDone;
   }catch{ return false; }
 }
@@ -44,13 +44,13 @@ export function renderProduct({id}){
   v.innerHTML = `
     <!-- Фикс-хедер карточки (показывается при прокрутке) -->
     <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
-     <button id="btnFixBack" class="fixbtn" aria-label="Назад"><i data-lucide="arrow-left"></i></button>
-     <div class="fix-title">
-       <div class="fix-title__name">${escapeHtml(p.title)}</div>
-      <div class="fix-title__price">${priceFmt(p.price)}</div>
+      <button id="btnFixBack" class="fixbtn" aria-label="Назад"><i data-lucide="arrow-left"></i></button>
+      <div class="fix-title">
+        <div class="fix-title__name">${escapeHtml(p.title)}</div>
+        <div class="fix-title__price">${priceFmt(p.price)}</div>
+      </div>
+      <button id="btnFixFav" class="fixbtn ${favActive?'active':''}" aria-pressed="${favActive?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
     </div>
-     <button id="btnFixFav" class="fixbtn ${favActive?'active':''}" aria-pressed="${favActive?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
-   </div>
 
     <div class="product">
       <!-- ГАЛЕРЕЯ -->
@@ -300,11 +300,15 @@ export function renderProduct({id}){
 
 /* ===== МАЛЕНЬКИЙ ВИДЖЕТ «СКОЛЬКО БАЛЛОВ» ===== */
 function cashbackSnippetHTML(price){
-  const boost = hasFirstOrderBoost();
+  const boost = hasFirstOrderBoost(); // true только для реферала до первого заказа
   const rate = boost ? CASHBACK_RATE_BOOST : CASHBACK_RATE_BASE;
   const pts  = Math.floor((Number(price)||0) * rate);
+
+  // Для нереферала — просто сумма баллов без упоминания x2.
+  // Для реферала — сразу указываем x2 и что действует только на первый заказ.
+  const tail = boost ? ' (x2 кэшбек — только на первый заказ)' : '';
   return `<div class="cart-title" style="font-size:15px">
-    За покупку вы получите <b>${pts}</b> баллов${boost ? ' (x2 по реф-ссылке на 1-й заказ)' : ''}.
+    За покупку вы получите <b>${pts}</b> баллов${tail}.
   </div>`;
 }
 
