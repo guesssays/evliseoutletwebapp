@@ -165,30 +165,28 @@ export function renderProduct({id}){
         animation: swPulse .25s ease;
       }
       /* УБРАН pseudo-элемент ::after (маленькая «пимпочка») */
+/* — Размеры (как было изначально) — */
+.size{
+  min-width:44px;
+  height:36px;
+  border-radius:10px;
+  border:1px solid rgba(15,23,42,.18);
+  background:#fff;           /* невыбранный с заливкой */
+  color:#0f172a;
+  font-weight:800;
+}
+.size.active{
+  border-color:#0ea5e9;      /* выбранный — только обводка/свечение */
+  box-shadow:0 0 0 3px rgba(14,165,233,.25);
+}
+@media (prefers-color-scheme:dark){
+  .size{
+    background:#111827;      /* дарк-тема: невыбранный с заливкой */
+    color:#fff;
+    border-color:rgba(255,255,255,.18);
+  }
+}
 
-      /* — Размеры — */
-      .size{
-        min-width:44px;height:36px;border-radius:10px;
-        border:1px solid rgba(15,23,42,.18);
-        background:transparent;           /* ⬅ по умолчанию — без заливки */
-        color:#0f172a;
-        font-weight:800;
-        transition:background .12s ease, color .12s ease, box-shadow .12s ease, border-color .12s ease, transform .12s ease;
-      }
-      .size:hover{ transform:translateY(-1px); }
-      .size.active{
-        background:#0ea5e9;              /* ⬅ выбранный — залит акцентом */
-        color:#fff;
-        border-color:#0ea5e9;
-        box-shadow:0 0 0 3px rgba(14,165,233,.25);
-      }
-      @media (prefers-color-scheme:dark){
-        .size{
-          color:#fff;
-          border-color:rgba(255,255,255,.18);
-          background:transparent;         /* дарк: тоже прозрачный по умолчанию */
-        }
-      }
     </style>
 
     <!-- Фикс-хедер карточки -->
