@@ -42,9 +42,14 @@ export function renderProduct({id}){
   const images = Array.isArray(p.images) && p.images.length ? p.images : [p.images?.[0] || ''];
   const realPhotos = Array.isArray(p.realPhotos) ? p.realPhotos : [];
 
+  // Подбор «Похожие» по той же подкатегории
+  const related = state.products
+    .filter(x => x.categoryId === p.categoryId && String(x.id) !== String(p.id))
+    .slice(0, 8);
+
   const v=document.getElementById('view');
   v.innerHTML = `
-    <!-- Локальные стили (бейдж кэшбека и блок доставки) -->
+    <!-- Локальные стили (бейдж кэшбека, блок доставки и «Похожие») -->
     <style>
       /* ===== Кэшбек-бейдж ===== */
       .p-cashback{
@@ -98,7 +103,7 @@ export function renderProduct({id}){
       }
       .p-delivery svg{ width:18px; height:18px; stroke:currentColor; opacity:1; }
       .p-delivery__title{ font-weight:800; margin-right:4px; color:#0b1220; }
-      .p-delivery .muted{ color:#0b1220; opacity:1; font-weight:800; } /* убрали полупрозрачность */
+      .p-delivery .muted{ color:#0b1220; opacity:1; font-weight:800; } /* убрана полупрозрачность */
 
       @media (prefers-color-scheme: dark){
         .p-delivery{
@@ -108,6 +113,62 @@ export function renderProduct({id}){
         }
         .p-delivery__title{ color:#ffffff; }
         .p-delivery .muted{ color:#ffffff; opacity:1; }
+      }
+
+      /* ===== Похожие товары ===== */
+      .rel-sec-title{
+        margin:18px 4px 8px;
+        font-weight:800;
+        font-size: clamp(16px, 4.2vw, 18px);
+      }
+      .rel-grid{
+        display:grid; gap:10px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      @media (min-width:480px){
+        .rel-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      }
+      @media (min-width:740px){
+        .rel-grid{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      }
+      .rel-card{
+        display:block;
+        background: var(--card-bg, #fff);
+        border:1px solid rgba(15,23,42,.08);
+        border-radius:12px;
+        overflow:hidden;
+        text-decoration:none;
+        color:inherit;
+        transition: transform .12s ease, box-shadow .12s ease;
+      }
+      .rel-card:active{ transform: translateY(1px) scale(.997); }
+      @media (hover:hover){
+        .rel-card:hover{ box-shadow: 0 6px 18px rgba(15,23,42,.08); }
+      }
+      .rel-thumb{
+        position:relative; width:100%;
+        aspect-ratio: 1 / 1;
+        background:#f3f4f6;
+        overflow:hidden;
+      }
+      .rel-thumb img{
+        width:100%; height:100%; object-fit:cover; display:block;
+      }
+      .rel-meta{
+        display:grid; gap:4px;
+        padding:8px;
+      }
+      .rel-title{
+        font-size:13px; line-height:1.25;
+        font-weight:700;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+      }
+      .rel-price{
+        font-size:14px; font-weight:800;
+      }
+      @media (prefers-color-scheme: dark){
+        .rel-card{ background:#0b1220; border-color:rgba(255,255,255,.12); }
+        .rel-thumb{ background:#0f172a; }
       }
     </style>
 
@@ -197,6 +258,24 @@ export function renderProduct({id}){
               <img loading="lazy" class="zoomable" src="${src}" alt="Реальное фото ${i+1}">
             </div>
           `).join('')}
+        </div>` : ''}
+
+        ${related.length ? `
+        <div class="rel-sec">
+          <div class="rel-sec-title">Похожие</div>
+          <div class="rel-grid" id="relatedGrid">
+            ${related.map(rp => `
+              <a class="rel-card" href="#/product/${rp.id}" aria-label="${escapeHtml(rp.title)}">
+                <div class="rel-thumb">
+                  <img loading="lazy" src="${(Array.isArray(rp.images) && rp.images[0]) ? rp.images[0] : ''}" alt="${escapeHtml(rp.title)}">
+                </div>
+                <div class="rel-meta">
+                  <div class="rel-title">${escapeHtml(rp.title)}</div>
+                  <div class="rel-price">${priceFmt(rp.price)}</div>
+                </div>
+              </a>
+            `).join('')}
+          </div>
         </div>` : ''}
 
       </div>
