@@ -42,11 +42,11 @@ export function renderProduct({id}){
 
   const v=document.getElementById('view');
   v.innerHTML = `
-    <!-- Локальные стили для компактного кэшбек-бейджа -->
+    <!-- Локальные стили (бейдж кэшбека) -->
     <style>
       .p-cashback{
         display:flex; align-items:center; gap:10px;
-        margin:8px 0; padding:10px 12px;
+        margin:8px 0; padding:12px 14px;
         border-radius:14px;
         background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
         color:#fff;
@@ -57,9 +57,9 @@ export function renderProduct({id}){
       }
       .p-cb-line{
         display:flex; align-items:center; gap:8px;
-        white-space:nowrap; /* ни переносов, ни троеточий */
+        white-space:nowrap; /* без переносов и обрезания */
         overflow:visible;
-        font-weight:700;
+        font-weight:800;
         font-size: clamp(12px, 3.6vw, 16px);
         line-height:1.2;
       }
@@ -79,7 +79,8 @@ export function renderProduct({id}){
         background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.28);
         transition:filter .15s ease;
       }
-      .p-cb-help i{ width:16px; height:16px; color:#fff; opacity:.95; }
+      /* Lucide заменяет <i> на <svg>, поэтому красим именно svg-иконку */
+      .p-cb-help svg{ width:16px; height:16px; stroke:#fff; }
       @media (hover:hover){
         .p-cb-help:hover{ filter:brightness(1.05); }
       }
@@ -128,15 +129,17 @@ export function renderProduct({id}){
           </button>
         </div>
 
-        <!-- Срок доставки -->
+        <!-- ВМЕСТО ОПИСАНИЯ: СРОК ДОСТАВКИ (СТАРЫЙ СТИЛЬ) -->
         <div class="p-delivery" style="display:flex;align-items:center;gap:8px;margin:6px 0 8px">
           <i data-lucide="clock"></i>
           <span><b>Срок доставки:</b> 14–16 дней</span>
         </div>
 
+        <!-- СТАРЫЕ СТРОКИ ХАРАКТЕРИСТИК -->
         <div class="specs"><b>Категория:</b> ${escapeHtml(findCategoryBySlug(p.categoryId)?.name || '—')}</div>
         <div class="specs"><b>Материал:</b> ${p.material ? escapeHtml(p.material) : '—'}</div>
 
+        <!-- СТАРЫЕ ОПЦИИ (РАЗМЕР/ЦВЕТ) -->
         <div class="p-options">
           ${(p.sizes?.length||0) ? `
           <div>
@@ -344,18 +347,16 @@ export function renderProduct({id}){
   }
 }
 
-/* ===== МАЛЕНЬКИЙ БЕЙДЖ «СКОЛЬКО БАЛЛОВ» ===== */
+/* ===== Короткий бейдж: «Кэшбек + N баллов» ===== */
 function cashbackSnippetHTML(price){
   const boost = hasFirstOrderBoost();
   const rate = boost ? CASHBACK_RATE_BOOST : CASHBACK_RATE_BASE;
   const pts  = Math.floor((Number(price)||0) * rate);
 
-  // Максимально коротко и понятно — «Кэшбек +N»
-  // + компактный ярлык x2, если действует буст
   return `
     <div class="p-cb-line">
       <span>Кэшбек</span>
-      +<span class="p-cb-pts">${pts}</span>
+      +<span class="p-cb-pts">${pts}</span>&nbsp;баллов
       ${boost ? `<span class="p-cb-x2" title="x2 на первый заказ">x2</span>` : ``}
     </div>`;
 }
@@ -387,11 +388,11 @@ function showCashbackHelpModal(){
       </div>
       <div class="cb-row">
         <i data-lucide="badge-check"></i>
-        <div><b>Как использовать.</b> На этапе оформления можно оплатить часть заказа баллами. Ваш баланс и лимит видны в корзине.</div>
+        <div><b>Как использовать.</b> На этапе оформления можно оплатить часть заказа баллами. Баланс и лимит — в корзине.</div>
       </div>
       <div class="cb-row">
         <i data-lucide="zap"></i>
-        <div class="muted">Если вы пришли по реф-ссылке, на <b>первый заказ действует x2</b>.</div>
+        <div class="muted">Если вы пришли по реф-ссылке, на <b>первый заказ — x2</b>.</div>
       </div>
     </div>
   `;
