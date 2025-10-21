@@ -171,6 +171,55 @@ async function syncMyNotifications(){
   }catch{}
 }
 
+/* ---- Онбординг-уведомления для новых юзеров (один раз на UID) ---- */
+async function ensureOnboardingNotifsOnce(){
+  const uid = getUID?.();
+  if (!uid) return;
+
+  const FLAG = `onb_seeded__${uid}`;
+  if (localStorage.getItem(FLAG) === '1') return;
+
+  // если уже есть уведомления — ничего не делаем
+  if ((getNotifications()?.length || 0) > 0) {
+    localStorage.setItem(FLAG, '1');
+    return;
+  }
+
+  const now = Date.now();
+  const items = [
+    {
+      id: `welcome-${now}`,
+      icon: 'sparkles',
+      title: 'Добро пожаловать в EVLISE',
+      sub: 'Сохраняйте понравившееся в избранное и оформляйте в 2 клика.',
+      ts: now,
+      read: false
+    },
+    {
+      id: `feat-tracking-${now}`,
+      icon: 'package',
+      title: 'Отслеживание заказов',
+      sub: 'Этапы: подтверждение, сборка, доставка — всё в одном месте.',
+      ts: now + 1000,
+      read: false
+    },
+    {
+      id: `feat-cashback-${now}`,
+      icon: 'wallet',
+      title: 'Кэшбек баллами',
+      sub: 'Оплачивайте часть следующих заказов накопленными баллами.',
+      ts: now + 2000,
+      read: false
+    }
+  ];
+
+  try {
+    await Promise.all(items.map(n => serverPushFor(uid, n)));
+  } finally {
+    localStorage.setItem(FLAG, '1');
+  }
+}
+
 /* ---------- ранняя фиксация UID ---------- */
 (function initUserIdentityEarly(){
   const tg = window.Telegram?.WebApp;
@@ -392,67 +441,6 @@ document.addEventListener('click', (e)=>{
   if (!btn) return;
   location.hash = '#/notifications';
 });
-
-function seedNotificationsOnce(){
-  try{
-    if (getNotifications().length) return;
-
-    const now = Date.now();
-    const seed = [
-      {
-        id: 'feat-tracking',
-        icon: 'package',
-        title: 'Новинка: отслеживание заказов',
-        sub: 'Следите за этапами: подтверждение, сборка, доставка — всё в одном месте.',
-        ts: now - 1000 * 60 * 60 * 6,
-        read: false
-      },
-      {
-        id: 'feat-cashback',
-        icon: 'wallet',
-        title: 'Кэшбек за каждую покупку',
-        sub: 'Начисляем баллы — ими можно оплачивать следующие заказы.',
-        ts: now - 1000 * 60 * 60 * 5,
-        read: false
-      },
-      {
-        id: 'feat-referrals',
-        icon: 'users',
-        title: 'Реферальная программа',
-        sub: 'Приглашайте друзей, делитесь ссылкой и получайте бонусы.',
-        ts: now - 1000 * 60 * 60 * 4,
-        read: false
-      },
-      {
-        id: 'feat-size-helper',
-        icon: 'ruler',
-        title: 'Умный подбор размера',
-        sub: 'Подскажет подходящую посадку по вашим параметрам.',
-        ts: now - 1000 * 60 * 60 * 3,
-        read: false
-      },
-      {
-        id: 'feat-favorites',
-        icon: 'heart',
-        title: 'Избранное',
-        sub: 'Сохраняйте понравившиеся модели, чтобы вернуться к ним позже.',
-        ts: now - 1000 * 60 * 60 * 2,
-        read: false
-      },
-      {
-        id: 'feat-real-photos',
-        icon: 'image',
-        title: 'Реальные фотографии вещей',
-        sub: 'Без сюрпризов: смотрите, как товары выглядят вживую.',
-        ts: now - 1000 * 60 * 45,
-        read: false
-      }
-    ];
-
-    setNotifications(seed);
-  }catch{}
-}
-
 
 /* ---------- фикс-хедер товара: скрытие вне карточки ---------- */
 function hideProductHeader(){
@@ -746,11 +734,14 @@ async function init(){
 
   window.lucide && lucide.createIcons?.();
 
-  seedNotificationsOnce();
+  // онбординг-уведомления только для новых пользователей
+  await ensureOnboardingNotifsOnce();
+
+  // подтянуть (в т.ч. только что добавленные) и обновить бейдж
+  await syncMyNotifications();
   updateNotifBadge();
 
-  // синк уведомлений сразу и по интервалу
-  syncMyNotifications();
+  // синк уведомлений по интервалу + дозревание кешбэка
   const NOTIF_POLL_MS = 30000;
   setInterval(()=>{ syncMyNotifications(); settleMatured(); }, NOTIF_POLL_MS);
 
