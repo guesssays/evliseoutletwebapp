@@ -125,6 +125,19 @@ export function renderProduct({id}){
         .related-wrap{background:linear-gradient(0deg,rgba(255,255,255,.04),rgba(255,255,255,.04));border-top-color:rgba(255,255,255,.14);}
       }
       .grid.related-grid{margin-top:6px;}
+
+      /* ===== Галерея: убрать скругление нижних углов у контейнера фото ===== */
+      .p-hero .gallery,
+      .p-hero .gallery-main{
+        border-bottom-left-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+      }
+      /* Сохраняем верхние скругления у основной обёртки галереи */
+      .p-hero .gallery{
+        border-top-left-radius: 14px;
+        border-top-right-radius: 14px;
+        overflow: hidden; /* чтобы углы применялись к содержимому */
+      }
     </style>
 
     <!-- Фикс-хедер карточки -->
