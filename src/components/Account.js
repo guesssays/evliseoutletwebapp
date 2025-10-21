@@ -3,6 +3,7 @@ import { state, persistAddresses } from '../core/state.js';
 import { canAccessAdmin } from '../core/auth.js';
 import { getUID } from '../core/state.js';
 import { makeReferralLink } from '../core/loyalty.js';
+import { notifyCashbackMatured } from '../core/botNotify.js'; // ✅ бот-уведомление о дозревшем кэшбеке
 
 const OP_CHAT_URL = 'https://t.me/evliseorder';
 
@@ -22,19 +23,40 @@ function readWallet(){
   }catch{ return { available:0, pending:[], history:[] }; }
 }
 function writeWallet(w){ localStorage.setItem(k('points_wallet'), JSON.stringify(w||{available:0,pending:[],history:[]})); }
+
+/** Перенос дозревших баллов + уведомления (in-app + бот) */
 function settleMatured(){
   const w = readWallet();
   const now = Date.now();
   let changed=false;
   const keep=[];
+  let maturedSum = 0;
   for (const p of w.pending){
     if ((p.tsUnlock||0)<=now){
-      w.available += Math.max(0, Number(p.pts)||0);
+      const add = Math.max(0, Number(p.pts)||0);
+      w.available += add;
+      maturedSum += add;
       w.history.unshift({ ts: now, type:'accrue', pts: p.pts|0, reason: p.reason||'Кэшбек', orderId: p.orderId||null });
       changed=true;
     }else keep.push(p);
   }
-  if (changed){ w.pending = keep; writeWallet(w); }
+  if (changed){
+    w.pending = keep;
+    writeWallet(w);
+    // In-app уведомление
+    try{
+      const uid = getUID?.() || 'guest';
+      postAppNotif(uid, {
+        icon: 'coins',
+        title: 'Кэшбек доступен для оплаты',
+        sub: `+${maturedSum.toLocaleString('ru-RU')} баллов — можно использовать при оформлении заказа.`,
+      });
+    }catch{}
+    // Бот-уведомление с упором на действие
+    try{
+      notifyCashbackMatured(getUID?.(), { text: `✅ Кэшбек доступен: +${maturedSum.toLocaleString('ru-RU')} баллов. Используйте их при оплате.` });
+    }catch{}
+  }
   return w;
 }
 
@@ -42,7 +64,7 @@ function settleMatured(){
 function readRefProfile(){ try{ return JSON.parse(localStorage.getItem(k('ref_profile')) || '{}'); }catch{ return {}; } }
 function writeRefProfile(v){ localStorage.setItem(k('ref_profile'), JSON.stringify(v||{})); }
 
-/* — реф-ссылка (теперь T.ME deep link) — */
+/* — реф-ссылка (t.me deeplink) — */
 function getReferralLink(){
   return makeReferralLink();
 }
@@ -76,7 +98,7 @@ export function renderAccount(){
   const hasBoost = !!ref.firstOrderBoost && !ref.firstOrderDone;
 
   v.innerHTML = `
-    <section class="section">
+    <section class="section" style="padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));">
       <div class="section-title">Личный кабинет</div>
       <div class="account-card">
         <div class="avatar">${(u?.first_name||u?.username||'Г').toString().slice(0,1)}</div>
@@ -128,6 +150,7 @@ export function renderAccount(){
     openExternal(OP_CHAT_URL);
   });
 
+  // на случай мгновенного перехода по ссылкам из аккаунта — ещё раз фиксируем вкладку
   document.querySelectorAll('.menu a').forEach(a=>{
     a.addEventListener('click', ()=> window.setTabbarMenu?.('account'));
   });
@@ -207,7 +230,7 @@ export function renderReferrals(){
   const monthCount = arr.filter(x => (x.month||'')===monthKey).length;
 
   v.innerHTML = `
-    <section class="section">
+    <section class="section" style="padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));">
       <div class="section-title" style="display:flex;align-items:center;gap:10px">
         <button class="square-btn" id="backAcc"><i data-lucide="chevron-left"></i></button>
         Мои рефералы
@@ -215,7 +238,18 @@ export function renderReferrals(){
 
       <div class="ref-card" style="padding:10px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:12px;background:var(--card,rgba(0,0,0,.03));display:grid;gap:8px">
         <div class="muted mini">Ваша реф-ссылка</div>
-        <div class="input" style="overflow:auto;user-select:all">${escapeHtml(link)}</div>
+
+        <div class="input" style="display:flex;gap:8px;align-items:stretch;flex-wrap:wrap">
+          <div id="refLinkBox" class="input" style="flex:1 1 220px;min-width:0;max-width:100%;overflow:auto;user-select:all;padding:8px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:10px;background:var(--bg,#fff)">
+            ${escapeHtml(link)}
+          </div>
+          <button id="copyRef" class="pill" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
+            <i data-lucide="copy"></i><span>Скопировать</span>
+          </button>
+        </div>
+
+        <div id="copyHint" class="muted mini" style="display:none">Скопировано!</div>
+
         <div class="muted mini">Первый заказ по этой ссылке даёт рефералу x2 кэшбек, а вам — 5% с каждого его заказа. Лимит — не более 10 новых рефералов в месяц.</div>
         <div class="muted mini">В этом месяце новых рефералов: <b>${monthCount}</b> / 10</div>
       </div>
@@ -236,7 +270,45 @@ export function renderReferrals(){
     </section>
   `;
   window.lucide?.createIcons && lucide.createIcons();
+
   document.getElementById('backAcc')?.addEventListener('click', ()=> history.back());
+
+  // copy button logic
+  const btn = document.getElementById('copyRef');
+  const hint = document.getElementById('copyHint');
+  btn?.addEventListener('click', async ()=>{
+    const text = String(link);
+    let ok = false;
+    try{
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    }catch{
+      try{
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position='fixed'; ta.style.left='-9999px';
+        document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+        ok = true;
+      }catch{}
+    }
+
+    if (ok){
+      // краткий фидбек
+      const icon = btn.querySelector('i[data-lucide]');
+      const label = btn.querySelector('span');
+      const prev = { label: label?.textContent || 'Скопировать', icon: icon?.getAttribute('data-lucide') || 'copy' };
+      if (label) label.textContent = 'Скопировано!';
+      if (icon){ icon.setAttribute('data-lucide','check'); window.lucide?.createIcons && lucide.createIcons(); }
+      if (hint){ hint.style.display = 'block'; }
+      setTimeout(()=>{
+        if (label) label.textContent = prev.label;
+        if (icon){ icon.setAttribute('data-lucide', prev.icon); window.lucide?.createIcons && lucide.createIcons(); }
+        if (hint){ hint.style.display = 'none'; }
+      }, 1500);
+    }
+  });
 }
 
 export function renderAddresses(){
@@ -414,4 +486,15 @@ function openExternal(url){
 
 function escapeHtml(s=''){
   return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/** Локальный помощник: создать in-app уведомление для uid */
+async function postAppNotif(uid, { icon='bell', title='', sub='' } = {}){
+  try{
+    await fetch('/.netlify/functions/notifs', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ op:'add', uid, notif:{ icon, title, sub } })
+    });
+  }catch{}
 }

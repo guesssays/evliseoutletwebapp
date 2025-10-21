@@ -1,9 +1,15 @@
+// netlify/functions/notify.js
 // Serverless-функция Netlify: принимает событие от фронта и шлёт "тизер" в Telegram бота
 // ENV:
 //   TG_BOT_TOKEN     — токен бота (без "bot" префикса)        [обязателен для отправки]
 //   ADMIN_CHAT_ID    — chat_id(ы) администратора(ов), через запятую
 //   WEBAPP_URL       — базовый URL приложения для ссылок       [опционально]
+//
 //   ALLOWED_ORIGINS  — список origin'ов через запятую          [опционально: '*', точные origin, '*.domain.com']
+// Types (type):
+//   orderPlaced | orderAccepted | statusChanged | orderCanceled
+//   cartReminder | favReminder
+//   referralJoined | referralOrderCashback | cashbackMatured   ← ДОБАВЛЕНО
 
 function parseAllowed() {
   const raw = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -48,7 +54,7 @@ function buildCorsHeaders(origin) {
   };
 }
 
-async function sendTgMessage(token, chatId, text, btn){
+async function sendTgMessage(token, chatId, text, kb){
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -57,7 +63,7 @@ async function sendTgMessage(token, chatId, text, btn){
       text,
       parse_mode: 'HTML',
       disable_web_page_preview: true,
-      ...(btn ? { reply_markup: { inline_keyboard: [btn] } } : {})
+      ...(kb ? { reply_markup: { inline_keyboard: kb } } : {})
     })
   });
   const data = await res.json().catch(() => ({}));
@@ -96,15 +102,27 @@ export async function handler(event) {
       .map(s => s.trim())
       .filter(Boolean);
 
-    // В обычных (служебных) кейсах можно слать админам. В маркетинговых — нет смысла.
+    // «маркетинговые» пинги, которые не шлём админам
     const isMarketing = (type === 'cartReminder' || type === 'favReminder');
 
     const safeTitle = (t)=> (t ? String(t).slice(0,140) : '').trim();
     const goods = safeTitle(title) || 'товар';
 
-    // Всегда ведём в «Мои заказы»
-    const link = webappUrl ? `${webappUrl}#/orders` : undefined;
-    const btn = link ? [{ text: 'Мои заказы', web_app: { url: link } }] : null;
+    // Кнопки по типам
+    const kbForType = (t)=>{
+      if (!webappUrl) return null;
+      if (t === 'cashbackMatured') {
+        return [[{ text: 'Перейти к оплате', web_app: { url: `${webappUrl}#/cart` } }]];
+      }
+      if (t === 'referralJoined') {
+        return [[{ text: 'Мои рефералы', web_app: { url: `${webappUrl}#/account/referrals` } }]];
+      }
+      if (t === 'referralOrderCashback') {
+        return [[{ text: 'Мой кэшбек', web_app: { url: `${webappUrl}#/account/cashback` } }]];
+      }
+      // дефолт — «Мои заказы»
+      return [[{ text: 'Мои заказы', web_app: { url: `${webappUrl}#/orders` } }]];
+    };
 
     const hint = 'Откройте приложение, чтобы посмотреть подробности.';
     const about = orderId
@@ -116,26 +134,31 @@ export async function handler(event) {
       finalText = text.trim();
     } else {
       switch (type) {
-        case 'orderPlaced':    finalText = `Оформлен ${about} ${hint}`; break;
-        case 'orderAccepted':  finalText = `Подтверждён ${about} ${hint}`; break;
-        case 'statusChanged':  finalText = `Статус обновлён. ${about} ${hint}`; break;
-        case 'orderCanceled':  finalText = `Отменён ${about} ${hint}`; break;
-        case 'cartReminder':   finalText = `Вы оставили товары в корзине. ${hint}`; break;
-        case 'favReminder':    finalText = `У вас есть товары в избранном. ${hint}`; break;
-        default:               finalText = `${about} ${hint}`;
+        case 'orderPlaced':             finalText = `Оформлен ${about} ${hint}`; break;
+        case 'orderAccepted':           finalText = `Подтверждён ${about} ${hint}`; break;
+        case 'statusChanged':           finalText = `Статус обновлён. ${about} ${hint}`; break;
+        case 'orderCanceled':           finalText = `Отменён ${about} ${hint}`; break;
+        case 'cartReminder':            finalText = `Вы оставили товары в корзине. ${hint}`; break;
+        case 'favReminder':             finalText = `У вас есть товары в избранном. ${hint}`; break;
+        case 'referralJoined':          finalText = `🎉 Новый реферал! Пользователь зарегистрировался по вашей ссылке. ${hint}`; break;
+        case 'referralOrderCashback':   finalText = `💸 Заказ реферала: начислено 5% кэшбека (ожидает 24ч). ${hint}`; break;
+        case 'cashbackMatured':         finalText = `✅ Кэшбек доступен для оплаты! Используйте баллы при оформлении заказа.`; break;
+        default:                        finalText = `${about} ${hint}`;
       }
     }
 
+    const kb = kbForType(type);
+
     // 1) Если указан clientChatId — отправляем только клиенту
     if (clientChatId) {
-      await sendTgMessage(token, String(clientChatId), finalText, btn);
+      await sendTgMessage(token, String(clientChatId), finalText, kb);
       return { statusCode: 200, body: JSON.stringify({ ok:true }), ...headers };
     }
 
     // 2) Иначе (служебные), рассылаем всем админам (если не маркетинг)
     if (!isMarketing && adminChatIds.length) {
       const results = await Promise.allSettled(
-        adminChatIds.map(id => sendTgMessage(token, String(id), finalText, btn))
+        adminChatIds.map(id => sendTgMessage(token, String(id), finalText, kb))
       );
       const anyOk = results.some(r => r.status === 'fulfilled');
       if (!anyOk) {

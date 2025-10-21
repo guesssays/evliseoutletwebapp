@@ -1,7 +1,7 @@
 // src/core/botNotify.js
 
 // Клиентский модуль, который пингует serverless-функцию
-// Вызывается из app.js при событиях оформления/подтверждения/смены статуса/отмены
+// Вызывается из app.js/Cart.js/Account.js и т.п.
 // + маркетинговые напоминания (корзина/избранное)
 
 const ENDPOINT = '/.netlify/functions/notify';
@@ -55,12 +55,23 @@ export const notifyOrderAccepted = (chatId, { orderId, title } = {}) => sendToBo
 export const notifyStatusChanged = (chatId, { orderId, title } = {}) => sendToBot('statusChanged', { orderId, chatId, title });
 export const notifyOrderCanceled = (chatId, { orderId, title } = {}) => sendToBot('orderCanceled', { orderId, chatId, title });
 
-/* Маркетинговые напоминания:
-   - Корзина: daily evening
-   - Избранное: every 3 days evening
-   Требуем явный или выведенный chat_id пользователя. */
+/* Маркетинговые напоминания */
 export const notifyCartReminder = (chatId, { text } = {}) =>
   sendToBot('cartReminder', { chatId, text }, { requireUserChat: true });
 
 export const notifyFavoritesReminder = (chatId, { text } = {}) =>
   sendToBot('favReminder', { chatId, text }, { requireUserChat: true });
+
+/* === ДОБАВЛЕНО: Рефералы / Кэшбек === */
+
+/** Новый реферал у инвайтера */
+export const notifyReferralJoined = (inviterChatId, { text } = {}) =>
+  sendToBot('referralJoined', { chatId: inviterChatId, text }, { requireUserChat: true });
+
+/** Заказ реферала → 5% начислены (pending) */
+export const notifyReferralOrderCashback = (inviterChatId, { text } = {}) =>
+  sendToBot('referralOrderCashback', { chatId: inviterChatId, text }, { requireUserChat: true });
+
+/** Кэшбек дозрел → доступен к оплате (CTA ведёт в корзину) */
+export const notifyCashbackMatured = (chatId, { text } = {}) =>
+  sendToBot('cashbackMatured', { chatId, text }, { requireUserChat: true });

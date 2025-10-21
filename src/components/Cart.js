@@ -6,6 +6,7 @@ import { addOrder } from '../core/orders.js';
 import { getPayRequisites } from '../core/payments.js';
 import { persistProfile } from '../core/state.js';
 import { getUID } from '../core/state.js';
+import { notifyReferralJoined, notifyReferralOrderCashback, notifyCashbackMatured } from '../core/botNotify.js'; // ✅ бот-уведомления
 
 /* ===================== КЭШБЕК / РЕФЕРАЛЫ: правила ===================== */
 const CASHBACK_RATE_BASE  = 0.05;   // 5%
@@ -33,14 +34,18 @@ function readWallet(){
 function writeWallet(w){
   localStorage.setItem(k('points_wallet'), JSON.stringify(w||{available:0,pending:[],history:[]}));
 }
+/** Перенос дозревших баллов + уведомления владельцу */
 function settleMatured(){
   const w = readWallet();
   const now = Date.now();
   let changed=false;
   const keep=[]; 
+  let maturedSum = 0;
   for (const p of w.pending){
     if ((p.tsUnlock||0) <= now){
-      w.available += Math.max(0, Number(p.pts)||0);
+      const add = Math.max(0, Number(p.pts)||0);
+      w.available += add;
+      maturedSum += add;
       w.history.unshift({ ts: now, type:'accrue', pts: p.pts|0, reason: p.reason||'Кэшбек', orderId: p.orderId||null });
       changed=true;
     }else keep.push(p);
@@ -48,6 +53,19 @@ function settleMatured(){
   if (changed){
     w.pending = keep;
     writeWallet(w);
+    // In-app
+    try{
+      const uid = getUID?.() || 'guest';
+      postAppNotif(uid, {
+        icon:'coins',
+        title:'Кэшбек доступен для оплаты',
+        sub:`+${maturedSum.toLocaleString('ru-RU')} баллов — используйте при оформлении заказа.`,
+      });
+    }catch{}
+    // Бот
+    try{
+      notifyCashbackMatured(getUID?.(), { text: `✅ Кэшбек доступен: +${maturedSum.toLocaleString('ru-RU')} баллов. Жмём «Перейти к оплате».` });
+    }catch{}
   }
   return w;
 }
@@ -85,7 +103,7 @@ function markFirstOrderDone(){
   writeRefProfile(rp);
 }
 
-/* ====== Начисление рефереру (инвайтеру) ====== */
+/* ====== Начисление рефереру (инвайтеру) + уведомления ====== */
 function addReferrerPendingIfAny(paidAmount, orderId){
   try{
     const me = getUID?.() || '';
@@ -93,32 +111,52 @@ function addReferrerPendingIfAny(paidAmount, orderId){
     const inviter = String(rp.inviter||'').trim();
     if (!inviter || inviter === String(me)) return;
 
-    // ограничения по антифроду: не начислять, если инвайтер превысил лимит уникальных рефералов/мес
-    // учёт ведётся в отдельном ключе на стороне инвайтера
+    // ограничения по антифроду: лимит уникальных рефералов/мес у инвайтера
     const monthKey = new Date().toISOString().slice(0,7); // YYYY-MM
     const INV_KEY = `ref_control__${inviter}`;
     let inv = {};
     try{ inv = JSON.parse(localStorage.getItem(INV_KEY) || '{}'); }catch{ inv={}; }
     const setKey = `set_${monthKey}`;
     const whoSet = new Set(Array.isArray(inv[setKey]) ? inv[setKey] : []);
+
+    // признак «новый реферал для этого месяца»
+    const isNewThisMonth = !whoSet.has(me);
+
     if (!whoSet.has(me) && whoSet.size >= 10){
-      // лимит новых рефералов/мес достигнут → показываем только базовый сценарий без награды инвайтеру
+      // лимит новых рефералов/мес достигнут → просто выходим, реферер не получает
       return;
     }
     // фиксируем «этот реферал учтён»
     if (!whoSet.has(me)){ whoSet.add(me); inv[setKey] = [...whoSet]; localStorage.setItem(INV_KEY, JSON.stringify(inv)); }
 
-    // собственно начисление
+    // уведомление инвайтеру о новом реферале (один раз/месяц на UID)
+    if (isNewThisMonth){
+      postAppNotif(inviter, {
+        icon:'users',
+        title:'Новый реферал',
+        sub:`Пользователь #${me} зарегистрировался по вашей ссылке.`,
+      });
+      notifyReferralJoined(inviter, { text: `🎉 Новый реферал: #${me}. Продолжаем копить кэшбек!` });
+    }
+
+    // собственно начисление 5% рефереру (pending 24ч)
     const pts = Math.floor(Number(paidAmount||0) * REFERRER_RATE);
     if (pts > 0){
-      // кошелёк инвайтера хранится под его UID → пишем напрямую
       const mk = (base)=> `${base}__${inviter}`;
       let w={available:0,pending:[],history:[]};
       try{ w = JSON.parse(localStorage.getItem(mk('points_wallet')) || '{}'); }catch{}
       if (!Array.isArray(w.pending)) w.pending=[];
       if (!Array.isArray(w.history)) w.history=[];
-      w.pending.push({ id:`r_${Date.now()}`, pts, reason:`Реферал #${getUID?.()||'-'}`, orderId, tsUnlock: Date.now()+POINTS_MATURITY_MS });
+      w.pending.push({ id:`r_${Date.now()}`, pts, reason:`Заказ реферала #${getUID?.()||'-'}`, orderId, tsUnlock: Date.now()+POINTS_MATURITY_MS });
       localStorage.setItem(mk('points_wallet'), JSON.stringify(w));
+
+      // уведомления: «начислено 5% (ожидает 24ч)»
+      postAppNotif(inviter, {
+        icon:'coins',
+        title:'Кэшбек от заказа реферала',
+        sub:`+${pts.toLocaleString('ru-RU')} баллов начислено (доступно через ~24ч).`,
+      });
+      notifyReferralOrderCashback(inviter, { text: `💸 Реферальный кэшбек: +${pts.toLocaleString('ru-RU')} баллов (доступно через ~24ч).` });
     }
   }catch{}
 }
@@ -126,7 +164,7 @@ function addReferrerPendingIfAny(paidAmount, orderId){
 const OP_CHAT_URL = 'https://t.me/evliseorder';
 
 export function renderCart(){
-  // при каждом входе в корзину пытаемся «дозреть» отложенные баллы
+  // при каждом входе в корзину пытаемся «дозреть» отложенные баллы (и уведомить)
   const wallet = settleMatured();
 
   const v = document.getElementById('view');
@@ -224,51 +262,55 @@ export function renderCart(){
       <div class="payrow"><span>Скидка баллами</span><b id="sumDisc">${priceFmt(0)}</b></div>
       <div class="payrow" style="border-top:1px dashed var(--border,rgba(0,0,0,.12));padding-top:6px"><span><b>К оплате</b></span><b id="sumPay">${priceFmt(totalRaw)}</b></div>
     </div>
+<!-- FAQ перед оформлением -->
+<div class="cart-faq" style="margin-top:14px">
+  <style>
+    .faq-card{border:1px solid var(--border,rgba(0,0,0,.12));border-radius:14px;padding:12px;background:var(--card,#f9f9f9);display:grid;gap:12px;max-width:100%}
+    .faq-row{display:grid;grid-template-columns:24px 1fr;column-gap:10px;align-items:start}
+    .faq-q{font-weight:600}
+    .faq-a{color:var(--muted,#6b7280);margin-top:4px;line-height:1.35}
+    .faq-cta{display:flex;justify-content:center;margin-top:10px}
+    .faq-cta .pill{display:inline-flex;align-items:center;gap:8px}
+    .faq-cta .pill i{width:16px;height:16px}
+  </style>
 
-        <!-- FAQ перед оформлением -->
-    <div class="cart-faq" style="margin-top:14px">
-      <style>
-        .faq-card{border:1px solid var(--border,rgba(0,0,0,.12));border-radius:14px;padding:12px;background:var(--card,#f9f9f9);display:grid;gap:12px;max-width:100%}
-        .faq-row{display:grid;grid-template-columns:24px 1fr;column-gap:10px;align-items:start}
-        .faq-q{font-weight:600}
-        .faq-a{color:var(--muted,#6b7280);margin-top:4px;line-height:1.35}
-        .faq-actions{margin-top:8px}
-        .faq-actions .pill{display:inline-flex;align-items:center;gap:8px}
-        .faq-actions .pill i{width:16px;height:16px}
-      </style>
-
-      <div class="faq-card" role="region" aria-label="Частые вопросы перед оформлением">
-        <div class="faq-row">
-          <i data-lucide="clock"></i>
-          <div>
-            <div class="faq-q">Сроки доставки</div>
-            <div class="faq-a">Обычно <b>14–16 дней</b> с момента подтверждения. Если срок изменится — мы уведомим.</div>
-          </div>
-        </div>
-
-        <div class="faq-row">
-          <i data-lucide="message-circle"></i>
-          <div>
-            <div class="faq-q">Есть вопросы?</div>
-            <div class="faq-a">Ответим по размеру, оплате и статусу — просто напишите нам.</div>
-            <div class="faq-actions">
-              <button id="faqOperator" class="pill outline" type="button" aria-label="Написать оператору в Telegram">
-                <i data-lucide="send"></i><span>Написать оператору</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="faq-row">
-          <i data-lucide="credit-card"></i>
-          <div>
-            <div class="faq-q">Как проходит оплата?</div>
-            <div class="faq-a">После подтверждения вы переводите сумму на карту и загружаете скриншот оплаты. Если платёж действителен — мы подтверждаем заказ.</div>
-          </div>
-        </div>
+  <div class="faq-card" role="region" aria-label="Частые вопросы перед оформлением">
+    <div class="faq-row">
+      <i data-lucide="clock"></i>
+      <div>
+        <div class="faq-q">Сроки доставки</div>
+        <div class="faq-a">Обычно <b>14–16 дней</b> с момента подтверждения. Если срок изменится — мы уведомим.</div>
       </div>
     </div>
-    <!-- /FAQ -->
+
+    <!-- ⬇️ Оплата теперь второй -->
+    <div class="faq-row">
+      <i data-lucide="credit-card"></i>
+      <div>
+        <div class="faq-q">Как проходит оплата?</div>
+        <div class="faq-a">После подтверждения вы переводите сумму на карту и загружаете скриншот оплаты. Если платёж действителен — мы подтверждаем заказ.</div>
+      </div>
+    </div>
+
+    <!-- ⬇️ «Есть вопросы?» теперь третий, без кнопки внутри -->
+    <div class="faq-row">
+      <i data-lucide="message-circle"></i>
+      <div>
+        <div class="faq-q">Есть вопросы?</div>
+        <div class="faq-a">Ответим по размеру, оплате и статусу — просто напишите нам.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Центрированная кнопка под блоком -->
+  <div class="faq-cta">
+    <button id="faqOperator" class="pill outline" type="button" aria-label="Написать оператору в Telegram">
+      <i data-lucide="send"></i><span>Написать оператору</span>
+    </button>
+  </div>
+</div>
+<!-- /FAQ -->
+
 
 
   </section>`;
@@ -626,7 +668,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       return;
     }
 
-    // если пользователь списывал баллы — списываем прямо сейчас (до создания заказа), чтобы в случае перезагрузки не было двойного использования
+    // если пользователь списывал баллы — списываем прямо сейчас
     const toSpend = Number(bill?.redeem||0)|0;
     if (toSpend>0){
       if (!spendPoints(toSpend, null)){
@@ -661,7 +703,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       accepted: false
     });
 
-    // Начисления кэшбека → в pending (24ч)
+    // Начисления кэшбека покупателю → pending (24ч)
     const boost = hasFirstOrderBoost();
     const rate  = boost ? CASHBACK_RATE_BOOST : CASHBACK_RATE_BASE;
     const earn  = Math.floor(toPay * rate);
@@ -669,7 +711,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       addPending(earn, boost ? 'Кэшбек x2 (первый заказ по реф-ссылке)' : 'Кэшбек', orderId);
     }
 
-    // Рефереру 5% → тоже в pending (24ч)
+    // Рефереру 5% → pending (24ч) + уведомления
     addReferrerPendingIfAny(toPay, orderId);
 
     // Отметить, что первый заказ (для буста) совершен
@@ -812,4 +854,15 @@ function compressImageToDataURL(file, maxW=1600, maxH=1600, quality=0.82){
 
 function escapeHtml(s=''){
   return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/** Локальный помощник: создать in-app уведомление (любому uid) */
+async function postAppNotif(uid, { icon='bell', title='', sub='' } = {}){
+  try{
+    await fetch('/.netlify/functions/notifs', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ op:'add', uid, notif:{ icon, title, sub } })
+    });
+  }catch{}
 }
