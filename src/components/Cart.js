@@ -570,11 +570,11 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
         <div>
           <div class="note-title">Перевод на карту</div>
 
-          <!-- Номер карты + кнопка копирования в одной строке -->
+          <!-- Номер карты + ИКОНКА копирования в одной строке -->
           <div class="copy-line" style="margin-top:4px">
             <div id="cardNumber" class="note-sub mono" style="user-select:all">${escapeHtml(pay.cardNumber)}</div>
-            <button id="copyCardBtn" class="pill" type="button" style="height:28px;padding:0 10px;line-height:1;display:inline-flex;align-items:center;gap:6px">
-              <i data-lucide="copy" style="width:16px;height:16px"></i><span>Скопировать</span>
+            <button id="copyCardBtn" class="square-btn" type="button" aria-label="Скопировать номер" title="Скопировать номер" style="width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center">
+              <i data-lucide="copy" style="width:16px;height:16px"></i>
             </button>
             <span id="copyCardHint" class="muted-mini" style="display:none">Скопировано!</span>
           </div>
@@ -634,16 +634,13 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       }catch{}
     }
     if (ok){
-      // короткий визуальный фидбек
+      // короткий визуальный фидбек: меняем иконку на галочку и показываем hint
       const icon = copyBtn.querySelector('i[data-lucide]');
-      const label = copyBtn.querySelector('span');
-      const prev = { label: label?.textContent || 'Скопировать', icon: icon?.getAttribute('data-lucide') || 'copy' };
-      if (label) label.textContent = 'Скопировано!';
+      const prevIcon = icon?.getAttribute('data-lucide') || 'copy';
       if (icon){ icon.setAttribute('data-lucide','check'); window.lucide?.createIcons && lucide.createIcons(); }
       if (copyHint) copyHint.style.display = '';
       setTimeout(()=>{
-        if (label) label.textContent = prev.label;
-        if (icon){ icon.setAttribute('data-lucide', prev.icon); window.lucide?.createIcons && lucide.createIcons(); }
+        if (icon){ icon.setAttribute('data-lucide', prevIcon); window.lucide?.createIcons && lucide.createIcons(); }
         if (copyHint) copyHint.style.display = 'none';
       }, 1400);
     }
