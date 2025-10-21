@@ -8,14 +8,30 @@
 //   WEBAPP_URL          — ссылка WebApp (внутри Telegram) [опц.]
 //   BLOB_BUCKET         — имя стора Blobs (по умолчанию 'appstore')
 //   WELCOME_ASSET_PATH  — относительный путь к картинке из билда (по умолчанию assets/images/welcome.jpg)
-//   WELCOME_TEXT        — подпись под картинкой (по умолчанию короткий текст)
+//   WELCOME_TEXT        — подпись/текст приветствия (если не задан — берётся дефолтный длинный текст ниже)
 
 import { getStore } from '@netlify/blobs';
 
 const TOKEN = process.env.TG_BOT_TOKEN || '';
 const WEBAPP_URL = process.env.WEBAPP_URL || '';
 const WELCOME_ASSET_PATH = (process.env.WELCOME_ASSET_PATH || 'assets/images/welcome.jpg').replace(/^\/+/, '');
-const WELCOME_TEXT  = process.env.WELCOME_TEXT || 'Добро пожаловать в EVLISE OUTLET! Нажмите кнопку ниже, чтобы открыть приложение. Воспользуйся скидкой до 10%!';
+
+// ▼ Ваш новый приветственный текст по умолчанию
+const WELCOME_TEXT = process.env.WELCOME_TEXT || `Добро пожаловать в EVLISE OUTLET — онлайн-магазин одежды в Узбекистане. Мы работаем с 2024 года и уже успели порадовать качеством сервиса многих клиентов!
+
+Нам доверяют, ведь мы делаем покупки прозрачными и выгодными. Теперь онлайн-шоппинг стал ещё удобнее с Evlise: 
+
+— отслеживание заказов по этапам;
+— кэшбек баллами за каждую покупку;
+— реферальная программа — делитесь и получайте бонусы;
+— умный подбор размера по параметрам;
+— избранное для ваших находок;
+— реальные фотографии вещей без сюрпризов.
+
+Здесь вы сразу видите, где сейчас ваш заказ, получаете кэшбек баллами, которыми можно оплачивать покупки, приглашаете друзей и зарабатываете бонусы. Умный подбор размера по вашим параметрам подскажет подходящую посадку. Сохраняйте любимые модели в Избранное и смотрите реальные фото вещей — отбросив сомнения в выборе.
+
+Готовы подобрать идеальный образ?`;
+
 if (!TOKEN) throw new Error('TG_BOT_TOKEN is required');
 
 function admins() {
@@ -196,16 +212,29 @@ function resolveAssetUrl(relPath) {
 }
 async function sendWelcome(chatId) {
   const photoUrl = resolveAssetUrl(WELCOME_ASSET_PATH);
+  // Telegram ограничивает подпись к фото ~1024 символами
+  const CAPTION_LIMIT = 1024;
+  const needsSplit = (WELCOME_TEXT || '').length > CAPTION_LIMIT;
+
   if (photoUrl) {
-    return safeSend('sendPhoto', {
+    // если длинная подпись — отправим фото с коротким заголовком и следом полный текст
+    const caption = needsSplit ? 'Добро пожаловать в EVLISE OUTLET' : WELCOME_TEXT;
+    await safeSend('sendPhoto', {
       chat_id: chatId,
       photo: photoUrl,
-      caption: WELCOME_TEXT,
+      caption,
       reply_markup: welcomeKeyboard()
     });
+    if (needsSplit) {
+      await safeSend('sendMessage', {
+        chat_id: chatId,
+        text: WELCOME_TEXT
+      });
+    }
+    return;
   }
   // если вдруг нет URL (локально / dev) — просто текст
-  return safeSend('sendMessage', {
+  await safeSend('sendMessage', {
     chat_id: chatId,
     text: WELCOME_TEXT,
     reply_markup: welcomeKeyboard()
