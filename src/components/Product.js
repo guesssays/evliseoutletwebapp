@@ -187,6 +187,45 @@ export function renderProduct({id}){
 }
 
 
+/* ===== Размерная сетка (центрирование значений) ===== */
+.table-wrap{
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  margin-top:10px;
+  border:1px solid var(--stroke);
+  border-radius:16px;
+}
+
+.size-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+}
+
+.size-table th,
+.size-table td{
+  padding:10px 12px;
+  white-space:nowrap;
+  font-size:14px;
+  text-align:center;                 /* центрируем значения */
+  font-variant-numeric: tabular-nums;/* ровные цифры по сетке */
+}
+
+.size-table thead th{
+  background:#f8f8f8;
+  font-weight:800;
+  text-align:center;                 /* заголовки тоже по центру */
+}
+
+/* если первая колонка — названия/размер (а не число), оставим её слева */
+.size-table th:first-child,
+.size-table td:first-child{
+  text-align:left;
+}
+
+.size-table tbody tr:not(:last-child) td{
+  border-bottom:1px solid var(--stroke);
+}
 
 
     </style>
