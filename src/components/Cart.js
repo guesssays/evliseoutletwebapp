@@ -39,7 +39,7 @@ function settleMatured(){
   const w = readWallet();
   const now = Date.now();
   let changed=false;
-  const keep=[]; 
+  const keep=[];
   let maturedSum = 0;
   for (const p of w.pending){
     if ((p.tsUnlock||0) <= now){
@@ -262,55 +262,50 @@ export function renderCart(){
       <div class="payrow"><span>Скидка баллами</span><b id="sumDisc">${priceFmt(0)}</b></div>
       <div class="payrow" style="border-top:1px dashed var(--border,rgba(0,0,0,.12));padding-top:6px"><span><b>К оплате</b></span><b id="sumPay">${priceFmt(totalRaw)}</b></div>
     </div>
-<!-- FAQ перед оформлением -->
-<div class="cart-faq" style="margin-top:14px">
-  <style>
-    .faq-card{border:1px solid var(--border,rgba(0,0,0,.12));border-radius:14px;padding:12px;background:var(--card,#f9f9f9);display:grid;gap:12px;max-width:100%}
-    .faq-row{display:grid;grid-template-columns:24px 1fr;column-gap:10px;align-items:start}
-    .faq-q{font-weight:600}
-    .faq-a{color:var(--muted,#6b7280);margin-top:4px;line-height:1.35}
-    .faq-cta{display:flex;justify-content:center;margin-top:10px}
-    .faq-cta .pill{display:inline-flex;align-items:center;gap:8px}
-    .faq-cta .pill i{width:16px;height:16px}
-  </style>
 
-  <div class="faq-card" role="region" aria-label="Частые вопросы перед оформлением">
-    <div class="faq-row">
-      <i data-lucide="clock"></i>
-      <div>
-        <div class="faq-q">Сроки доставки</div>
-        <div class="faq-a">Обычно <b>14–16 дней</b> с момента подтверждения. Если срок изменится — мы уведомим.</div>
+    <!-- FAQ перед оформлением -->
+    <div class="cart-faq" style="margin-top:14px">
+      <style>
+        .faq-card{border:1px solid var(--border,rgba(0,0,0,.12));border-radius:14px;padding:12px;background:var(--card,#f9f9f9);display:grid;gap:12px;max-width:100%}
+        .faq-row{display:grid;grid-template-columns:24px 1fr;column-gap:10px;align-items:start}
+        .faq-q{font-weight:600}
+        .faq-a{color:var(--muted,#6b7280);margin-top:4px;line-height:1.35}
+        .faq-cta{display:flex;justify-content:center;margin-top:10px}
+        .faq-cta .pill{display:inline-flex;align-items:center;gap:8px}
+        .faq-cta .pill i{width:16px;height:16px}
+      </style>
+
+      <div class="faq-card" role="region" aria-label="Частые вопросы перед оформлением">
+        <div class="faq-row">
+          <i data-lucide="clock"></i>
+          <div>
+            <div class="faq-q">Сроки доставки</div>
+            <div class="faq-a">Обычно <b>14–16 дней</b> с момента подтверждения. Если срок изменится — мы уведомим.</div>
+          </div>
+        </div>
+        <div class="faq-row">
+          <i data-lucide="credit-card"></i>
+          <div>
+            <div class="faq-q">Как проходит оплата?</div>
+            <div class="faq-a">После подтверждения вы переводите сумму на карту и загружаете скриншот оплаты. Если платёж действителен — мы подтверждаем заказ.</div>
+          </div>
+        </div>
+        <div class="faq-row">
+          <i data-lucide="message-circle"></i>
+          <div>
+            <div class="faq-q">Есть вопросы?</div>
+            <div class="faq-a">Ответим по размеру, оплате и статусу — просто напишите нам.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-cta">
+        <button id="faqOperator" class="pill outline" type="button" aria-label="Написать оператору в Telegram">
+          <i data-lucide="send"></i><span>Написать оператору</span>
+        </button>
       </div>
     </div>
-
-    <!-- ⬇️ Оплата теперь второй -->
-    <div class="faq-row">
-      <i data-lucide="credit-card"></i>
-      <div>
-        <div class="faq-q">Как проходит оплата?</div>
-        <div class="faq-a">После подтверждения вы переводите сумму на карту и загружаете скриншот оплаты. Если платёж действителен — мы подтверждаем заказ.</div>
-      </div>
-    </div>
-
-    <!-- ⬇️ «Есть вопросы?» теперь третий, без кнопки внутри -->
-    <div class="faq-row">
-      <i data-lucide="message-circle"></i>
-      <div>
-        <div class="faq-q">Есть вопросы?</div>
-        <div class="faq-a">Ответим по размеру, оплате и статусу — просто напишите нам.</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Центрированная кнопка под блоком -->
-  <div class="faq-cta">
-    <button id="faqOperator" class="pill outline" type="button" aria-label="Написать оператору в Telegram">
-      <i data-lucide="send"></i><span>Написать оператору</span>
-    </button>
-  </div>
-</div>
-<!-- /FAQ -->
-
+    <!-- /FAQ -->
   </section>`;
 
   window.lucide?.createIcons && lucide.createIcons();
@@ -426,6 +421,7 @@ function checkoutFlow(items, addr, totalRaw, bill){
   const ma = document.getElementById('modalActions');
 
   const savedPhone = state.profile?.phone || '';
+  theSavedPayer:
   const savedPayer = state.profile?.payerFullName || '';
 
   mt.textContent = 'Подтверждение данных';
@@ -562,7 +558,8 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       .shot-preview{ display:flex; align-items:center; gap:10px; }
       .shot-preview img{ width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid var(--border, rgba(0,0,0,.1)); }
       .pay-badge{ display:inline-block; font-size:.8rem; line-height:1.2; padding:2px 6px; border-radius:999px; background:rgba(0,0,0,.06); vertical-align:middle; }
-      .note-sub.muted{ color:var(--muted,#6b7280); }
+      .note-sub.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+      .copy-line{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
       .spin{ width:16px; height:16px; border:2px solid rgba(0,0,0,.2); border-top-color:rgba(0,0,0,.6); border-radius:50%; animation:spin .8s linear infinite; }
       @keyframes spin{to{transform:rotate(360deg)}}
       .muted-mini{ color:var(--muted,#6b7280); font-size:.88rem; }
@@ -572,20 +569,24 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       <div class="note">
         <i data-lucide="credit-card"></i>
         <div>
-          <div class="note-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span>Переведите на карту</span>
+          <div class="note-title">Перевод на карту</div>
+
+          <!-- Номер карты + кнопка копирования в одной строке -->
+          <div class="copy-line" style="margin-top:4px">
+            <div id="cardNumber" class="note-sub mono" style="user-select:all">${escapeHtml(pay.cardNumber)}</div>
             <button id="copyCardBtn" class="pill" type="button" style="height:28px;padding:0 10px;line-height:1;display:inline-flex;align-items:center;gap:6px">
               <i data-lucide="copy" style="width:16px;height:16px"></i><span>Скопировать</span>
             </button>
             <span id="copyCardHint" class="muted-mini" style="display:none">Скопировано!</span>
           </div>
-          <div id="cardNumber" class="note-sub" style="user-select:all">${escapeHtml(pay.cardNumber)}</div>
-          <div class="note-sub muted">
+
+          <div class="note-sub muted" style="margin-top:4px">
             ${escapeHtml(pay.holder || '')}
             ${pay.provider ? ` · <span class="pay-badge">${escapeHtml(pay.provider)}</span>` : ''}
           </div>
         </div>
       </div>
+
       <div class="field shot-wrap">
         <label><span>Загрузить скриншот оплаты</span></label>
         <input id="payShot" type="file" accept="image/*" class="input">
