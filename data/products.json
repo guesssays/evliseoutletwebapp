@@ -3,7 +3,7 @@
     {
       "id": "14085517292716705",
       "slug": "khudi-ford",
-      "title": "Худи Ford",
+      "title": "Ford",
       "price": 349000,
       "images": [
         "data/wearimages/khudi-ford/khudi-ford-1.jpg",
@@ -30,7 +30,7 @@
     {
       "id": "14085504877390129",
       "slug": "bomber-for-dream",
-      "title": "Бомбер For Dream",
+      "title": "For Dream",
       "price": 599000,
       "images": [
         "data/wearimages/bomber-for-dream/bomber-for-dream-1.jpg",
@@ -55,7 +55,7 @@
     {
       "id": "14085504705500801",
       "slug": "bomber-meam",
-      "title": "Бомбер Meam",
+      "title": "Meam",
       "price": 499000,
       "images": [
         "data/wearimages/bomber-meam/bomber-meam-1.jpg",
@@ -76,7 +76,7 @@
     {
       "id": "14082839450665489",
       "slug": "kastom-kedy-venom",
-      "title": "Кастом кеды Venom",
+      "title": "Venom",
       "price": 370000,
       "images": [
         "data/wearimages/kastom-kedy-venom/kastom-kedy-venom-1.jpg",
@@ -97,7 +97,7 @@
     {
       "id": "14082839344588145",
       "slug": "kozhanka",
-      "title": "Кожанка",
+      "title": "Bronx",
       "price": 549000,
       "images": [
         "data/wearimages/kozhanka/kozhanka-1.jpg",
@@ -118,7 +118,7 @@
     {
       "id": "14082839327733609",
       "slug": "uteplennyi-bomber",
-      "title": "Утеплённый бомбер",
+      "title": "Nord",
       "price": 700000,
       "images": [
         "data/wearimages/uteplennyi-bomber/uteplennyi-bomber-1.jpg",
@@ -145,7 +145,7 @@
     {
       "id": "14080684574002353",
       "slug": "shtany",
-      "title": "Штаны",
+      "title": "Urban Fit",
       "price": 329000,
       "images": [
         "data/wearimages/shtany/shtany-1.jpg",
@@ -166,7 +166,7 @@
     {
       "id": "14080684453012945",
       "slug": "krossovki-stursyn",
-      "title": "Кроссовки STURSYN",
+      "title": "STURSYN",
       "price": 549000,
       "images": [
         "data/wearimages/krossovki-stursyn/krossovki-stursyn-1.jpg",
@@ -187,7 +187,7 @@
     {
       "id": "14080684219662305",
       "slug": "dzhinsy",
-      "title": "Джинсы",
+      "title": "Core Denim",
       "price": 369000,
       "images": [
         "data/wearimages/dzhinsy/dzhinsy-1.jpg",
@@ -212,7 +212,7 @@
     {
       "id": "14079478202896961",
       "slug": "dzhinsy-14079478202896961",
-      "title": "Джинсы",
+      "title": "Slate Denim",
       "price": 389000,
       "images": [
         "data/wearimages/dzhinsy-14079478202896961/dzhinsy-14079478202896961-1.jpg",
@@ -233,7 +233,7 @@
     {
       "id": "14079478015776985",
       "slug": "polo",
-      "title": "Поло",
+      "title": "Classic Knit",
       "price": 369000,
       "images": [
         "data/wearimages/polo/polo-1.jpg",
@@ -254,7 +254,7 @@
     {
       "id": "14079478004724521",
       "slug": "palto-na-osen",
-      "title": "Пальто на осень",
+      "title": "Autumn",
       "price": 569000,
       "images": [
         "data/wearimages/palto-na-osen/palto-na-osen-1.jpg",
@@ -275,7 +275,7 @@
     {
       "id": "14079404893618297",
       "slug": "bomber-vetements",
-      "title": "Бомбер VETEMENTS",
+      "title": "VETEMENTS",
       "price": 0,
       "images": [
         "data/wearimages/bomber-vetements/bomber-vetements-1.jpg",
@@ -296,7 +296,7 @@
     {
       "id": "14078068166127521",
       "slug": "kozhanka-14078068166127521",
-      "title": "Кожанка",
+      "title": "Rider",
       "price": 469000,
       "images": [
         "data/wearimages/kozhanka-14078068166127521/kozhanka-14078068166127521-1.jpg",
@@ -317,7 +317,7 @@
     {
       "id": "14078067812425497",
       "slug": "lofery",
-      "title": "Лоферы",
+      "title": "Kent",
       "price": 449000,
       "images": [
         "data/wearimages/lofery/lofery-1.jpg",
@@ -338,7 +338,7 @@
     {
       "id": "14077189334919817",
       "slug": "dzhinsy-14077189334919817",
-      "title": "Джинсы",
+      "title": "Indigo Taper",
       "price": 349000,
       "images": [
         "data/wearimages/dzhinsy-14077189334919817/dzhinsy-14077189334919817-1.jpg",
@@ -359,7 +359,7 @@
     {
       "id": "14077189143236233",
       "slug": "botinki",
-      "title": "Ботинки",
+      "title": "Terra",
       "price": 849000,
       "images": [
         "data/wearimages/botinki/botinki-1.jpg",
@@ -384,7 +384,7 @@
     {
       "id": "14075876508243473",
       "slug": "podborka-futbolok",
-      "title": "Подборка футболок",
+      "title": "Базовый пак",
       "price": 200000,
       "images": [
         "data/wearimages/podborka-futbolok/podborka-futbolok-1.jpg",
@@ -412,11 +412,10 @@
         "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
       }
     },
-   
     {
       "id": "14073336182825265",
       "slug": "dvukhstoronniaia-kurtka",
-      "title": "Двухсторонняя куртка",
+      "title": "Reverso",
       "price": 649000,
       "images": [
         "data/wearimages/dvukhstoronniaia-kurtka/dvukhstoronniaia-kurtka-1.jpg",
@@ -437,7 +436,7 @@
     {
       "id": "14073335680346289",
       "slug": "kollektsiia-futbolok-demonslayer",
-      "title": "Коллекция футболок DemonSlayer",
+      "title": "DemonSlayer",
       "price": 230000,
       "images": [
         "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-1.jpg",
@@ -447,20 +446,20 @@
         "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-5.jpg",
         "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-6.jpg",
         "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-7.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-8.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-9.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-10.jpg"
+        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futболок-demonslayer-8.jpg",
+        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-9.jpg",
+        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-10.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-2.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-3.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-4.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-5.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-6.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-7.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-8.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-9.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-10.jpg"
+        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-2.jpg",
+        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-3.jpg",
+        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-4.jpg",
+        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-5.jpg",
+        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-6.jpg",
+        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-7.jpg",
+        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-8.jpg",
+        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-9.jpg",
+        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-10.jpg"
       ],
       "description": "Коллекция футболок DemonSlayer \n\nВсе размеры доступны\n\nЦена: 230.000 сум\n\nПодробная информация: @evliseorder",
       "material": "Хлопок/полиэстер",
@@ -476,7 +475,7 @@
     {
       "id": "14071685981116953",
       "slug": "kollektsiia-kurtok",
-      "title": "Коллекция курток",
+      "title": "Urban Set",
       "price": 649000,
       "images": [
         "data/wearimages/kollektsiia-kurtok/kollektsiia-kurtok-1.jpg",
@@ -497,7 +496,7 @@
     {
       "id": "14070286155063545",
       "slug": "shtany-y2k",
-      "title": "Штаны Y2K",
+      "title": "Y2K",
       "price": 299000,
       "images": [
         "data/wearimages/shtany-y2k/shtany-y2k-1.jpg",
@@ -518,7 +517,7 @@
     {
       "id": "14070286006093521",
       "slug": "kurtka-mixgora",
-      "title": "Куртка MIXGORA",
+      "title": "MIXGORA",
       "price": 449000,
       "images": [
         "data/wearimages/kurtka-mixgora/kurtka-mixgora-1.jpg",
@@ -539,7 +538,7 @@
     {
       "id": "1784",
       "slug": "palto",
-      "title": "Пальто",
+      "title": "Monaco",
       "price": 569000,
       "images": ["data/wearimages/palto/palto-1.jpg"],
       "realPhotos": [],
@@ -557,7 +556,7 @@
     {
       "id": "1778",
       "slug": "pukhovik-s-balaklavoi",
-      "title": "Пуховик с балаклавой",
+      "title": "Arctic",
       "price": 549000,
       "images": ["data/wearimages/pukhovik-s-balaklavoi/pukhovik-s-balaklavoi-1.jpg"],
       "realPhotos": [],
@@ -575,7 +574,7 @@
     {
       "id": "1777",
       "slug": "sumka-deathnote",
-      "title": "Сумка DeathNote",
+      "title": "DeathNote",
       "price": 270000,
       "images": ["data/wearimages/sumka-deathnote/sumka-deathnote-1.jpg"],
       "realPhotos": [],
@@ -593,7 +592,7 @@
     {
       "id": "1766",
       "slug": "kedy-xavier3",
-      "title": "Кеды Xavier3",
+      "title": "Xavier3",
       "price": 499000,
       "images": ["data/wearimages/kedy-xavier3/kedy-xavier3-1.jpg"],
       "realPhotos": [],
@@ -611,7 +610,7 @@
     {
       "id": "1755",
       "slug": "kurtka-jeansstyle",
-      "title": "Куртка JeansStyle",
+      "title": "JeansStyle",
       "price": 449000,
       "images": ["data/wearimages/kurtka-jeansstyle/kurtka-jeansstyle-1.jpg"],
       "realPhotos": [],
@@ -629,7 +628,7 @@
     {
       "id": "1754",
       "slug": "svitshot-pushistik",
-      "title": "Свитшот-пушистик",
+      "title": "Пушистик",
       "price": 369000,
       "images": ["data/wearimages/svitshot-pushistik/svitshot-pushistik-1.jpg"],
       "realPhotos": [],
