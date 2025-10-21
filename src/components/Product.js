@@ -80,7 +80,7 @@ export function renderProduct({id}){
         background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.28);
         transition:filter .15s ease;
       }
-      /* Lucide заменяет <i> на <svg>, поэтому красим именно svg-иконку */
+      /* Lucide заменяет <i> на <svg>, красим именно svg-иконку */
       .p-cb-help svg{ width:16px; height:16px; stroke:#fff; }
       @media (hover:hover){
         .p-cb-help:hover{ filter:brightness(1.05); }
@@ -88,25 +88,45 @@ export function renderProduct({id}){
 
       /* ===== Мини-таббар доставки (над основным таббаром) ===== */
       .mini-tabbar{
-        position:fixed; left:0; right:0;
-        bottom:0; /* фактическое значение задаём из JS, сдвигая над основным таббаром */
+        position:fixed;
+        left:0; right:0; /* фактические left/width задаём из JS под габариты основного таббара */
+        bottom:0;        /* смещаем над основным таббаром через JS */
         z-index: 1001;
-        display:flex; align-items:center; gap:8px;
+        display:flex; align-items:center;
         padding:8px 12px;
-        background: var(--miniTabbarBg, #0f172a);
-        color:#fff;
-        box-shadow: 0 -2px 10px rgba(0,0,0,.12);
-        border-top-left-radius:12px; border-top-right-radius:12px;
-        max-width: 760px; margin:0 auto; /* если основной таббар центрируется */
+
+        /* glassmorphism */
+        background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,.18));
+        -webkit-backdrop-filter: saturate(160%) blur(12px);
+        backdrop-filter: saturate(160%) blur(12px);
+        border:1px solid rgba(255,255,255,.35);
+        border-radius:12px;
+        box-shadow:
+          0 10px 30px rgba(0,0,0,.12),
+          0 -2px 10px rgba(0,0,0,.08) inset;
+
+        color:#0f172a;
+        pointer-events:auto;
       }
       .mini-tabbar__inner{
         display:flex; align-items:center; gap:8px; width:100%;
-        font-size: 14px; font-weight: 700;
+        font-size: 14px; font-weight: 800;
       }
-      .mini-tabbar__inner i{ width:18px; height:18px; stroke:#fff; opacity:.95; }
-      .mini-tabbar .muted{ font-weight:600; opacity:.9; }
+      .mini-tabbar__inner i{ width:18px; height:18px; }
+      .mini-tabbar__inner svg{ stroke:#0f172a; opacity:.9; }
+      .mini-tabbar .muted{ font-weight:700; opacity:.85; }
       @media (max-width:420px){
         .mini-tabbar__inner{ font-size:13px; }
+      }
+      /* Тёмная тема — чуть уменьшаем прозрачность и делаем текст светлым */
+      @media (prefers-color-scheme: dark){
+        .mini-tabbar{
+          background: linear-gradient(180deg, rgba(15,23,42,.65), rgba(15,23,42,.45));
+          border-color: rgba(255,255,255,.18);
+          color:#fff;
+        }
+        .mini-tabbar__inner svg{ stroke:#fff; }
+        .mini-tabbar .muted{ opacity:.95; }
       }
     </style>
 
@@ -310,6 +330,7 @@ export function renderProduct({id}){
       window.lucide?.createIcons && lucide.createIcons();
     }
   }
+
   function ensureMiniTabbar(){
     if (document.getElementById('miniTabbar')) return;
     const bar = document.createElement('div');
@@ -317,10 +338,12 @@ export function renderProduct({id}){
     bar.className = 'mini-tabbar';
     bar.innerHTML = `<div id="miniTabbarInner" class="mini-tabbar__inner"></div>`;
     document.body.appendChild(bar);
-    // пересчитываем позицию при изменениях окна
+
+    // пересчитываем позицию при изменениях окна и прокрутке
     const onResize = ()=> updateMiniTabbarPosition();
     window.addEventListener('resize', onResize);
-    window.addEventListener('scroll', onResize);
+    window.addEventListener('scroll', onResize, { passive:true });
+
     // подчистка при уходе со страницы
     const cleanup = ()=>{
       bar.remove();
@@ -334,32 +357,56 @@ export function renderProduct({id}){
     window.addEventListener('popstate', cleanup);
     window.addEventListener('beforeunload', cleanup);
   }
+
+  function getTabbarEl(){
+    return document.querySelector('.tabbar')
+        || document.querySelector('.app-tabbar')
+        || document.getElementById('tabbar');
+  }
   function getTabbarHeight(){
-    // пробуем разные селекторы на случай разных реализаций таббара
-    const tb = document.querySelector('.tabbar') ||
-               document.querySelector('.app-tabbar') ||
-               document.getElementById('tabbar');
+    const tb = getTabbarEl();
     return tb ? Math.ceil(tb.getBoundingClientRect().height) : 64;
   }
+
   function updateMiniTabbarPosition(){
     const bar = document.getElementById('miniTabbar');
     if (!bar) return;
-    const h = getTabbarHeight();
-    bar.style.bottom = `${h}px`;
-    // если контейнер приложения центрирует таббар — ограничим ширину мини-бара тем же контейнером
-    const app = document.getElementById('app') || document.querySelector('.app');
-    if (app){
-      const rect = app.getBoundingClientRect();
-      bar.style.left = `${rect.left}px`;
-      bar.style.right = `${window.innerWidth - rect.right}px`;
+
+    // отступ сверху от основного таббара
+    const bottomOffset = getTabbarHeight();
+    bar.style.bottom = `${bottomOffset}px`;
+
+    // подгоняем ширину и положение под реальный прямоугольник основного таббара
+    const tb = getTabbarEl();
+    const vw = window.innerWidth;
+
+    // базовый контейнер — весь вьюпорт, но если есть таббар, ориентируемся по нему
+    let left = 0, width = vw;
+
+    if (tb){
+      const rect = tb.getBoundingClientRect();
+      // внутренний отступ: 12px на широких, 8px на узких
+      const inset = rect.width >= 420 ? 12 : 8;
+
+      left = Math.max(0, rect.left + inset);
+      width = Math.min(vw - left, rect.width - inset * 2);
+
+      // если из-за расчётов ширина получилась некорректной — запасной план
+      if (!isFinite(width) || width <= 100){
+        left = 8; width = vw - 16;
+      }
     }else{
-      bar.style.left = '0';
-      bar.style.right = '0';
+      left = 8; width = vw - 16;
     }
+
+    bar.style.left = `${left}px`;
+    bar.style.right = `auto`;
+    bar.style.width = `${width}px`;
   }
 
   /* -------- Зум/панорамирование -------- */
   ensureZoomOverlay();
+  const mainImg = document.getElementById('mainImg');
   initZoomableInPlace(mainImg);
   document.querySelectorAll('.real-photos img.zoomable').forEach(initZoomableInPlace);
   document.querySelectorAll('img.zoomable').forEach(img=>{
