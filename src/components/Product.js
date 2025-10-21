@@ -126,7 +126,7 @@ export function renderProduct({id}){
       <div class="p-hero">
         <div class="gallery" role="region" aria-label="Галерея товара">
           <div class="gallery-main">
-            <img id="mainImg" class="zoomable" src="\${images[0]||''}" alt="${escapeHtml(p.title)}">
+            <img id="mainImg" class="zoomable" src="${images[0]||''}" alt="${escapeHtml(p.title)}">
             <button class="hero-btn hero-back" id="goBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
             <button class="hero-btn hero-fav ${favActive?'active':''}" id="favBtn" aria-pressed="${favActive?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
           </div>
@@ -135,7 +135,7 @@ export function renderProduct({id}){
           <div class="thumbs" id="thumbs" role="tablist" aria-label="Миниатюры">
             ${images.map((src, i)=>`
               <button class="thumb ${i===0?'active':''}" role="tab" aria-selected="${i===0?'true':'false'}" data-index="${i}" aria-controls="mainImg">
-                <img loading="lazy" src="\${src}" alt="Фото ${'${i+1}'}">
+                <img loading="lazy" src="${src}" alt="Фото ${i+1}">
               </button>
             `).join('')}
           </div>` : '' }
@@ -170,11 +170,11 @@ export function renderProduct({id}){
           ${(p.sizes?.length||0) ? `
           <div>
             <div class="opt-title">Размер</div>
-            <div class="sizes" id="sizes">${p.sizes.map(s=>`<button class="size" data-v="\${s}">\${s}</button>`).join('')}</div>
+            <div class="sizes" id="sizes">${p.sizes.map(s=>`<button class="size" data-v="${s}">${s}</button>`).join('')}</div>
           </div>`:''}
           <div>
             <div class="opt-title">Цвет</div>
-            <div class="colors" id="colors">${(p.colors||[]).map(c=>`<button class="sw" title="\${c}" data-v="\${c}" style="background:${'${colorToHex(c)}'}"></button>`).join('')}</div>
+            <div class="colors" id="colors">${(p.colors||[]).map(c=>`<button class="sw" title="${c}" data-v="${c}" style="background:${colorToHex(c)}"></button>`).join('')}</div>
           </div>
         </div>
 
@@ -194,7 +194,7 @@ export function renderProduct({id}){
         <div class="real-photos">
           ${realPhotos.map((src,i)=>`
             <div class="real-photo">
-              <img loading="lazy" class="zoomable" src="\${src}" alt="Реальное фото ${'${i+1}'}">
+              <img loading="lazy" class="zoomable" src="${src}" alt="Реальное фото ${i+1}">
             </div>
           `).join('')}
         </div>` : ''}
@@ -381,7 +381,7 @@ function cashbackSnippetHTML(price){
   return `
     <div class="p-cb-line">
       <span>Кэшбек</span>
-      +<span class="p-cb-pts">\${pts}</span>&nbsp;баллов
+      +<span class="p-cb-pts">${pts}</span>&nbsp;баллов
       ${boost ? `<span class="p-cb-x2" title="x2 на первый заказ">x2</span>` : ``}
     </div>`;
 }
@@ -502,7 +502,7 @@ function initZoomableInPlace(img){
   }
   function apply(){
     if (scale<=1){ scale=1; tx=0; ty=0; }
-    img.style.transform = `translate(\${tx}px, \${ty}px) scale(\${scale})`;
+    img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
   }
   function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
   function dist(a,b){ const dx=a.clientX-b.clientX, dy=a.clientY-b.clientY; return Math.hypot(dx,dy); }
@@ -533,7 +533,7 @@ function openZoomOverlay(src){
 
   let scale=1, startScale=1, startDist=0, tx=0, ty=0, dragging=false, lastX=0, lastY=0, lastTap=0;
 
-  function apply(){ img.style.transform = `translate(\${tx}px, \${ty}px) scale(\${scale})`; }
+  function apply(){ img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; }
   function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
   function dist(a,b){ const dx=a.clientX-b.clientX, dy=a.clientY-b.clientY; return Math.hypot(dx,dy); }
 
