@@ -32,6 +32,9 @@ function findCategoryBySlug(slug){
   }
   return null;
 }
+function categoryNameBySlug(slug){
+  return findCategoryBySlug(slug)?.name || '';
+}
 
 export function renderProduct({id}){
   const p = state.products.find(x=> String(x.id)===String(id));
@@ -45,7 +48,7 @@ export function renderProduct({id}){
   // Подбор «Похожие» по той же подкатегории
   const related = state.products
     .filter(x => x.categoryId === p.categoryId && String(x.id) !== String(p.id))
-    .slice(0, 8);
+    .slice(0, 12);
 
   const v=document.getElementById('view');
   v.innerHTML = `
@@ -97,79 +100,46 @@ export function renderProduct({id}){
         display:flex; align-items:center; gap:10px;
         margin:6px 0 12px; padding:10px 12px;
         border-radius:12px;
-        background:#ffffff;           /* Явный светлый фон */
-        color:#0f172a;                /* Явный тёмный текст */
+        background:#ffffff;           /* явный светлый фон */
+        color:#0f172a;                /* тёмный текст */
         border:1px solid rgba(15,23,42,.12);
       }
       .p-delivery svg{ width:18px; height:18px; stroke:currentColor; opacity:1; }
       .p-delivery__title{ font-weight:800; margin-right:4px; color:#0b1220; }
-      .p-delivery .muted{ color:#0b1220; opacity:1; font-weight:800; } /* убрана полупрозрачность */
+      .p-delivery .muted{ color:#0b1220; opacity:1; font-weight:800; }
 
       @media (prefers-color-scheme: dark){
         .p-delivery{
-          background:#111827;          /* тёмный фон */
+          background:#111827;
           border-color:rgba(255,255,255,.14);
-          color:#ffffff;               /* белый текст в тёмной теме */
+          color:#ffffff;
         }
         .p-delivery__title{ color:#ffffff; }
         .p-delivery .muted{ color:#ffffff; opacity:1; }
       }
 
-      /* ===== Похожие товары ===== */
-      .rel-sec-title{
-        margin:18px 4px 8px;
-        font-weight:800;
+      /* ===== Раздел «Похожие» (ВИЗУАЛЬНО ОТДЕЛЁН) ===== */
+      .related-wrap{
+        margin: 18px -12px -8px;          /* растягиваем в край, как секции */
+        padding: 14px 12px 10px;
+        background: linear-gradient(0deg, rgba(15,23,42,0.04), rgba(15,23,42,0.04));
+        border-top: 1px solid rgba(15,23,42,.10);
+      }
+      .related-head{
+        display:flex; align-items:center; gap:8px;
+        margin: 0 0 8px;
+        font-weight: 800;
         font-size: clamp(16px, 4.2vw, 18px);
       }
-      .rel-grid{
-        display:grid; gap:10px;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-      @media (min-width:480px){
-        .rel-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      }
-      @media (min-width:740px){
-        .rel-grid{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      }
-      .rel-card{
-        display:block;
-        background: var(--card-bg, #fff);
-        border:1px solid rgba(15,23,42,.08);
-        border-radius:12px;
-        overflow:hidden;
-        text-decoration:none;
-        color:inherit;
-        transition: transform .12s ease, box-shadow .12s ease;
-      }
-      .rel-card:active{ transform: translateY(1px) scale(.997); }
-      @media (hover:hover){
-        .rel-card:hover{ box-shadow: 0 6px 18px rgba(15,23,42,.08); }
-      }
-      .rel-thumb{
-        position:relative; width:100%;
-        aspect-ratio: 1 / 1;
-        background:#f3f4f6;
-        overflow:hidden;
-      }
-      .rel-thumb img{
-        width:100%; height:100%; object-fit:cover; display:block;
-      }
-      .rel-meta{
-        display:grid; gap:4px;
-        padding:8px;
-      }
-      .rel-title{
-        font-size:13px; line-height:1.25;
-        font-weight:700;
-        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
-      }
-      .rel-price{
-        font-size:14px; font-weight:800;
-      }
+      .related-head i{ width:18px; height:18px; opacity:.9; }
       @media (prefers-color-scheme: dark){
-        .rel-card{ background:#0b1220; border-color:rgba(255,255,255,.12); }
-        .rel-thumb{ background:#0f172a; }
+        .related-wrap{
+          background: linear-gradient(0deg, rgba(255,255,255,0.04), rgba(255,255,255,0.04));
+          border-top-color: rgba(255,255,255,.14);
+        }
       }
+      /* сетка берём такую же, как на главной: .grid */
+      .grid.related-grid{ margin-top: 6px; }
     </style>
 
     <!-- Фикс-хедер карточки (показывается при прокрутке) -->
@@ -222,11 +192,11 @@ export function renderProduct({id}){
           <span class="muted"><b>14–16 дней</b></span>
         </div>
 
-        <!-- СТАРЫЕ СТРОКИ ХАРАКТЕРИСТИК -->
+        <!-- Характеристики -->
         <div class="specs"><b>Категория:</b> ${escapeHtml(findCategoryBySlug(p.categoryId)?.name || '—')}</div>
         <div class="specs"><b>Материал:</b> ${p.material ? escapeHtml(p.material) : '—'}</div>
 
-        <!-- СТАРЫЕ ОПЦИИ (РАЗМЕР/ЦВЕТ) -->
+        <!-- Опции (РАЗМЕР/ЦВЕТ) -->
         <div class="p-options">
           ${(p.sizes?.length||0) ? `
           <div>
@@ -261,22 +231,13 @@ export function renderProduct({id}){
         </div>` : ''}
 
         ${related.length ? `
-        <div class="rel-sec">
-          <div class="rel-sec-title">Похожие</div>
-          <div class="rel-grid" id="relatedGrid">
-            ${related.map(rp => `
-              <a class="rel-card" href="#/product/${rp.id}" aria-label="${escapeHtml(rp.title)}">
-                <div class="rel-thumb">
-                  <img loading="lazy" src="${(Array.isArray(rp.images) && rp.images[0]) ? rp.images[0] : ''}" alt="${escapeHtml(rp.title)}">
-                </div>
-                <div class="rel-meta">
-                  <div class="rel-title">${escapeHtml(rp.title)}</div>
-                  <div class="rel-price">${priceFmt(rp.price)}</div>
-                </div>
-              </a>
-            `).join('')}
+        <section class="related-wrap" aria-label="Похожие товары">
+          <div class="related-head">
+            <i data-lucide="sparkles" aria-hidden="true"></i>
+            <span>Похожие</span>
           </div>
-        </div>` : ''}
+          <div class="grid related-grid" id="relatedGrid"></div>
+        </section>` : ''}
 
       </div>
     </div>`;
@@ -449,6 +410,71 @@ export function renderProduct({id}){
     btnFav.classList.toggle('active', !!active);
     btnFav.setAttribute('aria-pressed', String(!!active));
   }
+
+  /* ----- РЕНДЕР «Похожие» теми же карточками, что и в каталоге ----- */
+  if (related.length){
+    drawRelatedCards(related);
+  }
+}
+
+/* карточки «Похожие» — используем шаблон #product-card, как на главной */
+function drawRelatedCards(list){
+  const grid = document.getElementById('relatedGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  const frag = document.createDocumentFragment();
+  for (const p of list){
+    const t = document.getElementById('product-card');
+    if (t && t.content?.firstElementChild){
+      // 1-в-1 как в Home.drawProducts
+      const node = t.content.firstElementChild.cloneNode(true);
+
+      node.href = `#/product/${p.id}`;
+
+      const im = node.querySelector('img');
+      if (im){ im.src = p.images?.[0] || ''; im.alt = p.title; }
+
+      const titleEl = node.querySelector('.title');
+      if (titleEl) titleEl.textContent = p.title;
+
+      const subEl = node.querySelector('.subtitle');
+      if (subEl) {
+        const labelById = categoryNameBySlug(p.categoryId) || '';
+        subEl.textContent = p.categoryLabel || labelById;
+      }
+
+      const priceEl = node.querySelector('.price');
+      if (priceEl) priceEl.textContent = priceFmt(p.price);
+
+      const favBtn = node.querySelector('.fav');
+      if (favBtn){
+        const active = isFav(p.id);
+        favBtn.classList.toggle('active', active);
+        favBtn.setAttribute('aria-pressed', String(active));
+        favBtn.onclick = (ev)=>{
+          ev.preventDefault();
+          toggleFav(p.id);
+        };
+      }
+
+      frag.appendChild(node);
+    } else {
+      // Fallback, если шаблон отсутствует
+      const a = document.createElement('a');
+      a.href = `#/product/${p.id}`;
+      a.className = 'card'; // будет выглядеть прилично, если есть базовые стили
+      a.innerHTML = `
+        <img src="${p.images?.[0]||''}" alt="${escapeHtml(p.title)}">
+        <div class="title">${escapeHtml(p.title)}</div>
+        <div class="price">${priceFmt(p.price)}</div>
+      `;
+      frag.appendChild(a);
+    }
+  }
+
+  grid.appendChild(frag);
+  window.lucide?.createIcons && lucide.createIcons();
 }
 
 /* ===== Короткий бейдж: «Кэшбек + N баллов» ===== */
