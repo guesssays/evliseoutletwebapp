@@ -589,6 +589,8 @@ async function seedDemo(){
     username: 'evlise_demo',
     phone: '+998 90 000 00 00'
   };
+  // 🔧 фиксируем UID, чтобы getUID() совпадал с демо-пользователем
+  try { localStorage.setItem('nas_uid', String(state.user.id)); } catch {}
 
   // 2) Адреса
   state.addresses = [
@@ -627,6 +629,7 @@ async function seedDemo(){
     list: [
       {
         id:'ORD-231001',
+        userId: getUID(), // 🔧 важен для фильтра getOrdersForUser
         createdAt: new Date(now - 12*24*3600*1000).toISOString(),
         status: 'активен',
         total: (p1?.price||0) + (p2?.price||0)*2,
@@ -653,6 +656,7 @@ async function seedDemo(){
       },
       {
         id:'ORD-231015',
+        userId: getUID(), // 🔧
         createdAt: new Date(now - 4*24*3600*1000).toISOString(),
         status: 'новый',
         total: p1?.price||0,
@@ -663,6 +667,7 @@ async function seedDemo(){
       },
       {
         id:'ORD-230930',
+        userId: getUID(), // 🔧
         createdAt: new Date(now - 20*24*3600*1000).toISOString(),
         status: 'выдан',
         total: p2?.price||0,
@@ -697,7 +702,8 @@ async function init(){
 
   // загрузка каталога
   try{
-    const res = await fetch('data/products.json');
+    // 🔧 абсолютный путь, чтобы не ловить 404 на вложенных маршрутах/Netlify
+    const res = await fetch('/data/products.json');
     const data = await res.json();
     state.products   = Array.isArray(data?.products)   ? data.products   : [];
     state.categories = Array.isArray(data?.categories) ? data.categories.map(c=>({ ...c, name: c.name })) : [];
