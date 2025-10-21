@@ -574,127 +574,6 @@ async function router(){
   renderHome(router);
 }
 
-/* ===== DEMO MODE: ?demo=1 ===== */
-function isDemo(){
-  const qs = new URLSearchParams(location.search);
-  return qs.has('demo') || qs.get('mode') === 'demo';
-}
-
-async function seedDemo(){
-  // 1) Демопользователь
-  state.user = {
-    id: 777001,
-    first_name: 'Алексей',
-    last_name: 'Власов',
-    username: 'evlise_demo',
-    phone: '+998 90 000 00 00'
-  };
-  // 🔧 фиксируем UID, чтобы getUID() совпадал с демо-пользователем
-  try { localStorage.setItem('nas_uid', String(state.user.id)); } catch {}
-
-  // 2) Адреса
-  state.addresses = [
-    { id:'adr1', label:'Дом', city:'Ташкент', address:'ул. Бабура, 73А', comment:'Домофон 12', isDefault:true },
-    { id:'adr2', label:'Офис', city:'Ташкент', address:'ул. Амир Темур, 15', comment:'3 этаж' },
-  ];
-  try{ (await import('./core/state.js')).persistAddresses?.(); }catch{}
-
-  // 3) Корзина
-  const p1 = state.products.find(p=>p.slug==='khudi-ford') || state.products[0];
-  const p2 = state.products.find(p=>p.slug==='dzhinsy') || state.products[1];
-
-  state.cart = {
-    lines: [
-      { id: 'cl1', productId: String(p1?.id), qty: 1, size:'M', color: p1?.colors?.[0] || '#000000', price: p1?.price || 0 },
-      { id: 'cl2', productId: String(p2?.id), qty: 2, size:'L', color: p2?.colors?.[0] || '#111827', price: p2?.price || 0 },
-    ],
-    // для совместимости с кодом, где ожидается cart.items
-    items: [
-      { id: 'cl1', productId: String(p1?.id), qty: 1, size:'M', color: p1?.colors?.[0] || '#000000', price: p1?.price || 0 },
-      { id: 'cl2', productId: String(p2?.id), qty: 2, size:'L', color: p2?.colors?.[0] || '#111827', price: p2?.price || 0 },
-    ],
-    promo: null,
-    referral: null
-  };
-  try{ (await import('./core/state.js')).persistCart?.(); }catch{}
-  updateCartBadge();
-
-  // 4) Избранное
-  state.favorites = new Set([String(p1?.id||''), String(p2?.id||'')].filter(Boolean));
-  try{ (await import('./core/state.js')).persistFavorites?.(); }catch{}
-
-  // 5) Заказы
-  const now = Date.now();
-  state.orders = {
-    list: [
-      {
-        id:'ORD-231001',
-        userId: getUID(), // 🔧 важен для фильтра getOrdersForUser
-        createdAt: new Date(now - 12*24*3600*1000).toISOString(),
-        status: 'активен',
-        total: (p1?.price||0) + (p2?.price||0)*2,
-        addressId:'adr1',
-        items:[
-          { productId:String(p1?.id||''), title:p1?.title||'Товар', qty:1, size:'M', color:p1?.colors?.[0], price:p1?.price||0 },
-          { productId:String(p2?.id||''), title:p2?.title||'Товар', qty:2, size:'L', color:p2?.colors?.[0], price:p2?.price||0 },
-        ],
-        timeline:[
-          { at: new Date(now - 12*24*3600*1000).toISOString(), event:'Заказ создан' },
-          { at: new Date(now - 11*24*3600*1000).toISOString(), event:'Оплачен' },
-          { at: new Date(now - 9*24*3600*1000).toISOString(),  event:'В обработке' },
-          { at: new Date(now - 6*24*3600*1000).toISOString(),  event:'Отправлен поставщику' },
-        ],
-        tracking:{
-          id:'TRK-231001',
-          carrier:'Внутренняя логистика',
-          url:null,
-          steps:[
-            { at: new Date(now - 9*24*3600*1000).toISOString(), label:'Принят в обработку' },
-            { at: new Date(now - 6*24*3600*1000).toISOString(), label:'Заказ у поставщика' },
-          ]
-        }
-      },
-      {
-        id:'ORD-231015',
-        userId: getUID(), // 🔧
-        createdAt: new Date(now - 4*24*3600*1000).toISOString(),
-        status: 'новый',
-        total: p1?.price||0,
-        addressId:'adr2',
-        items:[ { productId:String(p1?.id||''), title:p1?.title||'Товар', qty:1, size:'S', color:p1?.colors?.[1], price:p1?.price||0 } ],
-        timeline:[ { at: new Date(now - 4*24*3600*1000).toISOString(), event:'Заказ создан' } ],
-        tracking:{ id:'TRK-231015', carrier:'—', url:null, steps:[] }
-      },
-      {
-        id:'ORD-230930',
-        userId: getUID(), // 🔧
-        createdAt: new Date(now - 20*24*3600*1000).toISOString(),
-        status: 'выдан',
-        total: p2?.price||0,
-        addressId:'adr1',
-        items:[ { productId:String(p2?.id||''), title:p2?.title||'Товар', qty:1, size:'M', color:p2?.colors?.[0], price:p2?.price||0 } ],
-        timeline:[
-          { at: new Date(now - 20*24*3600*1000).toISOString(), event:'Заказ создан' },
-          { at: new Date(now - 19*24*3600*1000).toISOString(), event:'Оплачен' },
-          { at: new Date(now - 15*24*3600*1000).toISOString(), event:'Выдан клиенту' },
-        ],
-        tracking:{ id:'TRK-230930', carrier:'—', url:null, steps:[] }
-      }
-    ]
-  };
-  try{ (await import('./core/state.js')).persistOrders?.(); }catch{}
-
-  // 6) Нотификации (однократно)
-  const notifs = getNotifications() || [];
-  if (!notifs.length){
-    pushNotification({ id:'n1', type:'order', icon:'package', title:'Заказ обновлён', sub:'ORD-231001 — новый этап', ts: Date.now()-3600*1000, read:false });
-    pushNotification({ id:'n2', type:'promo', icon:'wallet', title:'5% кэшбэк на 1-й заказ', sub:'Активируйте в корзине', ts: Date.now()-7200*1000, read:false });
-  }
-  setNotifications(getNotifications());
-
-  console.log('[DEMO] demo state seeded');
-}
-
 /* ---------- ИНИЦИАЛИЗАЦИЯ ---------- */
 async function init(){
   // 0) Сразу захватываем возможного инвайтера из контекста (MiniApp/Web)
@@ -702,8 +581,7 @@ async function init(){
 
   // загрузка каталога
   try{
-    // 🔧 абсолютный путь, чтобы не ловить 404 на вложенных маршрутах/Netlify
-    const res = await fetch('/data/products.json');
+    const res = await fetch('data/products.json');
     const data = await res.json();
     state.products   = Array.isArray(data?.products)   ? data.products   : [];
     state.categories = Array.isArray(data?.categories) ? data.categories.map(c=>({ ...c, name: c.name })) : [];
@@ -712,11 +590,6 @@ async function init(){
   }
 
   try{ state.orders = await getOrders(); }catch{ state.orders = []; }
-
-  // активируем DEMO-режим после загрузки заказов, чтобы демо-данные перекрыли серверные
-  if (isDemo()){
-    await seedDemo();
-  }
 
   pruneCartAgainstProducts(state.products);
   updateCartBadge();
