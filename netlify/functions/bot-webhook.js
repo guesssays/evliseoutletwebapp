@@ -15,7 +15,7 @@ import { getStore } from '@netlify/blobs';
 
 const TOKEN = process.env.TG_BOT_TOKEN || '';
 const WEBAPP_URL = process.env.WEBAPP_URL || '';
-const WELCOME_ASSET_PATH = (process.env.WELCOME_ASSET_PATH || 'assets/images/welcome_v2.png').replace(/^\/+/, '');
+const WELCOME_ASSET_PATH = (process.env.WELCOME_ASSET_PATH || 'assets/images/min.png').replace(/^\/+/, '');
 const STATS_KEY = 'stats_miniapp_open.json';
 
 // ▼ Приветственный текст по умолчанию
