@@ -28,6 +28,9 @@ export function renderHome(router){
   v.innerHTML = `<div class="grid home-bottom-pad" id="productGrid"></div>`;
   drawCategoriesChips(router);
   drawProducts(state.products);
+
+  // Кнопка «вверх»
+  ensureBackToTop();
 }
 
 /**
@@ -128,4 +131,74 @@ export function drawProducts(list){
 
   grid.appendChild(frag);
   window.lucide?.createIcons && lucide.createIcons();
+}
+
+/* ===== ВСПОМОГАТЕЛЬНОЕ: кнопка «Вверх» ===== */
+const BTN_ID = 'backToTopBtn';
+
+function ensureBackToTop(){
+  let btn = document.getElementById(BTN_ID);
+
+  if (!btn){
+    btn = document.createElement('button');
+    btn.id = BTN_ID;
+    btn.type = 'button';
+    btn.setAttribute('aria-label','Вернуться к началу');
+    btn.innerHTML = `<i data-lucide="arrow-up"></i>`;
+    Object.assign(btn.style, {
+      position: 'fixed',
+      right: '16px',
+      bottom: '16px',                 // будет пересчитано функцией positionBackToTop()
+      width: '44px',
+      height: '44px',
+      borderRadius: '999px',
+      border: '1px solid var(--border, rgba(0,0,0,.12))',
+      background: 'var(--card, rgba(0,0,0,.04))',
+      backdropFilter: 'saturate(180%) blur(8px)',
+      boxShadow: '0 6px 18px rgba(0,0,0,.12)',
+      display: 'none',                // скрыта по умолчанию, показывается при скролле
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+      cursor: 'pointer'
+    });
+    // чуть увеличим hit area на мобильных
+    btn.style.touchAction = 'manipulation';
+
+    document.body.appendChild(btn);
+    window.lucide?.createIcons && lucide.createIcons();
+
+    btn.addEventListener('click', ()=>{
+      try{ document.activeElement?.blur?.(); }catch{}
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+    });
+  }
+
+  // Позиционирование с учётом таббара
+  function positionBackToTop(){
+    const tab = document.getElementById('tabbar');
+    const tabH = tab?.offsetHeight || 0;
+    // 12px от таббара + 16px общий отступ, но минимум 16px
+    const bottom = Math.max(16, tabH + 12);
+    btn.style.bottom = `${bottom}px`;
+  }
+
+  // Показ/скрытие по скроллу
+  function toggleVisibility(){
+    const y = window.scrollY || document.documentElement.scrollTop || 0;
+    btn.style.display = y > 400 ? 'inline-flex' : 'none';
+  }
+
+  // Первичная инициализация
+  positionBackToTop();
+  toggleVisibility();
+
+  // Обработчики
+  window.addEventListener('scroll', toggleVisibility, { passive: true });
+  window.addEventListener('resize', positionBackToTop);
+
+  // Если в вашем приложении таббар может менять высоту динамически —
+  // можно дергать это событие вручную после изменения таббара:
+  // window.dispatchEvent(new Event('tabbar:resize'));
+  window.addEventListener('tabbar:resize', positionBackToTop);
 }
