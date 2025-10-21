@@ -165,27 +165,44 @@ export function renderProduct({id}){
         animation: swPulse .25s ease;
       }
       /* УБРАН pseudo-элемент ::after (маленькая «пимпочка») */
-/* — Размеры (как было изначально) — */
+/* — Размеры (ранняя «v0») — */
 .size{
   min-width:44px;
   height:36px;
+  padding:0 10px;
   border-radius:10px;
-  border:1px solid rgba(15,23,42,.18);
-  background:#fff;           /* невыбранный с заливкой */
+  background:rgba(15,23,42,.06);     /* спокойная подложка у невыбранного */
+  border:1px solid transparent;
   color:#0f172a;
   font-weight:800;
+  transition:background .12s ease, box-shadow .12s ease, border-color .12s ease, transform .12s ease, color .12s ease;
+}
+.size:hover{
+  transform:translateY(-1px);
+  background:rgba(15,23,42,.10);
 }
 .size.active{
-  border-color:#0ea5e9;      /* выбранный — только обводка/свечение */
-  box-shadow:0 0 0 3px rgba(14,165,233,.25);
+  background:#0ea5e9;                /* выбранный — залит акцентом */
+  color:#fff;
+  border-color:#0ea5e9;
+  box-shadow:0 4px 12px rgba(14,165,233,.25);
 }
 @media (prefers-color-scheme:dark){
   .size{
-    background:#111827;      /* дарк-тема: невыбранный с заливкой */
+    background:rgba(255,255,255,.08);
     color:#fff;
-    border-color:rgba(255,255,255,.18);
+    border-color:rgba(255,255,255,.16);
+  }
+  .size:hover{
+    background:rgba(255,255,255,.12);
+  }
+  .size.active{
+    background:#38bdf8;               /* чуть светлее акцент в дарке */
+    border-color:#38bdf8;
+    box-shadow:0 4px 12px rgba(56,189,248,.25);
   }
 }
+
 
     </style>
 
