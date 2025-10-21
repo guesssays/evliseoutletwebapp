@@ -92,7 +92,7 @@ export function renderProduct({id}){
       .mini-tabbar{
         position:fixed;
         left:0; right:0; bottom:0;
-        z-index:1001;
+        z-index:1001; /* будет переопределяться из JS */
         display:flex; align-items:center;
         padding:8px 12px;
 
@@ -375,23 +375,30 @@ export function renderProduct({id}){
     const bar = document.getElementById('miniTabbar');
     if (!bar) return;
 
-    // отступ сверху от основного таббара
-    const bottomOffset = getTabbarHeight();
-    bar.style.bottom = `${bottomOffset}px`;
-
-    // подгоняем ширину и положение под реальный прямоугольник основного таббара
     const tb = getTabbarEl();
     const vw = window.innerWidth || document.documentElement.clientWidth || 360;
 
+    // 1) z-index мини-бара: на 1 больше, чем у основного таббара
+    if (tb) {
+      const z = parseInt(getComputedStyle(tb).zIndex || '0', 10) || 0;
+      bar.style.zIndex = String(Math.max(z + 1, 1001));
+    } else {
+      bar.style.zIndex = '1001';
+    }
+
+    // 2) Отступаемся на высоту таббара + небольшой зазор
+    const bottomOffset = getTabbarHeight();
+    const GAP = 6;
+    bar.style.bottom = `${bottomOffset + GAP}px`;
+
+    // 3) Подбор ширины/позиции
     let left = 8;
-    // дефолт — процент от ширины экрана (вдруг таббар не найден)
     let width = Math.max(MINI_MIN_WIDTH, Math.floor((vw - 16) * MINI_WIDTH_FACTOR));
 
     if (tb){
       const rect = tb.getBoundingClientRect();
       const inset = rect.width >= 420 ? 12 : 8;
 
-      // целевая ширина = MINI_WIDTH_FACTOR от ширины основного таббара (с отступами)
       const target = Math.max(
         MINI_MIN_WIDTH,
         Math.floor((rect.width - inset * 2) * MINI_WIDTH_FACTOR)
@@ -401,7 +408,7 @@ export function renderProduct({id}){
       // центрируем мини-бар относительно основного таббара
       left = Math.max(8, Math.floor(rect.left + (rect.width - width) / 2));
     } else {
-      // если таббар не найден — просто центр относительно экрана
+      // центр относительно экрана
       left = Math.max(8, Math.floor((vw - width) / 2));
     }
 
