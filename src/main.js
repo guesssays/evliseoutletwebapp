@@ -340,6 +340,22 @@ window.setTabbarCTAs = setTabbarCTAs;
     if (u) state.user = u;
 
     const sp = String(tg.initDataUnsafe.start_param || '').trim().toLowerCase();
+
+    // ДОБАВЛЕНО: микротрекинг открытия Mini App с меткой Direct Link
+    if (sp) {
+      try {
+        fetch('/.netlify/functions/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'miniapp_open',
+            startapp: sp,
+            uid: u?.id || null,
+          })
+        }).catch(()=>{});
+      } catch {}
+    }
+
     tryUnlockFromStartParam();
 
     if (sp === 'admin' || sp === 'admin-login'){
@@ -380,13 +396,63 @@ document.addEventListener('click', (e)=>{
 function seedNotificationsOnce(){
   try{
     if (getNotifications().length) return;
+
+    const now = Date.now();
     const seed = [
-      { id: 1, title: 'Добро пожаловать в EVLISE OUTLET', sub: 'Подборка новинок уже на главной.', ts: Date.now()-1000*60*60*6, read:false, icon:'bell' },
-      { id: 2, title: 'Скидки на худи', sub: 'MANIA и DIRT — выгоднее на 15% до воскресенья.', ts: Date.now()-1000*60*50, read:false, icon:'percent' },
+      {
+        id: 'feat-tracking',
+        icon: 'package',
+        title: 'Новинка: отслеживание заказов',
+        sub: 'Следите за этапами: подтверждение, сборка, доставка — всё в одном месте.',
+        ts: now - 1000 * 60 * 60 * 6,
+        read: false
+      },
+      {
+        id: 'feat-cashback',
+        icon: 'wallet',
+        title: 'Кэшбек за каждую покупку',
+        sub: 'Начисляем баллы — ими можно оплачивать следующие заказы.',
+        ts: now - 1000 * 60 * 60 * 5,
+        read: false
+      },
+      {
+        id: 'feat-referrals',
+        icon: 'users',
+        title: 'Реферальная программа',
+        sub: 'Приглашайте друзей, делитесь ссылкой и получайте бонусы.',
+        ts: now - 1000 * 60 * 60 * 4,
+        read: false
+      },
+      {
+        id: 'feat-size-helper',
+        icon: 'ruler',
+        title: 'Умный подбор размера',
+        sub: 'Подскажет подходящую посадку по вашим параметрам.',
+        ts: now - 1000 * 60 * 60 * 3,
+        read: false
+      },
+      {
+        id: 'feat-favorites',
+        icon: 'heart',
+        title: 'Избранное',
+        sub: 'Сохраняйте понравившиеся модели, чтобы вернуться к ним позже.',
+        ts: now - 1000 * 60 * 60 * 2,
+        read: false
+      },
+      {
+        id: 'feat-real-photos',
+        icon: 'image',
+        title: 'Реальные фотографии вещей',
+        sub: 'Без сюрпризов: смотрите, как товары выглядят вживую.',
+        ts: now - 1000 * 60 * 45,
+        read: false
+      }
     ];
+
     setNotifications(seed);
   }catch{}
 }
+
 
 /* ---------- фикс-хедер товара: скрытие вне карточки ---------- */
 function hideProductHeader(){

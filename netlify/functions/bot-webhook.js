@@ -1,6 +1,7 @@
 // netlify/functions/bot-webhook.js
 // Рассылка /broadcast с предпросмотром и подтверждением.
 // Персистентная FSM + антидубли, устойчиво к eventual-consistency Netlify Blobs.
+// Плюс: /stats для отчёта по Direct Link (Mini App start_param).
 //
 // ENV:
 //   TG_BOT_TOKEN        — токен бота (без "bot") [обяз.]
@@ -15,18 +16,19 @@ import { getStore } from '@netlify/blobs';
 const TOKEN = process.env.TG_BOT_TOKEN || '';
 const WEBAPP_URL = process.env.WEBAPP_URL || '';
 const WELCOME_ASSET_PATH = (process.env.WELCOME_ASSET_PATH || 'assets/images/welcome.jpg').replace(/^\/+/, '');
+const STATS_KEY = 'stats_miniapp_open.json';
 
-// ▼ Новый приветственный текст по умолчанию
+// ▼ Приветственный текст по умолчанию
 const WELCOME_TEXT = process.env.WELCOME_TEXT || `Добро пожаловать в EVLISE OUTLET — онлайн-магазин одежды в Узбекистане. Нам доверяют, ведь мы с 2024 года делаем покупки прозрачными и выгодными.
 
 Теперь онлайн-шоппинг с Evlise стал ещё удобнее: 
 
 — отслеживание заказов по этапам;
 — кэшбек баллами за каждую покупку;
-— реферальная программа — делитесь и получайте бонусы;
-— умный подбор размера по параметрам;
+— реферальная программа;
+— умный подбор размера;
 — избранное для ваших находок;
-— реальные фотографии вещей без сюрпризов.
+— реальные фотографии вещей.
 
 Здесь вы сразу видите, где сейчас ваш заказ, получаете кэшбек, которым можно оплачивать покупки, приглашаете друзей и зарабатываете бонусы. Умный подбор размера подскажет подходящую посадку. Сохраняйте любимые модели в Избранное и смотрите реальные фото вещей — отбросив сомнения в выборе.
 
@@ -212,12 +214,10 @@ function resolveAssetUrl(relPath) {
 }
 async function sendWelcome(chatId) {
   const photoUrl = resolveAssetUrl(WELCOME_ASSET_PATH);
-  // Telegram ограничивает подпись к фото ~1024 символами
   const CAPTION_LIMIT = 1024;
   const needsSplit = (WELCOME_TEXT || '').length > CAPTION_LIMIT;
 
   if (photoUrl) {
-    // если длинная подпись — отправим фото с коротким заголовком и следом полный текст
     const caption = needsSplit ? 'Добро пожаловать в EVLISE OUTLET' : WELCOME_TEXT;
     await safeSend('sendPhoto', {
       chat_id: chatId,
@@ -226,19 +226,55 @@ async function sendWelcome(chatId) {
       reply_markup: welcomeKeyboard()
     });
     if (needsSplit) {
-      await safeSend('sendMessage', {
-        chat_id: chatId,
-        text: WELCOME_TEXT
-      });
+      await safeSend('sendMessage', { chat_id: chatId, text: WELCOME_TEXT });
     }
     return;
   }
-  // если вдруг нет URL (локально / dev) — просто текст
   await safeSend('sendMessage', {
     chat_id: chatId,
     text: WELCOME_TEXT,
     reply_markup: welcomeKeyboard()
   });
+}
+
+/* ---------------- Stats helper ---------------- */
+function formatStatsText(stats, daysWindow = 14, topTags = 20) {
+  if (!stats || typeof stats !== 'object') return 'Статистика пуста.';
+  const total = Number(stats.total || 0);
+  const tags = stats.tags || {};
+  const byDay = stats.byDay || {};
+
+  const top = Object.entries(tags)
+    .sort((a,b) => b[1]-a[1])
+    .slice(0, topTags);
+
+  const lines = [];
+  lines.push(`📈 Статистика Mini App`);
+  lines.push(`Всего открытий: ${total}`);
+  if (top.length) {
+    lines.push(`\nПо меткам:`);
+    for (const [tag, cnt] of top) {
+      lines.push(`• ${tag}: ${cnt}`);
+    }
+  } else {
+    lines.push(`\nПо меткам: пока нет данных`);
+  }
+
+  // последние N дней, по убыванию даты
+  const days = Object.keys(byDay).sort().slice(-daysWindow);
+  if (days.length) {
+    lines.push(`\nПоследние ${days.length} дней:`);
+    for (const d of days) {
+      const rec = byDay[d] || { total:0, tags:{} };
+      const subtags = Object.entries(rec.tags || {})
+        .sort((a,b)=>b[1]-a[1])
+        .slice(0,5)
+        .map(([t,c]) => `${t} ${c}`)
+        .join(', ');
+      lines.push(`${d}: ${rec.total}${subtags ? ` (${subtags})` : ''}`);
+    }
+  }
+  return lines.join('\n');
 }
 
 /* ============================ Webhook ============================ */
@@ -331,20 +367,18 @@ export default async function handler(req) {
           await tg('sendMessage', { chat_id: chatId, text: 'Мы уже ждём пост для текущей рассылки. Пришлите текст/фото/видео или отправьте /cancel.' });
           return new Response('ok', { status: 200 });
         }
-        // допускаем остальные команды ниже (например /users)
       } else {
-        // принимаем пост
         const post = buildPostFromMessage(msg);
         const sessionId = Date.now().toString(36);
         await writeJSON(store, sessionKey(chatId, sessionId), { post, created_ts: Date.now() });
         await setPointer(store, chatId, { mode: 'confirm', sessionId, last_ping: 0 });
-        await sendPostTo(chatId, post); // предпросмотр
+        await sendPostTo(chatId, post);
         await tg('sendMessage', { chat_id: chatId, text: 'Отправить это сообщение всем пользователям?', reply_markup: confirmKeyboard(sessionId) });
         return new Response('ok', { status: 200 });
       }
     }
 
-    // --- если ждём подтверждение: тоже сперва команды
+    // --- если ждём подтверждение
     if (pointer?.mode === 'confirm') {
       if (isCommand) {
         if (text.startsWith('/cancel')) {
@@ -356,7 +390,6 @@ export default async function handler(req) {
           await tg('sendMessage', { chat_id: chatId, text: 'Уже на шаге подтверждения. Нажмите «✅ Подтвердить» или «❌ Отменить», либо /cancel.' });
           return new Response('ok', { status: 200 });
         }
-        // остальные команды пройдут далее
       } else {
         const now = Date.now();
         if (!pointer.last_ping || now - Number(pointer.last_ping) > 10_000) {
@@ -367,7 +400,7 @@ export default async function handler(req) {
       }
     }
 
-    // 3) команды администратора (всегда работают)
+    // 3) команды администратора
     if (isCommand) {
       if (text.startsWith('/help')) {
         await tg('sendMessage', {
@@ -379,6 +412,7 @@ export default async function handler(req) {
             '/users — показать число пользователей.',
             '/addme — добавить себя в базу получателей.',
             '/state — показать текущее состояние мастера.',
+            '/stats — статистика по Direct Link (Mini App).',
             '/diag set — записать тестовый объект в Blobs.',
             '/diag get — прочитать тестовый объект из Blobs.',
             '/where — показать сайт/окружение/бакет.'
@@ -440,6 +474,20 @@ export default async function handler(req) {
           context: process.env.CONTEXT || '',
         };
         await tg('sendMessage', { chat_id: chatId, text: `where:\n${JSON.stringify(info, null, 2)}` });
+        return new Response('ok', { status: 200 });
+      }
+
+      if (text.startsWith('/stats')) {
+        // возможно: /stats 30 — окно в 30 дней
+        const parts = text.split(/\s+/).filter(Boolean);
+        const days = Math.max(1, Math.min(60, Number(parts[1]) || 14)); // от 1 до 60 дней
+        const stats = await readJSON(store, STATS_KEY, null);
+        const out = stats ? formatStatsText(stats, days, 20) : 'Пока нет данных по открытиям Mini App.';
+        await tg('sendMessage', {
+          chat_id: chatId,
+          text: out,
+          disable_web_page_preview: true
+        });
         return new Response('ok', { status: 200 });
       }
 
