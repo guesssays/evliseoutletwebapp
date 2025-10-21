@@ -1,4 +1,3 @@
-// src/core/orders.js
 // Простое локальное хранилище заказов + утилиты для админки/клиента
 import { getUID } from './state.js';
 
@@ -127,6 +126,11 @@ function writeHistory(order, status, extra = {}){
 
 export async function getOrders(){
   const list = await apiGetList();
+  const local = getOrdersLocal();
+  // Страховка: если сервер по какой-то причине вернул пусто, а локально есть данные — не затираем.
+  if (Array.isArray(list) && list.length === 0 && Array.isArray(local) && local.length > 0){
+    return local;
+  }
   replaceOrdersCacheSilently(list);
   return list;
 }

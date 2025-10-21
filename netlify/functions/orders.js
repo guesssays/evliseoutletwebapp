@@ -1,5 +1,12 @@
 // Централизованное хранилище заказов (Netlify Blobs) + операции админа
-// ENV: TG_BOT_TOKEN, ADMIN_CHAT_ID (может быть список через запятую), WEBAPP_URL, ALLOWED_ORIGINS (опц.)
+// ENV: TG_BOT_TOKEN, ADMIN_CHAT_ID (может быть список через запятую), WEBAPP_URL
+//      ALLOWED_ORIGINS (опц.), ALLOW_MEMORY_FALLBACK=1 (только для DEV)
+//
+// Поведение: в продакшене, если Netlify Blobs временно недоступны — возвращаем 503,
+// чтобы клиент НЕ обнулял локальный кэш и не «терял» заказы.
+
+const IS_PROD = process.env.NODE_ENV === 'production';
+const ALLOW_MEMORY_FALLBACK = String(process.env.ALLOW_MEMORY_FALLBACK || '').trim() === '1';
 
 /* ---------------- CORS ---------------- */
 function parseAllowed() {
@@ -57,11 +64,25 @@ export async function handler(event) {
     return { statusCode: 403, body: 'Forbidden by CORS', ...headers };
   }
 
+  let store;
+  let storeKind = 'blobs';
   try {
-    const store = await getStoreSafe(); // Blobs или in-memory
+    store = await getStoreSafe(); // Blobs или (в DEV) in-memory
+    storeKind = store.__kind || 'blobs';
+  } catch (e) {
+    console.error('[orders] store init failed:', e?.message || e);
+    return svcUnavailable(headers, 'persistent store unavailable');
+  }
 
+  try {
     if (event.httpMethod === 'GET') {
       const op = (event.queryStringParameters?.op || 'list').toLowerCase();
+
+      if (op === 'health') {
+        const count = await store.count().catch(()=>null);
+        return ok({ health: { store: storeKind, count } }, headers);
+      }
+
       if (op === 'list') {
         const items = await store.list();
         return ok({ orders: items }, headers);
@@ -107,22 +128,28 @@ export async function handler(event) {
 
     return bad('unknown op', headers);
   } catch (e) {
-    console.error('[orders] handler error:', e);
+    console.error('[orders] handler op error:', e);
     return { statusCode: 500, body: JSON.stringify({ ok:false, error: String(e) }), ...headers };
   }
 }
 
 /* ---------------- Storage (Blobs v7 getStore) ---------------- */
 async function getStoreSafe(){
-  // Пытаемся подключить настоящий Blobs store
   try {
     const { getStore } = await import('@netlify/blobs');
     const store = getStore('orders'); // общий namespace сайта
-    await store.list({ prefix: '__ping__', paginate: false });
+
+    // Проверка доступности с strong-консистентностью
+    await store.get('__ping__', { type: 'json', consistency: 'strong' });
+
     console.log('[orders] Using Netlify Blobs via getStore');
     return makeBlobsStore(store);
   } catch (e) {
-    console.warn('[orders] Netlify Blobs not available, fallback to in-memory:', e?.message || e);
+    console.warn('[orders] Netlify Blobs not available:', e?.message || e);
+    if (IS_PROD && !ALLOW_MEMORY_FALLBACK) {
+      throw new Error('Persistent store unavailable in production');
+    }
+    console.warn('[orders] Falling back to in-memory (DEV only).');
     return makeMemoryStore();
   }
 }
@@ -131,27 +158,26 @@ function makeBlobsStore(store){
   const KEY_ALL = 'orders_all';
 
   async function readAll(){
-    try{
-      const data = await store.get(KEY_ALL, { type: 'json', consistency: 'strong' });
-      return Array.isArray(data) ? data : [];
-    }catch(e){
-      console.error('[orders] readAll (blobs) error:', e);
-      return [];
-    }
+    const data = await store.get(KEY_ALL, { type: 'json', consistency: 'strong' });
+    return Array.isArray(data) ? data : [];
   }
   async function writeAll(list){
-    await store.setJSON(KEY_ALL, list);
+    await store.setJSON(KEY_ALL, Array.isArray(list) ? list : []);
   }
 
-  return makeStoreCore(readAll, writeAll);
+  const core = makeStoreCore(readAll, writeAll);
+  core.__kind = 'blobs';
+  return core;
 }
 
-/* ---------------- In-memory fallback ---------------- */
+/* ---------------- In-memory fallback (DEV ONLY) ---------------- */
 const __mem = { orders: [] };
 function makeMemoryStore(){
   async function readAll(){ return __mem.orders.slice(); }
-  async function writeAll(list){ __mem.orders = list.slice(); }
-  return makeStoreCore(readAll, writeAll);
+  async function writeAll(list){ __mem.orders = Array.isArray(list) ? list.slice() : []; }
+  const core = makeStoreCore(readAll, writeAll);
+  core.__kind = 'memory';
+  return core;
 }
 
 /* ---------------- Store core (общая логика CRUD) ---------------- */
@@ -161,6 +187,10 @@ function makeStoreCore(readAll, writeAll){
     order.history = Array.isArray(order.history) ? [...order.history, rec] : [rec];
   }
   return {
+    async count(){
+      const arr = await readAll();
+      return Array.isArray(arr) ? arr.length : null;
+    },
     async list(){
       const arr = await readAll();
       arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
@@ -304,3 +334,6 @@ async function notifyAdminNewOrder(id, order){
 /* ---------------- helpers ---------------- */
 function ok(json, headers){ return { statusCode:200, body: JSON.stringify({ ok:true, ...json }), ...headers }; }
 function bad(msg, headers){ return { statusCode:400, body: JSON.stringify({ ok:false, error: msg }), ...headers }; }
+function svcUnavailable(headers, msg='service unavailable'){
+  return { statusCode: 503, body: JSON.stringify({ ok:false, error: msg }), ...headers };
+}
