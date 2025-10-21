@@ -182,7 +182,7 @@ export async function renderAdmin(){
     const rows = items.map((x,i)=>{
       const opts = [
         x.size ? `Размер: ${escapeHtml(x.size)}` : '',
-        x.color ? `Цвет: ${escapeHtml(x.color)}` : '',
+        x.color ? `Цвет: <span title="${escapeHtml(String(x.color))}">${escapeHtml(humanColorName(x.color))}</span>` : '',
       ].filter(Boolean).join(' · ');
       const line = Number(x.qty||0) * Number(x.price||0);
       return `
@@ -535,4 +535,134 @@ function plural(n, one, few, many){
   if (n1 > 1 && n1 < 5) return few;
   if (n1 === 1) return one;
   return many;
+}
+
+/* ======== РАСПОЗНАВАНИЕ ЦВЕТА ======== */
+/* Показываем понятное название вместо кода/hex/rgb. Возвращает RU-название. */
+function humanColorName(value){
+  if (!value && value!==0) return '';
+  const s = String(value).trim();
+
+  // 1) если уже имя (ru/en) — нормализуем
+  const low = s.toLowerCase();
+  if (COLOR_EN_RU[low]) return COLOR_EN_RU[low];
+  if (COLOR_RU[low]) return COLOR_RU[low];
+
+  // 2) если hex/rgb — переводим в HSL и биндим по диапазонам
+  const rgb = parseAnyColorToRgb(s);
+  if (!rgb) return s; // не смогли распарсить — показываем как есть
+  const { r,g,b } = rgb;
+  const { h,l,sat } = rgbToHsl(r,g,b);
+
+  // Серые тона и крайние случаи
+  if (sat < 10){
+    if (l >= 95) return 'белый';
+    if (l <= 8)  return 'чёрный';
+    if (l < 30)  return 'тёмно-серый';
+    if (l > 75)  return 'светло-серый';
+    return 'серый';
+  }
+
+  // Коричневый (оранжевый с низкой яркостью)
+  if (h >= 10 && h <= 40 && l < 55 && sat > 20) {
+    if (l < 30) return 'тёмно-коричневый';
+    return 'коричневый';
+  }
+
+  const base = hueToRu(h);
+
+  // модификаторы светлоты
+  if (l >= 78) return `светло-${base}`;
+  if (l <= 22) return `тёмно-${base}`;
+  return base;
+}
+
+const COLOR_RU = {
+  'чёрный':'чёрный','черный':'чёрный','белый':'белый','серый':'серый','красный':'красный','оранжевый':'оранжевый',
+  'жёлтый':'жёлтый','желтый':'жёлтый','зелёный':'зелёный','зеленый':'зелёный','голубой':'голубой','синий':'синий',
+  'фиолетовый':'фиолетовый','розовый':'розовый','коричневый':'коричневый','бежевый':'бежевый','бирюзовый':'бирюзовый',
+  'хаки':'хаки','оливковый':'оливковый','бордовый':'бордовый','индиго':'индиго'
+};
+const COLOR_EN_RU = {
+  'black':'чёрный','white':'белый','gray':'серый','grey':'серый','red':'красный','orange':'оранжевый','yellow':'жёлтый',
+  'green':'зелёный','blue':'синий','navy':'тёмно-синий','skyblue':'голубой','cyan':'голубой','teal':'бирюзовый',
+  'turquoise':'бирюзовый','purple':'фиолетовый','violet':'фиолетовый','magenta':'пурпурный','pink':'розовый',
+  'brown':'коричневый','beige':'бежевый','khaki':'хаки','olive':'оливковый','maroon':'бордовый','indigo':'индиго'
+};
+
+/* Парсим hex/rgb/rgba в {r,g,b} */
+function parseAnyColorToRgb(str){
+  const s = str.trim();
+
+  // hex #rgb, #rrggbb
+  const m3 = /^#([0-9a-f]{3})$/i.exec(s);
+  if (m3){
+    const h = m3[1];
+    return {
+      r: parseInt(h[0]+h[0],16),
+      g: parseInt(h[1]+h[1],16),
+      b: parseInt(h[2]+h[2],16),
+    };
+  }
+  const m6 = /^#([0-9a-f]{6})$/i.exec(s);
+  if (m6){
+    const h = m6[1];
+    return {
+      r: parseInt(h.slice(0,2),16),
+      g: parseInt(h.slice(2,4),16),
+      b: parseInt(h.slice(4,6),16),
+    };
+  }
+
+  // rgb/rgba
+  const mrgb = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*[\d.]+\s*)?\)$/i.exec(s);
+  if (mrgb){
+    return {
+      r: clamp255(Number(mrgb[1])),
+      g: clamp255(Number(mrgb[2])),
+      b: clamp255(Number(mrgb[3])),
+    };
+  }
+
+  // именованные css — пробуем через словарь, иначе null
+  const low = s.toLowerCase();
+  if (COLOR_EN_RU[low] || COLOR_RU[low]){
+    // вернём null — пусть обработается как уже человекочитаемое имя
+    return null;
+  }
+
+  return null;
+}
+function clamp255(n){ n=Math.round(n); if(n<0)return 0; if(n>255)return 255; return n; }
+function rgbToHsl(r,g,b){
+  r/=255; g/=255; b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b);
+  let h, s, l=(max+min)/2;
+  if(max===min){ h=0; s=0; }
+  else{
+    const d=max-min;
+    s = l>0.5 ? d/(2-max-min) : d/(max+min);
+    switch(max){
+      case r: h=(g-b)/d + (g<b?6:0); break;
+      case g: h=(b-r)/d + 2; break;
+      case b: h=(r-g)/d + 4; break;
+    }
+    h*=60;
+  }
+  return { h, s:s*100, l:l*100, sat:s*100 };
+}
+function hueToRu(h){
+  if (h<0) h=0;
+  if (h<=15 || h>=345) return 'красный';
+  if (h<=35) return 'оранжевый';
+  if (h<=60) return 'жёлтый';
+  if (h<=85) return 'лаймовый';
+  if (h<=165) return 'зелёный';
+  if (h<=190) return 'бирюзовый';
+  if (h<=210) return 'голубой';
+  if (h<=240) return 'синий';
+  if (h<=265) return 'индиго';
+  if (h<=285) return 'фиолетовый';
+  if (h<=320) return 'пурпурный';
+  return 'розовый';
 }
