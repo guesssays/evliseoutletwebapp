@@ -148,7 +148,7 @@ function ensureBackToTop(){
     Object.assign(btn.style, {
       position: 'fixed',
       right: '16px',
-      bottom: '16px',                 // будет пересчитано функцией positionBackToTop()
+      bottom: '16px', // пересчитывается ниже
       width: '44px',
       height: '44px',
       borderRadius: '999px',
@@ -156,15 +156,13 @@ function ensureBackToTop(){
       background: 'var(--card, rgba(0,0,0,.04))',
       backdropFilter: 'saturate(180%) blur(8px)',
       boxShadow: '0 6px 18px rgba(0,0,0,.12)',
-      display: 'none',                // скрыта по умолчанию, показывается при скролле
+      display: 'none',
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 1000,
-      cursor: 'pointer'
+      cursor: 'pointer',
+      touchAction: 'manipulation'
     });
-    // чуть увеличим hit area на мобильных
-    btn.style.touchAction = 'manipulation';
-
     document.body.appendChild(btn);
     window.lucide?.createIcons && lucide.createIcons();
 
@@ -174,31 +172,81 @@ function ensureBackToTop(){
     });
   }
 
-  // Позиционирование с учётом таббара
-  function positionBackToTop(){
-    const tab = document.getElementById('tabbar');
-    const tabH = tab?.offsetHeight || 0;
-    // 12px от таббара + 16px общий отступ, но минимум 16px
-    const bottom = Math.max(16, tabH + 12);
-    btn.style.bottom = `${bottom}px`;
+  // --- утилиты ---
+  const TABBAR_SELECTORS = ['#tabbar','.tabbar','[data-tabbar]','[role="tablist"]'];
+
+  function findTabbar(){
+    for (const sel of TABBAR_SELECTORS){
+      const el = document.querySelector(sel);
+      if (el) return el;
+    }
+    return null;
   }
 
-  // Показ/скрытие по скроллу
+  function getSafeInsetBottom(){
+    // пробуем считать safe-area через CSS env
+    // создаём временный элемент с padding-bottom: env(safe-area-inset-bottom)
+    const tmp = document.createElement('div');
+    tmp.style.cssText = 'position:fixed;bottom:0;visibility:hidden;padding-bottom:env(safe-area-inset-bottom);';
+    document.body.appendChild(tmp);
+    const cs = getComputedStyle(tmp);
+    const pb = parseFloat(cs.paddingBottom) || 0;
+    document.body.removeChild(tmp);
+    return pb;
+  }
+
+  // Позиционирование с учётом реального перекрытия
+  function positionBackToTop(){
+    const tab = findTabbar();
+    const safe = getSafeInsetBottom();
+    let bottom = 16 + safe; // базовый отступ
+
+    if (tab){
+      const r = tab.getBoundingClientRect();
+      const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+      // если таббар у нижней кромки и может перекрывать кнопку
+      if (r.height > 0 && r.top < vh){
+        // насколько зона таббара наезжает снизу (обычно r.bottom ~ vh)
+        const overlap = Math.max(0, vh - r.top);
+        // 12px буфер над таббаром + safe-area
+        bottom = Math.max(16 + safe, overlap + 12 + safe);
+      }
+    }
+
+    btn.style.bottom = `${Math.round(bottom)}px`;
+  }
+
   function toggleVisibility(){
     const y = window.scrollY || document.documentElement.scrollTop || 0;
     btn.style.display = y > 400 ? 'inline-flex' : 'none';
   }
 
-  // Первичная инициализация
-  positionBackToTop();
-  toggleVisibility();
+  // первичный расчёт
+  requestAnimationFrame(()=>{
+    positionBackToTop();
+    toggleVisibility();
+  });
 
-  // Обработчики
+  // обработчики
   window.addEventListener('scroll', toggleVisibility, { passive: true });
   window.addEventListener('resize', positionBackToTop);
+  window.addEventListener('hashchange', ()=>{ setTimeout(positionBackToTop, 0); });
 
-  // Если в вашем приложении таббар может менять высоту динамически —
-  // можно дергать это событие вручную после изменения таббара:
-  // window.dispatchEvent(new Event('tabbar:resize'));
+  // если таббар меняет размер — наблюдаем его
+  const tabForObserver = findTabbar();
+  if (window.ResizeObserver && tabForObserver){
+    const ro = new ResizeObserver(()=> positionBackToTop());
+    ro.observe(tabForObserver);
+  }
+
+  // поддержка iOS клавиатуры/безрамочных экранов
+  if (window.visualViewport){
+    window.visualViewport.addEventListener('resize', positionBackToTop);
+  }
+
+  // поддержка вашего пользовательского события
   window.addEventListener('tabbar:resize', positionBackToTop);
+
+  // небольшой «пост-тик» после анимаций/иконок
+  setTimeout(positionBackToTop, 300);
 }
