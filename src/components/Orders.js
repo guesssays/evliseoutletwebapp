@@ -9,7 +9,11 @@ export async function renderOrders(){
   const myOrders = (await getOrdersForUser(myUid) || []).slice();
 
   if (!myOrders.length){
-    v.innerHTML = `<div class="section-title">Мои заказы</div>
+    v.innerHTML = `
+      <div class="section-title" style="display:flex;align-items:center;gap:10px">
+        <button class="square-btn" id="ordersBack"><i data-lucide="chevron-left"></i></button>
+        Мои заказы
+      </div>
       <section class="checkout">
         <div style="text-align:center;color:#999; padding:40px 0">
           <i data-lucide="package" style="width:60px;height:60px;opacity:.35"></i>
@@ -18,6 +22,7 @@ export async function renderOrders(){
         </div>
       </section>`;
     window.lucide?.createIcons && lucide.createIcons();
+    document.getElementById('ordersBack')?.addEventListener('click', ()=> history.back());
     return;
   }
 
@@ -28,7 +33,10 @@ export async function renderOrders(){
   const canceled   = myOrders.filter(o => o.status === 'отменён');
 
   v.innerHTML = `
-    <div class="section-title">Мои заказы</div>
+    <div class="section-title" style="display:flex;align-items:center;gap:10px">
+      <button class="square-btn" id="ordersBack"><i data-lucide="chevron-left"></i></button>
+      Мои заказы
+    </div>
     <section class="checkout orders-groups">
       ${groupBlock('В процессе', inProgress)}
       ${groupBlock('Получены', received)}
@@ -37,6 +45,7 @@ export async function renderOrders(){
   `;
 
   window.lucide?.createIcons && lucide.createIcons();
+  document.getElementById('ordersBack')?.addEventListener('click', ()=> history.back());
 }
 
 function groupBlock(title, list){
@@ -93,7 +102,15 @@ export async function renderTrack({id}){
   const list = await getOrdersForUser(myUid);
   const o = list.find(x=>String(x.id)===String(id));
   if(!o){
-    v.innerHTML='<div class="section-title">Трекинг</div><section class="checkout">Не найдено</section>';
+    v.innerHTML = `
+      <div class="section-title" style="display:flex;align-items:center;gap:10px">
+        <button class="square-btn" id="trackBackNF"><i data-lucide="chevron-left"></i></button>
+        Трекинг
+      </div>
+      <section class="checkout">Не найдено</section>
+    `;
+    window.lucide?.createIcons && lucide.createIcons();
+    document.getElementById('trackBackNF')?.addEventListener('click', ()=> history.back());
     return;
   }
 
@@ -132,7 +149,6 @@ export async function renderTrack({id}){
       /* список позиций */
       .order-item{
         display:grid;
-        /* теперь 3 колонки: img | meta (включая qty inline) | sum */
         grid-template-columns: 56px minmax(0,1fr) auto;
         gap:10px;
         align-items:center;
@@ -145,11 +161,8 @@ export async function renderTrack({id}){
       .order-item__qty-inline{white-space:nowrap; color:var(--muted)}
       .order-item__sum{justify-self:end; font-weight:700; padding-left:8px; white-space:nowrap}
 
-      /* узкие экраны: всё уже в одной колонке меты — ничего переносить не нужно */
       @media (max-width: 420px){
-        .order-item{
-          grid-template-columns: 56px minmax(0,1fr) auto;
-        }
+        .order-item{ grid-template-columns: 56px minmax(0,1fr) auto; }
       }
 
       .kv{display:block; width:100%;}
@@ -161,7 +174,10 @@ export async function renderTrack({id}){
       .pill, .btn{max-width:100%; white-space:nowrap; text-overflow:ellipsis; overflow:hidden}
     </style>
 
-    <div class="section-title">Заказ #${escapeHtml(o.id)}</div>
+    <div class="section-title" style="display:flex;align-items:center;gap:10px">
+      <button class="square-btn" id="trackBack"><i data-lucide="chevron-left"></i></button>
+      Заказ #${escapeHtml(o.id)}
+    </div>
     <section class="checkout order-detail-page">
       <div class="track-head">
         <div class="track-caption">Этап ${Math.min(curIdx+1, steps.length)} из ${steps.length}</div>
@@ -209,6 +225,7 @@ export async function renderTrack({id}){
       <a class="pill primary" href="#/orders" style="margin-top:12px">Назад к заказам</a>
     </section>`;
   window.lucide?.createIcons && lucide.createIcons();
+  document.getElementById('trackBack')?.addEventListener('click', ()=> history.back());
 }
 
 function itemsBlock(o){

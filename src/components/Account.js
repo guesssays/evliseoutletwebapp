@@ -358,7 +358,10 @@ export function renderAddresses(){
 
   v.innerHTML = `
     <section class="section">
-      <div class="section-title">Адреса доставки</div>
+      <div class="section-title" style="display:flex;align-items:center;gap:10px">
+        <button class="square-btn" id="backAccAddrs"><i data-lucide="chevron-left"></i></button>
+        Адреса доставки
+      </div>
 
       <style>
         .addr-list .addr{
@@ -492,6 +495,9 @@ export function renderAddresses(){
     history.back();
   });
 
+  // 👈 новая кнопка «назад»
+  document.getElementById('backAccAddrs')?.addEventListener('click', ()=> history.back());
+
   window.lucide?.createIcons && lucide.createIcons();
 }
 
@@ -503,12 +509,16 @@ export function renderSettings(){
   const v=document.getElementById('view');
   v.innerHTML = `
     <section class="section">
-      <div class="section-title">Настройки</div>
+      <div class="section-title" style="display:flex;align-items:center;gap:10px">
+        <button class="square-btn" id="backAccSettings"><i data-lucide="chevron-left"></i></button>
+        Настройки
+      </div>
       <div class="menu">
         <div class="menu-item"><i data-lucide="moon"></i><span>Тема устройства</span></div>
       </div>
     </section>`;
   window.lucide?.createIcons && lucide.createIcons();
+  document.getElementById('backAccSettings')?.addEventListener('click', ()=> history.back());
 }
 
 /* helpers */

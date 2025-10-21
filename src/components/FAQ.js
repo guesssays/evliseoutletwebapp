@@ -4,18 +4,9 @@ const OP_CHAT_URL = 'https://t.me/evliseorder';
 export function renderFAQ(){
   const v = document.getElementById('view');
 
-  // ─────────────────────────────────────────────────────────────
-  // Более аккуратная фиксация таббара:
-  // Если в sessionStorage записан источник (например, 'account'),
-  // используем его, чтобы не сбрасывать вкладку на главную.
-  // Флаг стираем, чтобы не «тянуться» на последующие экраны.
-  // ─────────────────────────────────────────────────────────────
+  // Фиксируем таббар на вкладке "account"
   try{
-    const origin = sessionStorage.getItem('tabbarOrigin');
-    if (origin){
-      window.setTabbarMenu?.(origin);
-      sessionStorage.removeItem('tabbarOrigin');
-    }
+    window.setTabbarMenu?.('account');
   }catch{}
 
   // данные аккордеона
