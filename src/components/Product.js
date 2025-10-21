@@ -125,14 +125,81 @@ export function renderProduct({id}){
         .related-wrap{background:linear-gradient(0deg,rgba(255,255,255,.04),rgba(255,255,255,.04));border-top-color:rgba(255,255,255,.14);}
       }
       .grid.related-grid{margin-top:6px;}
-      /* Контейнер миниатюр: убрать скругление нижних углов */
-.p-hero .thumbs{
-  border-bottom-left-radius: 0 !important;
-  border-bottom-right-radius: 0 !important;
-  /* если у .thumbs есть собственный фон/бордер и нужна «ровная» стыковка: */
-  overflow: hidden; /* чтобы углы точно применялись к содержимому */
-}
 
+      /* Контейнер миниатюр: убрать скругление нижних углов */
+      .p-hero .thumbs{
+        border-bottom-left-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+        overflow: hidden;
+      }
+
+      /* ====== СВЕТЛЫЕ и ТЁМНЫЕ ГРАНИЦЫ ДЛЯ СВОТЧЕЙ ====== */
+      .p-options{display:grid;grid-template-columns:1fr;gap:16px;margin:14px 0;}
+      .opt-title{font-weight:800;margin:6px 0 8px;}
+      .sizes,.colors{display:flex;flex-wrap:wrap;gap:10px;}
+
+      /* Кнопка-свотч (цвет) — стала крупнее и контрастнее */
+      .sw{
+        position:relative;
+        width:38px; height:38px;
+        border-radius:999px;
+        border:2px solid rgba(15,23,42,.18);
+        box-shadow: inset 0 0 0 2px rgba(255,255,255,.7); /* внутреннее кольцо для контраста на тёмных цветах */
+        outline:none;
+        cursor:pointer;
+        transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, outline-color .12s ease;
+      }
+      @media (prefers-color-scheme:dark){
+        .sw{
+          border-color: rgba(255,255,255,.22);
+          box-shadow: inset 0 0 0 2px rgba(0,0,0,.55); /* контраст на светлых цветах в дарк-теме */
+        }
+      }
+      .sw:focus-visible{
+        outline:3px solid #0ea5e9; outline-offset:2px;
+      }
+      .sw:hover{ transform:translateY(-1px); }
+
+      /* Яркий индикатор выбранного цвета: толстая обводка + галочка */
+      .sw.active{
+        border-color:#0ea5e9 !important;
+        box-shadow:
+          inset 0 0 0 2px rgba(255,255,255,.85),
+          0 0 0 3px rgba(14,165,233,.28); /* внешняя «свечение» */
+      }
+      .sw.active::after{
+        content:"";
+        position:absolute;
+        right:-2px; bottom:-2px;
+        width:18px; height:18px;
+        border-radius:999px;
+        background:#0ea5e9;
+        box-shadow:0 2px 8px rgba(14,165,233,.5);
+        mask:
+          url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>')
+          center/12px 12px no-repeat;
+        -webkit-mask:
+          url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>')
+          center/12px 12px no-repeat;
+      }
+      @media (prefers-color-scheme:dark){
+        .sw.active{
+          box-shadow:
+            inset 0 0 0 2px rgba(0,0,0,.6),
+            0 0 0 3px rgba(56,189,248,.28);
+        }
+      }
+
+      /* Размеры */
+      .size{
+        min-width:44px;height:36px;border-radius:10px;
+        border:1px solid rgba(15,23,42,.18);background:#fff;color:#0f172a;
+        font-weight:800;
+      }
+      .size.active{border-color:#0ea5e9;box-shadow:0 0 0 3px rgba(14,165,233,.25);}
+      @media (prefers-color-scheme:dark){
+        .size{background:#111827;color:#fff;border-color:rgba(255,255,255,.18);}
+      }
     </style>
 
     <!-- Фикс-хедер карточки -->
@@ -200,7 +267,18 @@ export function renderProduct({id}){
           </div>`:''}
           <div>
             <div class="opt-title">Цвет</div>
-            <div class="colors" id="colors">${(p.colors||[]).map(c=>`<button class="sw" title="${c}" data-v="${c}" style="background:${colorToHex(c)}"></button>`).join('')}</div>
+            <div class="colors" id="colors">
+              ${(p.colors||[]).map((c,i)=>`
+                <button
+                  class="sw${i===0?' active':''}"
+                  title="${c}${i===0?' — выбран':''}"
+                  aria-label="Цвет ${c}${i===0?' — выбран':''}"
+                  aria-pressed="${i===0?'true':'false'}"
+                  data-v="${c}"
+                  style="background:${colorToHex(c)}"
+                ></button>
+              `).join('')}
+            </div>
           </div>
         </div>
 
@@ -249,11 +327,21 @@ export function renderProduct({id}){
   if (colors){
     colors.addEventListener('click', e=>{
       const b=e.target.closest('.sw'); if(!b)return;
-      colors.querySelectorAll('.sw').forEach(x=>x.classList.remove('active'));
-      b.classList.add('active'); color=b.getAttribute('data-v');
+      colors.querySelectorAll('.sw').forEach(x=>{
+        x.classList.remove('active');
+        x.setAttribute('aria-pressed','false');
+        const t = x.getAttribute('title')||'';
+        x.setAttribute('title', t.replace(' — выбран',''));
+        const al = x.getAttribute('aria-label')||'';
+        x.setAttribute('aria-label', al.replace(' — выбран',''));
+      });
+      b.classList.add('active');
+      b.setAttribute('aria-pressed','true');
+      b.setAttribute('title', (b.getAttribute('title')||'') + ' — выбран');
+      b.setAttribute('aria-label', (b.getAttribute('aria-label')||'') + ' — выбран');
+      color=b.getAttribute('data-v');
       refreshCTAByState();
     });
-    colors.querySelector('.sw')?.classList.add('active');
   }
 
   // Навигация назад
@@ -289,7 +377,6 @@ export function renderProduct({id}){
         b.className='real-badge';
         b.innerHTML = '<i data-lucide="camera"></i><span>Реальное фото товара</span>';
         galleryMain.appendChild(b);
-        // иконка lucide, добавленная динамически
         window.lucide?.createIcons && lucide.createIcons();
       }
       // активная миниатюра

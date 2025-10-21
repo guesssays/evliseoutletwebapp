@@ -204,6 +204,17 @@ export function renderCart(){
   const ad = state.addresses.list.find(a=>a.id===state.addresses.defaultId) || null;
 
   v.innerHTML = `
+  <style>
+    .c-dot{
+      display:inline-block; width:10px; height:10px;
+      border-radius:999px; vertical-align:middle; margin-right:6px;
+      border:1px solid rgba(0,0,0,.2);
+    }
+    @media (prefers-color-scheme:dark){
+      .c-dot{ border-color: rgba(255,255,255,.25); }
+    }
+  </style>
+
   <div class="section-title" style="display:flex;align-items:center;gap:10px">
     <button class="square-btn" id="cartBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
     Оформление
@@ -215,7 +226,11 @@ export function renderCart(){
         <div class="cart-img"><img src="${x.product.images?.[0]||''}" alt=""></div>
         <div>
           <div class="cart-title" style="overflow-wrap:anywhere">${escapeHtml(x.product.title)}</div>
-          <div class="cart-sub">${x.size?`Размер ${escapeHtml(x.size)}`:''} ${x.color?`• ${escapeHtml(x.color)}`:''}</div>
+          <div class="cart-sub">
+            ${x.size ? `Размер ${escapeHtml(x.size)}` : ''}
+            ${x.size && x.color ? ' • ' : ''}
+            ${x.color ? `${colorDot(x.color)}${escapeHtml(colorName(x.color))}` : ''}
+          </div>
           <div class="cart-price">${priceFmt(x.product.price)}</div>
         </div>
         <div class="qty-mini">
@@ -463,7 +478,12 @@ function checkoutFlow(items, addr, totalRaw, bill){
       <div class="field">
         <span>Товары в заказе</span>
         <ul style="margin:6px 0 0; padding-left:18px; color:#444">
-          ${items.map(x=>`<li>${escapeHtml(x.product.title)} · ${x.size?`размер ${escapeHtml(x.size)} `:''}${x.color?`· ${escapeHtml(x.color)} `:''}×${x.qty}</li>`).join('')}
+          ${items.map(x=>`<li>
+            ${escapeHtml(x.product.title)}
+            ${x.size ? ` · размер ${escapeHtml(x.size)}` : ''}
+            ${x.color ? ` · ${colorDot(x.color)}${escapeHtml(colorName(x.color))}` : ''}
+            ×${x.qty}
+          </li>`).join('')}
         </ul>
       </div>
       <label class="field" style="display:flex;align-items:center;gap:10px">
@@ -894,6 +914,35 @@ function compressImageToDataURL(file, maxW=1600, maxH=1600, quality=0.82){
 
 function escapeHtml(s=''){
   return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* === Цвет: название и свотч === */
+function colorName(c=''){
+  const key = String(c).toLowerCase();
+  const map = {
+    '#000000':'чёрный', 'black':'чёрный',
+    '#ffffff':'белый',  'white':'белый',
+    // Синие/голубые
+    '#1e3a8a':'тёмно-синий', '#3b82f6':'синий',
+    '#60a5fa':'голубой', '#93c5fd':'светло-голубой', '#0ea5e9':'голубой',
+    // Серые/графит
+    '#6b7280':'серый', '#808080':'серый', '#111827':'графит', '#616161':'серый',
+    // Красные/розовые/фиолетовые
+    '#b91c1c':'красный', '#ef4444':'красный', '#f472b6':'розовый', '#a855f7':'фиолетовый',
+    // Зелёные/хаки/олива
+    '#16a34a':'зелёный', '#166534':'тёмно-зелёный',
+    '#556b2f':'хаки', '#4b5320':'оливковый', '#1f5132':'тёмно-зелёный',
+    // Коричневые/бежевые/песочные
+    '#7b3f00':'коричневый', '#8b5a2b':'коричневый', '#6b4226':'коричневый',
+    '#b0a36f':'бежевый', '#c8b796':'бежевый', '#d1b892':'бежевый', '#c19a6b':'бежевый',
+    '#a3a380':'оливковый'
+  };
+  return map[key] || (key.startsWith('#') ? key : c);
+}
+
+function colorDot(c='#000'){
+  const safe = escapeHtml(c);
+  return `<span class="c-dot" aria-hidden="true" style="background:${safe}"></span>`;
 }
 
 /** Локальный помощник: создать in-app уведомление (любому uid) */
