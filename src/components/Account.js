@@ -2,6 +2,7 @@
 import { state, persistAddresses } from '../core/state.js';
 import { canAccessAdmin } from '../core/auth.js';
 import { getUID } from '../core/state.js';
+import { makeReferralLink } from '../core/loyalty.js';
 
 const OP_CHAT_URL = 'https://t.me/evliseorder';
 
@@ -41,12 +42,9 @@ function settleMatured(){
 function readRefProfile(){ try{ return JSON.parse(localStorage.getItem(k('ref_profile')) || '{}'); }catch{ return {}; } }
 function writeRefProfile(v){ localStorage.setItem(k('ref_profile'), JSON.stringify(v||{})); }
 
-/* — реф-ссылка — */
+/* — реф-ссылка (теперь T.ME deep link) — */
 function getReferralLink(){
-  const uid = getUID?.() || '';
-  // формируем ссылку на текущее приложение + параметр ref=<uid>
-  const base = `${location.origin}${location.pathname}`;
-  return `${base}#/ref?ref=${encodeURIComponent(uid)}`;
+  return makeReferralLink();
 }
 
 /* — список моих рефералов/статистика — */
@@ -130,8 +128,6 @@ export function renderAccount(){
     openExternal(OP_CHAT_URL);
   });
 
-  // на случай мгновенного перехода по ссылкам из аккаунта — ещё раз фиксируем вкладку
-  // чтобы роутер “по умолчанию” не вернул на home до рендера целевой страницы
   document.querySelectorAll('.menu a').forEach(a=>{
     a.addEventListener('click', ()=> window.setTabbarMenu?.('account'));
   });

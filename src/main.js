@@ -43,7 +43,16 @@ import {
   notifyFavoritesReminder,
 } from './core/botNotify.js';
 
-/* ===== Кэшбек/Рефералы: локальные утилиты ===== */
+/* ===== Реферал/кешбэк: deeplink-капчер + bind ===== */
+import {
+  captureInviterFromContext,
+  tryBindPendingInviter,
+} from './core/loyalty.js';
+
+// Экран-мостик для браузера
+import { renderRefBridge } from './views/RefBridge.js';
+
+/* ===== Кэшбек/Рефералы: локальные утилиты (дозревание локальных pending) ===== */
 const POINTS_MATURITY_MS  = 24*60*60*1000;
 function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
 
@@ -72,49 +81,6 @@ function settleMatured(){
     }else keep.push(p);
   }
   if (changed){ w.pending=keep; writeWallet(w); }
-}
-
-/* Реф-профиль */
-function readRefProfile(){ try{ return JSON.parse(localStorage.getItem(k('ref_profile')) || '{}'); }catch{ return {}; } }
-function writeRefProfile(v){ localStorage.setItem(k('ref_profile'), JSON.stringify(v||{})); }
-
-/* Захват ?ref=<inviterUid> из deeplink/URL и установка буста на первый заказ */
-function captureReferral(){
-  try{
-    // 1) deep-link через Telegram WebApp start_param уже обработан в tryUnlockFromStartParam (админ).
-    // 2) реф-параметр ловим из #/ref?ref=UID или любого хеша с ?ref=
-    const hash = location.hash || '';
-    const m = /[?#&]ref=([^&]+)/i.exec(hash);
-    if (!m) return;
-    const inviter = decodeURIComponent(m[1] || '').trim();
-    const me = String(getUID?.() || '');
-    if (!inviter || inviter === me) return; // антифрод: самореф не разрешаем
-
-    // Отсечём повторную фиксацию
-    const rp = readRefProfile();
-    if (rp.inviter && rp.inviter !== inviter) return; // уже закреплён другой инвайтер
-    if (!rp.inviter) rp.inviter = inviter;
-
-    // Ставим буст на первый заказ
-    if (!rp.firstOrderDone) rp.firstOrderBoost = true;
-
-    writeRefProfile(rp);
-
-    // Обновим список инвайтера (для карточки «Мои рефералы» у него)
-    const INV_KEY = `my_referrals__${inviter}`;
-    let list = [];
-    try{ list = JSON.parse(localStorage.getItem(INV_KEY) || '[]'); }catch{ list=[]; }
-    const exists = list.some(x => String(x.uid||'') === me);
-    if (!exists){
-      const month = new Date().toISOString().slice(0,7);
-      // антифрод: максимум 10 в месяц — только для информации на карточке инвайтера, не блокируем ссылку
-      const monthly = list.filter(x => x.month===month).length;
-      if (monthly < 10){
-        list.push({ uid: me, ts: Date.now(), month });
-        localStorage.setItem(INV_KEY, JSON.stringify(list));
-      }
-    }
-  }catch{}
 }
 
 /* ===== «богатые» уведомления через Netlify Function ===== */
@@ -217,7 +183,7 @@ async function syncMyNotifications(){
     return;
   }
 
-  // Гость → ВСЕГДА общий UID 'guest' (без анонимных anon_…)
+  // Гость → ВСЕГДА общий UID 'guest'
   try{
     const stored = localStorage.getItem('nas_uid');
     if (!stored) localStorage.setItem('nas_uid', 'guest');
@@ -499,18 +465,15 @@ async function router(){
   if (match('account/referrals'))  return renderReferrals();
 
   if (match('notifications')){
-    // подтянем актуальные и покажем экран
     await syncMyNotifications();
     renderNotifications(updateNotifBadge);
 
-    // сразу пометим все прочитанными на сервере и мгновенно обнулим локальный счётчик
     const uid = getUID();
     try {
       const items = await notifApiMarkAll(uid);
       if (items) {
-        mergeNotifsToLocal(items); // в кэш кладём уже read:true
+        mergeNotifsToLocal(items);
       } else {
-        // фолбэк: локально отметим прочитанными
         const loc = getNotifications().map(n => ({ ...n, read: true }));
         setNotifications(loc);
       }
@@ -519,11 +482,9 @@ async function router(){
     return;
   }
 
-  // Технический роут для захвата ?ref=...
+  // Новый мостик: #/ref[?ref=...|&start=ref_<uid>]
   if (match('ref')){
-    captureReferral();
-    // отправим сразу на главную (или на аккаунт — как удобнее)
-    location.hash = '#/';
+    renderRefBridge();
     return;
   }
 
@@ -549,6 +510,9 @@ async function router(){
 
 /* ---------- ИНИЦИАЛИЗАЦИЯ ---------- */
 async function init(){
+  // 0) Сразу захватываем возможного инвайтера из контекста (MiniApp/Web)
+  captureInviterFromContext();
+
   // загрузка каталога
   try{
     const res = await fetch('data/products.json');
@@ -583,10 +547,10 @@ async function init(){
   // кэшбек: «дозреть» pending → available при старте
   settleMatured();
 
-  // захват реф-ссылки, если пришли по ней (после загрузки UI, чтобы hash был на месте)
-  captureReferral();
-
   await router();
+
+  // 1) После старта UI — пробуем привязать pending-инвайтера (когда уже есть наш UID)
+  await tryBindPendingInviter();
 
   window.addEventListener('hashchange', router);
 
@@ -608,6 +572,8 @@ async function init(){
       location.hash = '#/admin-login';
     }
     router();
+    // 2) Если авторизация произошла после старта — повторим попытку бинда
+    tryBindPendingInviter();
   });
 
   function buildOrderShortTitle(order) {
@@ -631,7 +597,6 @@ async function init(){
     try{
       const id = e.detail?.id;
 
-      // единый объект уведомления с детерминированным id
       const notif = {
         id: `order-placed-${id}`,
         ts: Date.now(),
@@ -641,11 +606,9 @@ async function init(){
         read: false
       };
 
-      // локально
       pushNotification(notif);
       updateNotifBadge?.();
 
-      // и на сервер — тем же id
       await serverPushFor(getUID(), notif);
 
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
@@ -654,7 +617,6 @@ async function init(){
       const uid = state?.user?.id;
       notifyOrderPlaced(uid, { orderId: id, title });
 
-      // ВАЖНО: сообщаем приложению, что список заказов изменился (админка обновится)
       window.dispatchEvent(new CustomEvent('orders:updated'));
     }catch{}
   });
@@ -838,12 +800,9 @@ async function ensureUserJoinReported(){
       headers: { 'Content-Type':'application/json' },
       body: JSON.stringify(payload),
     });
-    // даже при ответе ok/not-ok — фиксируем, чтобы не ддосить
     localStorage.setItem(FLAG, '1');
-
-    // необязательно: можно обработать ответ
     await r.json().catch(()=> ({}));
   }catch{
-    // тихо игнорируем — в следующий раз не будем спамить
+    // ignore
   }
 }

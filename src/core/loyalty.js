@@ -16,10 +16,14 @@ export const CASHBACK_CFG = {
   MONTHLY_REF_LIMIT: 10,               // не более 10 рефералов/мес для 1 пригласившего
 };
 
+/* ====== Telegram Mini App: имя бота для deeplink ====== */
+export const BOT_USERNAME = 'evliseoutletbot'; // <-- замени на актуальный username бота
+
 /* ===== Локальные вспомогательные ключи (перс.) ===== */
-const LKEY_BALANCE = 'loyalty_balance';
-const LKEY_REDEEM_RES = 'loyalty_redeem_reservations';
-const LKEY_REF = 'loyalty_ref';
+const LKEY_BALANCE   = 'loyalty_balance';
+const LKEY_REDEEM_RES= 'loyalty_redeem_reservations';
+const LKEY_REF       = 'loyalty_ref';
+const LKEY_INVITER   = 'pending_inviter_uid'; // временное хранилище пригласившего до появления UID
 
 /* ===== Стейт-кэш (клиент) ===== */
 export function getLocalLoyalty(){
@@ -66,6 +70,17 @@ async function api(op, body = {}){
   return data;
 }
 
+/* ===== Pending inviter helpers ===== */
+function setPendingInviter(uid){
+  try{ if (uid) localStorage.setItem(k(LKEY_INVITER), String(uid)); }catch{}
+}
+function getPendingInviter(){
+  try{ return localStorage.getItem(k(LKEY_INVITER)); }catch{ return null; }
+}
+function clearPendingInviter(){
+  try{ localStorage.removeItem(k(LKEY_INVITER)); }catch{}
+}
+
 /* ===== Публичные методы (клиент) ===== */
 
 /** Получить баланс/историю пользователя с серверной валидацией */
@@ -76,15 +91,50 @@ export async function fetchMyLoyalty(){
   return balance;
 }
 
-/** Сгенерировать реф-ссылку (через start_param=ref_<uid>) */
+/** Сгенерировать реф-ссылку: T.ME deep link в Mini App (+ web fallback ловим в RefBridge) */
 export function makeReferralLink(){
   const uid = getUID();
-  const base = location.origin + location.pathname + '#/';
-  const param = `ref_${uid}`;
-  // для Telegram MiniApp дополнительно можно использовать tg.initDataUnsafe.start_param,
-  // но на web-версии используем query
-  const link = `${base}?start=${encodeURIComponent(param)}`;
-  return link;
+  const start = `ref_${uid}`;
+  const tgDeepLink = `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(start)}`;
+  return tgDeepLink;
+}
+
+/** Захват инвайтера из любого контекста (Mini App start_param или веб-URL) */
+export function captureInviterFromContext(){
+  try{
+    // a) Telegram Mini App
+    const sp = window?.Telegram?.WebApp?.initDataUnsafe?.start_param || '';
+    if (sp && String(sp).startsWith('ref_')) {
+      const inviter = String(sp).slice(4);
+      if (inviter) setPendingInviter(inviter);
+    }
+
+    // b) Веб-URL (?start=ref_<uid> или #/ref?ref=<uid>)
+    const parse = (searchOrHash='')=>{
+      const p = new URLSearchParams(searchOrHash);
+      const qpStart = p.get('start') || '';
+      const qpRef   = p.get('ref') || '';
+      if (qpStart && qpStart.startsWith('ref_')) return qpStart.slice(4);
+      if (qpRef) return qpRef;
+      return '';
+    };
+    const qInv = parse((location.search||'').slice(1)) || parse((location.hash.split('?')[1]||''));
+    if (qInv) setPendingInviter(qInv);
+  }catch{}
+}
+
+/** Привязать пригласившего, когда у нас уже есть свой UID (антифрод на бэке) */
+export async function tryBindPendingInviter(){
+  const me = getUID();
+  const inviter = getPendingInviter();
+  if (!inviter || !me || String(inviter)===String(me)) return;
+  try{
+    const { ok, reason } = await ensureReferralBound(inviter);
+    // успех либо «exists/limit» — достаточно, повторять не нужно
+    if (ok || reason) clearPendingInviter();
+  }catch{
+    // сеть упала — повторим при следующем запуске/навигации
+  }
 }
 
 /** Зарегистрировать связь «пригласил/реферал» (антифрод на сервере) */
@@ -140,7 +190,7 @@ export async function finalizeRedeem(orderId, action /* 'cancel' | 'commit' */){
   return { ok };
 }
 
-/** Начислить кэшбэк по размещённому заказу (попадает в pending; x2 если первый у реферала; 5% рефереру) */
+/** Начислить кэшбэк по размещённому заказу (pending; x2 если первый у реферала; 5% рефереру) */
 export async function accrueOnOrderPlaced(order){
   const uid = String(order.userId || getUID());
   const { ok, balance } = await api('accrue', {
