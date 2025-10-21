@@ -254,10 +254,20 @@ export async function renderAdmin(){
       mode='list';
       return listView();
     }
-    const pmap   = currentProductsMap();
-    const prod   = pmap.get(String(o.productId));
-    const price  = prod?.price ? priceFmt(prod.price) : (o.total ? priceFmt(o.total) : '—');
-    const title  = prod?.title ? `${prod.title} ${price ? `· <span class="muted">${price}</span>`:''}` : `Заказ #${o.id}`;
+
+    // Заголовок в деталях: как и в списке — считаем позиции и итог
+    const items = Array.isArray(o.cart) ? o.cart : [];
+    const itemsCount =
+      items.reduce((s,x)=> s + (Number(x.qty)||0), 0) ||
+      (o.qty||0) ||
+      (items.length || 0);
+    const calcSum = items.reduce((s,x)=> s + (Number(x.price)||0) * (Number(x.qty)||0), 0);
+    const total   = Number.isFinite(Number(o.total)) ? Number(o.total) : calcSum;
+    const totalFmt = priceFmt(total);
+    const titleText = (items.length > 1 || itemsCount > 1)
+      ? `${itemsCount} ${plural(itemsCount, 'товар', 'товара', 'товаров')} · <span class="muted">${totalFmt}</span>`
+      : `${escapeHtml(items[0]?.title || 'Товар')} · <span class="muted">${totalFmt}</span>`;
+
     const isNew  = o.status==='новый' && !o.accepted;
     const isDone = ['выдан','отменён'].includes(o.status);
 
@@ -267,7 +277,7 @@ export async function renderAdmin(){
           <button id="backToList" class="btn-ghost" aria-label="Назад к списку">
             <i data-lucide="arrow-left"></i><span>Назад</span>
           </button>
-          <div class="order-detail__title">${title}</div>
+          <div class="order-detail__title">${titleText}</div>
         </div>
 
         <div class="order-detail__body">
