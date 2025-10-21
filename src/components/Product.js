@@ -2,6 +2,24 @@
 import { state, isFav, toggleFav } from '../core/state.js';
 import { priceFmt, colorToHex } from '../core/utils.js';
 import { addToCart, removeLineFromCart, isInCart } from './cartActions.js';
+import { getUID } from '../core/state.js';
+
+/* ====== КОНСТАНТЫ КЭШБЕКА/РЕФЕРАЛОВ (должны совпадать с корзиной/аккаунтом) ====== */
+const CASHBACK_RATE_BASE = 0.05;      // 5%
+const CASHBACK_RATE_BOOST = 0.10;     // 10% для 1-го заказа по реф-ссылке
+
+/* ——— хранилище пер-пользовательских данных ——— */
+function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
+
+/* Может ли пользователь получить буст x2 на 1-й заказ (если пришёл по реф-ссылке и ещё не оформлял) */
+function hasFirstOrderBoost(){
+  try{
+    const ref = JSON.parse(localStorage.getItem(k('ref_profile')) || '{}');
+    const firstDone = !!ref.firstOrderDone;
+    const boost = !!ref.firstOrderBoost;        // установлен в main.js при захвате ?ref=...
+    return boost && !firstDone;
+  }catch{ return false; }
+}
 
 function findCategoryBySlug(slug){
   for (const g of state.categories){
@@ -57,6 +75,15 @@ export function renderProduct({id}){
 
       <div class="p-body home-bottom-pad">
         <div class="p-title">${escapeHtml(p.title)}</div>
+
+        <!-- Кэшбек-виджет -->
+        <div class="p-cashback" style="display:flex;align-items:center;gap:8px;margin:6px 0 8px;padding:8px;border-radius:12px;background:var(--card,rgba(0,0,0,.04))">
+          <i data-lucide="coins" aria-hidden="true"></i>
+          <div>
+            ${cashbackSnippetHTML(p.price)}
+            <div class="muted mini">1 балл = 1 сум · Начисление через 24ч</div>
+          </div>
+        </div>
 
         <!-- ВМЕСТО ОПИСАНИЯ: СРОК ДОСТАВКИ -->
         <div class="p-delivery" style="display:flex;align-items:center;gap:8px;margin:6px 0 8px">
@@ -269,6 +296,16 @@ export function renderProduct({id}){
     btnFav.classList.toggle('active', !!active);
     btnFav.setAttribute('aria-pressed', String(!!active));
   }
+}
+
+/* ===== МАЛЕНЬКИЙ ВИДЖЕТ «СКОЛЬКО БАЛЛОВ» ===== */
+function cashbackSnippetHTML(price){
+  const boost = hasFirstOrderBoost();
+  const rate = boost ? CASHBACK_RATE_BOOST : CASHBACK_RATE_BASE;
+  const pts  = Math.floor((Number(price)||0) * rate);
+  return `<div class="cart-title" style="font-size:15px">
+    За покупку вы получите <b>${pts}</b> баллов${boost ? ' (x2 по реф-ссылке на 1-й заказ)' : ''}.
+  </div>`;
 }
 
 /* ==== вспомогалки ==== */

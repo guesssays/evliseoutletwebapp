@@ -1,8 +1,63 @@
 // src/components/Account.js
 import { state, persistAddresses } from '../core/state.js';
 import { canAccessAdmin } from '../core/auth.js';
+import { getUID } from '../core/state.js';
 
 const OP_CHAT_URL = 'https://t.me/evliseorder';
+
+/* ===== Локальные ключи и работа с кошельком/рефералами ===== */
+function k(base){ try{ const uid=getUID?.()||'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
+
+/* — кошелёк баллов — */
+const POINTS_MATURITY_MS  = 24*60*60*1000;
+function readWallet(){
+  try{
+    const w = JSON.parse(localStorage.getItem(k('points_wallet')) || '{}');
+    return {
+      available: Math.max(0, Number(w.available||0)|0),
+      pending: Array.isArray(w.pending) ? w.pending : [],
+      history: Array.isArray(w.history) ? w.history : [],
+    };
+  }catch{ return { available:0, pending:[], history:[] }; }
+}
+function writeWallet(w){ localStorage.setItem(k('points_wallet'), JSON.stringify(w||{available:0,pending:[],history:[]})); }
+function settleMatured(){
+  const w = readWallet();
+  const now = Date.now();
+  let changed=false;
+  const keep=[];
+  for (const p of w.pending){
+    if ((p.tsUnlock||0)<=now){
+      w.available += Math.max(0, Number(p.pts)||0);
+      w.history.unshift({ ts: now, type:'accrue', pts: p.pts|0, reason: p.reason||'Кэшбек', orderId: p.orderId||null });
+      changed=true;
+    }else keep.push(p);
+  }
+  if (changed){ w.pending = keep; writeWallet(w); }
+  return w;
+}
+
+/* — реф-профиль — */
+function readRefProfile(){ try{ return JSON.parse(localStorage.getItem(k('ref_profile')) || '{}'); }catch{ return {}; } }
+function writeRefProfile(v){ localStorage.setItem(k('ref_profile'), JSON.stringify(v||{})); }
+
+/* — реф-ссылка — */
+function getReferralLink(){
+  const uid = getUID?.() || '';
+  // формируем ссылку на текущее приложение + параметр ref=<uid>
+  const base = `${location.origin}${location.pathname}`;
+  return `${base}#/ref?ref=${encodeURIComponent(uid)}`;
+}
+
+/* — список моих рефералов/статистика — */
+function readMyReferrals(){
+  try{
+    const raw = localStorage.getItem(k('my_referrals')) || '[]';
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  }catch{ return []; }
+}
+function writeMyReferrals(arr){ localStorage.setItem(k('my_referrals'), JSON.stringify(Array.isArray(arr)?arr:[])); }
 
 export function renderAccount(){
   try{
@@ -18,6 +73,10 @@ export function renderAccount(){
   const u = state.user;
   const isAdmin = canAccessAdmin();
 
+  const w = settleMatured();
+  const ref = readRefProfile();
+  const hasBoost = !!ref.firstOrderBoost && !ref.firstOrderDone;
+
   v.innerHTML = `
     <section class="section">
       <div class="section-title">Личный кабинет</div>
@@ -29,8 +88,29 @@ export function renderAccount(){
         </div>
       </div>
 
+      <div class="cb-box" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0">
+        <div class="stat-card" style="padding:10px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:12px">
+          <div class="muted mini">Баланс баллов</div>
+          <div style="font-weight:800;font-size:20px">${(w.available|0).toLocaleString('ru-RU')}</div>
+        </div>
+        <div class="stat-card" style="padding:10px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:12px">
+          <div class="muted mini">Ожидает начисления</div>
+          <div style="font-weight:800;font-size:20px">${w.pending.reduce((s,p)=>s+(p?.pts|0),0).toLocaleString('ru-RU')}</div>
+        </div>
+      </div>
+
+      ${hasBoost ? `
+        <div class="note" style="display:grid;grid-template-columns:24px 1fr;gap:8px;align-items:start;margin:8px 0;padding:10px;border:1px dashed #d97706;border-radius:12px;background:rgba(245,158,11,.06)">
+          <i data-lucide="zap"></i>
+          <div class="muted">
+            У вас активен бонус <b>x2 кэшбек</b> на первый заказ по реф-ссылке.
+          </div>
+        </div>` : ''}
+
       <nav class="menu">
         <a class="menu-item" href="#/orders"><i data-lucide="package"></i><span>Мои заказы</span><i data-lucide="chevron-right" class="chev"></i></a>
+        <a class="menu-item" href="#/account/cashback"><i data-lucide="coins"></i><span>Мой кэшбек</span><i data-lucide="chevron-right" class="chev"></i></a>
+        <a class="menu-item" href="#/account/referrals"><i data-lucide="users"></i><span>Мои рефералы</span><i data-lucide="chevron-right" class="chev"></i></a>
         <a class="menu-item" href="#/account/addresses"><i data-lucide="map-pin"></i><span>Адреса доставки</span><i data-lucide="chevron-right" class="chev"></i></a>
         <a class="menu-item" href="#/favorites"><i data-lucide="heart"></i><span>Избранное</span><i data-lucide="chevron-right" class="chev"></i></a>
         <a class="menu-item" href="#/faq"><i data-lucide="help-circle"></i><span>Помощь</span><i data-lucide="chevron-right" class="chev"></i></a>
@@ -55,6 +135,112 @@ export function renderAccount(){
   document.querySelectorAll('.menu a').forEach(a=>{
     a.addEventListener('click', ()=> window.setTabbarMenu?.('account'));
   });
+}
+
+/* ====== МОЙ КЭШБЕК ====== */
+export function renderCashback(){
+  window.setTabbarMenu?.('account');
+  const v=document.getElementById('view');
+  const w = settleMatured();
+
+  const rows = (w.history||[]).slice(0,50).map(h=>{
+    const sign = h.pts>=0 ? '+' : '';
+    const dt = new Date(h.ts||Date.now());
+    const d  = `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+    return `
+      <tr>
+        <td>${d}</td>
+        <td>${escapeHtml(h.reason||'')}</td>
+        <td style="text-align:right"><b>${sign}${(h.pts|0).toLocaleString('ru-RU')}</b></td>
+      </tr>
+    `;
+  }).join('');
+
+  const pend = (w.pending||[]).map(p=>{
+    const left = Math.max(0, (p.tsUnlock||0) - Date.now());
+    const hrs = Math.ceil(left / (60*60*1000));
+    return `<li>+${(p.pts|0).toLocaleString('ru-RU')} баллов — через ~${hrs} ч (${escapeHtml(p.reason||'')})</li>`;
+  }).join('');
+
+  v.innerHTML = `
+    <section class="section">
+      <div class="section-title" style="display:flex;align-items:center;gap:10px">
+        <button class="square-btn" id="backAcc"><i data-lucide="chevron-left"></i></button>
+        Мой кэшбек
+      </div>
+
+      <div class="stat-cb" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 10px">
+        <div class="stat-card" style="padding:10px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:12px">
+          <div class="muted mini">Баланс</div>
+          <div style="font-weight:800;font-size:22px">${(w.available|0).toLocaleString('ru-RU')}</div>
+        </div>
+        <div class="stat-card" style="padding:10px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:12px">
+          <div class="muted mini">Ожидает (24ч)</div>
+          <div style="font-weight:800;font-size:22px">${w.pending.reduce((s,p)=>s+(p?.pts|0),0).toLocaleString('ru-RU')}</div>
+        </div>
+      </div>
+
+      ${pend ? `
+        <div class="subsection-title">Ожидающие начисления</div>
+        <ul class="muted mini" style="margin:6px 0 10px">${pend}</ul>
+      ` : ''}
+
+      <div class="subsection-title">История</div>
+      <div class="table-wrap">
+        <table class="size-table">
+          <thead>
+            <tr><th>Дата</th><th>Событие</th><th style="text-align:right">Баллы</th></tr>
+          </thead>
+          <tbody>${rows || `<tr><td colspan="3" class="muted">Пока пусто</td></tr>`}</tbody>
+        </table>
+      </div>
+    </section>
+  `;
+  window.lucide?.createIcons && lucide.createIcons();
+  document.getElementById('backAcc')?.addEventListener('click', ()=> history.back());
+}
+
+/* ====== МОИ РЕФЕРАЛЫ ====== */
+export function renderReferrals(){
+  window.setTabbarMenu?.('account');
+
+  const v=document.getElementById('view');
+  const link = getReferralLink();
+  const arr = readMyReferrals();
+  const monthKey = new Date().toISOString().slice(0,7);
+  const monthCount = arr.filter(x => (x.month||'')===monthKey).length;
+
+  v.innerHTML = `
+    <section class="section">
+      <div class="section-title" style="display:flex;align-items:center;gap:10px">
+        <button class="square-btn" id="backAcc"><i data-lucide="chevron-left"></i></button>
+        Мои рефералы
+      </div>
+
+      <div class="ref-card" style="padding:10px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:12px;background:var(--card,rgba(0,0,0,.03));display:grid;gap:8px">
+        <div class="muted mini">Ваша реф-ссылка</div>
+        <div class="input" style="overflow:auto;user-select:all">${escapeHtml(link)}</div>
+        <div class="muted mini">Первый заказ по этой ссылке даёт рефералу x2 кэшбек, а вам — 5% с каждого его заказа. Лимит — не более 10 новых рефералов в месяц.</div>
+        <div class="muted mini">В этом месяце новых рефералов: <b>${monthCount}</b> / 10</div>
+      </div>
+
+      <div class="subsection-title" style="margin-top:12px">Список рефералов</div>
+      <div class="table-wrap">
+        <table class="size-table">
+          <thead><tr><th>#</th><th>UID</th><th>Когда добавлен</th></tr></thead>
+          <tbody>
+            ${arr.length ? arr.map((r,i)=>{
+              const d = new Date(r.ts||0);
+              const dt = `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+              return `<tr><td>${i+1}</td><td>${escapeHtml(String(r.uid||''))}</td><td>${dt}</td></tr>`;
+            }).join('') : `<tr><td colspan="3" class="muted">Пока нет</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+  window.lucide?.createIcons && lucide.createIcons();
+  document.getElementById('backAcc')?.addEventListener('click', ()=> history.back());
 }
 
 export function renderAddresses(){

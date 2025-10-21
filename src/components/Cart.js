@@ -1,3 +1,4 @@
+// src/components/Cart.js
 import { state, persistCart, updateCartBadge } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { toast } from '../core/toast.js';
@@ -6,9 +7,128 @@ import { getPayRequisites } from '../core/payments.js';
 import { persistProfile } from '../core/state.js';
 import { getUID } from '../core/state.js';
 
+/* ===================== КЭШБЕК / РЕФЕРАЛЫ: правила ===================== */
+const CASHBACK_RATE_BASE  = 0.05;   // 5%
+const CASHBACK_RATE_BOOST = 0.10;   // 10% (1-й заказ реферала)
+const REFERRER_RATE       = 0.05;   // 5% на каждый заказ реферала
+const MAX_DISCOUNT_SHARE  = 0.30;   // максимум 30% от стоимости корзины
+const MIN_REDEEM_POINTS   = 30000;  // минимум к списанию
+const MAX_REDEEM_POINTS   = 150000; // максимум к списанию
+const POINTS_MATURITY_MS  = 24 * 60 * 60 * 1000; // 24ч
+
+/* ===================== Персональное локальное хранилище ===================== */
+function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
+
+/** Структура баланса: { available, pending:[{id, pts, tsUnlock, reason, orderId?}], history:[...] } */
+function readWallet(){
+  try{
+    const w = JSON.parse(localStorage.getItem(k('points_wallet')) || '{}');
+    return {
+      available: Math.max(0, Number(w.available||0)|0),
+      pending: Array.isArray(w.pending) ? w.pending : [],
+      history: Array.isArray(w.history) ? w.history : [],
+    };
+  }catch{ return { available:0, pending:[], history:[] }; }
+}
+function writeWallet(w){
+  localStorage.setItem(k('points_wallet'), JSON.stringify(w||{available:0,pending:[],history:[]}));
+}
+function settleMatured(){
+  const w = readWallet();
+  const now = Date.now();
+  let changed=false;
+  const keep=[]; 
+  for (const p of w.pending){
+    if ((p.tsUnlock||0) <= now){
+      w.available += Math.max(0, Number(p.pts)||0);
+      w.history.unshift({ ts: now, type:'accrue', pts: p.pts|0, reason: p.reason||'Кэшбек', orderId: p.orderId||null });
+      changed=true;
+    }else keep.push(p);
+  }
+  if (changed){
+    w.pending = keep;
+    writeWallet(w);
+  }
+  return w;
+}
+
+function addPending(pts, reason, orderId){
+  const w = readWallet();
+  const id = `p_${Date.now()}`;
+  w.pending.push({ id, pts: Math.max(0, pts|0), reason: String(reason||''), orderId: orderId||null, tsUnlock: Date.now()+POINTS_MATURITY_MS });
+  writeWallet(w);
+}
+function spendPoints(pts, orderId){
+  const w = readWallet();
+  const p = Math.max(0, pts|0);
+  if (w.available < p) return false;
+  w.available -= p;
+  w.history.unshift({ ts: Date.now(), type:'spend', pts: -p, reason:'Списано при оплате', orderId: orderId||null });
+  writeWallet(w);
+  return true;
+}
+
+/* ====== Реферал-профиль пользователя ====== */
+function readRefProfile(){
+  try{ return JSON.parse(localStorage.getItem(k('ref_profile')) || '{}'); }catch{ return {}; }
+}
+function writeRefProfile(obj){
+  localStorage.setItem(k('ref_profile'), JSON.stringify(obj||{}));
+}
+function hasFirstOrderBoost(){
+  const rp = readRefProfile();
+  return !!rp.firstOrderBoost && !rp.firstOrderDone;
+}
+function markFirstOrderDone(){
+  const rp = readRefProfile();
+  rp.firstOrderDone = true;
+  writeRefProfile(rp);
+}
+
+/* ====== Начисление рефереру (инвайтеру) ====== */
+function addReferrerPendingIfAny(paidAmount, orderId){
+  try{
+    const me = getUID?.() || '';
+    const rp = readRefProfile();
+    const inviter = String(rp.inviter||'').trim();
+    if (!inviter || inviter === String(me)) return;
+
+    // ограничения по антифроду: не начислять, если инвайтер превысил лимит уникальных рефералов/мес
+    // учёт ведётся в отдельном ключе на стороне инвайтера
+    const monthKey = new Date().toISOString().slice(0,7); // YYYY-MM
+    const INV_KEY = `ref_control__${inviter}`;
+    let inv = {};
+    try{ inv = JSON.parse(localStorage.getItem(INV_KEY) || '{}'); }catch{ inv={}; }
+    const setKey = `set_${monthKey}`;
+    const whoSet = new Set(Array.isArray(inv[setKey]) ? inv[setKey] : []);
+    if (!whoSet.has(me) && whoSet.size >= 10){
+      // лимит новых рефералов/мес достигнут → показываем только базовый сценарий без награды инвайтеру
+      return;
+    }
+    // фиксируем «этот реферал учтён»
+    if (!whoSet.has(me)){ whoSet.add(me); inv[setKey] = [...whoSet]; localStorage.setItem(INV_KEY, JSON.stringify(inv)); }
+
+    // собственно начисление
+    const pts = Math.floor(Number(paidAmount||0) * REFERRER_RATE);
+    if (pts > 0){
+      // кошелёк инвайтера хранится под его UID → пишем напрямую
+      const mk = (base)=> `${base}__${inviter}`;
+      let w={available:0,pending:[],history:[]};
+      try{ w = JSON.parse(localStorage.getItem(mk('points_wallet')) || '{}'); }catch{}
+      if (!Array.isArray(w.pending)) w.pending=[];
+      if (!Array.isArray(w.history)) w.history=[];
+      w.pending.push({ id:`r_${Date.now()}`, pts, reason:`Реферал #${getUID?.()||'-'}`, orderId, tsUnlock: Date.now()+POINTS_MATURITY_MS });
+      localStorage.setItem(mk('points_wallet'), JSON.stringify(w));
+    }
+  }catch{}
+}
+
 const OP_CHAT_URL = 'https://t.me/evliseorder';
 
 export function renderCart(){
+  // при каждом входе в корзину пытаемся «дозреть» отложенные баллы
+  const wallet = settleMatured();
+
   const v = document.getElementById('view');
   const items = state.cart.items
     .map(it => ({ ...it, product: state.products.find(p => String(p.id) === String(it.productId)) }))
@@ -32,7 +152,17 @@ export function renderCart(){
     return;
   }
 
-  const total = items.reduce((s,x)=> s + x.qty * x.product.price, 0);
+  const totalRaw = items.reduce((s,x)=> s + x.qty * x.product.price, 0);
+
+  // подготовим UI списания
+  const canRedeemMaxByShare = Math.floor(totalRaw * MAX_DISCOUNT_SHARE);
+  const redeemMax = Math.max(0, Math.min(canRedeemMaxByShare, wallet.available, MAX_REDEEM_POINTS));
+  const redeemMin = MIN_REDEEM_POINTS;
+
+  // восстановим черновик ввода (если пользователь экспериментировал)
+  const draft = Number(sessionStorage.getItem(k('redeem_draft'))||0) | 0;
+  const redeemInit = Math.max(0, Math.min(redeemMax, draft));
+
   const ad = state.addresses.list.find(a=>a.id===state.addresses.defaultId) || null;
 
   v.innerHTML = `
@@ -46,8 +176,8 @@ export function renderCart(){
       <div class="cart-row" data-id="${String(x.product.id)}" data-size="${x.size||''}" data-color="${x.color||''}">
         <div class="cart-img"><img src="${x.product.images?.[0]||''}" alt=""></div>
         <div>
-          <div class="cart-title" style="overflow-wrap:anywhere">${x.product.title}</div>
-          <div class="cart-sub">${x.size?`Размер ${x.size}`:''} ${x.color?`• ${x.color}`:''}</div>
+          <div class="cart-title" style="overflow-wrap:anywhere">${escapeHtml(x.product.title)}</div>
+          <div class="cart-sub">${x.size?`Размер ${escapeHtml(x.size)}`:''} ${x.color?`• ${escapeHtml(x.color)}`:''}</div>
           <div class="cart-price">${priceFmt(x.product.price)}</div>
         </div>
         <div class="qty-mini">
@@ -68,11 +198,33 @@ export function renderCart(){
       </div>
     </div>
 
-    <div class="payline">
-      <div class="payrow"><span>Итого (${items.reduce((s,i)=>s+i.qty,0)} шт.)</span><b>${priceFmt(total)}</b></div>
-      <div class="payrow"><span>Доставка</span><b>${priceFmt(0)}</b></div>
-      <div class="payrow"><span>Скидка</span><b>${priceFmt(0)}</b></div>
+    <!-- Блок списания баллов -->
+    <div class="cashback-box" style="margin-top:10px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:12px;padding:10px;background:var(--card,rgba(0,0,0,.03))">
+      <div class="cart-title" style="display:flex;align-items:center;gap:8px">
+        <i data-lucide="coins"></i>
+        <span>Списать баллы</span>
+        <span class="muted" style="margin-left:auto">Доступно: <b id="cbAvail">${wallet.available|0}</b></span>
+      </div>
+      <div class="muted mini" style="margin:6px 0 8px">
+        Минимум к списанию: ${MIN_REDEEM_POINTS.toLocaleString('ru-RU')} · максимум: ${Math.max(0, redeemMax).toLocaleString('ru-RU')} (не больше 30% от суммы и не более 150&nbsp;000)
+      </div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+        <input id="redeemInput" class="input" inputmode="numeric" pattern="[0-9]*" value="${redeemInit||''}" placeholder="0">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="pill" id="redeemMaxBtn">Макс</button>
+          <button class="pill" id="redeemClearBtn">Сброс</button>
+        </div>
+      </div>
+      <div id="redeemHint" class="muted mini" style="margin-top:6px"></div>
     </div>
+
+    <div class="payline">
+      <div class="payrow"><span>Товары (${items.reduce((s,i)=>s+i.qty,0)} шт.)</span><b id="sumRaw">${priceFmt(totalRaw)}</b></div>
+      <div class="payrow"><span>Доставка</span><b>${priceFmt(0)}</b></div>
+      <div class="payrow"><span>Скидка баллами</span><b id="sumDisc">${priceFmt(0)}</b></div>
+      <div class="payrow" style="border-top:1px dashed var(--border,rgba(0,0,0,.12));padding-top:6px"><span><b>К оплате</b></span><b id="sumPay">${priceFmt(totalRaw)}</b></div>
+    </div>
+
         <!-- FAQ перед оформлением -->
     <div class="cart-faq" style="margin-top:14px">
       <style>
@@ -111,7 +263,7 @@ export function renderCart(){
           <i data-lucide="credit-card"></i>
           <div>
             <div class="faq-q">Как проходит оплата?</div>
-            <div class="faq-a">После подтверждения вы переводите сумму на карту и загружаете скриншот оплаты. Если платёж действителен - мы подтверждаем заказ.</div>
+            <div class="faq-a">После подтверждения вы переводите сумму на карту и загружаете скриншот оплаты. Если платёж действителен — мы подтверждаем заказ.</div>
           </div>
         </div>
       </div>
@@ -140,10 +292,52 @@ export function renderCart(){
   // Кнопка «Написать оператору»
   document.getElementById('faqOperator')?.addEventListener('click', ()=> openExternal(OP_CHAT_URL));
 
+  // Управление списанием
+  const inEl    = document.getElementById('redeemInput');
+  const hintEl  = document.getElementById('redeemHint');
+  const discEl  = document.getElementById('sumDisc');
+  const payEl   = document.getElementById('sumPay');
+
+  function clampRedeem(x){
+    let v = Math.max(0, Number(x)||0);
+    v = Math.min(v, redeemMax);
+    return v|0;
+  }
+
+  function validateRedeem(v){
+    if (v===0) return '';
+    if (v < redeemMin) return `Минимум для списания: ${MIN_REDEEM_POINTS.toLocaleString('ru-RU')} баллов`;
+    if (v > wallet.available) return 'Недостаточно баллов';
+    if (v > redeemMax) return 'Превышает лимит (30% от суммы, максимум 150 000)';
+    return '';
+  }
+
+  function recalc(){
+    const v = clampRedeem(inEl.value);
+    sessionStorage.setItem(k('redeem_draft'), String(v));
+    const err = validateRedeem(v);
+    hintEl.textContent = err;
+    hintEl.style.color = err ? '#b91c1c' : 'var(--muted,#666)';
+    const disc = (err || v===0) ? 0 : v;
+    const pay  = Math.max(0, totalRaw - disc);
+    discEl.textContent = priceFmt(disc);
+    payEl.textContent  = priceFmt(pay);
+    return { disc, pay, err };
+  }
+
+  inEl?.addEventListener('input', recalc);
+  document.getElementById('redeemMaxBtn')?.addEventListener('click', ()=>{ inEl.value = String(redeemMax); recalc(); });
+  document.getElementById('redeemClearBtn')?.addEventListener('click', ()=>{ inEl.value=''; recalc(); });
+  recalc();
+
   // CTA «Оформить заказ» в таббаре
   window.setTabbarCTA?.({
     html: `<i data-lucide="credit-card"></i><span>Оформить заказ</span>`,
-    onClick(){ checkoutFlow(items, ad, total); }
+    onClick(){
+      const { disc, pay, err } = recalc();
+      if (err){ toast(err); return; }
+      checkoutFlow(items, ad, totalRaw, { redeem: disc, toPay: pay });
+    }
   });
 }
 
@@ -181,7 +375,7 @@ function remove(productId,size,color){
 /* ======================
    Новый сценарий чекаута
    ====================== */
-function checkoutFlow(items, addr, total){
+function checkoutFlow(items, addr, totalRaw, bill){
   if (!items?.length){ toast('Корзина пуста'); return; }
   if (!addr){ toast('Укажите адрес доставки'); location.hash='#/account/addresses'; return; }
 
@@ -298,13 +492,17 @@ function checkoutFlow(items, addr, total){
     persistProfile();
 
     close();
-    openPayModal({ items, address, phone, payer, total });
+    openPayModal({ items, address, phone, payer, totalRaw, bill });
   };
 
   function close(){ modal.classList.remove('show'); }
 }
 
-function openPayModal({ items, address, phone, payer, total }){
+/* ======== Оплата + фиксация заказа, баллов, рефералов ======== */
+function openPayModal({ items, address, phone, payer, totalRaw, bill }){
+  const redeem = Number(bill?.redeem||0)|0;
+  const toPay  = Math.max(0, Number(bill?.toPay||0));
+
   const modal = document.getElementById('modal');
   const mb = document.getElementById('modalBody');
   const mt = document.getElementById('modalTitle');
@@ -327,9 +525,10 @@ function openPayModal({ items, address, phone, payer, total }){
       .note-sub.muted{ color:var(--muted,#6b7280); }
       .spin{ width:16px; height:16px; border:2px solid rgba(0,0,0,.2); border-top-color:rgba(0,0,0,.6); border-radius:50%; animation:spin .8s linear infinite; }
       @keyframes spin{to{transform:rotate(360deg)}}
+      .muted-mini{ color:var(--muted,#6b7280); font-size:.88rem; }
     </style>
     <div class="form-grid">
-      <div class="cart-title" style="font-size:18px">К оплате: ${priceFmt(total)}</div>
+      <div class="cart-title" style="font-size:18px">К оплате: ${priceFmt(toPay)} ${redeem>0 ? `<span class="muted-mini">(${priceFmt(totalRaw)} − ${priceFmt(redeem)} баллов)</span>`:''}</div>
       <div class="note">
         <i data-lucide="credit-card"></i>
         <div>
@@ -427,6 +626,14 @@ function openPayModal({ items, address, phone, payer, total }){
       return;
     }
 
+    // если пользователь списывал баллы — списываем прямо сейчас (до создания заказа), чтобы в случае перезагрузки не было двойного использования
+    const toSpend = Number(bill?.redeem||0)|0;
+    if (toSpend>0){
+      if (!spendPoints(toSpend, null)){
+        toast('Не удалось списать баллы — обновите страницу'); return;
+      }
+    }
+
     const first = items[0];
     const orderId = await addOrder({
       cart: items.map(x=>({
@@ -442,7 +649,7 @@ function openPayModal({ items, address, phone, payer, total }){
       size: first?.size || null,
       color: first?.color || null,
       link: first?.product?.id ? `#/product/${first.product.id}` : '',
-      total,
+      total: toPay,                  // к оплате с учётом списания
       currency: 'UZS',
       address,
       phone,
@@ -453,6 +660,20 @@ function openPayModal({ items, address, phone, payer, total }){
       status: 'новый',
       accepted: false
     });
+
+    // Начисления кэшбека → в pending (24ч)
+    const boost = hasFirstOrderBoost();
+    const rate  = boost ? CASHBACK_RATE_BOOST : CASHBACK_RATE_BASE;
+    const earn  = Math.floor(toPay * rate);
+    if (earn > 0){
+      addPending(earn, boost ? 'Кэшбек x2 (первый заказ по реф-ссылке)' : 'Кэшбек', orderId);
+    }
+
+    // Рефереру 5% → тоже в pending (24ч)
+    addReferrerPendingIfAny(toPay, orderId);
+
+    // Отметить, что первый заказ (для буста) совершен
+    if (boost) markFirstOrderDone();
 
     state.cart.items = [];
     persistCart(); updateCartBadge();

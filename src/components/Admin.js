@@ -11,6 +11,33 @@ import {
 import { state } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 
+/* ====== Константы расчётов (должны совпадать с клиентскими) ====== */
+const CASHBACK_RATE_BASE  = 0.05;
+const CASHBACK_RATE_BOOST = 0.10; // при условии "первый заказ по реф-ссылке"
+const REFERRER_RATE       = 0.05;
+const MAX_DISCOUNT_SHARE  = 0.30;
+const MAX_REDEEM_POINTS   = 150000;
+
+/* Общая функция: расчёт по заказу — без знания связок рефералов.
+   Для дашборда показываем "базовый" расчёт + примечание */
+function computeOrderCalc(order){
+  const sum = Number(order.total||0);
+  const maxRedeemByShare = Math.floor(sum * MAX_DISCOUNT_SHARE);
+  const maxRedeem = Math.min(maxRedeemByShare, MAX_REDEEM_POINTS);
+
+  const cbBase  = Math.floor(sum * CASHBACK_RATE_BASE);
+  const cbBoost = Math.floor(sum * CASHBACK_RATE_BOOST);
+  const refEarn = Math.floor(sum * REFERRER_RATE);
+
+  return {
+    sum,
+    maxRedeem,
+    cashbackBase: cbBase,
+    cashbackIfBoost: cbBoost,
+    referrerEarnIfLinked: refEarn,
+  };
+}
+
 export async function renderAdmin(){
   const v = document.getElementById('view');
   seedOrdersOnce();
@@ -177,6 +204,28 @@ export async function renderAdmin(){
     `;
   }
 
+  function calcBlock(o){
+    const c = computeOrderCalc(o);
+    return `
+      <div class="subsection-title" style="margin-top:14px">Дашборд расчётов</div>
+      <div class="table-wrap">
+        <table class="size-table">
+          <tbody>
+            <tr><td>Сумма к оплате</td><td style="text-align:right"><b>${priceFmt(c.sum)}</b></td></tr>
+            <tr><td>Максимально можно было списать баллами (30%, ≤150к)</td><td style="text-align:right">${priceFmt(c.maxRedeem)}</td></tr>
+            <tr><td>Кэшбек (база 5%)</td><td style="text-align:right">+${c.cashbackBase.toLocaleString('ru-RU')} баллов</td></tr>
+            <tr><td>Кэшбек при x2 (1-й заказ реферала)</td><td style="text-align:right">+${c.cashbackIfBoost.toLocaleString('ru-RU')} баллов</td></tr>
+            <tr><td>Начисление инвайтеру (если есть связка)</td><td style="text-align:right">+${c.referrerEarnIfLinked.toLocaleString('ru-RU')} баллов</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="muted mini" style="margin-top:6px">
+        Примечание: система антифрода не позволяет саморефералы, более 10 новых рефералов на инвайтера в месяц и двойное использование бонуса.
+        Кэшбек начисляется через 24ч после оформления.
+      </div>
+    `;
+  }
+
   async function detailView(){
     const orders = await getAll();
     const o = orders.find(x=>String(x.id)===String(selectedId));
@@ -252,6 +301,7 @@ export async function renderAdmin(){
             </div>
           </dl>
 
+          ${calcBlock(o)}
           ${itemsBlock(o)}
 
           <div class="order-detail__actions">

@@ -23,7 +23,7 @@ import { renderFavorites } from './components/Favorites.js';
 import { renderCategory } from './components/Category.js'; // ВАЖНО: заглавная буква
 import { renderOrders, renderTrack } from './components/Orders.js';
 import { openFilterModal, renderActiveFilterChips } from './components/Filters.js';
-import { renderAccount, renderAddresses, renderSettings } from './components/Account.js';
+import { renderAccount, renderAddresses, renderSettings, renderCashback, renderReferrals } from './components/Account.js';
 import { renderFAQ } from './components/FAQ.js';
 import { renderNotifications } from './components/Notifications.js';
 
@@ -42,6 +42,80 @@ import {
   notifyCartReminder,
   notifyFavoritesReminder,
 } from './core/botNotify.js';
+
+/* ===== Кэшбек/Рефералы: локальные утилиты ===== */
+const POINTS_MATURITY_MS  = 24*60*60*1000;
+function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
+
+/* Кошелёк (для «дозревания» при старте) */
+function readWallet(){
+  try{
+    const w = JSON.parse(localStorage.getItem(k('points_wallet')) || '{}');
+    return {
+      available: Math.max(0, Number(w.available||0)|0),
+      pending: Array.isArray(w.pending) ? w.pending : [],
+      history: Array.isArray(w.history) ? w.history : [],
+    };
+  }catch{ return { available:0, pending:[], history:[] }; }
+}
+function writeWallet(w){ localStorage.setItem(k('points_wallet'), JSON.stringify(w||{available:0,pending:[],history:[]})); }
+function settleMatured(){
+  const w = readWallet();
+  const now = Date.now();
+  let changed=false;
+  const keep=[];
+  for (const p of w.pending){
+    if ((p.tsUnlock||0)<=now){
+      w.available += Math.max(0, Number(p.pts)||0);
+      w.history.unshift({ ts: now, type:'accrue', pts: p.pts|0, reason: p.reason||'Кэшбек', orderId: p.orderId||null });
+      changed=true;
+    }else keep.push(p);
+  }
+  if (changed){ w.pending=keep; writeWallet(w); }
+}
+
+/* Реф-профиль */
+function readRefProfile(){ try{ return JSON.parse(localStorage.getItem(k('ref_profile')) || '{}'); }catch{ return {}; } }
+function writeRefProfile(v){ localStorage.setItem(k('ref_profile'), JSON.stringify(v||{})); }
+
+/* Захват ?ref=<inviterUid> из deeplink/URL и установка буста на первый заказ */
+function captureReferral(){
+  try{
+    // 1) deep-link через Telegram WebApp start_param уже обработан в tryUnlockFromStartParam (админ).
+    // 2) реф-параметр ловим из #/ref?ref=UID или любого хеша с ?ref=
+    const hash = location.hash || '';
+    const m = /[?#&]ref=([^&]+)/i.exec(hash);
+    if (!m) return;
+    const inviter = decodeURIComponent(m[1] || '').trim();
+    const me = String(getUID?.() || '');
+    if (!inviter || inviter === me) return; // антифрод: самореф не разрешаем
+
+    // Отсечём повторную фиксацию
+    const rp = readRefProfile();
+    if (rp.inviter && rp.inviter !== inviter) return; // уже закреплён другой инвайтер
+    if (!rp.inviter) rp.inviter = inviter;
+
+    // Ставим буст на первый заказ
+    if (!rp.firstOrderDone) rp.firstOrderBoost = true;
+
+    writeRefProfile(rp);
+
+    // Обновим список инвайтера (для карточки «Мои рефералы» у него)
+    const INV_KEY = `my_referrals__${inviter}`;
+    let list = [];
+    try{ list = JSON.parse(localStorage.getItem(INV_KEY) || '[]'); }catch{ list=[]; }
+    const exists = list.some(x => String(x.uid||'') === me);
+    if (!exists){
+      const month = new Date().toISOString().slice(0,7);
+      // антифрод: максимум 10 в месяц — только для информации на карточке инвайтера, не блокируем ссылку
+      const monthly = list.filter(x => x.month===month).length;
+      if (monthly < 10){
+        list.push({ uid: me, ts: Date.now(), month });
+        localStorage.setItem(INV_KEY, JSON.stringify(list));
+      }
+    }
+  }catch{}
+}
 
 /* ===== «богатые» уведомления через Netlify Function ===== */
 const NOTIF_API = '/.netlify/functions/notifs';
@@ -421,6 +495,8 @@ async function router(){
   if (match('account'))            return renderAccount();
   if (match('account/addresses'))  return renderAddresses();
   if (match('account/settings'))   return renderSettings();
+  if (match('account/cashback'))   return renderCashback();
+  if (match('account/referrals'))  return renderReferrals();
 
   if (match('notifications')){
     // подтянем актуальные и покажем экран
@@ -440,6 +516,14 @@ async function router(){
       }
     } catch {}
     updateNotifBadge?.();
+    return;
+  }
+
+  // Технический роут для захвата ?ref=...
+  if (match('ref')){
+    captureReferral();
+    // отправим сразу на главную (или на аккаунт — как удобнее)
+    location.hash = '#/';
     return;
   }
 
@@ -495,6 +579,12 @@ async function init(){
 
   // одноразовый пинг о новом пользователе (только для Telegram-пользователя)
   await ensureUserJoinReported();
+
+  // кэшбек: «дозреть» pending → available при старте
+  settleMatured();
+
+  // захват реф-ссылки, если пришли по ней (после загрузки UI, чтобы hash был на месте)
+  captureReferral();
 
   await router();
 
@@ -634,9 +724,9 @@ async function init(){
   // синк уведомлений сразу и по интервалу
   syncMyNotifications();
   const NOTIF_POLL_MS = 30000;
-  setInterval(syncMyNotifications, NOTIF_POLL_MS);
+  setInterval(()=>{ syncMyNotifications(); settleMatured(); }, NOTIF_POLL_MS);
 
-  document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) syncMyNotifications(); });
+  document.addEventListener('visibilitychange', ()=>{ if (!document.hidden){ syncMyNotifications(); settleMatured(); } });
 
   // маркетинговые пинги
   scheduleMarketingBotPings();

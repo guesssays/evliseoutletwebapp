@@ -40,17 +40,31 @@ export function migrateOnce(base){
 /* ===== Корзина ===== */
 export function persistCart(){ localStorage.setItem(k('nas_cart'), JSON.stringify(state.cart)); }
 
+/**
+ * ВАЖНО: больше НЕ переносим общий ключ 'nas_cart' в персональный.
+ * Это исправляет баг с автодобавлением демо-товара (например, "Худи Ford") всем новым пользователям.
+ * Дополнительно: одноразово удаляем legacy-ключ 'nas_cart', если он когда-то существовал.
+ */
 export function loadCart(){
-  migrateOnce('nas_cart');
+  // удалить возможный общий ключ (во избежание повторной «миграции» где-либо)
+  try{ localStorage.removeItem('nas_cart'); }catch{}
+
   try{
-    const parsed = JSON.parse(localStorage.getItem(k('nas_cart')) || '{"items":[]}');
+    const raw = localStorage.getItem(k('nas_cart'));
+    const parsed = raw ? JSON.parse(raw) : { items: [] };
+
+    // Санитайз: только валидные строки
     const items = Array.isArray(parsed?.items) ? parsed.items : [];
-    state.cart = { items: items.map(it => ({
-      productId: String(it.productId),
-      size: it.size ?? null,
-      color: it.color ?? null,
-      qty: Number(it.qty) || 0
-    }))};
+    state.cart = {
+      items: items
+        .map(it => ({
+          productId: String(it.productId || ''),
+          size: it.size ?? null,
+          color: it.color ?? null,
+          qty: Math.max(0, Number(it.qty) || 0),
+        }))
+        .filter(it => it.productId && it.qty > 0)
+    };
   }catch{
     state.cart = { items: [] };
   }
