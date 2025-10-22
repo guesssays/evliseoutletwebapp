@@ -45,7 +45,17 @@ function buildCorsHeaders(origin) {
   };
 }
 
-/* ====== SERVER→TG УВЕДОМЛЕНИЯ (новое) ====== */
+/* ===== ВСПОМОГАТЕЛЬНОЕ: короткий номер заказа ===== */
+/** Отображаемый короткий id: shortId приоритетно, иначе «хвост» длинного id (6 симв., CAPS) */
+function makeDisplayOrderId(orderId, shortId){
+  const s = (shortId || '').toString().trim();
+  if (s) return s.toUpperCase();
+  const full = (orderId || '').toString().trim();
+  if (!full) return '';
+  return full.slice(-6).toUpperCase();
+}
+
+/* ====== SERVER→TG УВЕДОМЛЕНИЯ ====== */
 async function fireAndForgetNotify(chatId, type, extra = {}) {
   try {
     const id = String(chatId || '').trim();
@@ -204,8 +214,10 @@ function makeCore(readAll, writeAll){
       return { ok:true };
     },
 
-    /** ИДЕМПОТЕНТНОЕ начисление: покупателю -> pending (5% или 10%), рефереру -> pending 5% */
-    async accrue(uid, orderId, total, currency){
+    /** ИДЕМПОТЕНТНОЕ начисление: покупателю -> pending (5% или 10%), рефереру -> pending 5%
+     *  shortId (опционально) — сохраняем в карточку заказа для уведомлений
+     */
+    async accrue(uid, orderId, total, currency, shortId=null){
       const db = await readAll();
 
       // если уже подтверждён — ничего не делаем
@@ -275,6 +287,7 @@ function makeCore(readAll, writeAll){
           });
 
           if (deltaRef > 0) {
+            // уведомление рефереру — id заказа не нужен
             fireAndForgetNotify(inviter, 'referralOrderCashback', {
               text: `💸 Заказ реферала: начислено ${deltaRef} баллов (ожидает подтверждения).`
             });
@@ -289,6 +302,7 @@ function makeCore(readAll, writeAll){
         total,
         currency,
         used: existing?.used || 0,
+        shortId: shortId || existing?.shortId || null, // <— сохраняем shortId
         accrual: { buyer: newBuyerPts, inviter: inviter || null, refPts: newRefPts },
         createdAt: existing?.createdAt || Date.now(),
         released: existing?.released || false,
@@ -298,8 +312,10 @@ function makeCore(readAll, writeAll){
       return { ok:true, balance: { available: buyer.available, pending: buyer.pending, history: buyer.history } };
     },
 
-    /** Резервирование списания в момент оформления */
-    async reserve(uid, pts, orderId, totalArg = 0){
+    /** Резервирование списания в момент оформления
+     *  Принимаем shortId (опционально) и кладём в заказ для будущих уведомлений.
+     */
+    async reserve(uid, pts, orderId, totalArg = 0, shortId=null){
       const db = await readAll();
       const user = safeUser(db, uid);
 
@@ -327,11 +343,14 @@ function makeCore(readAll, writeAll){
           currency: 'UZS',
           used: 0,
           accrual: null,
+          shortId: shortId || null, // <— сохраняем shortId
           createdAt: Date.now(),
           released: false
         };
       }
       db.orders[orderId].used = (db.orders[orderId].used || 0) + pts;
+      // если передали shortId позже — обновим
+      if (shortId && !db.orders[orderId].shortId) db.orders[orderId].shortId = shortId;
 
       await writeAll(db);
       return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };
@@ -358,7 +377,9 @@ function makeCore(readAll, writeAll){
       return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };
     },
 
-    /** Подтверждение начислений: pending→available */
+    /** Подтверждение начислений: pending→available
+     *  Уведомления в TG теперь показывают КОРОТКИЙ id (#shortId или хвост длинного).
+     */
     async confirm(uid, orderId){
       const db = await readAll();
       const user = safeUser(db, uid);
@@ -366,6 +387,8 @@ function makeCore(readAll, writeAll){
       if (!ord || ord.released || ord.canceled) {
         return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };
       }
+
+      const disp = makeDisplayOrderId(orderId, ord?.shortId);
 
       // покупатель
       const buyer = safeUser(db, ord.uid);
@@ -375,8 +398,11 @@ function makeCore(readAll, writeAll){
         buyer.available += bPts;
         addHist(buyer, { kind:'confirm', orderId, pts:+bPts, info:'Начисление подтверждено' });
 
+        // 🔔 Показываем короткий id в тексте
         fireAndForgetNotify(ord.uid, 'cashbackMatured', {
-          text: `✅ Кэшбек по заказу #${orderId}: ${bPts} баллов доступны к оплате.`
+          text: `✅ Кэшбек по заказу #${disp}: ${bPts} баллов доступны к оплате.`,
+          orderId,             // на всякий случай пробросим оба
+          shortId: ord.shortId // чтобы notify мог тоже сформировать «about», если нужно
         });
       }
 
@@ -389,8 +415,11 @@ function makeCore(readAll, writeAll){
           ref.available += rPts;
           addHist(ref, { kind:'ref_confirm', orderId, pts:+rPts, info:'Реферальные подтверждены' });
 
+          // 🔔 Короткий id и для реферера
           fireAndForgetNotify(ord.accrual.inviter, 'cashbackMatured', {
-            text: `✅ Реферальные баллы по заказу #${orderId}: ${rPts} подтверждены.`
+            text: `✅ Реферальные баллы по заказу #${disp}: ${rPts} подтверждены.`,
+            orderId,
+            shortId: ord.shortId
           });
         }
       }
@@ -435,6 +464,7 @@ function makeCore(readAll, writeAll){
           pendingReleased: !!o.released,
           createdAt: o.createdAt || 0,
           releasedAt: o.releasedAt || null,
+          shortId: o.shortId || null,
         }
       };
     }
@@ -469,13 +499,13 @@ export async function handler(event){
       return { statusCode:200, headers:cors, body: JSON.stringify({ ok:r.ok!==false, reason:r.reason||null }) };
     }
     if (op === 'accrue'){
-      const { uid, orderId, total=0, currency='UZS' } = body;
-      const r = await store.accrue(String(uid), String(orderId), Number(total||0), String(currency||'UZS'));
+      const { uid, orderId, total=0, currency='UZS', shortId=null } = body; // <— принимаем shortId
+      const r = await store.accrue(String(uid), String(orderId), Number(total||0), String(currency||'UZS'), shortId ? String(shortId) : null);
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
     }
     if (op === 'reserveredeem'){
-      const { uid, pts=0, orderId, total=0 } = body;
-      const r = await store.reserve(String(uid), Number(pts||0), String(orderId), Number(total||0));
+      const { uid, pts=0, orderId, total=0, shortId=null } = body; // <— принимаем shortId
+      const r = await store.reserve(String(uid), Number(pts||0), String(orderId), Number(total||0), shortId ? String(shortId) : null);
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
     }
     if (op === 'finalizeredeem'){

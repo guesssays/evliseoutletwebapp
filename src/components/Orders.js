@@ -6,7 +6,7 @@ import { getOrdersForUser, getStatusLabel } from '../core/orders.js';
 /* ===== helpers for short ids ===== */
 function getDisplayId(o){
   const sid = o?.shortId || o?.code;
-  if (sid) return String(sid);
+  if (sid) return String(sid).toUpperCase(); // нормализуем отображение
   const full = String(o?.id ?? '');
   if (!full) return '';
   // как fallback — последние 6 символов в верхнем регистре
@@ -14,11 +14,23 @@ function getDisplayId(o){
 }
 
 function matchesAnyId(o, val){
-  const needle = String(val || '').trim();
-  if (!needle) return false;
-  return String(o?.id) === needle ||
-         String(o?.shortId || '') === needle ||
-         String(o?.code || '') === needle;
+  const needleRaw = String(val || '').trim();
+  if (!needleRaw) return false;
+
+  const needle = needleRaw.toUpperCase();
+  const idFull = String(o?.id || '');
+  const short  = String(o?.shortId || o?.code || '').toUpperCase();
+
+  // точные совпадения
+  if (idFull && idFull === needleRaw) return true; // длинный id без преобразований
+  if (short && short === needle) return true;      // shortId/code без учёта регистра
+
+  // совпадение по «хвосту» длинного id (последние 6 символов), тоже без регистра
+  if (idFull) {
+    const tail6 = idFull.slice(-6).toUpperCase();
+    if (needle === tail6) return true;
+  }
+  return false;
 }
 
 export async function renderOrders(){
@@ -122,7 +134,7 @@ export async function renderTrack({id}){
   const myUid = getUID();
   const list = await getOrdersForUser(myUid);
 
-  // поддерживаем и длинный id, и shortId/code
+  // поддерживаем и длинный id, и shortId/code, и «хвост» длинного id
   const o = (list || []).find(x => matchesAnyId(x, id));
   if(!o){
     v.innerHTML = `
