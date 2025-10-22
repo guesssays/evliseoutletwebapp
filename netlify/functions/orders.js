@@ -239,11 +239,17 @@ function makeStoreCore(readAll, writeAll){
     },
     async add(order){
       const list = await readAll();
+
+      // ✅ сохраняем короткий публичный ID, если он передан с клиента
+      // (так трекинг по короткому номеру и отображение будут работать стабильно)
+      const shortId = order.shortId ?? order.code ?? null;
+
       const id = order.id ?? String(Date.now());
       const now = Date.now();
       const initialStatus = order.status ?? 'новый';
       const next = {
         id,
+        shortId, // ← НОВОЕ ПОЛЕ В ХРАНИЛИЩЕ
         userId: order.userId ?? null,
         username: order.username ?? '',
         productId: order.productId ?? null,
@@ -335,12 +341,15 @@ async function notifyAdminNewOrder(id, order){
   const caption = extra>0 ? `${title} + ещё ${extra}` : title;
   const link = webappUrl ? `${webappUrl}#/admin` : undefined;
 
+  // ✅ показываем короткий номер, если есть
+  const displayId = String(order?.shortId || id);
+
   const text = [
     `🆕 Новый заказ`,
-    `#${id}`,
+    `#${displayId}`,
     caption ? `• ${caption}` : '',
     order?.username ? `• @${order.username}` : '',
-    `• Сумма: ${Number(order?.total||0)} ${order?.currency||'UZS'}`
+    `• Сумма: ${Number(order?.total||0)} ${order?.currency|| 'UZS'}`
   ].filter(Boolean).join('\n');
 
   const payloadBase = {

@@ -74,6 +74,18 @@ const TYPE_IMG = {
   cashbackMatured:        '/assets/notify/cashback_ready1.jpg',
 };
 
+/** Короткий отображаемый номер заказа:
+ *  1) если передан shortId — используем его
+ *  2) иначе fallback: последние 6 символов от полного id (в верхнем регистре)
+ */
+function makeDisplayOrderId(orderId, shortId){
+  const s = (shortId || '').toString().trim();
+  if (s) return s;
+  const full = (orderId || '').toString().trim();
+  if (!full) return '';
+  return full.slice(-6).toUpperCase();
+}
+
 /**
  * Универсальная отправка: если есть картинка для type — sendPhoto, иначе sendMessage
  */
@@ -120,7 +132,8 @@ export async function handler(event) {
   }
 
   try {
-    const { chat_id: clientChatId, type, orderId, title, text } = JSON.parse(event.body || '{}') || {};
+    // ✅ Принимаем и shortId, чтобы в тексте указывать короткий номер
+    const { chat_id: clientChatId, type, orderId, shortId, title, text } = JSON.parse(event.body || '{}') || {};
     if (!type) return { statusCode: 400, body: 'type required', ...headers };
 
     const token = process.env.TG_BOT_TOKEN;
@@ -154,9 +167,10 @@ export async function handler(event) {
       return [[{ text: 'Мои заказы', web_app: { url: `${webappUrl}#/orders` } }]];
     };
 
+    const displayOrderId = makeDisplayOrderId(orderId, shortId);
     const hint = 'Откройте приложение, чтобы посмотреть подробности.';
-    const about = orderId
-      ? `Заказ #${orderId}${goods ? ` — «${goods}»` : ''}.`
+    const about = displayOrderId
+      ? `Заказ #${displayOrderId}${goods ? ` — «${goods}»` : ''}.`
       : (goods ? `По товару «${goods}».` : '');
 
     let finalText;
