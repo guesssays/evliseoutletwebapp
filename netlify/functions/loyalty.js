@@ -46,26 +46,15 @@ function buildCorsHeaders(origin) {
 }
 
 /* ====== SERVER→TG УВЕДОМЛЕНИЯ (новое) ====== */
-/** Безопасная отправка уведомления в нашу serverless-функцию /notify */
 async function fireAndForgetNotify(chatId, type, extra = {}) {
   try {
     const id = String(chatId || '').trim();
-    if (!/^\d+$/.test(id)) return; // только валидные Telegram chat_id
-
-    // абсолютный URL для прода; на превью/локали можно оставить относительный
+    if (!/^\d+$/.test(id)) return;
     const base = (process.env.URL || '').replace(/\/+$/, '');
     const url  = base ? `${base}/.netlify/functions/notify` : '/.netlify/functions/notify';
-
     const payload = { chat_id: id, type, ...extra };
-
-    await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify(payload)
-    });
-  } catch {
-    // не ломаем основной флоу
-  }
+    await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+  } catch { /* swallow */ }
 }
 
 async function getStoreSafe() {
@@ -108,9 +97,6 @@ function makeCore(readAll, writeAll){
   }
   function monthKey(ts=Date.now()){
     const d=new Date(ts); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-  }
-  function sumCartDiscountAllowed(total){
-    return Math.floor(Math.min(total*CFG.MAX_CART_DISCOUNT_FRAC, CFG.MAX_REDEEM));
   }
   function addHist(user, rec){
     user.history.push({ ts:Date.now(), ...rec });
@@ -159,7 +145,6 @@ function makeCore(readAll, writeAll){
 
       await writeAll(db);
 
-      // 🔔 Серверное уведомление инвайтеру: «Новый реферал»
       fireAndForgetNotify(inviter, 'referralJoined', {
         text: '🎉 Новый реферал! Зайдите в «Аккаунт → Рефералы».'
       });
@@ -167,80 +152,109 @@ function makeCore(readAll, writeAll){
       return { ok:true };
     },
 
-    /** Начисление при создании заказа: покупателю -> pending (5% или 10%), рефереру -> pending 5% */
+    /** ИДЕМПОТЕНТНОЕ начисление: покупателю -> pending (5% или 10%), рефереру -> pending 5% */
     async accrue(uid, orderId, total, currency){
       const db = await readAll();
-      const buyer = safeUser(db, uid);
 
+      // если уже подтверждён — ничего не делаем
+      const existing = db.orders[orderId];
+      if (existing?.released) {
+        return { ok:true, balance: await this.getBalance(uid) };
+      }
+
+      const buyer = safeUser(db, uid);
       const inviter = getInviter(db, uid);
 
-      // 🧹 Легаси-очистка: если ранее помечен «первый заказ», но инвайтера нет — убираем флаг,
-      // чтобы будущий реальный первый заказ по реф-связке мог получить x2.
+      // 🧹 очистка легаси-флага, если нет инвайтера
       if (!inviter && db?.referrals?.inviteesFirst?.[uid]) {
         delete db.referrals.inviteesFirst[uid];
       }
 
-      // x2 только если есть инвайтер и это действительно первый оплачиваемый заказ реферала
       const eligibleForBoost = !!inviter && !wasFirstAlready(db, uid);
       const buyerRate = CFG.BASE_RATE * (eligibleForBoost ? CFG.REF_FIRST_MULTIPLIER : 1);
-      const buyerPts = Math.floor(total * buyerRate);
+      const newBuyerPts = Math.floor(total * buyerRate);
+      const newRefPts   = inviter ? Math.floor(total * CFG.REFERRER_EARN_RATE) : 0;
 
-      buyer.pending += buyerPts;
-      addHist(buyer, {
-        kind:'accrue',
-        orderId,
-        pts: buyerPts,
-        info: `Начисление ${eligibleForBoost ? 'x2 ' : ''}${Math.round(buyerRate*100)}% (ожидает 24ч)`
-      });
+      // предыдущие расчёты по заказу (если уже были)
+      const prevBuyerPts = existing?.accrual?.buyer || 0;
+      const prevRefPts   = existing?.accrual?.refPts || 0;
+      const prevInviter  = existing?.accrual?.inviter || null;
 
-      // рефереру 5% с каждого заказа реферала
-      if (inviter){
-        const ref = safeUser(db, inviter);
-        const ptsR = Math.floor(total * CFG.REFERRER_EARN_RATE);
-        ref.pending += ptsR;
-        addHist(ref, { kind:'ref_accrue', orderId, from:uid, pts:ptsR, info:'Реферальное начисление 5% (ожидает 24ч)' });
+      // === ПОКУПАТЕЛЬ: применяем только ДЕЛЬТУ ===
+      const deltaBuyer = newBuyerPts - prevBuyerPts;
+      if (deltaBuyer !== 0) {
+        buyer.pending += deltaBuyer;
+        addHist(buyer, {
+          kind: deltaBuyer > 0 ? 'accrue' : 'accrue_adjust',
+          orderId,
+          pts: deltaBuyer,
+          info: deltaBuyer > 0
+            ? `Начисление ${eligibleForBoost ? 'x2 ' : ''}${Math.round(buyerRate*100)}% (ожидает 24ч)`
+            : `Корректировка начисления (${deltaBuyer})`,
+        });
+      }
+      // помечаем первый заказ только если буст применился в ЭТОМ вызове и ранее не помечен
+      if (eligibleForBoost && !wasFirstAlready(db, uid)) {
+        markFirstOrder(db, uid);
+      }
 
-        // 🔔 Уведомление инвайтеру: «Заказ реферала — начислены 5% (pending)»
-        if (ptsR > 0) {
-          fireAndForgetNotify(inviter, 'referralOrderCashback', {
-            text: `💸 Заказ реферала: начислено ${ptsR} баллов (ожидает подтверждения).`
+      // === РЕФЕРЕР: учитываем смену инвайтера и дельты ===
+      if (prevInviter && prevInviter !== inviter) {
+        // убрать старому рефереру его pending
+        const oldRefUser = safeUser(db, prevInviter);
+        if (prevRefPts > 0) {
+          oldRefUser.pending = Math.max(0, (oldRefUser.pending|0) - prevRefPts);
+          addHist(oldRefUser, { kind:'ref_accrue_adjust', orderId, pts:-prevRefPts, info:'Отмена реф.начисления (смена инвайтера)' });
+        }
+      }
+      if (inviter) {
+        const refUser = safeUser(db, inviter);
+        // если инвайтер тот же — применяем дельту; если новый — вся сумма как новая
+        const basePrevForDelta = (prevInviter === inviter) ? prevRefPts : 0;
+        const deltaRef = newRefPts - basePrevForDelta;
+        if (deltaRef !== 0) {
+          refUser.pending += deltaRef;
+          addHist(refUser, {
+            kind: deltaRef > 0 ? 'ref_accrue' : 'ref_accrue_adjust',
+            orderId,
+            from: uid,
+            pts: deltaRef,
+            info: deltaRef > 0 ? 'Реферальное начисление 5% (ожидает 24ч)' : 'Корректировка реф.начисления',
           });
+
+          if (deltaRef > 0) {
+            fireAndForgetNotify(inviter, 'referralOrderCashback', {
+              text: `💸 Заказ реферала: начислено ${deltaRef} баллов (ожидает подтверждения).`
+            });
+          }
         }
       }
 
-      // помечаем «у реферала был первый платный заказ» ТОЛЬКО если применился буст
-      if (eligibleForBoost) markFirstOrder(db, uid);
-
-      // фикс в orders (для админ-расчёта)
-      if (!db.orders[orderId]) db.orders[orderId] = { uid, total, currency, used:0, accrual:{ buyer:buyerPts, inviter:inviter||null, refPts: inviter?Math.floor(total*CFG.REFERRER_EARN_RATE):0 }, createdAt: Date.now(), released:false };
-      else {
-        db.orders[orderId].uid = uid;
-        db.orders[orderId].total = total;
-        db.orders[orderId].currency = currency;
-        db.orders[orderId].accrual = { buyer:buyerPts, inviter, refPts: inviter?Math.floor(total*CFG.REFERRER_EARN_RATE):0 };
-      }
+      // === сохранить расчёт в orders (текущие значения) ===
+      db.orders[orderId] = {
+        ...(existing || {}),
+        uid,
+        total,
+        currency,
+        used: existing?.used || 0,
+        accrual: { buyer: newBuyerPts, inviter: inviter || null, refPts: newRefPts },
+        createdAt: existing?.createdAt || Date.now(),
+        released: existing?.released || false,
+      };
 
       await writeAll(db);
       return { ok:true, balance: { available: buyer.available, pending: buyer.pending, history: buyer.history } };
     },
 
-    /** Резервирование списания в момент оформления
-        Если заказа ещё нет — используем переданный total для правил (30%, ≤150к)
-    */
+    /** Резервирование списания в момент оформления */
     async reserve(uid, pts, orderId, totalArg = 0){
       const db = await readAll();
       const user = safeUser(db, uid);
 
-      // базовые проверки
       if (pts < CFG.MIN_REDEEM) return { ok:false, reason:'min' };
 
-      // берём сумму: из заказа (если есть) либо из аргумента
       const ordExisting = db.orders[orderId];
-      const baseTotal = Number(
-        (ordExisting?.total ?? 0) || totalArg || 0
-      );
-
-      // если суммы нет вообще — лучше явно отказать осмысленно
+      const baseTotal = Number((ordExisting?.total ?? 0) || totalArg || 0);
       if (baseTotal <= 0) return { ok:false, reason:'total' };
 
       const byShare = Math.floor(baseTotal * CFG.MAX_CART_DISCOUNT_FRAC);
@@ -254,7 +268,6 @@ function makeCore(readAll, writeAll){
 
       db.reservations.push({ uid, orderId, pts, ts: Date.now() });
 
-      // если заказа ещё нет — создадим черновик, чтобы дальше всё связалось
       if (!db.orders[orderId]) {
         db.orders[orderId] = {
           uid,
@@ -266,20 +279,18 @@ function makeCore(readAll, writeAll){
           released: false
         };
       }
-
       db.orders[orderId].used = (db.orders[orderId].used || 0) + pts;
 
       await writeAll(db);
       return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };
     },
 
-    /** Финализация резерва: commit — расход, cancel — вернуть на available */
+    /** Финализация резерва */
     async finalize(uid, orderId, action){
       const db = await readAll();
       const user = safeUser(db, uid);
       const idx = db.reservations.findIndex(r => String(r.uid)===String(uid) && String(r.orderId)===String(orderId));
       if (idx === -1){
-        // ничего не делаем — нет резерва
         return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };
       }
       const res = db.reservations[idx];
@@ -289,14 +300,13 @@ function makeCore(readAll, writeAll){
         user.available += res.pts;
         addHist(user, { kind:'reserve_cancel', orderId, pts:+res.pts, info:'Возврат резерва' });
       }else{
-        // 🔧 ФИКС: пишем реальную отрицательную сумму в историю списаний
         addHist(user, { kind:'redeem', orderId, pts:-Math.abs(res.pts|0), info:`Оплата баллами ${res.pts}` });
       }
       await writeAll(db);
       return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };
     },
 
-    /** Подтверждение начислений: двигаем из pending→available (через 24ч или после статуса 'выдан') */
+    /** Подтверждение начислений: pending→available */
     async confirm(uid, orderId){
       const db = await readAll();
       const user = safeUser(db, uid);
@@ -305,33 +315,29 @@ function makeCore(readAll, writeAll){
 
       // покупатель
       const buyer = safeUser(db, ord.uid);
-      if (buyer.pending >= (ord.accrual?.buyer||0)){
-        buyer.pending -= (ord.accrual?.buyer||0);
-        buyer.available += (ord.accrual?.buyer||0);
-        addHist(buyer, { kind:'confirm', orderId, pts:+(ord.accrual?.buyer||0), info:'Начисление подтверждено' });
+      const bPts = ord.accrual?.buyer || 0;
+      if (bPts > 0 && buyer.pending >= bPts){
+        buyer.pending -= bPts;
+        buyer.available += bPts;
+        addHist(buyer, { kind:'confirm', orderId, pts:+bPts, info:'Начисление подтверждено' });
 
-        // 🔔 Покупателю: «Кэшбек дозрел»
-        if ((ord.accrual?.buyer||0) > 0) {
-          fireAndForgetNotify(ord.uid, 'cashbackMatured', {
-            text: `✅ Кэшбек по заказу #${orderId}: ${ord.accrual.buyer} баллов доступны к оплате.`
-          });
-        }
+        fireAndForgetNotify(ord.uid, 'cashbackMatured', {
+          text: `✅ Кэшбек по заказу #${orderId}: ${bPts} баллов доступны к оплате.`
+        });
       }
 
       // реферер
       if (ord.accrual?.inviter){
         const ref = safeUser(db, ord.accrual.inviter);
-        if (ref.pending >= (ord.accrual?.refPts||0)){
-          ref.pending -= (ord.accrual?.refPts||0);
-          ref.available += (ord.accrual?.refPts||0);
-          addHist(ref, { kind:'ref_confirm', orderId, pts:+(ord.accrual?.refPts||0), info:'Реферальные подтверждены' });
+        const rPts = ord.accrual?.refPts || 0;
+        if (rPts > 0 && ref.pending >= rPts){
+          ref.pending -= rPts;
+          ref.available += rPts;
+          addHist(ref, { kind:'ref_confirm', orderId, pts:+rPts, info:'Реферальные подтверждены' });
 
-          // 🔔 Инвайтеру: «Реферальные баллы подтверждены»
-          if ((ord.accrual?.refPts||0) > 0) {
-            fireAndForgetNotify(ord.accrual.inviter, 'cashbackMatured', {
-              text: `✅ Реферальные баллы по заказу #${orderId}: ${ord.accrual.refPts} подтверждены.`
-            });
-          }
+          fireAndForgetNotify(ord.accrual.inviter, 'cashbackMatured', {
+            text: `✅ Реферальные баллы по заказу #${orderId}: ${rPts} подтверждены.`
+          });
         }
       }
 
@@ -339,7 +345,6 @@ function makeCore(readAll, writeAll){
       ord.releasedAt = Date.now();
       await writeAll(db);
 
-      // возвращаем баланс того, кто вызвал (uid)
       const me = safeUser(db, uid);
       return { ok:true, balance:{ available: me.available, pending: me.pending, history: me.history } };
     },
@@ -349,16 +354,9 @@ function makeCore(readAll, writeAll){
       const list = (db.referrals.inviterToInvitees?.[uid] || []).slice().sort((a,b)=> (b.ts||0)-(a.ts||0));
       const mk = monthKey();
       const used = db.referrals.monthCount?.[`${uid}:${mk}`] || 0;
-      return {
-        data: {
-          monthLimit: CFG.MONTHLY_REF_LIMIT,
-          monthUsed: used,
-          invitees: list
-        }
-      };
+      return { data: { monthLimit: CFG.MONTHLY_REF_LIMIT, monthUsed: used, invitees: list } };
     },
 
-    /** Админ-расчёт (для карточки заказа) */
     async calc(orderId){
       const db = await readAll();
       const o = db.orders[orderId] || null;

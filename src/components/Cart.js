@@ -17,9 +17,29 @@ const MIN_REDEEM_POINTS   = 30000;  // минимум к списанию
 const MAX_REDEEM_POINTS   = 150000; // максимум к списанию
 const POINTS_MATURITY_MS  = 24 * 60 * 60 * 1000; // 24ч
 
-/* ===================== Персональное локальное хранилище ===================== */
+/* ===================== Антидубль/Idempotency ===================== */
+let __checkoutFlowBusy = false;       // защита от дабл-тапа CTA
+let __orderSubmitBusy  = false;       // защита от дабл-тапа сабмита оплаты
 function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
+const KEY_DRAFT_ORDER_ID   = () => k('order_draft_id');
+const KEY_REDEEM_DRAFT     = () => k('redeem_draft');
 
+/** Получить/создать idempotency orderId для текущей попытки оформления */
+function ensureDraftOrderId(){
+  let id = sessionStorage.getItem(KEY_DRAFT_ORDER_ID());
+  if (!id){
+    const uid = String(getUID?.() || 'guest');
+    id = `${uid}_${Date.now()}`; // детерминированно в рамках попытки
+    sessionStorage.setItem(KEY_DRAFT_ORDER_ID(), id);
+  }
+  return id;
+}
+/** Сбросить текущий idempotency ключ (после успеха) */
+function clearDraftOrderId(){
+  sessionStorage.removeItem(KEY_DRAFT_ORDER_ID());
+}
+
+/* ===================== Персональное локальное хранилище ===================== */
 /** Структура баланса: { available, pending:[{id, pts, tsUnlock, reason, orderId?}], history:[...] } */
 function readWallet(){
   try{
@@ -198,7 +218,7 @@ export function renderCart(){
   const redeemMin = MIN_REDEEM_POINTS;
 
   // восстановим черновик ввода (если пользователь экспериментировал)
-  const draft = Number(sessionStorage.getItem(k('redeem_draft'))||0) | 0;
+  const draft = Number(sessionStorage.getItem(KEY_REDEEM_DRAFT())||0) | 0;
   const redeemInit = Math.max(0, Math.min(redeemMax, draft));
 
   const ad = state.addresses.list.find(a=>a.id===state.addresses.defaultId) || null;
@@ -384,7 +404,6 @@ export function renderCart(){
     // переход на карточку товара по клику на строку (кроме области управления количеством)
     row.addEventListener('click', (e)=>{
       if (e.target.closest('.qty-mini') || e.target.closest('.ctrl')) return;
-      // на всякий случай игнорируем клики по ссылкам внутри
       if (e.target.closest('a')) return;
       location.hash = `#/product/${id}`;
     });
@@ -415,7 +434,7 @@ export function renderCart(){
 
   function recalc(){
     const v = clampRedeem(inEl.value);
-    sessionStorage.setItem(k('redeem_draft'), String(v));
+    sessionStorage.setItem(KEY_REDEEM_DRAFT(), String(v));
     const err = validateRedeem(v);
     hintEl.textContent = err;
     hintEl.style.color = err ? '#b91c1c' : 'var(--muted,#666)';
@@ -431,10 +450,17 @@ export function renderCart(){
   document.getElementById('redeemClearBtn')?.addEventListener('click', ()=>{ inEl.value=''; recalc(); });
   recalc();
 
-  // CTA «Оформить заказ» в таббаре
+  // CTA «Оформить заказ» в таббаре (анти дабл-тап: кликаем не чаще раза в ~1.2s)
   window.setTabbarCTA?.({
     html: `<i data-lucide="credit-card"></i><span>Оформить заказ</span>`,
     onClick(){
+      if (__checkoutFlowBusy) return;
+      __checkoutFlowBusy = true;
+      setTimeout(()=>{ __checkoutFlowBusy = false; }, 1200);
+
+      // не даём открыть две модалки подряд
+      if (document.body.dataset.checkoutModalOpen === '1') return;
+
       const { disc, pay, err } = recalc();
       if (err){ toast(err); return; }
       checkoutFlow(items, ad, totalRaw, { redeem: disc, toPay: pay });
@@ -491,6 +517,10 @@ async function callLoyalty(op, data){
 function checkoutFlow(items, addr, totalRaw, bill){
   if (!items?.length){ toast('Корзина пуста'); return; }
   if (!addr){ toast('Укажите адрес доставки'); location.hash='#/account/addresses'; return; }
+
+  // защита: уже открыта модалка подтверждения?
+  if (document.body.dataset.checkoutModalOpen === '1') return;
+  document.body.dataset.checkoutModalOpen = '1';
 
   // 1) Модалка подтверждения данных
   const modal = document.getElementById('modal');
@@ -613,7 +643,10 @@ function checkoutFlow(items, addr, totalRaw, bill){
     openPayModal({ items, address, phone, payer, totalRaw, bill });
   };
 
-  function close(){ modal.classList.remove('show'); }
+  function close(){
+    modal.classList.remove('show');
+    delete document.body.dataset.checkoutModalOpen;
+  }
 }
 
 /* ======== Оплата + фиксация заказа, баллов, рефералов (через сервер лояльности) ======== */
@@ -631,6 +664,9 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
   // переменные для файла чека (предпросмотр/сжатие)
   let shotDataUrl = '';   // data:image/jpeg;base64,...
   let shotBusy = false;
+
+  // idempotency: закрепляем orderId на всю попытку оформления, используем повторно при ретраях
+  const orderId = ensureDraftOrderId();
 
   mt.textContent = 'Оплата заказа';
   mb.innerHTML = `
@@ -717,7 +753,6 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       }catch{}
     }
     if (ok){
-      // короткий визуальный фидбек: меняем иконку на галочку и показываем hint
       const icon = copyBtn.querySelector('i[data-lucide]');
       const prevIcon = icon?.getAttribute('data-lucide') || 'copy';
       if (icon){ icon.setAttribute('data-lucide','check'); window.lucide?.createIcons && lucide.createIcons(); }
@@ -744,6 +779,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
     if (!/^image\//i.test(file.type)){ toast('Загрузите изображение'); clearShot(); return; }
 
     try{
+      setSubmitDisabled(true);
       shotBusy = true; busyBar.style.display='flex';
       const { dataUrl, outW, outH } = await compressImageToDataURL(file, 1600, 1600, 0.82);
       shotDataUrl = dataUrl;
@@ -758,6 +794,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       clearShot();
     }finally{
       shotBusy = false; busyBar.style.display='none';
+      setSubmitDisabled(false);
     }
   });
 
@@ -773,110 +810,130 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
     meta.textContent = '';
   }
 
+  const payDoneBtn = document.getElementById('payDone');
+  function setSubmitDisabled(dis){
+    if (!payDoneBtn) return;
+    payDoneBtn.disabled = !!dis;
+    payDoneBtn.setAttribute('aria-busy', dis ? 'true' : 'false');
+  }
+
   document.getElementById('modalClose').onclick = close;
   document.getElementById('payBack').onclick = close;
   document.getElementById('payDone').onclick = async ()=>{
+    // блокируем повторный сабмит
+    if (__orderSubmitBusy) return;
     if (shotBusy){ toast('Подождите, изображение ещё обрабатывается'); return; }
-
-    const urlRaw = (urlInput?.value || '').trim();
-    let paymentScreenshot = '';
-
-    if (shotDataUrl){
-      paymentScreenshot = shotDataUrl;
-    }else if (urlRaw){
-      if (!/^https?:\/\//i.test(urlRaw)){ toast('Некорректный URL чека'); return; }
-      paymentScreenshot = urlRaw;
-    }else{
-      toast('Добавьте файл чека или укажите URL');
-      return;
-    }
-
-    // Сумма к списанию, заранее формируем orderId (чтобы связать reserve/finalize и сам заказ)
-    const toSpend = Number(bill?.redeem||0) | 0;
-    const orderId = String(Date.now());
-    let reserved = false;
+    __orderSubmitBusy = true;
+    setSubmitDisabled(true);
 
     try{
-      if (toSpend > 0){
-        // РЕЗЕРВИРУЕМ списание на сервере лояльности
-        await callLoyalty('reserveRedeem', { uid: getUID(), pts: toSpend, orderId, total: totalRaw });
-        reserved = true;
+      const urlRaw = (urlInput?.value || '').trim();
+      let paymentScreenshot = '';
+
+      if (shotDataUrl){
+        paymentScreenshot = shotDataUrl;
+      }else if (urlRaw){
+        if (!/^https?:\/\//i.test(urlRaw)){ toast('Некорректный URL чека'); setSubmitDisabled(false); __orderSubmitBusy = false; return; }
+        paymentScreenshot = urlRaw;
+      }else{
+        toast('Добавьте файл чека или укажите URL');
+        setSubmitDisabled(false); __orderSubmitBusy = false; return;
       }
-    }catch(e){
-      toast('Не удалось зарезервировать списание баллов');
-      return;
+
+      // Сумма к списанию, orderId уже зафиксирован на попытку
+      const toSpend = Number(bill?.redeem||0) | 0;
+      let reserved = false;
+
+      try{
+        if (toSpend > 0){
+          // РЕЗЕРВИРУЕМ списание на сервере лояльности (идемпотентный orderId)
+          await callLoyalty('reserveRedeem', { uid: getUID(), pts: toSpend, orderId, total: totalRaw });
+          reserved = true;
+        }
+      }catch(e){
+        toast('Не удалось зарезервировать списание баллов');
+        setSubmitDisabled(false); __orderSubmitBusy = false; return;
+      }
+
+      // Создание заказа (используем наш orderId) — повторный сабмит перезапишет тот же заказ
+      let createdId = null;
+      try{
+        const first = items[0];
+        createdId = await addOrder({
+          id: orderId,
+          cart: items.map(x=>({
+            id: x.product.id,
+            title: x.product.title,
+            price: x.product.price,
+            qty: x.qty,
+            size: x.size || null,
+            color: x.color || null,
+            images: x.product.images || []
+          })),
+          productId: first?.product?.id || null,
+          size: first?.size || null,
+          color: first?.color || null,
+          link: first?.product?.id ? `#/product/${first.product.id}` : '',
+          total: toPay,                  // к оплате с учётом списания
+          currency: 'UZS',
+          address,
+          phone,
+          username: state.user?.username || '',
+          userId: getUID(),
+          payerFullName: payer || '',
+          paymentScreenshot,
+          status: 'новый',
+          accepted: false
+        });
+      }catch(e){
+        // если заказ не создался — отменяем резерв
+        if (reserved){
+          try{ await callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'cancel' }); }catch{}
+        }
+        toast('Не удалось создать заказ. Попробуйте ещё раз.');
+        setSubmitDisabled(false); __orderSubmitBusy = false; return;
+      }
+
+      // Финализируем списание и начисляем pending кешбэк/реф
+      try{
+        if (toSpend > 0 && reserved){
+          await callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'commit' });
+        }
+        // Начисления pending (5%/10%) от суммы к оплате — идемпотентный accrue на сервере
+        await callLoyalty('accrue', { uid: getUID(), orderId, total: toPay, currency:'UZS' });
+      }catch(e){
+        // откатываем резерв если не удалось финализировать/начислить
+        if (reserved){
+          try{ await callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'cancel' }); }catch{}
+        }
+        toast('Не удалось зафиксировать баллы — попробуйте ещё раз');
+        setSubmitDisabled(false); __orderSubmitBusy = false; return;
+      }
+
+      // Локальный кошелёк: больше НЕ трогаем (списание/начисление ведёт сервер)
+      // Очищаем корзину и показываем подтверждение
+      state.cart.items = [];
+      persistCart(); updateCartBadge();
+
+      close();
+      showOrderConfirmationModal(orderId);
+
+      // Сбросить idempotency ключ — следующая покупка получит новый
+      clearDraftOrderId();
+
+      try{
+        const ev = new CustomEvent('client:orderPlaced', { detail:{ id: orderId } });
+        window.dispatchEvent(ev);
+      }catch{}
+    } finally {
+      setSubmitDisabled(false);
+      __orderSubmitBusy = false;
     }
-
-    // Создание заказа (используем наш orderId)
-    let createdId = null;
-    try{
-      const first = items[0];
-      createdId = await addOrder({
-        id: orderId,
-        cart: items.map(x=>({
-          id: x.product.id,
-          title: x.product.title,
-          price: x.product.price,
-          qty: x.qty,
-          size: x.size || null,
-          color: x.color || null,
-          images: x.product.images || []
-        })),
-        productId: first?.product?.id || null,
-        size: first?.size || null,
-        color: first?.color || null,
-        link: first?.product?.id ? `#/product/${first.product.id}` : '',
-        total: toPay,                  // к оплате с учётом списания
-        currency: 'UZS',
-        address,
-        phone,
-        username: state.user?.username || '',
-        userId: getUID(),
-        payerFullName: payer || '',
-        paymentScreenshot,
-        status: 'новый',
-        accepted: false
-      });
-    }catch(e){
-      // если заказ не создался — отменяем резерв
-      if (reserved){
-        try{ await callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'cancel' }); }catch{}
-      }
-      toast('Не удалось создать заказ. Попробуйте ещё раз.');
-      return;
-    }
-
-    // Финализируем списание и начисляем pending кешбэк/реф
-    try{
-      if (toSpend > 0 && reserved){
-        await callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'commit' });
-      }
-      // Начисления pending (5%/10%) от суммы к оплате
-      await callLoyalty('accrue', { uid: getUID(), orderId, total: toPay, currency:'UZS' });
-    }catch(e){
-      // откатываем резерв если не удалось финализировать/начислить
-      if (reserved){
-        try{ await callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'cancel' }); }catch{}
-      }
-      toast('Не удалось зафиксировать баллы — попробуйте ещё раз');
-      return;
-    }
-
-    // Локальный кошелёк: больше НЕ трогаем (списание/начисление ведёт сервер)
-    // Очищаем корзину и показываем подтверждение
-    state.cart.items = [];
-    persistCart(); updateCartBadge();
-
-    close();
-    showOrderConfirmationModal(orderId);
-
-    try{
-      const ev = new CustomEvent('client:orderPlaced', { detail:{ id: orderId } });
-      window.dispatchEvent(ev);
-    }catch{}
   };
 
-  function close(){ modal.classList.remove('show'); }
+  function close(){
+    modal.classList.remove('show');
+  }
 }
 
 /** Модалка «Заказ принят» */
