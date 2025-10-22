@@ -83,11 +83,13 @@ function orderCard(o){
     subLines.push(`Причина: ${escapeHtml(o.cancelReason)}`);
   }
 
+  const displayId = o.shortId || o.id;
+
   return `
     <div class="order-row">
       <div class="cart-img"><img src="${cover}" alt=""></div>
       <div>
-        <div class="cart-title">${'Заказ #'+escapeHtml(o.id)}</div>
+        <div class="cart-title">${'Заказ #'+escapeHtml(displayId)}</div>
         <div class="cart-sub" style="overflow-wrap:anywhere">${subLines.map(escapeHtml).join(' · ')}</div>
         <div class="cart-price">${priceFmt(o.total || 0)}</div>
       </div>
@@ -123,6 +125,7 @@ export async function renderTrack({id}){
   const progress = Math.max(0, Math.min(100, Math.round(curIdx * 100 / (steps.length - 1))));
 
   const itemsHtml = itemsBlock(o);
+  const displayId = o.shortId || o.id;
 
   v.innerHTML = `
     <style>
@@ -190,7 +193,7 @@ export async function renderTrack({id}){
 
     <div class="section-title" style="display:flex;align-items:center;gap:10px">
       <button class="square-btn" id="trackBack"><i data-lucide="chevron-left"></i></button>
-      Заказ #${escapeHtml(o.id)}
+      Заказ #${escapeHtml(displayId)}
     </div>
     <section class="checkout order-detail-page">
       <div class="track-head">

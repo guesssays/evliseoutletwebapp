@@ -25,6 +25,8 @@ let __orderSubmitBusy  = false;       // защита от дабл-тапа с�
 function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
 const KEY_DRAFT_ORDER_ID   = () => k('order_draft_id');
 const KEY_REDEEM_DRAFT     = () => k('redeem_draft');
+// 🔹 публичный короткий id для показа пользователю в пределах текущей попытки
+const KEY_DRAFT_PUBLIC_ID  = () => k('order_draft_public');
 
 /** Получить/создать idempotency orderId для текущей попытки оформления */
 function ensureDraftOrderId(){
@@ -39,6 +41,28 @@ function ensureDraftOrderId(){
 /** Сбросить текущий idempotency ключ (после успеха) */
 function clearDraftOrderId(){
   sessionStorage.removeItem(KEY_DRAFT_ORDER_ID());
+}
+
+/** Сгенерировать короткий публичный id и закрепить в сессии на время попытки */
+function ensureDraftPublicId(){
+  let v = sessionStorage.getItem(KEY_DRAFT_PUBLIC_ID());
+  if (!v){
+    v = makePublicId(getUID?.());
+    sessionStorage.setItem(KEY_DRAFT_PUBLIC_ID(), v);
+  }
+  return v;
+}
+function clearDraftPublicId(){
+  sessionStorage.removeItem(KEY_DRAFT_PUBLIC_ID());
+}
+/** Короткий id: base36-время + 2-символьная контрольная сумма */
+function makePublicId(uid=''){
+  const ts = Date.now().toString(36).toUpperCase(); // ~8 символов
+  const salt = String(uid||'').slice(-3);
+  const raw = ts + salt;
+  const sum = [...raw].reduce((a,c)=> a + c.charCodeAt(0), 0) & 0xFF;
+  const chk = sum.toString(36).toUpperCase().padStart(2,'0'); // 2 символа
+  return ts + chk; // итого 8–10 символов, например "L7Q2F4H3"
 }
 
 /* ===================== Персональное локальное хранилище ===================== */
@@ -698,7 +722,8 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
   let shotBusy = false;
 
   // idempotency: закрепляем orderId на всю попытку оформления, используем повторно при ретраях
-  const orderId = ensureDraftOrderId();
+  const orderId  = ensureDraftOrderId();
+  const publicId = ensureDraftPublicId(); // короткий ID для пользователя
 
   mt.textContent = 'Оплата заказа';
   mb.innerHTML = `
@@ -893,6 +918,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
         const first = items[0];
         createdId = await addOrder({
           id: orderId,
+          shortId: publicId,           // ← короткий публичный ID
           cart: items.map(x=>({
             id: x.product.id,
             title: x.product.title,
@@ -946,13 +972,14 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       persistCart(); updateCartBadge();
 
       close();
-      showOrderConfirmationModal(orderId);
+      showOrderConfirmationModal(publicId); // показываем короткий ID пользователю
 
-      // Сбросить idempotency ключ — следующая покупка получит новый
+      // Сбросить idempotency ключи — следующая покупка получит новые
       clearDraftOrderId();
+      clearDraftPublicId();
 
       try{
-        const ev = new CustomEvent('client:orderPlaced', { detail:{ id: orderId } });
+        const ev = new CustomEvent('client:orderPlaced', { detail:{ id: orderId, shortId: publicId } });
         window.dispatchEvent(ev);
       }catch{}
     } finally {
@@ -967,7 +994,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
 }
 
 /** Модалка «Заказ принят» */
-function showOrderConfirmationModal(orderId){
+function showOrderConfirmationModal(displayId){
   const modal = document.getElementById('modal');
   const mb = document.getElementById('modalBody');
   const mt = document.getElementById('modalTitle');
@@ -990,7 +1017,7 @@ function showOrderConfirmationModal(orderId){
     <div class="ok-hero">
       <i data-lucide="shield-check"></i>
       <div>
-        <div class="cart-title">#${orderId}</div>
+        <div class="cart-title">#${escapeHtml(displayId)}</div>
         <div class="muted">Заказ успешно принят, скоро его возьмут в работу.</div>
       </div>
     </div>
