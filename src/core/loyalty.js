@@ -165,10 +165,17 @@ export function computeMaxRedeem(total){
 }
 
 /** Резерв списания (создаёт hold до статуса заказа) */
-export async function reserveRedeem(points, orderId){
+export async function reserveRedeem(points, orderId, shortId = null){
   const uid = getUID();
   if (!points || points < CASHBACK_CFG.MIN_REDEEM) return { ok:false, reason:'min' };
-  const { ok, balance } = await api('reserveRedeem', { uid, pts: Math.floor(points), orderId:String(orderId) });
+
+  const { ok, balance } = await api('reserveRedeem', {
+    uid,
+    pts: Math.floor(points),
+    orderId: String(orderId),
+    shortId: shortId ? String(shortId) : null,  // ← теперь shortId определён
+  });
+
   if (ok){
     setLocalLoyalty(balance);
     const res = getLocalReservations();
@@ -177,6 +184,7 @@ export async function reserveRedeem(points, orderId){
   }
   return { ok };
 }
+
 
 /** Откат/подтверждение резерва при отмене/завершении (для текущего пользователя) */
 export async function finalizeRedeem(orderId, action /* 'cancel' | 'commit' */){
@@ -216,7 +224,8 @@ export async function accrueOnOrderPlaced(order){
     uid,
     orderId: String(order.id),
     total: Number(order.total||0),
-    currency: String(order.currency || 'UZS')
+    currency: String(order.currency || 'UZS'),
+    shortId: order?.shortId ? String(order.shortId) : null,
   });
   if (ok) setLocalLoyalty(balance);
   return { ok };
