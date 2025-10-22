@@ -209,9 +209,10 @@ function addReferrerPendingIfAny(paidAmount, orderId){
 
 const OP_CHAT_URL = 'https://t.me/evliseorder';
 
-export function renderCart(){
-  // при каждом входе в корзину пытаемся «дозреть» отложенные баллы (и уведомить)
-  const wallet = settleMatured();
+export async function renderCart(){
+  // Всегда тянем свежий серверный баланс перед рендером
+  try { await fetchMyLoyalty(); } catch {}
+  const walletLike = getLocalLoyalty() || { available:0, pending:0 };
 
   const v = document.getElementById('view');
   const items = state.cart.items
@@ -240,7 +241,7 @@ export function renderCart(){
 
   // подготовим UI списания — делаем переменные динамическими (сервер может обновить баланс)
   const canRedeemMaxByShare = Math.floor(totalRaw * MAX_DISCOUNT_SHARE);
-  let availablePoints = Number(wallet.available || 0); // обновим после fetch
+  let availablePoints = Number(walletLike.available || 0); // обновим после fetch
   let redeemMax = Math.max(0, Math.min(canRedeemMaxByShare, availablePoints, MAX_REDEEM_POINTS));
   const redeemMin = MIN_REDEEM_POINTS;
 
