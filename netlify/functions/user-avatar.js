@@ -3,7 +3,7 @@
 // Кеширует file_id/url в Netlify Blobs, чтобы не дергать Telegram лишний раз.
 //
 // GET  /.netlify/functions/user-avatar?uid=<telegram_user_id>
-// RESP { ok:true, url:"https://api.telegram.org/file/bot<TOKEN>/<file_path>", file_id:"...", updated: <ts> }
+// RESP { ok:true, url:"https://api.telegram.org/file/bot<TOKEN>/<file_path>", file_id:"...", updated:<ts> }
 //
 // ENV:
 //   TG_BOT_TOKEN    — токен бота (без "bot") (обяз.)
@@ -14,9 +14,10 @@ import { getStore } from '@netlify/blobs';
 const TOKEN = process.env.TG_BOT_TOKEN || '';
 if (!TOKEN) throw new Error('TG_BOT_TOKEN is required');
 
-const API = (m) => `https://api.telegram.org/bot${TOKEN}/${m}`;
+const API  = (m) => `https://api.telegram.org/bot${TOKEN}/${m}`;
 const FILE = (p) => `https://api.telegram.org/file/bot${TOKEN}/${p}`;
 
+/* -------------------- CORS helpers -------------------- */
 function parseAllowed() {
   return (process.env.ALLOWED_ORIGINS || '')
     .split(',').map(s => s.trim()).filter(Boolean);
@@ -48,9 +49,11 @@ function corsHeaders(origin) {
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Vary': 'Origin',
+    'Cache-Control': 'no-store',
   };
 }
 
+/* -------------------- Telegram helpers -------------------- */
 async function tg(method, payload) {
   const r = await fetch(API(method), {
     method: 'POST',
@@ -65,61 +68,72 @@ async function tg(method, payload) {
   return j.result;
 }
 
-export async function handler(event) {
-  const headers = corsHeaders(event.headers?.origin || event.headers?.Origin || '');
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers };
+/* -------------------- HTTP handler (modern Netlify) -------------------- */
+export default async function handler(req) {
+  const origin = req.headers.get('origin') || req.headers.get('Origin') || '';
+  const headers = corsHeaders(origin);
 
-  if (event.httpMethod !== 'GET') {
-    return { statusCode: 405, body: 'Method Not Allowed', headers };
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers });
+  }
+  if (req.method !== 'GET') {
+    return new Response('Method Not Allowed', { status: 405, headers });
   }
 
   try {
-    const uid = String(event.queryStringParameters?.uid || '').trim();
+    const { searchParams } = new URL(req.url);
+    const uid = String(searchParams.get('uid') || '').trim();
     if (!uid) {
-      return { statusCode: 400, body: JSON.stringify({ ok:false, error:'uid required' }), headers };
+      return new Response(JSON.stringify({ ok:false, error:'uid required' }), { status: 400, headers });
     }
 
-    const store = getStore('users'); // тот же namespace, где у вас user-снимки
+    // ВАЖНО: используем один и тот же бакет во всём проекте или отдельный — не критично.
+    // Здесь берём namespaced бакет "users".
+    const store = getStore('users');
     const cacheKey = `avatar__${uid}.json`;
-    const cached = await store.get(cacheKey, { type:'json', consistency:'strong' }).catch(()=>null);
 
-    // «мягкое» обновление: если есть кэш моложе N часов — отдадим его сразу
+    // читаем кэш (json)
+    const cached = await store.get(cacheKey, { type:'json' }).catch(()=>null);
+
+    // если кэш свежий — отдадим
     const MAX_AGE_MS = 6 * 60 * 60 * 1000; // 6 часов
     const now = Date.now();
     if (cached?.url && Number(cached.updated||0) + MAX_AGE_MS > now) {
-      return { statusCode:200, body: JSON.stringify({ ok:true, url: cached.url, file_id: cached.file_id, updated: cached.updated }), headers };
+      return new Response(JSON.stringify({ ok:true, url: cached.url, file_id: cached.file_id, updated: cached.updated }), { status: 200, headers });
     }
 
-    // 1) узнаём последний аватар (самый большой размер первой фотки)
+    // запросим последнее фото профиля
     const photos = await tg('getUserProfilePhotos', { user_id: Number(uid), limit: 1 });
-    const photosCount = Number(photos?.total_count || 0);
-    if (photosCount <= 0 || !Array.isArray(photos?.photos) || !photos.photos[0]?.length) {
-      // нет аватара — запишем пустой кэш на 6ч
-      const rec = { url: '', file_id: '', updated: now };
-      await store.setJSON(cacheKey, rec);
-      return { statusCode:200, body: JSON.stringify({ ok:true, url:'', file_id:'', updated: now }), headers };
+    const hasAny = Number(photos?.total_count || 0) > 0 && Array.isArray(photos?.photos) && photos.photos[0]?.length;
+
+    if (!hasAny) {
+      // нет аватарки — положим пустую запись на 6ч
+      const rec = { ok:true, url:'', file_id:'', updated: now };
+      await store.set(cacheKey, JSON.stringify(rec), { contentType: 'application/json' });
+      return new Response(JSON.stringify(rec), { status: 200, headers });
     }
 
-    const sizes = photos.photos[0]; // массив размеров [small..large]
+    const sizes = photos.photos[0];
     const best = sizes[sizes.length - 1];
     const file_id = String(best?.file_id || '');
 
-    // если file_id не изменился — можно переиспользовать старый url
+    // если file_id совпал — используем старый url
     if (cached?.file_id === file_id && cached?.url) {
-      const rec = { url: cached.url, file_id, updated: now };
-      await store.setJSON(cacheKey, rec);
-      return { statusCode:200, body: JSON.stringify(rec), headers };
+      const rec = { ok:true, url: cached.url, file_id, updated: now };
+      await store.set(cacheKey, JSON.stringify(rec), { contentType: 'application/json' });
+      return new Response(JSON.stringify(rec), { status: 200, headers });
     }
 
-    // 2) получаем file_path и собираем прямой URL
+    // получим file_path и соберём прямой URL
     const file = await tg('getFile', { file_id });
     const file_path = String(file?.file_path || '');
     const url = file_path ? FILE(file_path) : '';
 
     const rec = { ok:true, url, file_id, updated: now };
-    await store.setJSON(cacheKey, rec);
-    return { statusCode:200, body: JSON.stringify(rec), headers };
+    await store.set(cacheKey, JSON.stringify(rec), { contentType: 'application/json' });
+    return new Response(JSON.stringify(rec), { status: 200, headers });
   } catch (e) {
-    return { statusCode:500, body: JSON.stringify({ ok:false, error:String(e) }), headers };
+    const err = String(e?.message || e || 'unknown error');
+    return new Response(JSON.stringify({ ok:false, error: err }), { status: 500, headers });
   }
 }
