@@ -173,12 +173,25 @@ function makeCore(readAll, writeAll){
       const buyer = safeUser(db, uid);
 
       const inviter = getInviter(db, uid);
-      const isFirst = !wasFirstAlready(db, uid);
-      const buyerRate = CFG.BASE_RATE * (isFirst ? CFG.REF_FIRST_MULTIPLIER : 1);
+
+      // 🧹 Легаси-очистка: если ранее помечен «первый заказ», но инвайтера нет — убираем флаг,
+      // чтобы будущий реальный первый заказ по реф-связке мог получить x2.
+      if (!inviter && db?.referrals?.inviteesFirst?.[uid]) {
+        delete db.referrals.inviteesFirst[uid];
+      }
+
+      // x2 только если есть инвайтер и это действительно первый оплачиваемый заказ реферала
+      const eligibleForBoost = !!inviter && !wasFirstAlready(db, uid);
+      const buyerRate = CFG.BASE_RATE * (eligibleForBoost ? CFG.REF_FIRST_MULTIPLIER : 1);
       const buyerPts = Math.floor(total * buyerRate);
 
       buyer.pending += buyerPts;
-      addHist(buyer, { kind:'accrue', orderId, pts:buyerPts, info:`Начисление ${isFirst?'x2 ':''}${Math.round(buyerRate*100)}% (ожидает 24ч)` });
+      addHist(buyer, {
+        kind:'accrue',
+        orderId,
+        pts: buyerPts,
+        info: `Начисление ${eligibleForBoost ? 'x2 ' : ''}${Math.round(buyerRate*100)}% (ожидает 24ч)`
+      });
 
       // рефереру 5% с каждого заказа реферала
       if (inviter){
@@ -195,8 +208,8 @@ function makeCore(readAll, writeAll){
         }
       }
 
-      // помечаем «у реферала был первый платный заказ» (чтобы второй уже не был x2)
-      if (isFirst) markFirstOrder(db, uid);
+      // помечаем «у реферала был первый платный заказ» ТОЛЬКО если применился буст
+      if (eligibleForBoost) markFirstOrder(db, uid);
 
       // фикс в orders (для админ-расчёта)
       if (!db.orders[orderId]) db.orders[orderId] = { uid, total, currency, used:0, accrual:{ buyer:buyerPts, inviter:inviter||null, refPts: inviter?Math.floor(total*CFG.REFERRER_EARN_RATE):0 }, createdAt: Date.now(), released:false };
@@ -311,7 +324,7 @@ function makeCore(readAll, writeAll){
         if (ref.pending >= (ord.accrual?.refPts||0)){
           ref.pending -= (ord.accrual?.refPts||0);
           ref.available += (ord.accrual?.refPts||0);
-          addHist(ref, { kind:'ref_confirm', orderId, pts:+(ord.accrual?.refPts||0), info:'Реферальное подтверждено' });
+          addHist(ref, { kind:'ref_confirm', orderId, pts:+(ord.accrual?.refPts||0), info:'Реферальные подтверждены' });
 
           // 🔔 Инвайтеру: «Реферальные баллы подтверждены»
           if ((ord.accrual?.refPts||0) > 0) {
