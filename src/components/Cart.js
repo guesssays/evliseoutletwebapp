@@ -7,6 +7,8 @@ import { getPayRequisites } from '../core/payments.js';
 import { persistProfile } from '../core/state.js';
 import { getUID } from '../core/state.js';
 import { notifyReferralJoined, notifyReferralOrderCashback, notifyCashbackMatured } from '../core/botNotify.js'; // ✅ бот-уведомления
+// 🔄 новее: показываем серверный баланс лояльности
+import { fetchMyLoyalty, getLocalLoyalty } from '../core/loyalty.js';
 
 /* ===================== КЭШБЕК / РЕФЕРАЛЫ: правила ===================== */
 const CASHBACK_RATE_BASE  = 0.05;   // 5%
@@ -212,9 +214,10 @@ export function renderCart(){
 
   const totalRaw = items.reduce((s,x)=> s + x.qty * x.product.price, 0);
 
-  // подготовим UI списания
+  // подготовим UI списания — делаем переменные динамическими (сервер может обновить баланс)
   const canRedeemMaxByShare = Math.floor(totalRaw * MAX_DISCOUNT_SHARE);
-  const redeemMax = Math.max(0, Math.min(canRedeemMaxByShare, wallet.available, MAX_REDEEM_POINTS));
+  let availablePoints = Number(wallet.available || 0); // обновим после fetch
+  let redeemMax = Math.max(0, Math.min(canRedeemMaxByShare, availablePoints, MAX_REDEEM_POINTS));
   const redeemMin = MIN_REDEEM_POINTS;
 
   // восстановим черновик ввода (если пользователь экспериментировал)
@@ -318,10 +321,10 @@ export function renderCart(){
       <div class="cart-title" style="display:flex;align-items:center;gap:8px">
         <i data-lucide="coins"></i>
         <span>Списать баллы</span>
-        <span class="muted" style="margin-left:auto">Доступно: <b id="cbAvail">${wallet.available|0}</b></span>
+        <span class="muted" style="margin-left:auto">Доступно: <b id="cbAvail">${(availablePoints|0).toLocaleString('ru-RU')}</b></span>
       </div>
       <div class="muted mini" style="margin:6px 0 8px">
-        Минимум к списанию: ${MIN_REDEEM_POINTS.toLocaleString('ru-RU')} · максимум: ${Math.max(0, redeemMax).toLocaleString('ru-RU')} (не больше 30% от суммы и не более 150&nbsp;000)
+        Минимум к списанию: ${MIN_REDEEM_POINTS.toLocaleString('ru-RU')} · максимум: <b id="redeemMaxVal">${Math.max(0, redeemMax).toLocaleString('ru-RU')}</b> (не больше 30% от суммы и не более 150&nbsp;000)
       </div>
       <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
         <input id="redeemInput" class="input" inputmode="numeric" pattern="[0-9]*" value="${redeemInit||''}" placeholder="0">
@@ -427,7 +430,7 @@ export function renderCart(){
   function validateRedeem(v){
     if (v===0) return '';
     if (v < redeemMin) return `Минимум для списания: ${MIN_REDEEM_POINTS.toLocaleString('ru-RU')} баллов`;
-    if (v > wallet.available) return 'Недостаточно баллов';
+    if (v > availablePoints) return 'Недостаточно баллов';
     if (v > redeemMax) return 'Превышает лимит (30% от суммы, максимум 150 000)';
     return '';
   }
@@ -449,6 +452,35 @@ export function renderCart(){
   document.getElementById('redeemMaxBtn')?.addEventListener('click', ()=>{ inEl.value = String(redeemMax); recalc(); });
   document.getElementById('redeemClearBtn')?.addEventListener('click', ()=>{ inEl.value=''; recalc(); });
   recalc();
+
+  // 🔄 Обновляем баланс с сервера и пересчитываем лимиты/итоги
+  (async () => {
+    try{
+      await fetchMyLoyalty();
+      const b = getLocalLoyalty();
+      // обновим доступные баллы
+      availablePoints = Math.max(0, Number(b.available || 0));
+      const availEl = document.getElementById('cbAvail');
+      if (availEl) availEl.textContent = availablePoints.toLocaleString('ru-RU');
+
+      // пересчёт максимума списания с учётом серверного баланса
+      redeemMax = Math.max(
+        0,
+        Math.min(Math.floor(totalRaw * MAX_DISCOUNT_SHARE), availablePoints, MAX_REDEEM_POINTS)
+      );
+      const maxEl = document.getElementById('redeemMaxVal');
+      if (maxEl) maxEl.textContent = Math.max(0, redeemMax).toLocaleString('ru-RU');
+
+      // если пользователь уже ввёл число больше нового лимита — подрежем и пересчитаем
+      const vNow = Number(inEl?.value || 0) | 0;
+      if (vNow > redeemMax) {
+        inEl.value = String(redeemMax || '');
+      }
+      recalc();
+    }catch{
+      // молча оставляем локальные значения, если сервер не ответил
+    }
+  })();
 
   // CTA «Оформить заказ» в таббаре (анти дабл-тап: кликаем не чаще раза в ~1.2s)
   window.setTabbarCTA?.({
