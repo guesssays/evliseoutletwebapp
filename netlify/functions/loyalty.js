@@ -71,15 +71,27 @@ async function fireAndForgetNotify(chatId, type, extra = {}) {
 
     const payload = { chat_id: id, type, ...extra };
 
-    // Пробрасываем Origin (упростит CORS в notify.js)
-    const originHdr = baseRaw;
-
+    // server-to-server: НЕ отправляем Origin — notify сам разрешает пустой Origin
     await fetch(url, {
       method:'POST',
-      headers:{ 'Content-Type':'application/json', 'Origin': originHdr },
+      headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify(payload)
     });
   } catch { /* swallow */ }
+}
+
+/* ===== SERVER→APP (список уведомлений внутри приложения) ===== */
+async function fireAndForgetAppNotif(uid, notif = {}){
+  try{
+    const baseRaw = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/, '');
+    if (!baseRaw || !uid) return;
+    const url = `${baseRaw}/.netlify/functions/notifs`;
+    await fetch(url, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ op:'add', uid: String(uid), notif })
+    });
+  }catch{}
 }
 
 async function getStoreSafe() {
@@ -207,7 +219,15 @@ function makeCore(readAll, writeAll){
 
       await writeAll(db);
 
-      fireAndForgetNotify(inviter, 'referralJoined', {
+      // App-уведомление инвайтеру
+      await fireAndForgetAppNotif(inviter, {
+        icon:'users',
+        title:'Новый реферал',
+        sub:'Пользователь зарегистрировался по вашей ссылке'
+      });
+
+      // TG (если знаем telegram chat_id инвайтера)
+      await fireAndForgetNotify(inviter, 'referralJoined', {
         text: '🎉 Новый реферал! Зайдите в «Аккаунт → Рефералы».'
       });
 
@@ -256,6 +276,16 @@ function makeCore(readAll, writeAll){
             ? `Начисление ${eligibleForBoost ? 'x2 ' : ''}${Math.round(buyerRate*100)}% (ожидает 24ч)`
             : `Корректировка начисления (${deltaBuyer})`,
         });
+
+        // App: отобразим pending-начисление
+        if (deltaBuyer > 0) {
+          const disp = makeDisplayOrderId(orderId, shortId || existing?.shortId);
+          await fireAndForgetAppNotif(uid, {
+            icon:'coins',
+            title:`Начисление по заказу #${disp}`,
+            sub:`Ожидает подтверждения: ${deltaBuyer} балл(ов)`
+          });
+        }
       }
       // помечаем первый заказ только если буст применился в ЭТОМ вызове и ранее не помечен
       if (eligibleForBoost && !wasFirstAlready(db, uid)) {
@@ -287,8 +317,14 @@ function makeCore(readAll, writeAll){
           });
 
           if (deltaRef > 0) {
-            // уведомление рефереру — id заказа не нужен
-            fireAndForgetNotify(inviter, 'referralOrderCashback', {
+            const disp = makeDisplayOrderId(orderId, shortId || existing?.shortId);
+            await fireAndForgetAppNotif(inviter, {
+              icon:'gift',
+              title:`Реферальное начисление по #${disp}`,
+              sub:`Ожидает подтверждения: ${deltaRef} балл(ов)`
+            });
+            // уведомление рефереру — id заказа в тексте (без клика)
+            await fireAndForgetNotify(inviter, 'referralOrderCashback', {
               text: `💸 Заказ реферала: начислено ${deltaRef} баллов (ожидает подтверждения).`
             });
           }
@@ -398,8 +434,15 @@ function makeCore(readAll, writeAll){
         buyer.available += bPts;
         addHist(buyer, { kind:'confirm', orderId, pts:+bPts, info:'Начисление подтверждено' });
 
-        // 🔔 Показываем короткий id в тексте
-        fireAndForgetNotify(ord.uid, 'cashbackMatured', {
+        // App-уведомление
+        await fireAndForgetAppNotif(ord.uid, {
+          icon:'check-circle',
+          title:`Кэшбек доступен по #${disp}`,
+          sub:`Зачислено: ${bPts} балл(ов)`
+        });
+
+        // 🔔 Показываем короткий id в телеграм-тексте
+        await fireAndForgetNotify(ord.uid, 'cashbackMatured', {
           text: `✅ Кэшбек по заказу #${disp}: ${bPts} баллов доступны к оплате.`,
           orderId,             // на всякий случай пробросим оба
           shortId: ord.shortId // чтобы notify мог тоже сформировать «about», если нужно
@@ -415,8 +458,15 @@ function makeCore(readAll, writeAll){
           ref.available += rPts;
           addHist(ref, { kind:'ref_confirm', orderId, pts:+rPts, info:'Реферальные подтверждены' });
 
-          // 🔔 Короткий id и для реферера
-          fireAndForgetNotify(ord.accrual.inviter, 'cashbackMatured', {
+          // App
+          await fireAndForgetAppNotif(ord.accrual.inviter, {
+            icon:'check-circle',
+            title:`Реферальные подтверждены по #${disp}`,
+            sub:`Зачислено: ${rPts} балл(ов)`
+          });
+
+          // TG
+          await fireAndForgetNotify(ord.accrual.inviter, 'cashbackMatured', {
             text: `✅ Реферальные баллы по заказу #${disp}: ${rPts} подтверждены.`,
             orderId,
             shortId: ord.shortId

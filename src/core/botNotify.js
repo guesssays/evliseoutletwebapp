@@ -1,8 +1,7 @@
 // src/core/botNotify.js
-
 // Клиентский модуль, который пингует serverless-функцию
-// Вызывается из app.js/Cart.js/Account.js и т.п.
 // + маркетинговые напоминания (корзина/избранное)
+// Теперь пробрасываем shortId, чтобы бот показывал короткий номер.
 
 const ENDPOINT = '/.netlify/functions/notify';
 
@@ -25,18 +24,17 @@ function resolveTargetChatId(preferredChatId) {
   return isValidChatId(fromWebApp || '') ? fromWebApp : null;
 }
 
-/** Базовый отправитель события в бота (через Netlify Function)
- *  ВАЖНО: НЕ требуем chat_id на клиенте — сервер сам подставит ADMIN_CHAT_ID.
- *  НО для маркетинговых пингов мы не хотим спамить админа: тогда не шлём, если chat_id нет.
- */
-async function sendToBot(type, { orderId, chatId, title, text } = {}, { requireUserChat=false } = {}) {
+/** Базовый отправитель события в бота (через Netlify Function) */
+async function sendToBot(type, { orderId, shortId, chatId, title, text } = {}, { requireUserChat=false } = {}) {
   const chat_id = resolveTargetChatId(chatId); // может быть null
   if (requireUserChat && !chat_id) return; // маркетинговые пинги — только реальному пользователю
 
-  const payload = { type, orderId };
+  const payload = { type };
+  if (orderId) payload.orderId = String(orderId);
+  if (shortId) payload.shortId = String(shortId);
   if (chat_id) payload.chat_id = chat_id;
-  if (title) payload.title = String(title).slice(0, 140);
-  if (text)  payload.text  = String(text).slice(0, 400);
+  if (title)  payload.title   = String(title).slice(0, 140);
+  if (text)   payload.text    = String(text).slice(0, 400);
 
   try {
     await fetch(ENDPOINT, {
@@ -50,10 +48,10 @@ async function sendToBot(type, { orderId, chatId, title, text } = {}, { requireU
 }
 
 /* Публичные хелперы — первый аргумент: целевой chatId (опционально) */
-export const notifyOrderPlaced   = (chatId, { orderId, title } = {}) => sendToBot('orderPlaced',   { orderId, chatId, title });
-export const notifyOrderAccepted = (chatId, { orderId, title } = {}) => sendToBot('orderAccepted', { orderId, chatId, title });
-export const notifyStatusChanged = (chatId, { orderId, title } = {}) => sendToBot('statusChanged', { orderId, chatId, title });
-export const notifyOrderCanceled = (chatId, { orderId, title } = {}) => sendToBot('orderCanceled', { orderId, chatId, title });
+export const notifyOrderPlaced   = (chatId, { orderId, shortId, title } = {}) => sendToBot('orderPlaced',   { orderId, shortId, chatId, title });
+export const notifyOrderAccepted = (chatId, { orderId, shortId, title } = {}) => sendToBot('orderAccepted', { orderId, shortId, chatId, title });
+export const notifyStatusChanged = (chatId, { orderId, shortId, title } = {}) => sendToBot('statusChanged', { orderId, shortId, chatId, title });
+export const notifyOrderCanceled = (chatId, { orderId, shortId, title } = {}) => sendToBot('orderCanceled', { orderId, shortId, chatId, title });
 
 /* Маркетинговые напоминания */
 export const notifyCartReminder = (chatId, { text } = {}) =>
@@ -62,16 +60,12 @@ export const notifyCartReminder = (chatId, { text } = {}) =>
 export const notifyFavoritesReminder = (chatId, { text } = {}) =>
   sendToBot('favReminder', { chatId, text }, { requireUserChat: true });
 
-/* === ДОБАВЛЕНО: Рефералы / Кэшбек === */
-
-/** Новый реферал у инвайтера */
+/* === Рефералы / Кэшбек === */
 export const notifyReferralJoined = (inviterChatId, { text } = {}) =>
   sendToBot('referralJoined', { chatId: inviterChatId, text }, { requireUserChat: true });
 
-/** Заказ реферала → 5% начислены (pending) */
 export const notifyReferralOrderCashback = (inviterChatId, { text } = {}) =>
   sendToBot('referralOrderCashback', { chatId: inviterChatId, text }, { requireUserChat: true });
 
-/** Кэшбек дозрел → доступен к оплате (CTA ведёт в корзину) */
 export const notifyCashbackMatured = (chatId, { text } = {}) =>
   sendToBot('cashbackMatured', { chatId, text }, { requireUserChat: true });

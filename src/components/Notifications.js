@@ -1,10 +1,17 @@
 // src/components/Notifications.js
-import { k } from '../core/state.js';
+import { k, getUID } from '../core/state.js';
 
-export function renderNotifications(onAfterMarkRead){
+const ENDPOINT = '/.netlify/functions/notifs';
+
+export async function renderNotifications(onAfterMarkRead){
   const v = document.getElementById('view');
 
-  const list = getList().sort((a,b)=> (b.ts||0) - (a.ts||0));
+  // 1) грузим с сервера (fall back на локальное)
+  let list = await fetchServerListSafe().catch(()=>null);
+  if (!Array.isArray(list)) list = getList();
+
+  // сортировка (на всякий случай)
+  list = list.slice().sort((a,b)=> (b.ts||0) - (a.ts||0));
 
   if (!list.length){
     v.innerHTML = `
@@ -20,8 +27,9 @@ export function renderNotifications(onAfterMarkRead){
     `;
   }
 
-  // отмечаем все как прочитанные (только если были непрочитанные)
+  // 2) отмечаем прочитанными: сперва сервер, затем локальный кэш
   if (list.some(n=>!n.read)){
+    await markAllServerSafe().catch(()=>{});
     const updated = list.map(n=> ({...n, read:true}));
     setList(updated);
     onAfterMarkRead && onAfterMarkRead();
@@ -49,7 +57,29 @@ function noteTpl(n){
   `;
 }
 
-/* ===== per-user storage (через k()) ===== */
+/* ===== server API ===== */
+async function fetchServerListSafe(){
+  const uid = getUID();
+  if (!uid) return null;
+  const r = await fetch(`${ENDPOINT}?op=list&uid=${encodeURIComponent(uid)}`, { method:'GET' });
+  const j = await r.json().catch(()=> ({}));
+  if (!r.ok || j?.ok === false) return null;
+  const items = Array.isArray(j.items) ? j.items : [];
+  setList(items); // синхронизируем локальный кэш
+  return items;
+}
+
+async function markAllServerSafe(){
+  const uid = getUID();
+  if (!uid) return;
+  await fetch(ENDPOINT, {
+    method:'POST',
+    headers:{ 'Content-Type': 'application/json' },
+    body: JSON.stringify({ op:'markAll', uid })
+  }).catch(()=>{});
+}
+
+/* ===== per-user local storage (fallback) ===== */
 const KEY = 'nas_notifications';
 function getList(){
   try{ return JSON.parse(localStorage.getItem(k(KEY)) || '[]'); }catch{ return []; }
