@@ -12,6 +12,9 @@ import {
   loyaltyVoidAccrualFor,                         // ⬅ НОВОЕ: погасить pending-начисления по заказу
 } from './loyalty.js';
 
+// ▼ Бот-уведомления (добавили вызов со shortId)
+import { notifyStatusChanged } from './botNotify.js';
+
 const KEY = 'nas_orders';
 
 // === централизованный backend ===
@@ -180,6 +183,8 @@ export async function addOrder(order){
   const next = normalizeOrder({
     id: idLocal,
     userId: safeUserId,
+    // ⬇⬇⬇ ВАЖНО: сохраняем короткий ID, если он уже есть
+    shortId: order.shortId ?? order.code ?? null,
     username: order.username ?? '',
     productId: order.productId ?? null,
     size: order.size ?? null,
@@ -355,6 +360,20 @@ export async function updateOrderStatus(orderId, status){
       try { await loyaltyConfirmAccrual(orderId); } catch {}
     }
   }
+
+  // ▼ Уведомление в бота о смене статуса (с коротким номером)
+  try {
+    const chatId = String(updatedOrder?.userId || '');
+    const shortId = String(updatedOrder?.shortId || updatedOrder?.code || '');
+    const title = updatedOrder?.cart?.[0]?.title || updatedOrder?.title || '';
+    if (chatId) {
+      await notifyStatusChanged(chatId, {
+        orderId: String(updatedOrder.id),
+        shortId, // ← важное поле для короткого номера
+        title
+      });
+    }
+  } catch {}
 
   saveOrders(getOrdersLocal());
 }
