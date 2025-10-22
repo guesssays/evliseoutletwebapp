@@ -83,6 +83,17 @@ function settleMatured(){
   if (changed){ w.pending=keep; writeWallet(w); }
 }
 
+/* ===== ЕДИНЫЙ ФОРМАТ ОТОБРАЖАЕМОГО НОМЕРА ЗАКАЗА ===== */
+function makeDisplayOrderIdFromParts(orderId, shortId) {
+  const s = String(shortId || '').trim();
+  if (s) return s.toUpperCase();
+  const full = String(orderId || '').trim();
+  return full ? full.slice(-6).toUpperCase() : '';
+}
+function makeDisplayOrderId(order) {
+  return makeDisplayOrderIdFromParts(order?.id, order?.shortId);
+}
+
 /* ===== «богатые» уведомления через Netlify Function ===== */
 const NOTIF_API = '/.netlify/functions/notifs';
 const USER_JOIN_API = '/.netlify/functions/user-join';
@@ -694,16 +705,22 @@ async function init(){
     }
   }
 
+  // === УВЕДОМЛЕНИЯ: ЕДИНЫЙ КОРОТКИЙ НОМЕР ===
   window.addEventListener('client:orderPlaced', async (e)=>{
     try{
       const id = e.detail?.id;
+
+      // подтянем заказ (нужен shortId для единого отображения)
+      const order = (await getOrders() || []).find(o => String(o.id) === String(id));
+      const dispId = makeDisplayOrderId(order);
+      const title = buildOrderShortTitle(order);
 
       const notif = {
         id: `order-placed-${id}`,
         ts: Date.now(),
         icon: 'package',
         title: 'Заказ оформлен',
-        sub: `#${id} — ожидает подтверждения`,
+        sub: dispId ? `#${dispId} — ожидает подтверждения` : 'Ожидает подтверждения',
         read: false
       };
 
@@ -712,11 +729,9 @@ async function init(){
 
       await serverPushFor(getUID(), notif);
 
-      const order = (await getOrders() || []).find(o => String(o.id) === String(id));
-      const title = buildOrderShortTitle(order);
-
       const uid = state?.user?.id;
-      notifyOrderPlaced(uid, { orderId: id, title });
+      // В бота отправляем и orderId, и shortId — сервер унифицирует текст
+      notifyOrderPlaced(uid, { orderId: id, shortId: order?.shortId || null, title });
 
       window.dispatchEvent(new CustomEvent('orders:updated'));
     }catch{}
@@ -725,57 +740,61 @@ async function init(){
   window.addEventListener('admin:orderAccepted', async (e)=>{
     try{
       const { id, userId } = e.detail || {};
+      const order = (await getOrders() || []).find(o => String(o.id) === String(id));
+      const dispId = makeDisplayOrderId(order);
+      const title = buildOrderShortTitle(order);
 
       const notif = {
         icon: 'shield-check',
         title: 'Заказ принят администратором',
-        sub: `#${id}`,
+        sub: dispId ? `#${dispId}` : '',
       };
 
       await serverPushFor(userId, notif);
       instantLocalIfSelf(userId, notif);
 
-      const order = (await getOrders() || []).find(o => String(o.id) === String(id));
-      const title = buildOrderShortTitle(order);
-      notifyOrderAccepted(userId, { orderId: id, title });
+      notifyOrderAccepted(userId, { orderId: id, shortId: order?.shortId || null, title });
     }catch{}
   });
 
   window.addEventListener('admin:statusChanged', async (e)=>{
     try{
       const { id, status, userId } = e.detail || {};
+      const order = (await getOrders() || []).find(o => String(o.id) === String(id));
+      const dispId = makeDisplayOrderId(order);
+      const title = buildOrderShortTitle(order);
 
       const notif = {
         icon: 'refresh-ccw',
         title: 'Статус заказа обновлён',
-        sub: `#${id}: ${getStatusLabel(status)}`,
+        sub: dispId ? `#${dispId}: ${getStatusLabel(status)}` : getStatusLabel(status),
       };
 
       await serverPushFor(userId, notif);
       instantLocalIfSelf(userId, notif);
 
-      const order = (await getOrders() || []).find(o => String(o.id) === String(id));
-      const title = buildOrderShortTitle(order);
-      notifyStatusChanged(userId, { orderId: id, title });
+      notifyStatusChanged(userId, { orderId: id, shortId: order?.shortId || null, title });
     }catch{}
   });
 
   window.addEventListener('admin:orderCanceled', async (e)=>{
     try{
       const { id, reason, userId } = e.detail || {};
+      const order = (await getOrders() || []).find(o => String(o.id) === String(id));
+      const dispId = makeDisplayOrderId(order);
+      const subSuffix = reason ? ` — ${reason}` : '';
 
       const notif = {
         icon: 'x-circle',
         title: 'Заказ отменён',
-        sub: `#${id}${reason ? ` — ${reason}` : ''}`,
+        sub: dispId ? `#${dispId}${subSuffix}` : (reason || ''),
       };
 
       await serverPushFor(userId, notif);
       instantLocalIfSelf(userId, notif);
 
-      const order = (await getOrders() || []).find(o => String(o.id) === String(id));
       const title = buildOrderShortTitle(order);
-      notifyOrderCanceled(userId, { orderId: id, title });
+      notifyOrderCanceled(userId, { orderId: id, shortId: order?.shortId || null, title });
     }catch{}
   });
 
