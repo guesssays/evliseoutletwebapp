@@ -3,6 +3,24 @@ import { state, getUID } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { getOrdersForUser, getStatusLabel } from '../core/orders.js';
 
+/* ===== helpers for short ids ===== */
+function getDisplayId(o){
+  const sid = o?.shortId || o?.code;
+  if (sid) return String(sid);
+  const full = String(o?.id ?? '');
+  if (!full) return '';
+  // как fallback — последние 6 символов в верхнем регистре
+  return full.slice(-6).toUpperCase();
+}
+
+function matchesAnyId(o, val){
+  const needle = String(val || '').trim();
+  if (!needle) return false;
+  return String(o?.id) === needle ||
+         String(o?.shortId || '') === needle ||
+         String(o?.code || '') === needle;
+}
+
 export async function renderOrders(){
   const v=document.getElementById('view');
   const myUid = getUID();
@@ -64,15 +82,18 @@ function groupBlock(title, list){
 function orderCard(o){
   const cover = o.cart?.[0]?.images?.[0] || 'assets/placeholder.jpg';
 
-  let actionHtml = `<a class="pill" href="#/track/${encodeURIComponent(o.id)}">Подробнее</a>`;
+  const displayId = getDisplayId(o);
+  const link = `#/track/${encodeURIComponent(displayId)}`;
+
+  let actionHtml = `<a class="pill" href="${link}">Подробнее</a>`;
   if (o.status === 'выдан'){
     actionHtml = `
-      <a class="pill" href="#/track/${encodeURIComponent(o.id)}" style="display:inline-flex;align-items:center;gap:6px">
+      <a class="pill" href="${link}" style="display:inline-flex;align-items:center;gap:6px">
         <i data-lucide="check-circle"></i><span>Детали</span>
       </a>`;
   } else if (o.status === 'отменён'){
     actionHtml = `
-      <a class="pill outline" href="#/track/${encodeURIComponent(o.id)}" style="display:inline-flex;align-items:center;gap:6px">
+      <a class="pill outline" href="${link}" style="display:inline-flex;align-items:center;gap:6px">
         <i data-lucide="x-circle"></i><span>Детали</span>
       </a>`;
   }
@@ -82,8 +103,6 @@ function orderCard(o){
   if (o.status === 'отменён' && o.cancelReason){
     subLines.push(`Причина: ${escapeHtml(o.cancelReason)}`);
   }
-
-  const displayId = o.shortId || o.id;
 
   return `
     <div class="order-row">
@@ -102,7 +121,9 @@ export async function renderTrack({id}){
   const v=document.getElementById('view');
   const myUid = getUID();
   const list = await getOrdersForUser(myUid);
-  const o = list.find(x=>String(x.id)===String(id));
+
+  // поддерживаем и длинный id, и shortId/code
+  const o = (list || []).find(x => matchesAnyId(x, id));
   if(!o){
     v.innerHTML = `
       <div class="section-title" style="display:flex;align-items:center;gap:10px">
@@ -125,7 +146,7 @@ export async function renderTrack({id}){
   const progress = Math.max(0, Math.min(100, Math.round(curIdx * 100 / (steps.length - 1))));
 
   const itemsHtml = itemsBlock(o);
-  const displayId = o.shortId || o.id;
+  const displayId = getDisplayId(o);
 
   v.innerHTML = `
     <style>
@@ -355,14 +376,13 @@ function colorNameFromValue(raw){
     }
   }
 
-  // Если это составное типа "blue/white" — разберём
+  // Составные "blue/white"
   if (v.includes('/') || v.includes('-')){
     const parts = v.split(/[/\-]/).map(s=>s.trim()).filter(Boolean);
     const mapped = parts.map(p => colorNameFromValue(p));
     if (mapped.length) return mapped.join(' / ');
   }
 
-  // По умолчанию — как есть (без кода #rrggbb)
   return v.startsWith('#') ? v.toUpperCase() : v;
 }
 
@@ -404,11 +424,9 @@ const HEX_MAP = [
 ];
 
 function hexToRuName(hex){
-  // Быстрое точное совпадение
   const exact = HEX_MAP.find(([h]) => h === hex.toLowerCase());
   if (exact) return exact[1];
 
-  // Иначе приблизим по расстоянию в RGB
   const [r,g,b] = hexToRGB(hex);
   let best = { dist: Infinity, name: '' };
   for (const [h, name] of HEX_MAP){

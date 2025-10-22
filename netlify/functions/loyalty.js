@@ -50,10 +50,25 @@ async function fireAndForgetNotify(chatId, type, extra = {}) {
   try {
     const id = String(chatId || '').trim();
     if (!/^\d+$/.test(id)) return;
-    const base = (process.env.URL || '').replace(/\/+$/, '');
-    const url  = base ? `${base}/.netlify/functions/notify` : '/.netlify/functions/notify';
+
+    // ⚠️ ВАЖНО: используем абсолютный URL; поддерживаем DEPLOY_URL как fallback
+    const baseRaw = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/, '');
+    if (!baseRaw) {
+      console.warn('[loyalty] notify skipped: no process.env.URL/DEPLOY_URL');
+      return;
+    }
+    const url  = `${baseRaw}/.netlify/functions/notify`;
+
     const payload = { chat_id: id, type, ...extra };
-    await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+
+    // Пробрасываем Origin (упростит CORS в notify.js)
+    const originHdr = baseRaw;
+
+    await fetch(url, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Origin': originHdr },
+      body: JSON.stringify(payload)
+    });
   } catch { /* swallow */ }
 }
 

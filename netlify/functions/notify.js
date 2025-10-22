@@ -40,7 +40,10 @@ function originMatches(origin, rule) {
 
 function buildCorsHeaders(origin) {
   const allowed = parseAllowed();
+
+  // ✅ Разрешаем пустой Origin для сервер-к-сервер запросов
   const isAllowed = !allowed.length ||
+                    !origin ||
                     isTelegramOrigin(origin) ||
                     allowed.some(rule => originMatches(origin, rule));
 
@@ -60,15 +63,15 @@ function buildCorsHeaders(origin) {
 /* ------------ Медиа для уведомлений ------------ */
 const BASE_ASSET_URL = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/, '');
 const TYPE_IMG = {
-  orderPlaced:            '/assets/notify/order_placed.jpg',
-  orderAccepted:          '/assets/notify/order_accepted.jpg',
-  statusChanged:          '/assets/notify/status_changed.jpg',
-  orderCanceled:          '/assets/notify/order_canceled.jpg',             // добавлено
-  cartReminder:           '/assets/notify/cart_reminder.jpg',
-  favReminder:            '/assets/notify/fav_reminder.jpg',
-  referralJoined:         '/assets/notify/referral_joined.jpg',
-  referralOrderCashback:  '/assets/notify/referral_cashback_pending.jpg',  // добавлено
-  cashbackMatured:        '/assets/notify/cashback_ready.jpg',
+  orderPlaced:            '/assets/notify/order_placed1.jpg',
+  orderAccepted:          '/assets/notify/order_accepted1.jpg',
+  statusChanged:          '/assets/notify/status_changed1.jpg',
+  orderCanceled:          '/assets/notify/order_canceled1.jpg',
+  cartReminder:           '/assets/notify/cart_reminder1.jpg',
+  favReminder:            '/assets/notify/fav_reminder1.jpg',
+  referralJoined:         '/assets/notify/referral_joined1.jpg',
+  referralOrderCashback:  '/assets/notify/referral_cashback_pending1.jpg',
+  cashbackMatured:        '/assets/notify/cashback_ready1.jpg',
 };
 
 /**

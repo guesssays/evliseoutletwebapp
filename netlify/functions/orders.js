@@ -1,3 +1,4 @@
+// netlify/functions/orders.js
 // Централизованное хранилище заказов (Netlify Blobs) + операции админа
 // ENV: TG_BOT_TOKEN, ADMIN_CHAT_ID (может быть список через запятую), WEBAPP_URL
 //      ALLOWED_ORIGINS (опц.), ALLOW_MEMORY_FALLBACK=1 (только для DEV)
@@ -51,11 +52,12 @@ function buildCorsHeaders(origin) {
 
 /* ---------- helper для вызовов в loyalty ---------- */
 async function callLoyalty(op, payload){
-  const base = (process.env.URL || '').replace(/\/+$/,'');
+  const base = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/,'');
+  if (!base) throw new Error('no base URL for loyalty');
   const url = `${base}/.netlify/functions/loyalty`;
   const r = await fetch(url, {
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:{'Content-Type':'application/json', 'Origin': base},
     body: JSON.stringify({ op, ...payload })
   });
   const j = await r.json().catch(()=> ({}));
@@ -148,6 +150,16 @@ export async function handler(event) {
       const id = String(body.id || '');
       const status = String(body.status || '');
       const o = await store.status(id, status);
+
+      // ✅ Новое: подтверждаем кэшбек при «выдан», чтобы сработало bot-уведомление
+      if (o && o.userId && status === 'выдан') {
+        try {
+          await callLoyalty('confirmaccrual', { uid: String(o.userId), orderId: String(o.id) });
+        } catch (e) {
+          console.warn('[orders] loyalty.confirmaccrual failed:', e?.message || e);
+        }
+      }
+
       return ok({ ok: !!o, order: o || null }, headers);
     }
 

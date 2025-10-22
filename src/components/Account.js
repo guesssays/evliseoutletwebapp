@@ -9,6 +9,7 @@ import { notifyCashbackMatured } from '../core/botNotify.js'; // ✅ бот-ув
 import { fetchMyLoyalty, getLocalLoyalty } from '../core/loyalty.js';
 
 const OP_CHAT_URL = 'https://t.me/evliseorder';
+const DEFAULT_AVATAR = 'assets/user-default.png'; // ← путь к дефолтной аватарке
 
 /* ===== Локальные ключи и работа с кошельком/рефералами ===== */
 function k(base){ try{ const uid=getUID?.()||'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
@@ -110,49 +111,63 @@ function getTelegramUserId(u){
 async function loadTgAvatar(){
   const u = state?.user || null;
   const uid = getTelegramUserId(u);
-  if (!uid) return; // нет tg-id — не пытаемся грузить
-
   const box = document.getElementById('avatarBox');
   const img = document.getElementById('tgAvatar');
-  const fallback = document.getElementById('avatarFallback');
 
-  // безопасный фолбэк на случай ошибки картинки (403/404 и т.п.)
-  if (img && !img._evliseErrorBound) {
+  if (!img) return;
+
+  // Предустановим дефолт на всякий случай
+  if (!img.getAttribute('src')) {
+    img.src = DEFAULT_AVATAR;
+  }
+
+  // Безопасный обработчик ошибки: всегда подставляем дефолт и не зацикливаемся
+  if (!img._evliseErrorBound) {
     img._evliseErrorBound = true;
     img.addEventListener('error', () => {
-      img.hidden = true;
-      if (fallback) fallback.hidden = false;
-      box?.classList.remove('has-img');
+      if (img.src !== location.origin + '/' + DEFAULT_AVATAR && !img.src.endsWith(DEFAULT_AVATAR)) {
+        img.src = DEFAULT_AVATAR;
+      }
+      box?.classList.add('has-img');
     });
   }
 
-  // 1) отрисуем кеш немедленно (если есть)
+  // Если нет tg-id — остаёмся на дефолте
+  if (!uid) {
+    img.src = DEFAULT_AVATAR;
+    box?.classList.add('has-img');
+    return;
+  }
+
+  // 1) отрисуем кеш немедленно (если есть), иначе — дефолт
   const cached = readCachedAvatar();
-  if (cached){
-    if (img){ img.src = cached; img.hidden = false; }
-    if (fallback) fallback.hidden = true;
+  if (cached) {
+    img.src = cached;
+    box?.classList.add('has-img');
+  } else {
+    img.src = DEFAULT_AVATAR;
     box?.classList.add('has-img');
   }
 
   // 2) подтянем актуальный url у функции (если другой — обновим)
   try{
     const fresh = await fetchTgAvatarUrl(uid);
-    if (fresh && fresh !== cached){
-      cacheAvatar(fresh);
-      if (img){ img.src = fresh; img.hidden = false; }
-      if (fallback) fallback.hidden = true;
+    if (fresh){
+      if (fresh !== cached){
+        cacheAvatar(fresh);
+      }
+      img.src = fresh;
+      box?.classList.add('has-img');
+    }else{
+      // нет фото в TG — оставляем дефолт
+      cacheAvatar('');
+      img.src = DEFAULT_AVATAR;
       box?.classList.add('has-img');
     }
-    if (!fresh && !cached){
-      if (img) img.hidden = true;
-      if (fallback) fallback.hidden = false;
-      box?.classList.remove('has-img');
-    }
   }catch{
-    // молча откатимся к букве
-    if (img) img.hidden = true;
-    if (fallback) fallback.hidden = false;
-    box?.classList.remove('has-img');
+    // сетевые/серверные ошибки — оставляем дефолт
+    img.src = DEFAULT_AVATAR;
+    box?.classList.add('has-img');
   }
 }
 
@@ -174,8 +189,6 @@ export function renderAccount(){
   const ref = readRefProfile();
   const hasBoost = !!ref.firstOrderBoost && !ref.firstOrderDone; // <-- фикс: это флаг, а не функция
 
-  const firstLetter = (u?.first_name || u?.username || 'Г').toString().slice(0,1).toUpperCase();
-
   v.innerHTML = `
     <section class="section" style="padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));">
       <div class="section-title">Личный кабинет</div>
@@ -188,9 +201,9 @@ export function renderAccount(){
         }
         .avatar{
           width:56px; height:56px; border-radius:50%;
-          display:grid; place-items:center; font-weight:800; font-size:20px;
-          color:#fff; background:#111827; overflow:hidden;
-          user-select:none;
+          display:grid; place-items:center;
+          overflow:hidden; user-select:none;
+          background:#111827;
         }
         .avatar img{ display:block; width:100%; height:100%; object-fit:cover; }
         .avatar.has-img{ background:transparent; }
@@ -270,8 +283,7 @@ export function renderAccount(){
 
       <div class="account-card">
         <div class="avatar" id="avatarBox" aria-label="Аватар">
-          <img id="tgAvatar" alt="" hidden>
-          <span id="avatarFallback">${firstLetter}</span>
+          <img id="tgAvatar" alt="Аватар" src="${DEFAULT_AVATAR}">
         </div>
         <div class="info">
           <div class="name">${u ? `${u.first_name||''} ${u.last_name||''}`.trim() || u.username || 'Пользователь' : 'Гость'}</div>
@@ -348,25 +360,23 @@ export function renderAccount(){
   });
 
   // подгружаем аватар (и обновляем при возврате на вкладку)
-  if (getTelegramUserId(u)) {
-    loadTgAvatar();
-    document.addEventListener('visibilitychange', ()=>{
-      if (!document.hidden) {
-        loadTgAvatar();
-        // и баланс обновим при возврате
-        (async ()=> {
-          try{
-            await fetchMyLoyalty();
-            const b = getLocalLoyalty();
-            const a = document.getElementById('ptsAvail');
-            const p = document.getElementById('ptsPend');
-            if (a) a.textContent = (Number(b.available||0)).toLocaleString('ru-RU');
-            if (p) p.textContent = (Number(b.pending||0)).toLocaleString('ru-RU');
-          }catch{}
-        })();
-      }
-    });
-  }
+  loadTgAvatar();
+  document.addEventListener('visibilitychange', ()=>{
+    if (!document.hidden) {
+      loadTgAvatar();
+      // и баланс обновим при возврате
+      (async ()=> {
+        try{
+          await fetchMyLoyalty();
+          const b = getLocalLoyalty();
+          const a = document.getElementById('ptsAvail');
+          const p = document.getElementById('ptsPend');
+          if (a) a.textContent = (Number(b.available||0)).toLocaleString('ru-RU');
+          if (p) p.textContent = (Number(b.pending||0)).toLocaleString('ru-RU');
+        }catch{}
+      })();
+    }
+  });
 
   // на случай мгновенного перехода по ссылкам из аккаунта — ещё раз фиксируем вкладку
   document.querySelectorAll('.menu a').forEach(a=>{
