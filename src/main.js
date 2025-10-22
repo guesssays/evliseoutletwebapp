@@ -39,8 +39,8 @@ import {
   notifyOrderAccepted,
   notifyStatusChanged,
   notifyOrderCanceled,
-  notifyCartReminder,
-  notifyFavoritesReminder,
+  // notifyCartReminder,           // ← БОЛЬШЕ НЕ ИСПОЛЬЗУЕМ С ФРОНТА
+  // notifyFavoritesReminder,      // ← БОЛЬШЕ НЕ ИСПОЛЬЗУЕМ С ФРОНТА
 } from './core/botNotify.js';
 
 /* ===== Реферал/кешбэк: deeplink-капчер + bind ===== */
@@ -562,6 +562,53 @@ async function router(){
   renderHome(router);
 }
 
+/* ===== серверная синхронизация снапшота корзины/избранного ===== */
+function collectSnapshot(){
+  const uid = getUID?.() || 'guest';
+  const chatId = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Tashkent';
+
+  const cart = Array.isArray(state.cart?.items) ? state.cart.items.map(it=>{
+    const p = state.products.find(x => String(x.id)===String(it.productId)) || {};
+    return {
+      id: it.productId,
+      qty: Number(it.qty||1),
+      title: p.title || it.title || 'товар',
+      price: Number(p.price || it.price || 0),
+    };
+  }) : [];
+
+  const favorites = (state.favorites instanceof Set)
+    ? Array.from(state.favorites)
+    : (Array.isArray(state.favorites) ? state.favorites.slice() : []);
+
+  return { uid, chatId, tz, cart, favorites };
+}
+
+async function sendSnapshot(){
+  try{
+    const snap = collectSnapshot();
+    if (!snap.uid || !snap.chatId) return; // только Telegram-пользователи
+    await fetch('/.netlify/functions/user-sync', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify(snap),
+    });
+  }catch{}
+}
+
+function startUserSnapshotSync(){
+  // первый пуш при старте
+  sendSnapshot();
+
+  // Пуш при событиях (если у вас генерируются — используем, иначе таймер ниже всё прикроет)
+  window.addEventListener('cart:updated', sendSnapshot);
+  window.addEventListener('favorites:updated', sendSnapshot);
+
+  // Страховка: раз в 10 минут
+  setInterval(sendSnapshot, 10*60*1000);
+}
+
 /* ---------- ИНИЦИАЛИЗАЦИЯ ---------- */
 async function init(){
   // 0) Сразу захватываем возможного инвайтера из контекста (MiniApp/Web)
@@ -747,8 +794,8 @@ async function init(){
 
   document.addEventListener('visibilitychange', ()=>{ if (!document.hidden){ syncMyNotifications(); settleMatured(); } });
 
-  // маркетинговые пинги
-  scheduleMarketingBotPings();
+  // === ВМЕСТО scheduleMarketingBotPings(): серверная синхронизация снапшота ===
+  startUserSnapshotSync();
 }
 init();
 
@@ -756,84 +803,6 @@ init();
 document.getElementById('openFilters')?.addEventListener('click', ()=> openFilterModal(router));
 
 export { updateNotifBadge, getNotifications, setNotifications, setTabbarMenu, setTabbarCTA, setTabbarCTAs };
-
-/* ===== маркетинговые напоминания в бота ===== */
-function scheduleMarketingBotPings(){
-  const chatId = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-  if (!chatId) return;
-
-  const uid = getUID();
-  const K_LAST_CART = `mkt_last_cart__${uid}`;
-  const K_LAST_FAV  = `mkt_last_fav__${uid}`;
-  const K_IDX_CART  = `mkt_idx_cart__${uid}`;
-  const K_IDX_FAV   = `mkt_idx_fav__${uid}`;
-
-  const cartPhrases = [
-    p => `Ваша корзина ждёт: «${p}». Успейте оформить до конца дня ✨`,
-    p => `Не забыли про «${p}»? Товар всё ещё в корзине — 2 клика до заказа.`,
-    p => `«${p}» и другие позиции всё ещё с вами. Давайте завершим оформление?`,
-    p => `Чуть-чуть не хватило до покупки: «${p}». Возвращайтесь, мы всё сохранили!`,
-  ];
-  const favPhrases = [
-    p => `Избранное напоминает о себе: «${p}». Загляните, вдруг пора брать 👀`,
-    p => `Вы отмечали «${p}» в избранное. Проверьте наличие размеров!`,
-    p => `«${p}» всё ещё в вашем избранном. Вернуться к просмотру?`,
-    p => `Похоже, вам нравилось «${p}». Возможно, самое время оформить заказ ✨`,
-  ];
-
-  function nowLocal(){ return new Date(); }
-  function isEvening(d){ const h=d.getHours(); return h>=20 && h<22; }
-  function dayKey(d){ return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
-  function daysBetween(ts){
-    if (!ts) return Infinity;
-    const a = new Date(); const b = new Date(ts);
-    const one = 24*60*60*1000;
-    return Math.floor((a.setHours(0,0,0,0)-b.setHours(0,0,0,0))/one);
-  }
-
-  function pickFrom(list, kIdx){
-    const i = (Number(localStorage.getItem(kIdx)) || 0) % list.length;
-    localStorage.setItem(kIdx, String(i+1));
-    return list[i];
-  }
-
-  async function tick(){
-    const d = nowLocal();
-    if (!isEvening(d)) return;
-
-    try{
-      const lastCartKey = localStorage.getItem(K_LAST_CART) || '';
-      if (state.cart?.items?.length > 0 && lastCartKey !== dayKey(d)){
-        const first = state.cart.items[0];
-        const product = state.products.find(p => String(p.id) === String(first.productId));
-        const title = product?.title || 'товар';
-        const phraseFn = pickFrom(cartPhrases, K_IDX_CART);
-        const text = phraseFn(title);
-        await notifyCartReminder(String(chatId), { text });
-        localStorage.setItem(K_LAST_CART, dayKey(d));
-      }
-    }catch{}
-
-    try{
-      const lastFavTs = Number(localStorage.getItem(K_LAST_FAV) || 0);
-      if ((state.favorites?.size || 0) > 0 && daysBetween(lastFavTs) >= 3){
-        const favId = [...state.favorites][0];
-        const p = state.products.find(x => String(x.id) === String(favId));
-        const title = p?.title || 'товар';
-        const phraseFn = pickFrom(favPhrases, K_IDX_FAV);
-        const text = phraseFn(title);
-        await notifyFavoritesReminder(String(chatId), { text });
-        localStorage.setItem(K_LAST_FAV, String(Date.now()));
-      }
-    }catch{}
-  }
-
-  tick();
-  const TIMER_MS = 10 * 60 * 1000;
-  setInterval(tick, TIMER_MS);
-
-  document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) tick(); });
-}
 
 /* ===== одноразовый пинг «новый пользователь» для Telegram ===== */
 async function ensureUserJoinReported(){
