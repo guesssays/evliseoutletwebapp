@@ -1,3 +1,5 @@
+// src/core/orders.js
+
 // Простое локальное хранилище заказов + утилиты для админки/клиента
 import { getUID } from './state.js';
 // ▼ Лояльность
@@ -26,22 +28,43 @@ function withTimeout(promise, ms = FETCH_TIMEOUT_MS){
   });
 }
 
+/* ===================== КАНОНИЗАЦИЯ СТАТУСОВ ===================== */
+function canonStatus(s = ''){
+  const x = String(s || '').trim().toLowerCase();
+  // любые варианты "отменен" → "отменён"
+  if (x === 'отменен') return 'отменён';
+  return x || 'новый';
+}
+
+function normalizeOrder(o = {}){
+  // привести статус к канону
+  o.status = canonStatus(o.status || 'новый');
+
+  // если сервер вернул canceled: true — форсируем статус «отменён»
+  if (o.canceled) {
+    o.status = 'отменён';
+    o.accepted = false;
+  }
+  return o;
+}
+/* =============================================================== */
+
 async function apiGetList(){
   try{
     const res = await withTimeout(fetch(`${API_BASE}?op=list`, { method:'GET' }));
     const data = await res.json();
-    if (res.ok && data?.ok && Array.isArray(data.orders)) return data.orders;
+    if (res.ok && data?.ok && Array.isArray(data.orders)) return data.orders.map(normalizeOrder);
     throw new Error('bad response');
   }catch(e){
     // оффлайн/фолбэк — вернём локальный кэш
-    return getOrdersLocal();
+    return getOrdersLocal().map(normalizeOrder);
   }
 }
 async function apiGetOne(id){
   try{
     const res = await withTimeout(fetch(`${API_BASE}?op=get&id=${encodeURIComponent(id)}`, { method:'GET' }));
     const data = await res.json();
-    if (res.ok && data?.ok) return data.order || null;
+    if (res.ok && data?.ok) return data.order ? normalizeOrder(data.order) : null;
     return null;
   }catch{ return null; }
 }
@@ -82,10 +105,13 @@ export const STATUS_LABELS = {
   'забран с почты':        'Получен с почты',
   'выдан':                 'Выдан',
   'отменён':               'Отменён',
+  // подстрахуемся, если где-то обращение идёт напрямую без canonStatus:
+  'отменен':               'Отменён',
 };
 
 export function getStatusLabel(statusKey){
-  return STATUS_LABELS[statusKey] || String(statusKey || '');
+  const key = canonStatus(statusKey);
+  return STATUS_LABELS[key] || String(key || '');
 }
 
 /** Этапы, доступные администратору */
@@ -109,13 +135,13 @@ function setOrdersLocal(list){
 
 /** Сохранить и уведомить UI */
 export function saveOrders(list){
-  setOrdersLocal(list);
+  setOrdersLocal((list||[]).map(normalizeOrder));
   try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
 }
 
 /** Тихо заменить кэш */
 function replaceOrdersCacheSilently(list){
-  setOrdersLocal(list);
+  setOrdersLocal((list||[]).map(normalizeOrder));
 }
 
 /** Полная очистка (на всякий случай) */
@@ -127,7 +153,7 @@ export function clearAllOrders(){
 }
 
 function writeHistory(order, status, extra = {}){
-  const rec = { ts: Date.now(), status, ...extra };
+  const rec = { ts: Date.now(), status: canonStatus(status), ...extra };
   order.history = Array.isArray(order.history) ? [...order.history, rec] : [rec];
 }
 
@@ -138,20 +164,20 @@ export async function getOrders(){
   const local = getOrdersLocal();
   // Страховка: если сервер по какой-то причине вернул пусто, а локально есть данные — не затираем.
   if (Array.isArray(list) && list.length === 0 && Array.isArray(local) && local.length > 0){
-    return local;
+    return local.map(normalizeOrder);
   }
   replaceOrdersCacheSilently(list);
-  return list;
+  return list.map(normalizeOrder);
 }
 
 export async function addOrder(order){
   const idLocal = order.id ?? String(Date.now());
   const now = Date.now();
-  const initialStatus = order.status ?? 'новый';
+  const initialStatus = canonStatus(order.status ?? 'новый');
 
   const safeUserId = order.userId ?? getUID() ?? null;
 
-  const next = {
+  const next = normalizeOrder({
     id: idLocal,
     userId: safeUserId,
     username: order.username ?? '',
@@ -174,7 +200,7 @@ export async function addOrder(order){
     createdAt: order.createdAt ?? now,
     currency: order.currency || 'UZS',
     history: order.history ?? [{ ts: now, status: initialStatus }],
-  };
+  });
 
   let createdId = next.id;
 
@@ -223,7 +249,7 @@ export async function acceptOrder(orderId){
     const i = list.findIndex(o => String(o.id) === String(orderId));
     if (i === -1) return;
     const o = list[i];
-    if (o.status !== 'новый' || o.canceled) return;
+    if (canonStatus(o.status) !== 'новый' || o.canceled) return;
     o.accepted = true;
     o.status = 'принят';
     writeHistory(o, 'принят');
@@ -251,7 +277,7 @@ export async function cancelOrder(orderId, reason = ''){
     const i = list.findIndex(o => String(o.id) === String(orderId));
     if (i === -1) return;
     const o = list[i];
-    if (o.status !== 'новый') return;
+    if (canonStatus(o.status) !== 'новый') return;
     o.canceled = true;
     o.cancelReason = String(reason || '').trim();
     o.canceledAt = Date.now();
@@ -282,12 +308,13 @@ export async function cancelOrder(orderId, reason = ''){
 }
 
 export async function updateOrderStatus(orderId, status){
-  if (!ORDER_STATUSES.includes(status)) return;
+  const stCanon = canonStatus(status);
+  if (!ORDER_STATUSES.includes(stCanon)) return;
 
   let updatedOrder = null;
 
   try{
-    await apiPost('status', { id:String(orderId), status:String(status) });
+    await apiPost('status', { id:String(orderId), status:String(stCanon) });
     const one = await apiGetOne(orderId);
     if (one){
       updatedOrder = one;
@@ -305,18 +332,19 @@ export async function updateOrderStatus(orderId, status){
     const i = list.findIndex(o => String(o.id) === String(orderId));
     if (i === -1) return;
     const o = list[i];
-    if (o.status === 'новый') return;
-    if (o.status === 'отменён' || o.canceled) return;
-    o.status = status;
-    if (!o.accepted && status !== 'отменён') o.accepted = true;
-    if (status === 'выдан'){ o.completedAt = Date.now(); }
-    writeHistory(o, status);
+    const cur = canonStatus(o.status);
+    if (cur === 'новый') return;
+    if (cur === 'отменён' || o.canceled) return;
+    o.status = stCanon;
+    if (!o.accepted && stCanon !== 'отменён') o.accepted = true;
+    if (stCanon === 'выдан'){ o.completedAt = Date.now(); }
+    writeHistory(o, stCanon);
     saveOrders(list);
     updatedOrder = o;
   }
 
   // ▼ При выдаче — коммитим резервы и подтверждаем начисления ДЛЯ ПОКУПАТЕЛЯ
-  if (status === 'выдан'){
+  if (stCanon === 'выдан'){
     const uid = String(updatedOrder?.userId || '');
     if (uid){
       try { await loyaltyFinalizeRedeemFor(uid, orderId, 'commit'); } catch {}
