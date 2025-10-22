@@ -32,7 +32,7 @@ function readWallet(){
   }catch{ return { available:0, pending:[], history:[] }; }
 }
 function writeWallet(w){
-  localStorage.setItem(k('points_wallet'), JSON.stringify(w||{available:0,pending:[],history:[]}));
+  localStorage.setItem(k('points_wallet'), JSON.stringify(w||{available:0,pending:[],history:[]})); // eslint-disable-line
 }
 /** Перенос дозревших баллов + уведомления владельцу */
 function settleMatured(){
@@ -205,9 +205,56 @@ export function renderCart(){
 
   v.innerHTML = `
   <style>
-    /* кружки цветов в корзине удалены */
-    .cart-row{ cursor:pointer; }
-    .cart-row .qty-mini, .cart-row .ctrl{ cursor:auto; } /* чтобы на кнопках был обычный курсор */
+    /* --- ГЛОБАЛЬНО ДЛЯ КОМПОНЕНТА: предотвращаем горизонтальный скролл и «съезд» вправо --- */
+    .section, .checkout { width:100%; max-width:100vw; overflow-x:hidden; }
+    .checkout, .checkout * { box-sizing: border-box; }
+    .checkout img { max-width:100%; height:auto; display:block; }
+
+    /* Строка товара — безопасная сетка */
+    .cart-row{
+      display:grid;
+      grid-template-columns: 72px 1fr auto;
+      gap:10px;
+      align-items:center;
+      cursor:pointer;
+    }
+    .cart-row .qty-mini, .cart-row .ctrl{ cursor:auto; }
+
+    .cart-img{ width:72px; height:72px; border-radius:10px; overflow:hidden; }
+    .cart-img img{ width:100%; height:100%; object-fit:cover; }
+
+    /* Центральная колонка не должна распирать контейнер */
+    .cart-row > div:nth-child(2){ min-width:0; }
+    .cart-title{ overflow-wrap:anywhere; word-break:break-word; }
+    .cart-sub{ white-space:normal; color:var(--muted,#6b7280); }
+
+    .qty-mini{ display:flex; align-items:center; gap:6px; }
+    .qty-mini span{ min-width:1.6em; text-align:center; }
+    .qty-mini .ctrl{ width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; }
+
+    /* Адрес */
+    .address-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+    .address-left{ min-width:0; }
+    .address-left .cart-sub{ overflow:hidden; text-overflow:ellipsis; }
+
+    /* Линия оплаты — безопасные переносы */
+    .payline{ display:grid; gap:6px; }
+    .payrow{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+    .payrow span{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
+    .payrow b{ flex:0 0 auto; }
+
+    /* Блок списания */
+    .cashback-box input.input{ width:100%; }
+
+    /* FAQ карта */
+    .faq-card{ max-width:100%; overflow:hidden; }
+
+    /* Мобильная адаптация: очень узкие экраны */
+    @media (max-width: 380px){
+      .cart-row{ grid-template-columns: 64px 1fr; }
+      .qty-mini{ grid-column: 1 / -1; justify-content:flex-end; }
+      .cart-img{ width:64px; height:64px; }
+    }
   </style>
 
   <div class="section-title" style="display:flex;align-items:center;gap:10px">
@@ -220,7 +267,7 @@ export function renderCart(){
       <div class="cart-row" data-id="${String(x.product.id)}" data-size="${x.size||''}" data-color="${x.color||''}" role="link" aria-label="Открыть карточку товара">
         <div class="cart-img"><img src="${x.product.images?.[0]||''}" alt=""></div>
         <div>
-          <div class="cart-title" style="overflow-wrap:anywhere">${escapeHtml(x.product.title)}</div>
+          <div class="cart-title">${escapeHtml(x.product.title)}</div>
           <div class="cart-sub">
             ${x.size ? `Размер ${escapeHtml(x.size)}` : ''}
             ${x.size && x.color ? ' • ' : ''}

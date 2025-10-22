@@ -5,12 +5,15 @@ import { getUID } from '../core/state.js';
 import { makeReferralLink } from '../core/loyalty.js';
 import { notifyCashbackMatured } from '../core/botNotify.js'; // ✅ бот-уведомление о дозревшем кэшбеке
 
+// 🔄 новее: показываем серверный баланс лояльности
+import { fetchMyLoyalty, getLocalLoyalty } from '../core/loyalty.js';
+
 const OP_CHAT_URL = 'https://t.me/evliseorder';
 
 /* ===== Локальные ключи и работа с кошельком/рефералами ===== */
 function k(base){ try{ const uid=getUID?.()||'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
 
-/* — кошелёк баллов — */
+/* — кошелёк баллов (локальные функции оставлены как вспомогательные, но не используются для отображения) — */
 const POINTS_MATURITY_MS  = 24*60*60*1000;
 function readWallet(){
   try{
@@ -24,7 +27,9 @@ function readWallet(){
 }
 function writeWallet(w){ localStorage.setItem(k('points_wallet'), JSON.stringify(w||{available:0,pending:[],history:[]})); }
 
-/** Перенос дозревших баллов + уведомления (in-app + бот) */
+/** Перенос дозревших баллов + уведомления (in-app + бот)
+ *  ⚠️ Не используется в UI — баланс берём с сервера, оставлено для совместимости
+ */
 function settleMatured(){
   const w = readWallet();
   const now = Date.now();
@@ -165,7 +170,7 @@ export function renderAccount(){
   const u = state.user;
   const isAdmin = canAccessAdmin();
 
-  const w = settleMatured();
+  // ⚠️ раньше тут был settleMatured(); теперь показываем серверный баланс
   const ref = readRefProfile();
   const hasBoost = !!ref.firstOrderBoost && !ref.firstOrderDone; // <-- фикс: это флаг, а не функция
 
@@ -202,7 +207,6 @@ export function renderAccount(){
           border:1px solid rgba(0,0,0,.08);
         }
 
-        /* — верхняя строка: только «Ваши баллы», строго в одну строку — */
         .points-top{
           display:flex; align-items:center; justify-content:flex-start; gap:8px;
           white-space:nowrap; min-width:0;
@@ -228,7 +232,6 @@ export function renderAccount(){
         .points-chip .label{ font-size:12px; color:var(--muted,#6b7280); white-space:nowrap; }
         .points-chip .val{ margin-left:auto; font-weight:800; white-space:nowrap; }
 
-        /* ======= ДЕЙСТВИЯ: строго в одну строку, текст полностью виден ======= */
         .points-actions{
           margin-top:10px; display:flex; gap:8px; align-items:stretch;
           flex-wrap:nowrap; min-width:0;
@@ -238,13 +241,12 @@ export function renderAccount(){
           display:inline-flex; align-items:center; justify-content:center; gap:8px;
           border-radius:10px; border:1px solid var(--border,rgba(0,0,0,.08)); background:#fff;
           font-weight:600; line-height:1;
-          flex:1 1 0; min-width:0; /* поделят ширину */
+          flex:1 1 0; min-width:0;
           font-size: clamp(12px, 3.3vw, 14px);
-          white-space:nowrap; /* не переносим текст */
+          white-space:nowrap;
         }
         .points-actions .pill i{ width:18px; height:18px; flex:0 0 auto; }
 
-        /* ОРАНЖЕВЫЙ ГРАДИЕНТ для «Мой кэшбек» */
         .points-actions .primary{
           color:#fff; border-color:transparent;
           background: linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ea580c 100%);
@@ -255,12 +257,10 @@ export function renderAccount(){
           .points-actions .pill:not(.primary):hover{ filter:brightness(.98); }
         }
 
-        /* адаптив: на широких чипы в 2 колонки */
         @media (min-width: 420px){
           .points-row{ grid-template-columns: 1fr 1fr; }
         }
 
-        /* мелкие экраны: компактнее, но всё остаётся в одну строку */
         @media (max-width: 360px){
           .points-actions{ gap:6px; }
           .points-actions .pill{ height:34px; padding:0 8px; font-size:12px; }
@@ -289,12 +289,12 @@ export function renderAccount(){
           <div class="points-chip" title="Баллы, которыми можно оплатить часть заказа">
             <i data-lucide="badge-check"></i>
             <div class="label">Готово к оплате</div>
-            <div class="val">${(w.available|0).toLocaleString('ru-RU')}</div>
+            <div class="val" id="ptsAvail">${(0).toLocaleString('ru-RU')}</div>
           </div>
-          <div class="points-chip" title="Баллы появятся на балансе после дозревания (обычно 24 часа)">
+          <div class="points-chip" title="Баллы появятся на балансе после подтверждения (обычно 24 часа или вручную при «выдан»)">
             <i data-lucide="hourglass"></i>
             <div class="label">Ожидает начисления</div>
-            <div class="val">${w.pending.reduce((s,p)=>s+(p?.pts|0),0).toLocaleString('ru-RU')}</div>
+            <div class="val" id="ptsPend">${(0).toLocaleString('ru-RU')}</div>
           </div>
         </div>
 
@@ -331,6 +331,18 @@ export function renderAccount(){
     </section>`;
   window.lucide?.createIcons && lucide.createIcons();
 
+  // Загрузка серверного баланса и обновление чисел
+  (async () => {
+    try{
+      await fetchMyLoyalty();
+      const b = getLocalLoyalty();
+      const a = document.getElementById('ptsAvail');
+      const p = document.getElementById('ptsPend');
+      if (a) a.textContent = (Number(b.available||0)).toLocaleString('ru-RU');
+      if (p) p.textContent = (Number(b.pending||0)).toLocaleString('ru-RU');
+    }catch{}
+  })();
+
   document.getElementById('supportBtn')?.addEventListener('click', ()=>{
     openExternal(OP_CHAT_URL);
   });
@@ -339,7 +351,20 @@ export function renderAccount(){
   if (getTelegramUserId(u)) {
     loadTgAvatar();
     document.addEventListener('visibilitychange', ()=>{
-      if (!document.hidden) loadTgAvatar();
+      if (!document.hidden) {
+        loadTgAvatar();
+        // и баланс обновим при возврате
+        (async ()=> {
+          try{
+            await fetchMyLoyalty();
+            const b = getLocalLoyalty();
+            const a = document.getElementById('ptsAvail');
+            const p = document.getElementById('ptsPend');
+            if (a) a.textContent = (Number(b.available||0)).toLocaleString('ru-RU');
+            if (p) p.textContent = (Number(b.pending||0)).toLocaleString('ru-RU');
+          }catch{}
+        })();
+      }
     });
   }
 
@@ -353,27 +378,8 @@ export function renderAccount(){
 export function renderCashback(){
   window.setTabbarMenu?.('account');
   const v=document.getElementById('view');
-  const w = settleMatured();
 
-  const rows = (w.history||[]).slice(0,50).map(h=>{
-    const sign = h.pts>=0 ? '+' : '';
-    const dt = new Date(h.ts||Date.now());
-    const d  = `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
-    return `
-      <tr>
-        <td>${d}</td>
-        <td>${escapeHtml(h.reason||'')}</td>
-        <td style="text-align:right"><b>${sign}${(h.pts|0).toLocaleString('ru-RU')}</b></td>
-      </tr>
-    `;
-  }).join('');
-
-  const pend = (w.pending||[]).map(p=>{
-    const left = Math.max(0, (p.tsUnlock||0) - Date.now());
-    const hrs = Math.ceil(left / (60*60*1000));
-    return `<li>+${(p.pts|0).toLocaleString('ru-RU')} баллов — через ~${hrs} ч (${escapeHtml(p.reason||'')})</li>`;
-  }).join('');
-
+  // Рендерим каркас
   v.innerHTML = `
     <section class="section">
       <div class="section-title" style="display:flex;align-items:center;gap:10px">
@@ -384,18 +390,13 @@ export function renderCashback(){
       <div class="stat-cb" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 10px">
         <div class="stat-card" style="padding:10px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:12px">
           <div class="muted mini">Баланс</div>
-          <div style="font-weight:800;font-size:22px">${(w.available|0).toLocaleString('ru-RU')}</div>
+          <div id="cbAvail" style="font-weight:800;font-size:22px">0</div>
         </div>
         <div class="stat-card" style="padding:10px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:12px">
-          <div class="muted mini">Ожидает (24ч)</div>
-          <div style="font-weight:800;font-size:22px">${w.pending.reduce((s,p)=>s+(p?.pts|0),0).toLocaleString('ru-RU')}</div>
+          <div class="muted mini">Ожидает (~24ч)</div>
+          <div id="cbPend" style="font-weight:800;font-size:22px">0</div>
         </div>
       </div>
-
-      ${pend ? `
-        <div class="subsection-title">Ожидающие начисления</div>
-        <ul class="muted mini" style="margin:6px 0 10px">${pend}</ul>
-      ` : ''}
 
       <div class="subsection-title">История</div>
       <div class="table-wrap">
@@ -403,13 +404,51 @@ export function renderCashback(){
           <thead>
             <tr><th>Дата</th><th>Событие</th><th style="text-align:right">Баллы</th></tr>
           </thead>
-          <tbody>${rows || `<tr><td colspan="3" class="muted">Пока пусто</td></tr>`}</tbody>
+          <tbody id="cbRows"><tr><td colspan="3" class="muted">Загружаем…</td></tr></tbody>
         </table>
       </div>
     </section>
   `;
   window.lucide?.createIcons && lucide.createIcons();
   document.getElementById('backAcc')?.addEventListener('click', ()=> history.back());
+
+  // Подтягиваем серверный баланс и историю
+  (async ()=>{
+    try{
+      await fetchMyLoyalty();
+    }catch{}
+    const b = getLocalLoyalty();
+    const avail = Number(b.available||0);
+    const pend  = Number(b.pending||0);
+    const hist  = Array.isArray(b.history) ? b.history.slice().reverse() : []; // addHist пушит в конец
+
+    const availEl = document.getElementById('cbAvail');
+    const pendEl  = document.getElementById('cbPend');
+    if (availEl) availEl.textContent = avail.toLocaleString('ru-RU');
+    if (pendEl)  pendEl.textContent  = pend.toLocaleString('ru-RU');
+
+    const rowsEl = document.getElementById('cbRows');
+    if (rowsEl){
+      if (!hist.length){
+        rowsEl.innerHTML = `<tr><td colspan="3" class="muted">Пока пусто</td></tr>`;
+      }else{
+        rowsEl.innerHTML = hist.slice(-200).map(h=>{
+          const dt = new Date(h.ts||Date.now());
+          const d  = `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+          const pts = Number(h.pts||0)|0;
+          const sign = pts>=0 ? '+' : '';
+          const reason = h.info || h.reason || mapKind(h.kind) || 'Операция';
+          return `
+            <tr>
+              <td>${d}</td>
+              <td>${escapeHtml(reason)}</td>
+              <td style="text-align:right"><b>${sign}${pts.toLocaleString('ru-RU')}</b></td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+  })();
 }
 
 /* ====== МОИ РЕФЕРАЛЫ ====== */
@@ -737,4 +776,18 @@ async function postAppNotif(uid, { icon='bell', title='', sub='' } = {}){
       body: JSON.stringify({ op:'add', uid, notif:{ icon, title, sub } })
     });
   }catch{}
+}
+
+/** Маппинг вида операции для истории */
+function mapKind(kind=''){
+  const dict = {
+    accrue: 'Начисление (ожидание/подтверждено)',
+    confirm: 'Подтверждение начисления',
+    redeem: 'Оплата баллами',
+    reserve: 'Резервирование',
+    reserve_cancel: 'Возврат резерва',
+    ref_accrue: 'Реферальное начисление (ожидание)',
+    ref_confirm: 'Реферальные подтверждены'
+  };
+  return dict[kind] || '';
 }
