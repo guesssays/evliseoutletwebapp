@@ -1,5 +1,11 @@
 // Простое локальное хранилище заказов + утилиты для админки/клиента
 import { getUID } from './state.js';
+// ▼ НОВОЕ: интеграция с лояльностью
+import {
+  accrueOnOrderPlaced,
+  finalizeRedeem as loyaltyFinalizeRedeem,
+  confirmAccrual as loyaltyConfirmAccrual,
+} from './loyalty.js';
 
 const KEY = 'nas_orders';
 
@@ -167,8 +173,11 @@ export async function addOrder(order){
     history: order.history ?? [{ ts: now, status: initialStatus }],
   };
 
+  let createdId = next.id;
+
   try{
     const { id } = await apiPost('add', { order: next });
+    createdId = id || next.id;
     try{
       const fresh = await apiGetList();
       replaceOrdersCacheSilently(fresh);
@@ -176,12 +185,15 @@ export async function addOrder(order){
       const list = getOrdersLocal();
       saveOrders([next, ...list]);
     }
-    return id || next.id;
   }catch{
     const list = getOrdersLocal();
     saveOrders([next, ...list]);
-    return next.id;
   }
+
+  // ▼ НОВОЕ: регистрируем начисления (pending) — даже если баллы не списывались
+  try { await accrueOnOrderPlaced({ ...next, id: createdId }); } catch {}
+
+  return createdId;
 }
 
 export async function getOrdersForUser(userId){
@@ -244,8 +256,11 @@ export async function cancelOrder(orderId, reason = ''){
     o.status = 'отменён';
     writeHistory(o, 'отменён', { comment: o.cancelReason });
     saveOrders(list);
-    return;
   }
+
+  // ▼ НОВОЕ: если были резервы списания — откатим
+  try { await loyaltyFinalizeRedeem(orderId, 'cancel'); } catch {}
+
   saveOrders(getOrdersLocal());
 }
 
@@ -276,7 +291,12 @@ export async function updateOrderStatus(orderId, status){
     if (status === 'выдан'){ o.completedAt = Date.now(); }
     writeHistory(o, status);
     saveOrders(list);
-    return;
+  }
+
+  // ▼ НОВОЕ: при выдаче — коммитим резервы и подтверждаем начисления
+  if (status === 'выдан') {
+    try { await loyaltyFinalizeRedeem(orderId, 'commit'); } catch {}
+    try { await loyaltyConfirmAccrual(orderId); } catch {}
   }
 
   saveOrders(getOrdersLocal());

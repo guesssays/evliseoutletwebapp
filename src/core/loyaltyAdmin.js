@@ -1,4 +1,3 @@
-// src/core/loyaltyAdmin.js
 // Тонкий клиент к /.netlify/functions/loyalty для нужд админки
 
 const ENDPOINT = '/.netlify/functions/loyalty';

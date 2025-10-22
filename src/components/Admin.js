@@ -1,4 +1,3 @@
-// src/components/Admin.js
 import {
   ORDER_STATUSES,
   getOrders,
