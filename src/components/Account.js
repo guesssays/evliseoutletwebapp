@@ -194,6 +194,60 @@ export function renderAccount(){
         .info .name{ font-weight:800; font-size:16px; }
         .muted{ color:var(--muted,#6b7280); }
         .muted.mini{ font-size:.9rem; }
+
+        /* ======= Баллы (новый стиль) ======= */
+        .points-card{
+          position:relative; overflow:hidden;
+          margin:12px 0 8px; padding:14px;
+          border-radius:14px;
+          background:
+            radial-gradient(1200px 400px at -10% -40%, rgba(59,130,246,.18), transparent 60%),
+            linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.6));
+          border:1px solid rgba(0,0,0,.08);
+          backdrop-filter: blur(6px);
+        }
+        .points-top{
+          display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+        }
+        .points-title{
+          display:flex; align-items:center; gap:8px;
+          font-weight:700; color:#0f172a; letter-spacing:.2px;
+        }
+        .points-value{
+          font-size:28px; font-weight:800; line-height:1;
+          color:#0b1220; letter-spacing:.3px;
+        }
+        .points-unit{ font-size:13px; color:var(--muted,#64748b); margin-left:6px; font-weight:600; }
+
+        .points-row{
+          margin-top:10px;
+          display:grid; grid-template-columns: 1fr; gap:8px;
+        }
+        .points-chip{
+          display:flex; align-items:center; gap:8px;
+          padding:8px 10px; border-radius:10px; border:1px solid rgba(0,0,0,.06);
+          background: rgba(255,255,255,.75);
+        }
+        .points-chip i{ width:18px; height:18px; }
+        .points-chip .label{ font-size:12px; color:var(--muted,#6b7280); }
+        .points-chip .val{ margin-left:auto; font-weight:800; }
+
+        .points-actions{
+          margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;
+        }
+        .points-actions .pill{
+          height:36px; padding:0 12px; display:inline-flex; align-items:center; gap:8px;
+          border-radius:10px; border:1px solid var(--border,rgba(0,0,0,.08)); background:#fff;
+          font-weight:600;
+        }
+        .points-actions .primary{
+          background:#0ea5e9; color:#fff; border-color:transparent;
+        }
+
+        /* адаптив: на широких чипы в 2 колонки */
+        @media (min-width: 420px){
+          .points-row{ grid-template-columns: 1fr 1fr; }
+        }
       </style>
 
       <div class="account-card">
@@ -207,14 +261,32 @@ export function renderAccount(){
         </div>
       </div>
 
-      <div class="cb-box" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0">
-        <div class="stat-card" style="padding:10px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:12px">
-          <div class="muted mini">Баланс баллов</div>
-          <div style="font-weight:800;font-size:20px">${(w.available|0).toLocaleString('ru-RU')}</div>
+      <!-- Новый стиль блока баллов -->
+      <div class="points-card" role="region" aria-label="Баллы и кэшбек">
+        <div class="points-top">
+          <div class="points-title"><i data-lucide="coins"></i><span>Ваши баллы</span></div>
+          <div class="points-value">
+            ${(w.available|0).toLocaleString('ru-RU')}
+            <span class="points-unit">доступно</span>
+          </div>
         </div>
-        <div class="stat-card" style="padding:10px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:12px">
-          <div class="muted mini">Ожидает начисления</div>
-          <div style="font-weight:800;font-size:20px">${w.pending.reduce((s,p)=>s+(p?.pts|0),0).toLocaleString('ru-RU')}</div>
+
+        <div class="points-row" aria-label="Состояние баллов">
+          <div class="points-chip" title="Баллы, которыми можно оплатить часть заказа">
+            <i data-lucide="badge-check"></i>
+            <div class="label">Готово к оплате</div>
+            <div class="val">${(w.available|0).toLocaleString('ru-RU')}</div>
+          </div>
+          <div class="points-chip" title="Баллы появятся на балансе после дозревания (обычно 24 часа)">
+            <i data-lucide="hourglass"></i>
+            <div class="label">Ожидает начисления</div>
+            <div class="val">${w.pending.reduce((s,p)=>s+(p?.pts|0),0).toLocaleString('ru-RU')}</div>
+          </div>
+        </div>
+
+        <div class="points-actions">
+          <a class="pill primary" href="#/account/cashback"><i data-lucide="sparkles"></i><span>Мой кэшбек</span></a>
+          <a class="pill" href="#/faq"><i data-lucide="help-circle"></i><span>Как потратить</span></a>
         </div>
       </div>
 
