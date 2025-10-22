@@ -2,8 +2,14 @@
   "name": "evliseoutlet",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
     "@netlify/blobs": "^7.1.0"
+  },
+  "scripts": {
+    "build": "echo \"no build step for UI\"",
+    "start": "echo \"use Netlify dev if needed: npx netlify dev\""
   }
 }
