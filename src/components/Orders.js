@@ -172,6 +172,20 @@ export async function renderTrack({id}){
 
       .subsection-title{font-weight:700;margin:10px 0 6px}
       .pill, .btn{max-width:100%; white-space:nowrap; text-overflow:ellipsis; overflow:hidden}
+
+      /* Кнопка "Назад к заказам": по центру + стрелка */
+      .back-wrap{
+        margin-top:12px;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        width:100%;
+      }
+      .back-btn{
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+      }
     </style>
 
     <div class="section-title" style="display:flex;align-items:center;gap:10px">
@@ -222,7 +236,11 @@ export async function renderTrack({id}){
         </div>
       </div>
 
-      <a class="pill primary" href="#/orders" style="margin-top:12px">Назад к заказам</a>
+      <div class="back-wrap">
+        <a class="pill primary back-btn" href="#/orders" aria-label="Назад к заказам">
+          <i data-lucide="arrow-left"></i><span>Назад к заказам</span>
+        </a>
+      </div>
     </section>`;
   window.lucide?.createIcons && lucide.createIcons();
   document.getElementById('trackBack')?.addEventListener('click', ()=> history.back());
