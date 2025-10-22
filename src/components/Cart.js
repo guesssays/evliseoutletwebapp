@@ -206,6 +206,8 @@ export function renderCart(){
   v.innerHTML = `
   <style>
     /* кружки цветов в корзине удалены */
+    .cart-row{ cursor:pointer; }
+    .cart-row .qty-mini, .cart-row .ctrl{ cursor:auto; } /* чтобы на кнопках был обычный курсор */
   </style>
 
   <div class="section-title" style="display:flex;align-items:center;gap:10px">
@@ -215,7 +217,7 @@ export function renderCart(){
 
   <section class="checkout" id="cList">
     ${items.map(x=>`
-      <div class="cart-row" data-id="${String(x.product.id)}" data-size="${x.size||''}" data-color="${x.color||''}">
+      <div class="cart-row" data-id="${String(x.product.id)}" data-size="${x.size||''}" data-color="${x.color||''}" role="link" aria-label="Открыть карточку товара">
         <div class="cart-img"><img src="${x.product.images?.[0]||''}" alt=""></div>
         <div>
           <div class="cart-title" style="overflow-wrap:anywhere">${escapeHtml(x.product.title)}</div>
@@ -328,8 +330,17 @@ export function renderCart(){
     const size = row.getAttribute('data-size') || null;
     const color= row.getAttribute('data-color') || null;
 
-    row.querySelector('.inc')?.addEventListener('click', ()=> changeQty(id,size,color, +1));
-    row.querySelector('.dec')?.addEventListener('click', ()=> changeQty(id,size,color, -1));
+    // +/- количество (останавливаем всплытие, чтобы не было перехода)
+    row.querySelector('.inc')?.addEventListener('click', (ev)=>{ ev.stopPropagation(); changeQty(id,size,color, +1); });
+    row.querySelector('.dec')?.addEventListener('click', (ev)=>{ ev.stopPropagation(); changeQty(id,size,color, -1); });
+
+    // переход на карточку товара по клику на строку (кроме области управления количеством)
+    row.addEventListener('click', (e)=>{
+      if (e.target.closest('.qty-mini') || e.target.closest('.ctrl')) return;
+      // на всякий случай игнорируем клики по ссылкам внутри
+      if (e.target.closest('a')) return;
+      location.hash = `#/product/${id}`;
+    });
   });
 
   // Кнопка «Написать оператору»
