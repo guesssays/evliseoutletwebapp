@@ -177,7 +177,7 @@ export async function reserveRedeem(points, orderId){
   return { ok };
 }
 
-/** Откат/подтверждение резерва при отмене/завершении */
+/** Откат/подтверждение резерва при отмене/завершении (для текущего пользователя) */
 export async function finalizeRedeem(orderId, action /* 'cancel' | 'commit' */){
   const uid = getUID();
   const { ok, balance } = await api('finalizeRedeem', { uid, orderId:String(orderId), action:String(action) });
@@ -186,6 +186,18 @@ export async function finalizeRedeem(orderId, action /* 'cancel' | 'commit' */){
     const res = getLocalReservations().filter(r => String(r.orderId)!==String(orderId));
     setLocalReservations(res);
   }
+  return { ok };
+}
+
+/** ВАРИАНТЫ «ДЛЯ КОНКРЕТНОГО UID» — нужны админке/серверным сценариям */
+export async function finalizeRedeemFor(uid, orderId, action /* 'cancel' | 'commit' */){
+  const { ok, balance } = await api('finalizeRedeem', { uid:String(uid), orderId:String(orderId), action:String(action) });
+  if (ok) setLocalLoyalty(balance);
+  return { ok };
+}
+export async function confirmAccrualFor(uid, orderId){
+  const { ok, balance } = await api('confirmAccrual', { uid:String(uid), orderId:String(orderId) });
+  if (ok) setLocalLoyalty(balance);
   return { ok };
 }
 
@@ -202,7 +214,7 @@ export async function accrueOnOrderPlaced(order){
   return { ok };
 }
 
-/** Подтвердить начисление (когда статус 'выдан' ИЛИ прошло 24ч) */
+/** Подтвердить начисление (когда статус 'выдан' ИЛИ прошло 24ч) — для текущего пользователя */
 export async function confirmAccrual(orderId){
   const uid = getUID();
   const { ok, balance } = await api('confirmAccrual', { uid, orderId:String(orderId) });

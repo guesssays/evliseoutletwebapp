@@ -1,10 +1,12 @@
 // Простое локальное хранилище заказов + утилиты для админки/клиента
 import { getUID } from './state.js';
-// ▼ НОВОЕ: интеграция с лояльностью
+// ▼ Лояльность
 import {
   accrueOnOrderPlaced,
-  finalizeRedeem as loyaltyFinalizeRedeem,
-  confirmAccrual as loyaltyConfirmAccrual,
+  finalizeRedeem as loyaltyFinalizeRedeem,      // для клиента (own uid)
+  confirmAccrual as loyaltyConfirmAccrual,      // для клиента (own uid)
+  finalizeRedeemFor as loyaltyFinalizeRedeemFor, // ⬅ добавлено: для конкретного uid (админ-выдача)
+  confirmAccrualFor as loyaltyConfirmAccrualFor, // ⬅ добавлено: для конкретного uid (админ-выдача)
 } from './loyalty.js';
 
 const KEY = 'nas_orders';
@@ -157,7 +159,7 @@ export async function addOrder(order){
     color: order.color ?? null,
     link: order.link ?? (order.productId ? `#/product/${order.productId}` : ''),
     cart: Array.isArray(order.cart) ? order.cart : [],
-    total: Number(order.total || 0),
+    total: Number(order.total || 0), // ВНИМАНИЕ: это "к оплате" (после списания)
     address: typeof order.address === 'string' ? order.address : (order.address?.address || ''),
     phone: order.phone ?? '',
     payerFullName: order.payerFullName ?? '',
@@ -190,7 +192,7 @@ export async function addOrder(order){
     saveOrders([next, ...list]);
   }
 
-  // ▼ НОВОЕ: регистрируем начисления (pending) — даже если баллы не списывались
+  // ▼ Начисления (pending) — даже если баллы не списывались
   try { await accrueOnOrderPlaced({ ...next, id: createdId }); } catch {}
 
   return createdId;
@@ -258,7 +260,7 @@ export async function cancelOrder(orderId, reason = ''){
     saveOrders(list);
   }
 
-  // ▼ НОВОЕ: если были резервы списания — откатим
+  // ▼ Если были резервы списания — откатим (для клиента по своему uid)
   try { await loyaltyFinalizeRedeem(orderId, 'cancel'); } catch {}
 
   saveOrders(getOrdersLocal());
@@ -267,10 +269,13 @@ export async function cancelOrder(orderId, reason = ''){
 export async function updateOrderStatus(orderId, status){
   if (!ORDER_STATUSES.includes(status)) return;
 
+  let updatedOrder = null;
+
   try{
     await apiPost('status', { id:String(orderId), status:String(status) });
     const one = await apiGetOne(orderId);
     if (one){
+      updatedOrder = one;
       const list = getOrdersLocal();
       const i = list.findIndex(o => String(o.id) === String(orderId));
       if (i>-1) list[i] = one; else list.unshift(one);
@@ -278,6 +283,7 @@ export async function updateOrderStatus(orderId, status){
     }else{
       const fresh = await apiGetList();
       replaceOrdersCacheSilently(fresh);
+      updatedOrder = fresh.find(o => String(o.id)===String(orderId)) || null;
     }
   }catch{
     const list = getOrdersLocal();
@@ -291,12 +297,20 @@ export async function updateOrderStatus(orderId, status){
     if (status === 'выдан'){ o.completedAt = Date.now(); }
     writeHistory(o, status);
     saveOrders(list);
+    updatedOrder = o;
   }
 
-  // ▼ НОВОЕ: при выдаче — коммитим резервы и подтверждаем начисления
-  if (status === 'выдан') {
-    try { await loyaltyFinalizeRedeem(orderId, 'commit'); } catch {}
-    try { await loyaltyConfirmAccrual(orderId); } catch {}
+  // ▼ При выдаче — коммитим резервы и подтверждаем начисления ДЛЯ ПОКУПАТЕЛЯ
+  if (status === 'выдан'){
+    const uid = String(updatedOrder?.userId || '');
+    if (uid){
+      try { await loyaltyFinalizeRedeemFor(uid, orderId, 'commit'); } catch {}
+      try { await loyaltyConfirmAccrualFor(uid, orderId); } catch {}
+    }else{
+      // безопасный фолбэк (на случай отсутствия uid) — по текущему пользователю
+      try { await loyaltyFinalizeRedeem(orderId, 'commit'); } catch {}
+      try { await loyaltyConfirmAccrual(orderId); } catch {}
+    }
   }
 
   saveOrders(getOrdersLocal());
