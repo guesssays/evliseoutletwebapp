@@ -49,6 +49,20 @@ function buildCorsHeaders(origin) {
   };
 }
 
+/* ---------- helper для вызовов в loyalty ---------- */
+async function callLoyalty(op, payload){
+  const base = (process.env.URL || '').replace(/\/+$/,'');
+  const url = `${base}/.netlify/functions/loyalty`;
+  const r = await fetch(url, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ op, ...payload })
+  });
+  const j = await r.json().catch(()=> ({}));
+  if (!r.ok || j?.ok === false) throw new Error(j?.error || j?.reason || 'loyalty error');
+  return j;
+}
+
 /* ---------------- Netlify Function ---------------- */
 export async function handler(event) {
   const origin = event.headers?.origin || event.headers?.Origin || '';
@@ -116,6 +130,17 @@ export async function handler(event) {
       const id = String(body.id || '');
       const reason = String(body.reason || '');
       const o = await store.cancel(id, reason);
+
+      // ▼ сервисные вызовы лояльности (мягко, не ломаем ответ, если что-то пойдёт не так)
+      if (o && o.userId) {
+        try {
+          await callLoyalty('finalizeredeem', { uid: String(o.userId), orderId: String(o.id), action: 'cancel' });
+        } catch(e){ console.warn('[orders] loyalty.finalizeredeem(cancel) failed:', e?.message||e); }
+        try {
+          await callLoyalty('voidaccrual', { orderId: String(o.id) });
+        } catch(e){ console.warn('[orders] loyalty.voidaccrual failed:', e?.message||e); }
+      }
+
       return ok({ ok: !!o, order: o || null }, headers);
     }
 

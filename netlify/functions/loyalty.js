@@ -116,6 +116,43 @@ function makeCore(readAll, writeAll){
     return !!(db.referrals.inviteesFirst && db.referrals.inviteesFirst[invitee]);
   }
 
+  // ===== внутренняя аннуляция начислений по заказу (для отмены) =====
+  async function voidAccrualInternal(db, orderId){
+    const ord = db.orders[orderId];
+    if (!ord) return { ok:false, reason:'no_order' };
+    // если уже выпущено — ничего не трогаем (available не откатываем)
+    if (ord.released) return { ok:true, reason:'already_released' };
+
+    const buyerPts = ord.accrual?.buyer|0 || 0;
+    const inviter  = ord.accrual?.inviter || null;
+    const refPts   = ord.accrual?.refPts|0 || 0;
+
+    if (buyerPts > 0) {
+      const buyer = safeUser(db, ord.uid);
+      const take = Math.min(buyer.pending|0, buyerPts);
+      if (take > 0) {
+        buyer.pending -= take;
+        addHist(buyer, { kind:'accrue_void', orderId, pts:-take, info:'Отмена заказа — начисление отменено' });
+      }
+    }
+
+    if (inviter && refPts > 0) {
+      const ref = safeUser(db, inviter);
+      const take = Math.min(ref.pending|0, refPts);
+      if (take > 0) {
+        ref.pending -= take;
+        addHist(ref, { kind:'ref_accrue_void', orderId, pts:-take, info:'Отмена заказа реферала — начисление отменено' });
+      }
+    }
+
+    db.orders[orderId] = {
+      ...(ord||{}),
+      canceled: true,
+      released: false,
+    };
+    return { ok:true };
+  }
+
   return {
     async getBalance(uid){
       const db = await readAll();
@@ -311,7 +348,9 @@ function makeCore(readAll, writeAll){
       const db = await readAll();
       const user = safeUser(db, uid);
       const ord = db.orders[orderId];
-      if (!ord || ord.released) return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };
+      if (!ord || ord.released || ord.canceled) {
+        return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };
+      }
 
       // покупатель
       const buyer = safeUser(db, ord.uid);
@@ -347,6 +386,14 @@ function makeCore(readAll, writeAll){
 
       const me = safeUser(db, uid);
       return { ok:true, balance:{ available: me.available, pending: me.pending, history: me.history } };
+    },
+
+    /** Админ/сервис: снять pending-начисления по отменённому заказу */
+    async voidAccrual(orderId){
+      const db = await readAll();
+      const r = await voidAccrualInternal(db, String(orderId));
+      await writeAll(db);
+      return r;
     },
 
     async getReferrals(uid){
@@ -425,6 +472,11 @@ export async function handler(event){
       const { uid, orderId } = body;
       const r = await store.confirm(String(uid), String(orderId));
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
+    }
+    if (op === 'voidaccrual'){
+      const { orderId } = body;
+      const r = await store.voidAccrual(String(orderId));
+      return { statusCode:200, headers:cors, body: JSON.stringify({ ok:r.ok!==false, reason:r.reason||null }) };
     }
     if (op === 'getreferrals'){
       const { uid } = body;

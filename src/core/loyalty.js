@@ -1,3 +1,4 @@
+// src/core/loyalty.js
 // Центр логики кешбэка/рефералок (клиент) + thin-API к serverless-функции
 
 import { getUID, k } from './state.js';
