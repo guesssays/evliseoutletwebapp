@@ -254,9 +254,10 @@ function itemsBlock(o){
 
   const rows = items.map((x)=>{
     const cover = x.images?.[0] || 'assets/placeholder.jpg';
+    const colorLabel = x.color ? `Цвет: ${escapeHtml(colorNameFromValue(String(x.color)))}` : '';
     const opts = [
       x.size ? `Размер: ${escapeHtml(x.size)}` : '',
-      x.color ? `Цвет: ${escapeHtml(x.color)}` : '',
+      colorLabel
     ].filter(Boolean).join(' · ');
     const qty = `×${escapeHtml(String(x.qty||0))}`;
     const line = Number(x.qty||0) * Number(x.price||0);
@@ -266,7 +267,7 @@ function itemsBlock(o){
         <div class="order-item__meta">
           <div class="cart-title">${escapeHtml(x.title || 'Товар')}</div>
           <div class="cart-sub">
-            ${opts ? `<span>${escapeHtml(opts)}</span>` : ''}
+            ${opts ? `<span>${opts}</span>` : ''}
             <span class="order-item__qty-inline">${qty}</span>
           </div>
         </div>
@@ -291,4 +292,144 @@ function emptyRow(title){
   if (title === 'Отменены')   hint = 'Отменённых заказов нет';
   return `<div class="orders-empty" style="color:#999; padding:8px 0 16px">${hint}</div>`;
 }
-function escapeHtml(s=''){ return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+/* === helpers === */
+
+function escapeHtml(s=''){
+  return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/**
+ * Преобразует значение цвета (hex, rgb, английское имя, сокращения) в русское название.
+ * При неизвестном значении — возвращает исходное.
+ */
+function colorNameFromValue(raw){
+  if (!raw) return '';
+  const v = String(raw).trim().toLowerCase();
+
+  // Явные имена на русском/английском
+  const dict = {
+    // base
+    'black':'чёрный','white':'белый','red':'красный','green':'зелёный','blue':'синий',
+    'yellow':'жёлтый','orange':'оранжевый','purple':'фиолетовый','violet':'фиолетовый',
+    'pink':'розовый','brown':'коричневый','gray':'серый','grey':'серый','beige':'бежевый',
+    'gold':'золотой','silver':'серебристый','navy':'тёмно-синий','teal':'бирюзовый',
+    'turquoise':'бирюзовый','maroon':'бордовый','burgundy':'бордовый','olive':'оливковый',
+    'lime':'лаймовый','cyan':'голубой','magenta':'пурпурный','tan':'светло-коричневый',
+    'ivory':'слоновая кость','cream':'кремовый','khaki':'хаки','mustard':'горчичный',
+    'lavender':'лавандовый','mint':'мятный','peach':'персиковый','coral':'коралловый',
+    // ru duplicates
+    'черный':'чёрный','чёрный':'чёрный','белый':'белый','красный':'красный','зелёный':'зелёный','зеленый':'зелёный',
+    'синий':'синий','голубой':'голубой','жёлтый':'жёлтый','желтый':'жёлтый','оранжевый':'оранжевый','фиолетовый':'фиолетовый',
+    'розовый':'розовый','коричневый':'коричневый','серый':'серый','бежевый':'бежевый','бордовый':'бордовый',
+    'серебристый':'серебристый','золотой':'золотой','хаки':'хаки','оливковый':'оливковый'
+  };
+
+  if (dict[v]) return dict[v];
+
+  // Частые сокращения артикулов
+  const short = {
+    'bk':'чёрный','bl':'синий','blu':'синий','blk':'чёрный','wht':'белый','wh':'белый',
+    'gr':'серый','gry':'серый','gy':'серый','rd':'красный','gn':'зелёный','grn':'зелёный',
+    'yl':'жёлтый','ylw':'жёлтый','org':'оранжевый','pur':'фиолетовый','prp':'фиолетовый',
+    'pnk':'розовый','brn':'коричневый','br':'коричневый','be':'бежевый','nv':'тёмно-синий'
+  };
+  if (short[v]) return short[v];
+
+  // HEX → ближайшее имя
+  const hex = normalizeHex(v);
+  if (hex){
+    const name = hexToRuName(hex);
+    if (name) return name;
+  }
+
+  // rgb(a)
+  if (v.startsWith('rgb')){
+    const hexFromRgb = rgbToHex(v);
+    if (hexFromRgb){
+      const name = hexToRuName(hexFromRgb);
+      if (name) return name;
+    }
+  }
+
+  // Если это составное типа "blue/white" — разберём
+  if (v.includes('/') || v.includes('-')){
+    const parts = v.split(/[/\-]/).map(s=>s.trim()).filter(Boolean);
+    const mapped = parts.map(p => colorNameFromValue(p));
+    if (mapped.length) return mapped.join(' / ');
+  }
+
+  // По умолчанию — как есть (без кода #rrggbb)
+  return v.startsWith('#') ? v.toUpperCase() : v;
+}
+
+function normalizeHex(v){
+  const m = v.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) return '';
+  let h = m[1].toLowerCase();
+  if (h.length===3){
+    h = h.split('').map(c=>c+c).join('');
+  }
+  return '#'+h;
+}
+
+// Небольшая карта ближайших цветов
+const HEX_MAP = [
+  ['#000000','чёрный'],
+  ['#ffffff','белый'],
+  ['#ff0000','красный'],
+  ['#00ff00','зелёный'],
+  ['#0000ff','синий'],
+  ['#ffff00','жёлтый'],
+  ['#ffa500','оранжевый'],
+  ['#800080','фиолетовый'],
+  ['#ffc0cb','розовый'],
+  ['#8b4513','коричневый'],
+  ['#808080','серый'],
+  ['#c0c0c0','серебристый'],
+  ['#ffd700','золотой'],
+  ['#000080','тёмно-синий'],
+  ['#00ffff','голубой'],
+  ['#800000','бордовый'],
+  ['#556b2f','оливковый'],
+  ['#f5f5dc','бежевый'],
+  ['#e6e6fa','лавандовый'],
+  ['#98ff98','мятный'],
+  ['#ffdab9','персиковый'],
+  ['#ff7f50','коралловый'],
+  ['#bdb76b','хаки']
+];
+
+function hexToRuName(hex){
+  // Быстрое точное совпадение
+  const exact = HEX_MAP.find(([h]) => h === hex.toLowerCase());
+  if (exact) return exact[1];
+
+  // Иначе приблизим по расстоянию в RGB
+  const [r,g,b] = hexToRGB(hex);
+  let best = { dist: Infinity, name: '' };
+  for (const [h, name] of HEX_MAP){
+    const [R,G,B] = hexToRGB(h);
+    const d = (R-r)**2 + (G-g)**2 + (B-b)**2;
+    if (d < best.dist){ best = { dist:d, name }; }
+  }
+  return best.name;
+}
+
+function hexToRGB(hex){
+  const h = hex.replace('#','');
+  const r = parseInt(h.slice(0,2),16);
+  const g = parseInt(h.slice(2,4),16);
+  const b = parseInt(h.slice(4,6),16);
+  return [r,g,b];
+}
+
+function rgbToHex(rgbStr){
+  const m = rgbStr.replace(/\s+/g,'').match(/^rgba?\((\d{1,3}),(\d{1,3}),(\d{1,3})(?:,([01]?\.?\d*))?\)$/i);
+  if (!m) return '';
+  const r = clamp255(+m[1]);
+  const g = clamp255(+m[2]);
+  const b = clamp255(+m[3]);
+  return '#'+[r,g,b].map(n=>n.toString(16).padStart(2,'0')).join('');
+}
+function clamp255(n){ return Math.max(0, Math.min(255, n|0)); }
