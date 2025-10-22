@@ -11,6 +11,9 @@ import {
 import { state } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 
+// ▼ НОВОЕ: клиент к loyalty-функции
+import { adminCalc, getBalance, confirmAccrual } from '../core/loyaltyAdmin.js';
+
 /* ====== Константы расчётов (должны совпадать с клиентскими) ====== */
 const CASHBACK_RATE_BASE  = 0.05;
 const CASHBACK_RATE_BOOST = 0.10; // при условии "первый заказ по реф-ссылке"
@@ -109,19 +112,16 @@ export async function renderAdmin(){
     const html = orders.length ? `
       <div class="admin-list-mini" id="adminListMini">
         ${orders.map(o=>{
-          // Позиции заказа
           const items = Array.isArray(o.cart) ? o.cart : [];
           const itemsCount =
             items.reduce((s,x)=> s + (Number(x.qty)||0), 0) ||
             (o.qty||0) ||
             (items.length || 0);
 
-          // Итоговая сумма: предпочитаем order.total, иначе считаем из позиций
           const calcSum = items.reduce((s,x)=> s + (Number(x.price)||0) * (Number(x.qty)||0), 0);
           const total   = Number.isFinite(Number(o.total)) ? Number(o.total) : calcSum;
           const totalFmt = priceFmt(total);
 
-          // Подпись: если одна позиция — её название, если несколько — "N товаров"
           const prod  = pmap.get(String(o.productId));
           const singleTitle = items[0]?.title || prod?.title || 'Товар';
           const nameLineRaw = (items.length > 1 || itemsCount > 1)
@@ -227,12 +227,12 @@ export async function renderAdmin(){
   function calcBlock(o){
     const c = computeOrderCalc(o);
     return `
-      <div class="subsection-title" style="margin-top:14px">Дашборд расчётов</div>
+      <div class="subsection-title" style="margin-top:14px">Дашборд расчётов (базовая модель)</div>
       <div class="table-wrap">
         <table class="size-table">
           <tbody>
             <tr><td>Сумма к оплате</td><td style="text-align:right"><b>${priceFmt(c.sum)}</b></td></tr>
-            <tr><td>Максимально можно было списать баллами (30%, ≤150к)</td><td style="text-align:right">${priceFmt(c.maxRedeem)}</td></tr>
+            <tr><td>Максимально можно списать баллами (30%, ≤150к)</td><td style="text-align:right">${priceFmt(c.maxRedeem)}</td></tr>
             <tr><td>Кэшбек (база 5%)</td><td style="text-align:right">+${c.cashbackBase.toLocaleString('ru-RU')} баллов</td></tr>
             <tr><td>Кэшбек при x2 (1-й заказ реферала)</td><td style="text-align:right">+${c.cashbackIfBoost.toLocaleString('ru-RU')} баллов</td></tr>
             <tr><td>Начисление инвайтеру (если есть связка)</td><td style="text-align:right">+${c.referrerEarnIfLinked.toLocaleString('ru-RU')} баллов</td></tr>
@@ -240,9 +240,46 @@ export async function renderAdmin(){
         </table>
       </div>
       <div class="muted mini" style="margin-top:6px">
-        Примечание: система антифрода не позволяет саморефералы, более 10 новых рефералов на инвайтера в месяц и двойное использование бонуса.
-        Кэшбек начисляется через 24ч после оформления.
+        Примечание: антифрод блокирует саморефералы, лимитирует 10 новых рефералов/мес и выдаёт кэшбек через 24ч.
       </div>
+    `;
+  }
+
+  // ▼ НОВОЕ: блок "реальные данные" из loyalty-функции
+  function realLoyaltyBlock(o, calc, balance){
+    if (!calc) {
+      return `
+        <div class="subsection-title" style="margin-top:14px">Реальные данные лояльности</div>
+        <div class="muted">Нет данных по этому заказу.</div>
+      `;
+    }
+    const usedPts   = Number(calc.usedPoints||0);
+    const paidShare = (o.total>0 && usedPts>0) ? Math.round(100*usedPts/Number(o.total)) : 0;
+    const refText   = calc.referrer ? `да (инвайтер: <code>${String(calc.referrer)}</code>)` : 'нет';
+    const released  = !!calc.pendingReleased;
+
+    return `
+      <div class="subsection-title" style="margin-top:14px">Реальные данные лояльности</div>
+      <div class="table-wrap">
+        <table class="size-table">
+          <tbody>
+            <tr><td>UID покупателя</td><td style="text-align:right"><code>${String(calc.uid||o.userId||'—')}</code></td></tr>
+            <tr><td>Реферальная связка</td><td style="text-align:right">${refText}</td></tr>
+            <tr><td>Оплачено баллами</td><td style="text-align:right">−${usedPts.toLocaleString('ru-RU')} баллов${paidShare?` (${paidShare}%)`:''}</td></tr>
+            <tr><td>Кэшбек покупателю за этот заказ</td><td style="text-align:right">+${Number(calc.buyerCashback||0).toLocaleString('ru-RU')} баллов</td></tr>
+            <tr><td>Бонус инвайтеру</td><td style="text-align:right">+${Number(calc.referrerBonus||0).toLocaleString('ru-RU')} баллов</td></tr>
+            <tr><td>Начисления переведены из ожидания</td><td style="text-align:right">${released ? 'да' : 'нет'}</td></tr>
+            <tr><td>Баланс покупателя (доступно)</td><td style="text-align:right"><b>${Number(balance?.available||0).toLocaleString('ru-RU')}</b> баллов</td></tr>
+            <tr><td>Баланс покупателя (в ожидании)</td><td style="text-align:right">${Number(balance?.pending||0).toLocaleString('ru-RU')} баллов</td></tr>
+          </tbody>
+        </table>
+      </div>
+      ${released ? '' : `
+        <div class="muted mini" style="margin:8px 0 0">Можно подтвердить начисления вручную, если заказ выдан.</div>
+        <button class="btn btn--sm" id="btnConfirmAccrual" data-uid="${String(calc.uid||o.userId)}" data-oid="${String(calc.orderId||o.id)}">
+          Подтвердить начисления (pending → available)
+        </button>
+      `}
     `;
   }
 
@@ -255,7 +292,7 @@ export async function renderAdmin(){
       return listView();
     }
 
-    // Заголовок в деталях: как и в списке — считаем позиции и итог
+    // Заголовок
     const items = Array.isArray(o.cart) ? o.cart : [];
     const itemsCount =
       items.reduce((s,x)=> s + (Number(x.qty)||0), 0) ||
@@ -270,6 +307,16 @@ export async function renderAdmin(){
 
     const isNew  = o.status==='новый' && !o.accepted;
     const isDone = ['выдан','отменён'].includes(o.status);
+
+    // ▼ НОВОЕ: реальные данные лояльности
+    let loyaltyCalc = null;
+    let buyerBal = null;
+    try {
+      loyaltyCalc = await adminCalc(o.id);
+      buyerBal = await getBalance(loyaltyCalc?.uid || o.userId);
+    } catch {
+      // игнорируем — покажем пустой блок
+    }
 
     shell(`
       <div class="order-detail">
@@ -333,6 +380,7 @@ export async function renderAdmin(){
           </dl>
 
           ${calcBlock(o)}
+          ${realLoyaltyBlock(o, loyaltyCalc, buyerBal)}
           ${itemsBlock(o)}
 
           <div class="order-detail__actions">
@@ -407,6 +455,19 @@ export async function renderAdmin(){
       }catch{}
 
       if (st === 'выдан'){ mode='list'; tab='done'; }
+      render();
+    });
+
+    // ▼ НОВОЕ: ручное подтверждение начислений
+    document.getElementById('btnConfirmAccrual')?.addEventListener('click', async (e)=>{
+      const uid = e.currentTarget.getAttribute('data-uid');
+      const oid = e.currentTarget.getAttribute('data-oid');
+      try{
+        await confirmAccrual(uid, oid);
+        alert('Начисления подтверждены.');
+      }catch(err){
+        alert('Не удалось подтвердить начисления: ' + (err?.message || err));
+      }
       render();
     });
   }
