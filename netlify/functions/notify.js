@@ -4,12 +4,15 @@
 //   TG_BOT_TOKEN     — токен бота (без "bot" префикса)        [обязателен для отправки]
 //   ADMIN_CHAT_ID    — chat_id(ы) администратора(ов), через запятую
 //   WEBAPP_URL       — базовый URL приложения для ссылок       [опционально]
-//
 //   ALLOWED_ORIGINS  — список origin'ов через запятую          [опционально: '*', точные origin, '*.domain.com']
+//
 // Types (type):
 //   orderPlaced | orderAccepted | statusChanged | orderCanceled
 //   cartReminder | favReminder
-//   referralJoined | referralOrderCashback | cashbackMatured   ← ДОБАВЛЕНО
+//   referralJoined | referralOrderCashback | cashbackMatured
+//
+// Медиа: если для type задан путь в TYPE_IMG — шлём sendPhoto с подписью.
+// Рекомендуемый размер: ~1200×675 (16:9). Файлы положить в /assets/notify/*
 
 function parseAllowed() {
   const raw = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -54,22 +57,46 @@ function buildCorsHeaders(origin) {
   };
 }
 
-async function sendTgMessage(token, chatId, text, kb){
-  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+/* ------------ Медиа для уведомлений ------------ */
+const BASE_ASSET_URL = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/, '');
+const TYPE_IMG = {
+  orderPlaced:            '/assets/notify/order_placed.jpg',
+  orderAccepted:          '/assets/notify/order_accepted.jpg',
+  statusChanged:          '/assets/notify/status_changed.jpg',
+  orderCanceled:          '/assets/notify/order_canceled.jpg',             // добавлено
+  cartReminder:           '/assets/notify/cart_reminder.jpg',
+  favReminder:            '/assets/notify/fav_reminder.jpg',
+  referralJoined:         '/assets/notify/referral_joined.jpg',
+  referralOrderCashback:  '/assets/notify/referral_cashback_pending.jpg',  // добавлено
+  cashbackMatured:        '/assets/notify/cashback_ready.jpg',
+};
+
+/**
+ * Универсальная отправка: если есть картинка для type — sendPhoto, иначе sendMessage
+ */
+async function sendTg(token, chatId, text, kb, type){
+  const imgPath = TYPE_IMG[type];
+  const imgUrl = (imgPath && BASE_ASSET_URL) ? `${BASE_ASSET_URL}${imgPath}` : null;
+
+  const common = {
+    chat_id: chatId,
+    parse_mode: 'HTML',
+    ...(kb ? { reply_markup: { inline_keyboard: kb } } : {})
+  };
+
+  const method = imgUrl ? 'sendPhoto' : 'sendMessage';
+  const payload = imgUrl
+    ? { ...common, photo: imgUrl, caption: text, disable_notification: false }
+    : { ...common, text, disable_web_page_preview: true };
+
+  const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      parse_mode: 'HTML',
-      disable_web_page_preview: true,
-      ...(kb ? { reply_markup: { inline_keyboard: kb } } : {})
-    })
+    body: JSON.stringify(payload),
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data?.ok) {
-    throw new Error('telegram send failed');
-  }
+
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || data?.ok === false) throw new Error('telegram send failed');
 }
 
 export async function handler(event) {
@@ -151,14 +178,14 @@ export async function handler(event) {
 
     // 1) Если указан clientChatId — отправляем только клиенту
     if (clientChatId) {
-      await sendTgMessage(token, String(clientChatId), finalText, kb);
+      await sendTg(token, String(clientChatId), finalText, kb, type);
       return { statusCode: 200, body: JSON.stringify({ ok:true }), ...headers };
     }
 
     // 2) Иначе (служебные), рассылаем всем админам (если не маркетинг)
     if (!isMarketing && adminChatIds.length) {
       const results = await Promise.allSettled(
-        adminChatIds.map(id => sendTgMessage(token, String(id), finalText, kb))
+        adminChatIds.map(id => sendTg(token, String(id), finalText, kb, type))
       );
       const anyOk = results.some(r => r.status === 'fulfilled');
       if (!anyOk) {
