@@ -187,9 +187,7 @@ export function renderAccount(){
           color:#fff; background:#111827; overflow:hidden;
           user-select:none;
         }
-        .avatar img{
-          display:block; width:100%; height:100%; object-fit:cover;
-        }
+        .avatar img{ display:block; width:100%; height:100%; object-fit:cover; }
         .avatar.has-img{ background:transparent; }
         .info .name{ font-weight:800; font-size:16px; }
         .muted{ color:var(--muted,#6b7280); }
@@ -206,18 +204,26 @@ export function renderAccount(){
           border:1px solid rgba(0,0,0,.08);
           backdrop-filter: blur(6px);
         }
+
+        /* — верхняя строка: «Ваши баллы» + сумма в ОДНУ строку, без подписи — */
         .points-top{
-          display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+          display:flex; align-items:center; justify-content:space-between; gap:8px;
+          flex-wrap:nowrap; white-space:nowrap; min-width:0;
         }
         .points-title{
-          display:flex; align-items:center; gap:8px;
-          font-weight:700; color:#0f172a; letter-spacing:.2px;
+          display:flex; align-items:center; gap:6px;
+          font-weight:700; letter-spacing:.2px;
+          font-size: clamp(13px, 3.5vw, 16px);
+          color:#0f172a; white-space:nowrap; min-width:0;
         }
+        .points-title i{ width:18px; height:18px; flex:0 0 auto; }
         .points-value{
-          font-size:28px; font-weight:800; line-height:1;
+          margin-left:auto;
+          font-weight:800; line-height:1;
+          font-size: clamp(18px, 6vw, 28px);
           color:#0b1220; letter-spacing:.3px;
+          white-space:nowrap; flex:0 0 auto;
         }
-        .points-unit{ font-size:13px; color:var(--muted,#64748b); margin-left:6px; font-weight:600; }
 
         .points-row{
           margin-top:10px;
@@ -228,24 +234,26 @@ export function renderAccount(){
           padding:8px 10px; border-radius:10px; border:1px solid rgba(0,0,0,.06);
           background: rgba(255,255,255,.75);
         }
-        .points-chip i{ width:18px; height:18px; }
-        .points-chip .label{ font-size:12px; color:var(--muted,#6b7280); }
-        .points-chip .val{ margin-left:auto; font-weight:800; }
+        .points-chip i{ width:18px; height:18px; flex:0 0 auto; }
+        .points-chip .label{ font-size:12px; color:var(--muted,#6b7280); white-space:nowrap; }
+        .points-chip .val{ margin-left:auto; font-weight:800; white-space:nowrap; }
 
-        /* ======= ДЕЙСТВИЯ (кнопки в одну строку, без переноса) ======= */
+        /* ======= ДЕЙСТВИЯ (кнопки строго в одну строку, текст не режем) ======= */
         .points-actions{
           margin-top:10px; display:flex; gap:8px; align-items:stretch;
-          flex-wrap:nowrap; /* строго в одну строку */
+          flex-wrap:nowrap; min-width:0;
         }
         .points-actions .pill{
-          height:36px; padding:0 12px;
+          height:36px; padding:0 10px;
           display:inline-flex; align-items:center; justify-content:center; gap:8px;
           border-radius:10px; border:1px solid var(--border,rgba(0,0,0,.08)); background:#fff;
-          font-weight:600; line-height:1; flex:1 1 0; min-width:0; /* делят ширину пополам, не ломаются */
+          font-weight:600; line-height:1;
+          flex:1 1 0; min-width:0;
+          font-size: clamp(12px, 3.3vw, 14px);
         }
-        .points-actions .pill span{
-          overflow:hidden; text-overflow:ellipsis; white-space:nowrap; /* аккуратное обрезание текста */
-        }
+        .points-actions .pill i{ width:18px; height:18px; flex:0 0 auto; }
+        .points-actions .pill span{ white-space:nowrap; } /* не обрезаем и не переносим */
+
         /* ОРАНЖЕВЫЙ ГРАДИЕНТ для «Мой кэшбек» */
         .points-actions .primary{
           color:#fff; border-color:transparent;
@@ -261,6 +269,13 @@ export function renderAccount(){
         @media (min-width: 420px){
           .points-row{ grid-template-columns: 1fr 1fr; }
         }
+
+        /* мелкие экраны: ещё компактнее, но всё по одной строке и без сокращений */
+        @media (max-width: 360px){
+          .points-actions{ gap:6px; }
+          .points-actions .pill{ height:34px; padding:0 8px; }
+          .points-title i{ width:16px; height:16px; }
+        }
       </style>
 
       <div class="account-card">
@@ -274,14 +289,11 @@ export function renderAccount(){
         </div>
       </div>
 
-      <!-- Новый стиль блока баллов -->
+      <!-- Блок баллов -->
       <div class="points-card" role="region" aria-label="Баллы и кэшбек">
         <div class="points-top">
           <div class="points-title"><i data-lucide="coins"></i><span>Ваши баллы</span></div>
-          <div class="points-value">
-            ${(w.available|0).toLocaleString('ru-RU')}
-            <span class="points-unit">доступно</span>
-          </div>
+          <div class="points-value">${(w.available|0).toLocaleString('ru-RU')}</div>
         </div>
 
         <div class="points-row" aria-label="Состояние баллов">
