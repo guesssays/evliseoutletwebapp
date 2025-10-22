@@ -232,16 +232,29 @@ export function renderAccount(){
         .points-chip .label{ font-size:12px; color:var(--muted,#6b7280); }
         .points-chip .val{ margin-left:auto; font-weight:800; }
 
+        /* ======= ДЕЙСТВИЯ (кнопки в одну строку, без переноса) ======= */
         .points-actions{
-          margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;
+          margin-top:10px; display:flex; gap:8px; align-items:stretch;
+          flex-wrap:nowrap; /* строго в одну строку */
         }
         .points-actions .pill{
-          height:36px; padding:0 12px; display:inline-flex; align-items:center; gap:8px;
+          height:36px; padding:0 12px;
+          display:inline-flex; align-items:center; justify-content:center; gap:8px;
           border-radius:10px; border:1px solid var(--border,rgba(0,0,0,.08)); background:#fff;
-          font-weight:600;
+          font-weight:600; line-height:1; flex:1 1 0; min-width:0; /* делят ширину пополам, не ломаются */
         }
+        .points-actions .pill span{
+          overflow:hidden; text-overflow:ellipsis; white-space:nowrap; /* аккуратное обрезание текста */
+        }
+        /* ОРАНЖЕВЫЙ ГРАДИЕНТ для «Мой кэшбек» */
         .points-actions .primary{
-          background:#0ea5e9; color:#fff; border-color:transparent;
+          color:#fff; border-color:transparent;
+          background: linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ea580c 100%);
+          box-shadow: 0 1px 0 rgba(0,0,0,.06), inset 0 0 0 1px rgba(255,255,255,.15);
+        }
+        @media (hover:hover){
+          .points-actions .primary:hover{ filter:brightness(.98); }
+          .points-actions .pill:not(.primary):hover{ filter:brightness(.98); }
         }
 
         /* адаптив: на широких чипы в 2 колонки */
