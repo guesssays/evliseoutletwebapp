@@ -250,7 +250,8 @@ function makeCore(readAll, writeAll){
         user.available += res.pts;
         addHist(user, { kind:'reserve_cancel', orderId, pts:+res.pts, info:'Возврат резерва' });
       }else{
-        addHist(user, { kind:'redeem', orderId, pts:0, info:`Оплата баллами ${res.pts}` });
+        // 🔧 ФИКС: пишем реальную отрицательную сумму в историю списаний
+        addHist(user, { kind:'redeem', orderId, pts:-Math.abs(res.pts|0), info:`Оплата баллами ${res.pts}` });
       }
       await writeAll(db);
       return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };

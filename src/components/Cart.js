@@ -103,7 +103,7 @@ function markFirstOrderDone(){
   writeRefProfile(rp);
 }
 
-/* ====== Начисление рефереру (инвайтеру) + уведомления ====== */
+/* ====== Начисление рефереру (инвайтеру) + уведомления (локально; при серверной модели — не используется) ====== */
 function addReferrerPendingIfAny(paidAmount, orderId){
   try{
     const me = getUID?.() || '';
@@ -426,6 +426,18 @@ function remove(productId,size,color){
   persistCart(); updateCartBadge(); toast('Удалено'); renderCart();
 }
 
+/* ====================== ЛОЯЛЬНОСТЬ: клиент ====================== */
+async function callLoyalty(op, data){
+  const r = await fetch('/.netlify/functions/loyalty', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ op, ...data })
+  });
+  const j = await r.json().catch(()=> ({}));
+  if (!r.ok || j?.ok === false) throw new Error(j?.error || j?.reason || 'loyalty error');
+  return j;
+}
+
 /* ======================
    Новый сценарий чекаута
    ====================== */
@@ -557,7 +569,7 @@ function checkoutFlow(items, addr, totalRaw, bill){
   function close(){ modal.classList.remove('show'); }
 }
 
-/* ======== Оплата + фиксация заказа, баллов, рефералов ======== */
+/* ======== Оплата + фиксация заказа, баллов, рефералов (через сервер лояльности) ======== */
 function openPayModal({ items, address, phone, payer, totalRaw, bill }){
   const redeem = Number(bill?.redeem||0)|0;
   const toPay  = Math.max(0, Number(bill?.toPay||0));
@@ -732,55 +744,79 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       return;
     }
 
-    // если пользователь списывал баллы — списываем прямо сейчас
-    const toSpend = Number(bill?.redeem||0)|0;
-    if (toSpend>0){
-      if (!spendPoints(toSpend, null)){
-        toast('Не удалось списать баллы — обновите страницу'); return;
+    // Сумма к списанию, заранее формируем orderId (чтобы связать reserve/finalize и сам заказ)
+    const toSpend = Number(bill?.redeem||0) | 0;
+    const orderId = String(Date.now());
+    let reserved = false;
+
+    try{
+      if (toSpend > 0){
+        // РЕЗЕРВИРУЕМ списание на сервере лояльности
+        await callLoyalty('reserveRedeem', { uid: getUID(), pts: toSpend, orderId });
+        reserved = true;
       }
+    }catch(e){
+      toast('Не удалось зарезервировать списание баллов');
+      return;
     }
 
-    const first = items[0];
-    const orderId = await addOrder({
-      cart: items.map(x=>({
-        id: x.product.id,
-        title: x.product.title,
-        price: x.product.price,
-        qty: x.qty,
-        size: x.size || null,
-        color: x.color || null,
-        images: x.product.images || []
-      })),
-      productId: first?.product?.id || null,
-      size: first?.size || null,
-      color: first?.color || null,
-      link: first?.product?.id ? `#/product/${first.product.id}` : '',
-      total: toPay,                  // к оплате с учётом списания
-      currency: 'UZS',
-      address,
-      phone,
-      username: state.user?.username || '',
-      userId: getUID(),
-      payerFullName: payer || '',
-      paymentScreenshot,
-      status: 'новый',
-      accepted: false
-    });
-
-    // Начисления кэшбека покупателю → pending (24ч)
-    const boost = hasFirstOrderBoost();
-    const rate  = boost ? CASHBACK_RATE_BOOST : CASHBACK_RATE_BASE;
-    const earn  = Math.floor(toPay * rate);
-    if (earn > 0){
-      addPending(earn, boost ? 'Кэшбек x2 (первый заказ по реф-ссылке)' : 'Кэшбек', orderId);
+    // Создание заказа (используем наш orderId)
+    let createdId = null;
+    try{
+      const first = items[0];
+      createdId = await addOrder({
+        id: orderId,
+        cart: items.map(x=>({
+          id: x.product.id,
+          title: x.product.title,
+          price: x.product.price,
+          qty: x.qty,
+          size: x.size || null,
+          color: x.color || null,
+          images: x.product.images || []
+        })),
+        productId: first?.product?.id || null,
+        size: first?.size || null,
+        color: first?.color || null,
+        link: first?.product?.id ? `#/product/${first.product.id}` : '',
+        total: toPay,                  // к оплате с учётом списания
+        currency: 'UZS',
+        address,
+        phone,
+        username: state.user?.username || '',
+        userId: getUID(),
+        payerFullName: payer || '',
+        paymentScreenshot,
+        status: 'новый',
+        accepted: false
+      });
+    }catch(e){
+      // если заказ не создался — отменяем резерв
+      if (reserved){
+        try{ await callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'cancel' }); }catch{}
+      }
+      toast('Не удалось создать заказ. Попробуйте ещё раз.');
+      return;
     }
 
-    // Рефереру 5% → pending (24ч) + уведомления
-    addReferrerPendingIfAny(toPay, orderId);
+    // Финализируем списание и начисляем pending кешбэк/реф
+    try{
+      if (toSpend > 0 && reserved){
+        await callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'commit' });
+      }
+      // Начисления pending (5%/10%) от суммы к оплате
+      await callLoyalty('accrue', { uid: getUID(), orderId, total: toPay, currency:'UZS' });
+    }catch(e){
+      // откатываем резерв если не удалось финализировать/начислить
+      if (reserved){
+        try{ await callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'cancel' }); }catch{}
+      }
+      toast('Не удалось зафиксировать баллы — попробуйте ещё раз');
+      return;
+    }
 
-    // Отметить, что первый заказ (для буста) совершен
-    if (boost) markFirstOrderDone();
-
+    // Локальный кошелёк: больше НЕ трогаем (списание/начисление ведёт сервер)
+    // Очищаем корзину и показываем подтверждение
     state.cart.items = [];
     persistCart(); updateCartBadge();
 
