@@ -931,8 +931,6 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
         if (toSpend > 0 && reserved){
           await callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'commit' });
         }
-        // Начисления pending (5%/10%) от суммы к оплате — идемпотентный accrue на сервере
-        await callLoyalty('accrue', { uid: getUID(), orderId, total: toPay, currency:'UZS' });
       }catch(e){
         // откатываем резерв если не удалось финализировать/начислить
         if (reserved){
