@@ -194,16 +194,17 @@ export function renderAccount(){
         .muted.mini{ font-size:.9rem; }
 
         /* ======= Баллы (новый стиль) ======= */
-        .points-card{
-          position:relative; overflow:hidden;
-          margin:12px 0 8px; padding:14px;
-          border-radius:14px;
-          background:
-            radial-gradient(1200px 400px at -10% -40%, rgba(59,130,246,.18), transparent 60%),
-            linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.6));
-          border:1px solid rgba(0,0,0,.08);
-          backdrop-filter: blur(6px);
-        }
+.points-card{
+  position:relative; overflow:hidden;
+  margin:12px 0 8px; padding:14px;
+  border-radius:14px;
+  background:
+    radial-gradient(1200px 400px at -10% -40%, rgba(245,158,11,.22), transparent 60%), /* оранжевый "свет" */
+    linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.6));
+  border:1px solid rgba(0,0,0,.08);
+  backdrop-filter: blur(6px);
+}
+
 
         /* — верхняя строка: «Ваши баллы» + сумма в ОДНУ строку, без подписи — */
         .points-top{
