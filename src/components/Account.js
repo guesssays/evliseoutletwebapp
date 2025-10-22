@@ -79,6 +79,59 @@ function readMyReferrals(){
 }
 function writeMyReferrals(arr){ localStorage.setItem(k('my_referrals'), JSON.stringify(Array.isArray(arr)?arr:[])); }
 
+/* ===== загрузка аватарки из Telegram через серверную функцию ===== */
+async function fetchTgAvatarUrl(uid){
+  const url = `/.netlify/functions/user-avatar?uid=${encodeURIComponent(uid)}`;
+  const r = await fetch(url, { method:'GET' });
+  const j = await r.json().catch(()=> ({}));
+  if (!r.ok || j?.ok === false) throw new Error('avatar fetch failed');
+  return String(j?.url || '');
+}
+function cacheAvatar(url){ try{ localStorage.setItem(k('tg_avatar_url'), url || ''); }catch{} }
+function readCachedAvatar(){ try{ return localStorage.getItem(k('tg_avatar_url')) || ''; }catch{ return ''; } }
+
+async function loadTgAvatar(){
+  try{
+    const uid = state?.user?.id || null;
+    if (!uid) return;
+
+    const box = document.getElementById('avatarBox');
+    const img = document.getElementById('tgAvatar');
+    const fallback = document.getElementById('avatarFallback');
+
+    // 1) сначала попробуем кеш
+    const cached = readCachedAvatar();
+    if (cached){
+      if (img){ img.src = cached; img.hidden = false; }
+      if (fallback) fallback.hidden = true;
+      box?.classList.add('has-img');
+    }
+
+    // 2) затем пробуем получить актуальный url (обновит, если фото поменялось)
+    const fresh = await fetchTgAvatarUrl(uid);
+    if (fresh && fresh !== cached){
+      cacheAvatar(fresh);
+      if (img){ img.src = fresh; img.hidden = false; }
+      if (fallback) fallback.hidden = true;
+      box?.classList.add('has-img');
+    }
+
+    // если фото отсутствует
+    if (!fresh && !cached){
+      if (img) img.hidden = true;
+      if (fallback) fallback.hidden = false;
+      box?.classList.remove('has-img');
+    }
+  }catch{
+    // фолбэк буквой
+    const img = document.getElementById('tgAvatar');
+    const fallback = document.getElementById('avatarFallback');
+    if (img) img.hidden = true;
+    if (fallback) fallback.hidden = false;
+    document.getElementById('avatarBox')?.classList.remove('has-img');
+  }
+}
+
 export function renderAccount(){
   try{
     document.querySelector('.app-header')?.classList.remove('hidden');
@@ -97,11 +150,38 @@ export function renderAccount(){
   const ref = readRefProfile();
   const hasBoost = !!ref.firstOrderBoost && !ref.firstOrderDone;
 
+  const firstLetter = (u?.first_name || u?.username || 'Г').toString().slice(0,1).toUpperCase();
+
   v.innerHTML = `
     <section class="section" style="padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));">
       <div class="section-title">Личный кабинет</div>
+
+      <style>
+        .account-card{
+          display:flex; gap:12px; align-items:center;
+          padding:12px; border:1px solid var(--border,rgba(0,0,0,.1));
+          border-radius:12px; background:var(--card,rgba(0,0,0,.03));
+        }
+        .avatar{
+          width:56px; height:56px; border-radius:50%;
+          display:grid; place-items:center; font-weight:800; font-size:20px;
+          color:#fff; background:#111827; overflow:hidden;
+          user-select:none;
+        }
+        .avatar img{
+          display:block; width:100%; height:100%; object-fit:cover;
+        }
+        .avatar.has-img{ background:transparent; }
+        .info .name{ font-weight:800; font-size:16px; }
+        .muted{ color:var(--muted,#6b7280); }
+        .muted.mini{ font-size:.9rem; }
+      </style>
+
       <div class="account-card">
-        <div class="avatar">${(u?.first_name||u?.username||'Г').toString().slice(0,1)}</div>
+        <div class="avatar" id="avatarBox" aria-label="Аватар">
+          <img id="tgAvatar" alt="" hidden>
+          <span id="avatarFallback">${firstLetter}</span>
+        </div>
         <div class="info">
           <div class="name">${u ? `${u.first_name||''} ${u.last_name||''}`.trim() || u.username || 'Пользователь' : 'Гость'}</div>
           <div class="muted">${u ? 'Авторизован через Telegram' : 'Анонимный режим'}</div>
@@ -149,6 +229,15 @@ export function renderAccount(){
   document.getElementById('supportBtn')?.addEventListener('click', ()=>{
     openExternal(OP_CHAT_URL);
   });
+
+  // подгружаем аватар (и обновляем, если он изменился в Telegram)
+  if (u?.id) {
+    loadTgAvatar();
+    // при возврате в вкладку — переобновить (на случай, если юзер поменял аватар и вернулся)
+    document.addEventListener('visibilitychange', ()=>{
+      if (!document.hidden) loadTgAvatar();
+    }, { once:false });
+  }
 
   // на случай мгновенного перехода по ссылкам из аккаунта — ещё раз фиксируем вкладку
   document.querySelectorAll('.menu a').forEach(a=>{
