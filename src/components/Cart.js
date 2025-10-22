@@ -990,3 +990,8 @@ async function postAppNotif(uid, { icon='bell', title='', sub='' } = {}){
     });
   }catch{}
 }
+
+/* ===== Экспорт ===== */
+export default {
+  renderCart
+};

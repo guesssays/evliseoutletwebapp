@@ -211,23 +211,49 @@ function makeCore(readAll, writeAll){
       return { ok:true, balance: { available: buyer.available, pending: buyer.pending, history: buyer.history } };
     },
 
-    /** Резервирование списания в момент оформления */
-    async reserve(uid, pts, orderId){
+    /** Резервирование списания в момент оформления
+        Если заказа ещё нет — используем переданный total для правил (30%, ≤150к)
+    */
+    async reserve(uid, pts, orderId, totalArg = 0){
       const db = await readAll();
       const user = safeUser(db, uid);
 
       // базовые проверки
       if (pts < CFG.MIN_REDEEM) return { ok:false, reason:'min' };
-      const ord = db.orders[orderId] || { total:0 };
-      const maxAllowed = sumCartDiscountAllowed(ord.total || 0);
-      if (pts > maxAllowed) return { ok:false, reason:'rule' };
+
+      // берём сумму: из заказа (если есть) либо из аргумента
+      const ordExisting = db.orders[orderId];
+      const baseTotal = Number(
+        (ordExisting?.total ?? 0) || totalArg || 0
+      );
+
+      // если суммы нет вообще — лучше явно отказать осмысленно
+      if (baseTotal <= 0) return { ok:false, reason:'total' };
+
+      const byShare = Math.floor(baseTotal * CFG.MAX_CART_DISCOUNT_FRAC);
+      const maxAllowed = Math.min(byShare, CFG.MAX_REDEEM);
+
+      if (pts > maxAllowed)     return { ok:false, reason:'rule' };
       if (pts > user.available) return { ok:false, reason:'balance' };
 
       user.available -= pts;
       addHist(user, { kind:'reserve', orderId, pts: -pts, info:'Резерв на оплату' });
 
       db.reservations.push({ uid, orderId, pts, ts: Date.now() });
-      if (!db.orders[orderId]) db.orders[orderId] = { uid, total: ord.total||0, currency:'UZS', used:0, accrual:null, createdAt:Date.now(), released:false };
+
+      // если заказа ещё нет — создадим черновик, чтобы дальше всё связалось
+      if (!db.orders[orderId]) {
+        db.orders[orderId] = {
+          uid,
+          total: baseTotal,
+          currency: 'UZS',
+          used: 0,
+          accrual: null,
+          createdAt: Date.now(),
+          released: false
+        };
+      }
+
       db.orders[orderId].used = (db.orders[orderId].used || 0) + pts;
 
       await writeAll(db);
@@ -375,8 +401,8 @@ export async function handler(event){
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
     }
     if (op === 'reserveredeem'){
-      const { uid, pts=0, orderId } = body;
-      const r = await store.reserve(String(uid), Number(pts||0), String(orderId));
+      const { uid, pts=0, orderId, total=0 } = body;
+      const r = await store.reserve(String(uid), Number(pts||0), String(orderId), Number(total||0));
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
     }
     if (op === 'finalizeredeem'){

@@ -167,7 +167,7 @@ export function renderAccount(){
 
   const w = settleMatured();
   const ref = readRefProfile();
-  const hasBoost = !!ref.firstOrderBoost && !ref.firstOrderDone();
+  const hasBoost = !!ref.firstOrderBoost && !ref.firstOrderDone; // <-- фикс: это флаг, а не функция
 
   const firstLetter = (u?.first_name || u?.username || 'Г').toString().slice(0,1).toUpperCase();
 
