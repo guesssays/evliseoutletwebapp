@@ -752,7 +752,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
     try{
       if (toSpend > 0){
         // РЕЗЕРВИРУЕМ списание на сервере лояльности
-        await callLoyalty('reserveRedeem', { uid: getUID(), pts: toSpend, orderId });
+        await callLoyalty('reserveRedeem', { uid: getUID(), pts: toSpend, orderId, total: totalRaw });
         reserved = true;
       }
     }catch(e){
