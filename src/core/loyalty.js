@@ -201,6 +201,13 @@ export async function confirmAccrualFor(uid, orderId){
   return { ok };
 }
 
+/** 💥 Новое: аннулировать pending-начисления по заказу (для отменённых заказов) */
+export async function loyaltyVoidAccrualFor(uid, orderId){
+  const { ok, balance } = await api('voidAccrual', { uid:String(uid), orderId:String(orderId) });
+  if (ok) setLocalLoyalty(balance);
+  return { ok };
+}
+
 /** Начислить кэшбэк по размещённому заказу (pending; x2 если первый у реферала; 5% рефереру) */
 export async function accrueOnOrderPlaced(order){
   const uid = String(order.userId || getUID());

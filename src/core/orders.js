@@ -5,8 +5,9 @@ import {
   accrueOnOrderPlaced,
   finalizeRedeem as loyaltyFinalizeRedeem,      // для клиента (own uid)
   confirmAccrual as loyaltyConfirmAccrual,      // для клиента (own uid)
-  finalizeRedeemFor as loyaltyFinalizeRedeemFor, // ⬅ добавлено: для конкретного uid (админ-выдача)
-  confirmAccrualFor as loyaltyConfirmAccrualFor, // ⬅ добавлено: для конкретного uid (админ-выдача)
+  finalizeRedeemFor as loyaltyFinalizeRedeemFor, // ⬅ для конкретного uid (админ-выдача/отмена)
+  confirmAccrualFor as loyaltyConfirmAccrualFor, // ⬅ для конкретного uid (админ-выдача)
+  loyaltyVoidAccrualFor,                         // ⬅ НОВОЕ: погасить pending-начисления по заказу
 } from './loyalty.js';
 
 const KEY = 'nas_orders';
@@ -260,8 +261,22 @@ export async function cancelOrder(orderId, reason = ''){
     saveOrders(list);
   }
 
-  // ▼ Если были резервы списания — откатим (для клиента по своему uid)
-  try { await loyaltyFinalizeRedeem(orderId, 'cancel'); } catch {}
+  // ▼ НОВОЕ: корректное гашение лояльности именно по UID покупателя (а не текущего администратора)
+  try {
+    const list = getOrdersLocal();
+    const cur  = list.find(o => String(o.id) === String(orderId));
+    const uid  = String(cur?.userId || '');
+
+    if (uid) {
+      // 1) Откатить резерв списания (если был)
+      try { await loyaltyFinalizeRedeemFor(uid, orderId, 'cancel'); } catch {}
+      // 2) Погасить pending-начисления (покупатель + реферер — на бэке)
+      try { await loyaltyVoidAccrualFor(uid, orderId); } catch {}
+    } else {
+      // безопасный фолбэк — откат по текущему пользователю
+      try { await loyaltyFinalizeRedeem(orderId, 'cancel'); } catch {}
+    }
+  } catch {}
 
   saveOrders(getOrdersLocal());
 }
