@@ -90,24 +90,47 @@ async function fetchTgAvatarUrl(uid){
 function cacheAvatar(url){ try{ localStorage.setItem(k('tg_avatar_url'), url || ''); }catch{} }
 function readCachedAvatar(){ try{ return localStorage.getItem(k('tg_avatar_url')) || ''; }catch{ return ''; } }
 
+/** Достаём Telegram user id из state.user (поддержка разных полей) */
+function getTelegramUserId(u){
+  return String(
+    u?.id ??
+    u?.tg_id ??
+    u?.tgId ??
+    u?.chatId ??
+    u?.uid ??
+    ''
+  ).trim();
+}
+
 async function loadTgAvatar(){
+  const u = state?.user || null;
+  const uid = getTelegramUserId(u);
+  if (!uid) return; // нет tg-id — не пытаемся грузить
+
+  const box = document.getElementById('avatarBox');
+  const img = document.getElementById('tgAvatar');
+  const fallback = document.getElementById('avatarFallback');
+
+  // безопасный фолбэк на случай ошибки картинки (403/404 и т.п.)
+  if (img && !img._evliseErrorBound) {
+    img._evliseErrorBound = true;
+    img.addEventListener('error', () => {
+      img.hidden = true;
+      if (fallback) fallback.hidden = false;
+      box?.classList.remove('has-img');
+    });
+  }
+
+  // 1) отрисуем кеш немедленно (если есть)
+  const cached = readCachedAvatar();
+  if (cached){
+    if (img){ img.src = cached; img.hidden = false; }
+    if (fallback) fallback.hidden = true;
+    box?.classList.add('has-img');
+  }
+
+  // 2) подтянем актуальный url у функции (если другой — обновим)
   try{
-    const uid = state?.user?.id || null;
-    if (!uid) return;
-
-    const box = document.getElementById('avatarBox');
-    const img = document.getElementById('tgAvatar');
-    const fallback = document.getElementById('avatarFallback');
-
-    // 1) сначала попробуем кеш
-    const cached = readCachedAvatar();
-    if (cached){
-      if (img){ img.src = cached; img.hidden = false; }
-      if (fallback) fallback.hidden = true;
-      box?.classList.add('has-img');
-    }
-
-    // 2) затем пробуем получить актуальный url (обновит, если фото поменялось)
     const fresh = await fetchTgAvatarUrl(uid);
     if (fresh && fresh !== cached){
       cacheAvatar(fresh);
@@ -115,20 +138,16 @@ async function loadTgAvatar(){
       if (fallback) fallback.hidden = true;
       box?.classList.add('has-img');
     }
-
-    // если фото отсутствует
     if (!fresh && !cached){
       if (img) img.hidden = true;
       if (fallback) fallback.hidden = false;
       box?.classList.remove('has-img');
     }
   }catch{
-    // фолбэк буквой
-    const img = document.getElementById('tgAvatar');
-    const fallback = document.getElementById('avatarFallback');
+    // молча откатимся к букве
     if (img) img.hidden = true;
     if (fallback) fallback.hidden = false;
-    document.getElementById('avatarBox')?.classList.remove('has-img');
+    box?.classList.remove('has-img');
   }
 }
 
@@ -230,13 +249,12 @@ export function renderAccount(){
     openExternal(OP_CHAT_URL);
   });
 
-  // подгружаем аватар (и обновляем, если он изменился в Telegram)
-  if (u?.id) {
+  // подгружаем аватар (и обновляем при возврате на вкладку)
+  if (getTelegramUserId(u)) {
     loadTgAvatar();
-    // при возврате в вкладку — переобновить (на случай, если юзер поменял аватар и вернулся)
     document.addEventListener('visibilitychange', ()=>{
       if (!document.hidden) loadTgAvatar();
-    }, { once:false });
+    });
   }
 
   // на случай мгновенного перехода по ссылкам из аккаунта — ещё раз фиксируем вкладку

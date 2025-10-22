@@ -18,24 +18,24 @@ const WEBAPP_URL = process.env.WEBAPP_URL || '';
 const WELCOME_ASSET_PATH = (process.env.WELCOME_ASSET_PATH || 'assets/images/welcome_v2-min.jpg').replace(/^\/+/, '');
 const STATS_KEY = 'stats_miniapp_open.json';
 
-// ▼ Приветственный текст по умолчанию (HTML-разметка + эмодзи)
-const WELCOME_TEXT = process.env.WELCOME_TEXT || `
-👋 Добро пожаловать в <b>EVLISE OUTLET</b> — онлайн-магазин одежды в Узбекистане.<br>
+// ▼ Приветственный текст по умолчанию (чистый HTML + эмодзи; переносы — \n)
+const WELCOME_TEXT = (process.env.WELCOME_TEXT || `
+👋 Добро пожаловать в <b>EVLISE OUTLET</b> — онлайн-магазин одежды в Узбекистане.
 <i>С 2024 года делаем покупки прозрачными и выгодными.</i>
 
 <b>Что вас ждёт:</b>
-• <b>Отслеживание заказов</b> — все этапы в одном месте 📦<br>
-• <b>Кэшбек баллами</b> — оплачивайте часть следующих покупок 💸<br>
-• <b>Реферальная программа</b> — делитесь ссылкой и копите бонусы 🤝<br>
-• <b>Умный подбор размера</b> — подскажем комфортную посадку 📏<br>
-• <b>Избранное</b> — сохраняйте находки, чтобы не потерять ⭐<br>
+• <b>Отслеживание заказов</b> — все этапы в одном месте 📦
+• <b>Кэшбек баллами</b> — оплачивайте часть следующих покупок 💸
+• <b>Реферальная программа</b> — делитесь ссылкой и копите бонусы 🤝
+• <b>Умный подбор размера</b> — подскажем комфортную посадку 📏
+• <b>Избранное</b> — сохраняйте находки, чтобы не потерять ⭐
 • <b>Реальные фото</b> — смотрите вещи «как есть» 📸
 
 <i>Здесь вы сразу видите статус заказа, получаете кэшбек, приглашаете друзей и экономите.
 Сохраняйте любимые модели в «Избранное» и выбирайте уверенно.</i>
 
 <b>Готовы подобрать идеальный образ?</b> ✨
-`.trim();
+`).trim();
 
 if (!TOKEN) throw new Error('TG_BOT_TOKEN is required');
 
@@ -70,13 +70,20 @@ async function tg(method, payload) {
   }
   return data.result;
 }
-async function safeSend(method, base) {
+
+/**
+ * Безопасная отправка с опциональным «откатом» parse_mode.
+ * Если noFallback=true — НЕ снимаем parse_mode при ошибках разметки (важно для welcome HTML).
+ */
+async function safeSend(method, base, { noFallback = false } = {}) {
   try { return await tg(method, base); }
   catch (e) {
-    const m = String(e?.message || '');
-    if (m.includes('parse entities') || m.includes('Wrong entity')) {
-      const copy = { ...base }; delete copy.parse_mode;
-      return tg(method, copy);
+    if (!noFallback) {
+      const m = String(e?.message || '');
+      if (m.includes('parse entities') || m.includes('Wrong entity')) {
+        const copy = { ...base }; delete copy.parse_mode;
+        return tg(method, copy);
+      }
     }
     throw e;
   }
@@ -144,10 +151,10 @@ function buildPostFromMessage(msg) {
   const body = hasPhoto || hasVideo ? caption : text;
   const reply_markup = parseButtonsFromText(body);
 
+  // Для свободных постов админа оставляем MarkdownV2 (исторически так удобнее).
   if (hasPhoto) {
     const largest = msg.photo[msg.photo.length - 1];
     return { type: 'photo', payload: { photo: largest.file_id, caption: body || undefined, parse_mode: 'MarkdownV2', disable_notification: false, reply_markup } };
-    // Для свободных постов админа оставляем MarkdownV2 как было.
   }
   if (hasVideo) {
     return { type: 'video', payload: { video: msg.video.file_id, caption: body || undefined, parse_mode: 'MarkdownV2', disable_notification: false, reply_markup } };
@@ -211,36 +218,47 @@ function welcomeKeyboard() {
     : undefined;
 }
 function resolveAssetUrl(relPath) {
-  // Абсолютный URL сайта (production/staging), без хвостового слэша
   const base = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/, '');
   if (!base) return null;
   return `${base}/${relPath.replace(/^\/+/, '')}`;
 }
+function normalizeTelegramHtml(s=''){
+  return String(s)
+    .replace(/\r\n?/g, '\n')
+    .replace(/<br\s*\/?>/gi, '\n');
+}
 async function sendWelcome(chatId) {
   const photoUrl = resolveAssetUrl(WELCOME_ASSET_PATH);
   const CAPTION_LIMIT = 1024;
-  const needsSplit = (WELCOME_TEXT || '').length > CAPTION_LIMIT;
+  const textHtml = normalizeTelegramHtml(WELCOME_TEXT);
+  const needsSplit = (textHtml || '').length > CAPTION_LIMIT;
 
   if (photoUrl) {
-    const caption = needsSplit ? '👋 Добро пожаловать в <b>EVLISE OUTLET</b>' : WELCOME_TEXT;
+    const caption = needsSplit ? '👋 Добро пожаловать в <b>EVLISE OUTLET</b>' : textHtml;
     await safeSend('sendPhoto', {
       chat_id: chatId,
       photo: photoUrl,
       caption,
       parse_mode: 'HTML',
       reply_markup: welcomeKeyboard()
-    });
+    }, { noFallback: true });
+
     if (needsSplit) {
-      await safeSend('sendMessage', { chat_id: chatId, text: WELCOME_TEXT, parse_mode: 'HTML' });
+      await safeSend('sendMessage', {
+        chat_id: chatId,
+        text: textHtml,
+        parse_mode: 'HTML'
+      }, { noFallback: true });
     }
     return;
   }
+
   await safeSend('sendMessage', {
     chat_id: chatId,
-    text: WELCOME_TEXT,
+    text: textHtml,
     parse_mode: 'HTML',
     reply_markup: welcomeKeyboard()
-  });
+  }, { noFallback: true });
 }
 
 /* ---------------- Stats helper ---------------- */
@@ -266,7 +284,6 @@ function formatStatsText(stats, daysWindow = 14, topTags = 20) {
     lines.push(`\nПо меткам: пока нет данных`);
   }
 
-  // последние N дней, по убыванию даты
   const days = Object.keys(byDay).sort().slice(-daysWindow);
   if (days.length) {
     lines.push(`\nПоследние ${days.length} дней:`);
@@ -484,9 +501,8 @@ export default async function handler(req) {
       }
 
       if (text.startsWith('/stats')) {
-        // возможно: /stats 30 — окно в 30 дней
         const parts = text.split(/\s+/).filter(Boolean);
-        const days = Math.max(1, Math.min(60, Number(parts[1]) || 14)); // от 1 до 60 дней
+        const days = Math.max(1, Math.min(60, Number(parts[1]) || 14)); // 1..60
         const stats = await readJSON(store, STATS_KEY, null);
         const out = stats ? formatStatsText(stats, days, 20) : 'Пока нет данных по открытиям Mini App.';
         await tg('sendMessage', {
