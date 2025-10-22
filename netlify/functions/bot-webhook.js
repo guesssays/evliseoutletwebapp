@@ -18,7 +18,7 @@ const WEBAPP_URL = process.env.WEBAPP_URL || '';
 const WELCOME_ASSET_PATH = (process.env.WELCOME_ASSET_PATH || 'assets/images/welcome_v2-min.jpg').replace(/^\/+/, '');
 const STATS_KEY = 'stats_miniapp_open.json';
 
-// ▼ Приветственный текст по умолчанию (чистый HTML + эмодзи; переносы — \n)
+// ▼ Приветственный текст по умолчанию
 const WELCOME_TEXT = (process.env.WELCOME_TEXT || `
 👋 Добро пожаловать в <b>EVLISE OUTLET</b> — онлайн-магазин одежды в Узбекистане.
 <i>С 2024 года делаем покупки прозрачными и выгодными.</i>

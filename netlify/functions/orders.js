@@ -5,10 +5,6 @@
 //
 // Поведение: в продакшене, если Netlify Blobs временно недоступны — возвращаем 503,
 // чтобы клиент НЕ обнулял локальный кэш и не «терял» заказы.
-//
-// ❗Дополнительно:
-//   • Автоподтверждение кэшбэка через 24ч выполняет scheduled-function `auto-accrual.js`.
-//   • Здесь сохраняем/читаем поле `accrualConfirmedAt`, чтобы крон не дублировал подтверждения.
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 const ALLOW_MEMORY_FALLBACK = String(process.env.ALLOW_MEMORY_FALLBACK || '').trim() === '1';
@@ -137,7 +133,7 @@ export async function handler(event) {
       const reason = String(body.reason || '');
       const o = await store.cancel(id, reason);
 
-      // ▼ сервисные вызовы лояльности (мягко, не ломаем ответ, если что-то пойдёт не так)
+      // ▼ сервисные вызовы лояльности
       if (o && o.userId) {
         try {
           await callLoyalty('finalizeredeem', { uid: String(o.userId), orderId: String(o.id), action: 'cancel' });
@@ -155,15 +151,11 @@ export async function handler(event) {
       const status = String(body.status || '');
       const o = await store.status(id, status);
 
-      // ✅ Мгновенное подтверждение кэшбэка при «выдан».
-      // Крон `auto-accrual.js` дополнительно подтвердит старые заказы ≥24ч.
+      // ✅ подтверждаем кэшбек при «выдан» (плюс пометка, чтобы крон не дублировал)
       if (o && o.userId && status === 'выдан') {
         try {
           await callLoyalty('confirmaccrual', { uid: String(o.userId), orderId: String(o.id) });
-          // отметим, что подтверждение сделано (чтобы крон не делал повторно)
-          try {
-            await store.markAccrualConfirmed(String(o.id));
-          } catch {}
+          try { await store.markAccrualConfirmed(String(o.id)); } catch {}
         } catch (e) {
           console.warn('[orders] loyalty.confirmaccrual failed:', e?.message || e);
         }
@@ -300,8 +292,6 @@ function makeStoreCore(readAll, writeAll){
         createdAt: order.createdAt ?? now,
         currency: order.currency || 'UZS',
         history: order.history ?? [{ ts: now, status: initialStatus }],
-        // поле для крона/онлайн-подтверждения
-        accrualConfirmedAt: order.accrualConfirmedAt ?? null,
       };
       list.unshift(next);
       await writeAll(list);

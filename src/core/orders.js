@@ -12,7 +12,7 @@ import {
   loyaltyVoidAccrualFor,                         // ⬅ НОВОЕ: погасить pending-начисления по заказу
 } from './loyalty.js';
 
-// ▼ Бот-уведомления (добавили вызов со shortId)
+// ▼ Бот-уведомления (со shortId)
 import { notifyStatusChanged } from './botNotify.js';
 
 const KEY = 'nas_orders';
@@ -108,7 +108,7 @@ export const STATUS_LABELS = {
   'забран с почты':        'Получен с почты',
   'выдан':                 'Выдан',
   'отменён':               'Отменён',
-  // подстрахуемся, если где-то обращение идёт напрямую без canonStatus:
+  // подстрахуемся
   'отменен':               'Отменён',
 };
 
@@ -182,16 +182,15 @@ export async function addOrder(order){
 
   const next = normalizeOrder({
     id: idLocal,
+    shortId: order.shortId ?? order.code ?? null,   // ⬅️ сохраняем короткий номер и на клиенте
     userId: safeUserId,
-    // ⬇⬇⬇ ВАЖНО: сохраняем короткий ID, если он уже есть
-    shortId: order.shortId ?? order.code ?? null,
     username: order.username ?? '',
     productId: order.productId ?? null,
     size: order.size ?? null,
     color: order.color ?? null,
     link: order.link ?? (order.productId ? `#/product/${order.productId}` : ''),
     cart: Array.isArray(order.cart) ? order.cart : [],
-    total: Number(order.total || 0), // ВНИМАНИЕ: это "к оплате" (после списания)
+    total: Number(order.total || 0), // к оплате (после списания)
     address: typeof order.address === 'string' ? order.address : (order.address?.address || ''),
     phone: order.phone ?? '',
     payerFullName: order.payerFullName ?? '',
@@ -292,7 +291,7 @@ export async function cancelOrder(orderId, reason = ''){
     saveOrders(list);
   }
 
-  // ▼ НОВОЕ: корректное гашение лояльности именно по UID покупателя (а не текущего администратора)
+  // ▼ корректное гашение лояльности именно по UID покупателя
   try {
     const list = getOrdersLocal();
     const cur  = list.find(o => String(o.id) === String(orderId));
@@ -304,7 +303,7 @@ export async function cancelOrder(orderId, reason = ''){
       // 2) Погасить pending-начисления (покупатель + реферер — на бэке)
       try { await loyaltyVoidAccrualFor(uid, orderId); } catch {}
     } else {
-      // безопасный фолбэк — откат по текущему пользователю
+      // фолбэк — откат по текущему пользователю
       try { await loyaltyFinalizeRedeem(orderId, 'cancel'); } catch {}
     }
   } catch {}
@@ -348,6 +347,15 @@ export async function updateOrderStatus(orderId, status){
     updatedOrder = o;
   }
 
+  // ▼ Бот-уведомление со shortId
+  try {
+    notifyStatusChanged(null, {
+      orderId: updatedOrder?.id,
+      shortId: updatedOrder?.shortId ?? null,
+      title: updatedOrder?.cart?.[0]?.title || updatedOrder?.title || ''
+    });
+  } catch {}
+
   // ▼ При выдаче — коммитим резервы и подтверждаем начисления ДЛЯ ПОКУПАТЕЛЯ
   if (stCanon === 'выдан'){
     const uid = String(updatedOrder?.userId || '');
@@ -355,25 +363,11 @@ export async function updateOrderStatus(orderId, status){
       try { await loyaltyFinalizeRedeemFor(uid, orderId, 'commit'); } catch {}
       try { await loyaltyConfirmAccrualFor(uid, orderId); } catch {}
     }else{
-      // безопасный фолбэк (на случай отсутствия uid) — по текущему пользователю
+      // безопасный фолбэк
       try { await loyaltyFinalizeRedeem(orderId, 'commit'); } catch {}
       try { await loyaltyConfirmAccrual(orderId); } catch {}
     }
   }
-
-  // ▼ Уведомление в бота о смене статуса (с коротким номером)
-  try {
-    const chatId = String(updatedOrder?.userId || '');
-    const shortId = String(updatedOrder?.shortId || updatedOrder?.code || '');
-    const title = updatedOrder?.cart?.[0]?.title || updatedOrder?.title || '';
-    if (chatId) {
-      await notifyStatusChanged(chatId, {
-        orderId: String(updatedOrder.id),
-        shortId, // ← важное поле для короткого номера
-        title
-      });
-    }
-  } catch {}
 
   saveOrders(getOrdersLocal());
 }

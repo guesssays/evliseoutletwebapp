@@ -30,7 +30,7 @@ export async function renderNotifications(onAfterMarkRead){
   // 2) отмечаем прочитанными: сперва сервер, затем локальный кэш
   if (list.some(n=>!n.read)){
     await markAllServerSafe().catch(()=>{});
-    const updated = list.map(n=> ({...n, read:true}));
+    const updated = list.map(n=> ({ ...n, read:true })); // ✅ фикс синтаксиса
     setList(updated);
     onAfterMarkRead && onAfterMarkRead();
   }
@@ -65,29 +65,44 @@ async function fetchServerListSafe(){
   const j = await r.json().catch(()=> ({}));
   if (!r.ok || j?.ok === false) return null;
   const items = Array.isArray(j.items) ? j.items : [];
-  setList(items); // синхронизируем локальный кэш
-  return items;
+  // подстрахуемся от мусора
+  const norm = items.map(n => ({
+    id: String(n.id || Date.now()),
+    ts: Number(n.ts || Date.now()),
+    read: !!n.read,
+    icon: String(n.icon || 'bell'),
+    title: String(n.title || ''),
+    sub: String(n.sub || ''),
+  }));
+  setList(norm);
+  return norm;
 }
 
 async function markAllServerSafe(){
   const uid = getUID();
   if (!uid) return;
-  await fetch(ENDPOINT, {
-    method:'POST',
-    headers:{ 'Content-Type': 'application/json' },
-    body: JSON.stringify({ op:'markAll', uid })
-  }).catch(()=>{});
+  try{
+    await fetch(ENDPOINT, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ op:'markAll', uid })
+    });
+  }catch{}
 }
 
-/* ===== per-user local storage (fallback) ===== */
-const KEY = 'nas_notifications';
+/* ===== local cache ===== */
+function key(){ return k('notifs_list'); }
 function getList(){
-  try{ return JSON.parse(localStorage.getItem(k(KEY)) || '[]'); }catch{ return []; }
+  try{ return JSON.parse(localStorage.getItem(key()) || '[]'); }catch{ return []; }
 }
-function setList(arr){
-  localStorage.setItem(k(KEY), JSON.stringify(Array.isArray(arr)?arr:[]));
+function setList(list){
+  localStorage.setItem(key(), JSON.stringify(Array.isArray(list) ? list : []));
 }
 
-function escapeHtml(s=''){
-  return s.replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+/* ===== helpers ===== */
+function escapeHtml(s){
+  return String(s || '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
 }

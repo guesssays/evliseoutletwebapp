@@ -75,12 +75,12 @@ const TYPE_IMG = {
 };
 
 /** Короткий отображаемый номер заказа:
- *  1) если передан shortId — используем его
+ *  1) если передан shortId — используем его (в верхнем регистре)
  *  2) иначе fallback: последние 6 символов от полного id (в верхнем регистре)
  */
 function makeDisplayOrderId(orderId, shortId){
   const s = (shortId || '').toString().trim();
-  if (s) return s;
+  if (s) return s.toUpperCase();
   const full = (orderId || '').toString().trim();
   if (!full) return '';
   return full.slice(-6).toUpperCase();
@@ -175,6 +175,7 @@ export async function handler(event) {
 
     let finalText;
     if (typeof text === 'string' && text.trim()){
+      // если text уже задан — используем его как есть (не добавляем id второй раз)
       finalText = text.trim();
     } else {
       switch (type) {
