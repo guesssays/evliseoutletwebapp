@@ -45,6 +45,29 @@ function buildCorsHeaders(origin) {
   };
 }
 
+/* ====== SERVER→TG УВЕДОМЛЕНИЯ (новое) ====== */
+/** Безопасная отправка уведомления в нашу serverless-функцию /notify */
+async function fireAndForgetNotify(chatId, type, extra = {}) {
+  try {
+    const id = String(chatId || '').trim();
+    if (!/^\d+$/.test(id)) return; // только валидные Telegram chat_id
+
+    // абсолютный URL для прода; на превью/локали можно оставить относительный
+    const base = (process.env.URL || '').replace(/\/+$/, '');
+    const url  = base ? `${base}/.netlify/functions/notify` : '/.netlify/functions/notify';
+
+    const payload = { chat_id: id, type, ...extra };
+
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch {
+    // не ломаем основной флоу
+  }
+}
+
 async function getStoreSafe() {
   try{
     const { getStore } = await import('@netlify/blobs');
@@ -135,6 +158,12 @@ function makeCore(readAll, writeAll){
       db.referrals.monthCount[key] = cnt + 1;
 
       await writeAll(db);
+
+      // 🔔 Серверное уведомление инвайтеру: «Новый реферал»
+      fireAndForgetNotify(inviter, 'referralJoined', {
+        text: '🎉 Новый реферал! Зайдите в «Аккаунт → Рефералы».'
+      });
+
       return { ok:true };
     },
 
@@ -157,6 +186,13 @@ function makeCore(readAll, writeAll){
         const ptsR = Math.floor(total * CFG.REFERRER_EARN_RATE);
         ref.pending += ptsR;
         addHist(ref, { kind:'ref_accrue', orderId, from:uid, pts:ptsR, info:'Реферальное начисление 5% (ожидает 24ч)' });
+
+        // 🔔 Уведомление инвайтеру: «Заказ реферала — начислены 5% (pending)»
+        if (ptsR > 0) {
+          fireAndForgetNotify(inviter, 'referralOrderCashback', {
+            text: `💸 Заказ реферала: начислено ${ptsR} баллов (ожидает подтверждения).`
+          });
+        }
       }
 
       // помечаем «у реферала был первый платный заказ» (чтобы второй уже не был x2)
@@ -233,6 +269,13 @@ function makeCore(readAll, writeAll){
         buyer.pending -= (ord.accrual?.buyer||0);
         buyer.available += (ord.accrual?.buyer||0);
         addHist(buyer, { kind:'confirm', orderId, pts:+(ord.accrual?.buyer||0), info:'Начисление подтверждено' });
+
+        // 🔔 Покупателю: «Кэшбек дозрел»
+        if ((ord.accrual?.buyer||0) > 0) {
+          fireAndForgetNotify(ord.uid, 'cashbackMatured', {
+            text: `✅ Кэшбек по заказу #${orderId}: ${ord.accrual.buyer} баллов доступны к оплате.`
+          });
+        }
       }
 
       // реферер
@@ -242,6 +285,13 @@ function makeCore(readAll, writeAll){
           ref.pending -= (ord.accrual?.refPts||0);
           ref.available += (ord.accrual?.refPts||0);
           addHist(ref, { kind:'ref_confirm', orderId, pts:+(ord.accrual?.refPts||0), info:'Реферальное подтверждено' });
+
+          // 🔔 Инвайтеру: «Реферальные баллы подтверждены»
+          if ((ord.accrual?.refPts||0) > 0) {
+            fireAndForgetNotify(ord.accrual.inviter, 'cashbackMatured', {
+              text: `✅ Реферальные баллы по заказу #${orderId}: ${ord.accrual.refPts} подтверждены.`
+            });
+          }
         }
       }
 
