@@ -1,38 +1,44 @@
 // src/core/loyaltyAdmin.js
-// Клиент для админ-операций лояльности. Требует, чтобы сервер узнавал админа по initData.
+// Вызовы админских операций к лояльности (server-side only endpoints).
 
-function getTgInitDataRaw(){
-  try { return window?.Telegram?.WebApp?.initData || ''; } catch { return ''; }
-}
-
-const API = '/.netlify/functions/loyalty';
-
-async function call(op, body = {}){
-  const r = await fetch(API, {
+export async function adminCalc(orderId){
+  const r = await fetch('/.netlify/functions/loyalty', {
     method:'POST',
     headers:{
       'Content-Type':'application/json',
-      'X-Tg-Init-Data': getTgInitDataRaw(),
+      'X-Internal-Auth': window?.ENV?.ADMIN_API_TOKEN || '' // если прокинут через инжект, иначе на прокси-функции
     },
-    body: JSON.stringify({ op, ...body })
+    body: JSON.stringify({ op:'admincalc', orderId:String(orderId) })
   });
   const j = await r.json().catch(()=> ({}));
-  if (!r.ok || j?.ok === false) throw new Error(j?.error || j?.reason || 'loyalty admin api error');
-  return j;
-}
-
-// ▼ используется в Admin.js
-export async function adminCalc(orderId){
-  const { calc } = await call('adminCalc', { orderId:String(orderId) });
-  return calc || null;
+  if (!r.ok || j?.ok===false) return null;
+  return j.calc || null;
 }
 
 export async function getBalance(uid){
-  const { balance } = await call('getBalance', { uid:String(uid) });
-  return balance || { available:0, pending:0, history:[] };
+  const r = await fetch('/.netlify/functions/loyalty', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'X-Internal-Auth': window?.ENV?.ADMIN_API_TOKEN || ''
+    },
+    body: JSON.stringify({ op:'getbalance', uid:String(uid) })
+  });
+  const j = await r.json().catch(()=> ({}));
+  if (!r.ok || j?.ok===false) return null;
+  return j.balance || null;
 }
 
 export async function confirmAccrual(uid, orderId){
-  const { ok } = await call('confirmAccrualFor', { uid:String(uid), orderId:String(orderId) });
-  return ok === true;
+  const r = await fetch('/.netlify/functions/loyalty', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'X-Internal-Auth': window?.ENV?.ADMIN_API_TOKEN || ''
+    },
+    body: JSON.stringify({ op:'confirmaccrual', uid:String(uid), orderId:String(orderId) })
+  });
+  const j = await r.json().catch(()=> ({}));
+  if (!r.ok || j?.ok===false) throw new Error(j?.error||'confirm failed');
+  return true;
 }

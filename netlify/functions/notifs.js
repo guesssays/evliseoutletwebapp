@@ -1,11 +1,9 @@
 // netlify/functions/notifs.js
-// Хранилище уведомлений per-user. Запись/mark — только сервер (internal-token).
-// Чтение списка — только владелец (валидный initData).
+// Хранилище уведомлений per-user.
+// Чтение списка — владелец (валидный initData).
+// Запись/mark — либо сервер (internal-token), либо владелец через op=markSeen/markMine.
 //
-// ENV:
-//   TG_BOT_TOKEN
-//   ADMIN_API_TOKEN
-//   ALLOWED_ORIGINS
+// ENV: TG_BOT_TOKEN, ADMIN_API_TOKEN, ALLOWED_ORIGINS
 
 import crypto from 'node:crypto';
 
@@ -22,13 +20,10 @@ function buildCorsHeaders(origin, isInternal=false){
   const allowed = parseAllowed();
   const allow = isInternal || !allowed.length || isTelegramOrigin(origin) || allowed.some(rule=>originMatches(origin, rule));
   return {
-    headers: {
-      'Access-Control-Allow-Origin': allow ? (origin||'*') : 'null',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Internal-Auth',
-      'Vary': 'Origin',
-    },
-    isAllowed: allow
+    'Access-Control-Allow-Origin': allow ? (origin||'*') : 'null',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Internal-Auth',
+    'Vary': 'Origin',
   };
 }
 
@@ -42,19 +37,14 @@ function isInternalCall(event){
   return t && process.env.ADMIN_API_TOKEN && t===process.env.ADMIN_API_TOKEN;
 }
 function verifyTgInitData(raw){
-  const token = process.env.TG_BOT_TOKEN||'';
-  if (!token) throw new Error('TG_BOT_TOKEN not set');
-  const params = new URLSearchParams(String(raw||''));
-  const hash = params.get('hash'); if (!hash) throw new Error('no hash');
-  const pairs=[];
-  for (const [k,v] of params.entries()){ if (k==='hash') continue; pairs.push(`${k}=${v}`); }
-  pairs.sort();
+  const token = process.env.TG_BOT_TOKEN||''; if (!token) throw new Error('TG_BOT_TOKEN not set');
+  const params = new URLSearchParams(String(raw||'')); const hash=params.get('hash'); if (!hash) throw new Error('no hash');
+  const pairs=[]; for (const [k,v] of params.entries()){ if (k==='hash') continue; pairs.push(`${k}=${v}`); } pairs.sort();
   const dataCheckString = pairs.join('\n');
   const secretKey = crypto.createHash('sha256').update(token).digest();
   const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
   if (hmac !== hash) throw new Error('bad signature');
-  const user = JSON.parse(params.get('user')||'{}');
-  if (!user?.id) throw new Error('no user');
+  const user = JSON.parse(params.get('user')||'{}'); if (!user?.id) throw new Error('no user');
   return { uid: String(user.id) };
 }
 
@@ -104,10 +94,10 @@ function makeStoreCore(read, write){
 export async function handler(event){
   const origin = event.headers?.origin || event.headers?.Origin || '';
   const internal = isInternalCall(event);
-  const { headers } = buildCorsHeaders(origin, internal);
+  const cors = buildCorsHeaders(origin, internal);
 
-  if (event.httpMethod === 'OPTIONS') return { statusCode:204, ...headers };
-  if (!['GET','POST'].includes(event.httpMethod)) return { statusCode:405, body:'Method Not Allowed', ...headers };
+  if (event.httpMethod === 'OPTIONS') return { statusCode:204, headers:cors };
+  if (!['GET','POST'].includes(event.httpMethod)) return { statusCode:405, headers:cors, body:'Method Not Allowed' };
 
   try {
     const store = await getStoreSafe();
@@ -118,40 +108,53 @@ export async function handler(event){
       const { uid } = verifyTgInitData(rawInit);
       const op  = String(event.queryStringParameters?.op || 'list').toLowerCase();
       const targetUid = String(event.queryStringParameters?.uid || '').trim();
-      if (!targetUid || targetUid!==uid) return { statusCode:403, body:'forbidden', ...headers };
+      if (!targetUid || targetUid!==uid) return { statusCode:403, headers:cors, body:'forbidden' };
 
       if (op === 'list') {
         const items = await store.list(uid);
-        return { statusCode:200, body: JSON.stringify({ ok:true, items }), ...headers };
+        return { statusCode:200, headers:cors, body: JSON.stringify({ ok:true, items }) };
       }
-      return { statusCode:400, body: JSON.stringify({ ok:false, error:'unknown op' }), ...headers };
+      return { statusCode:400, headers:cors, body: JSON.stringify({ ok:false, error:'unknown op' }) };
     }
 
-    // POST: запись/mark — только internal
-    if (!internal) return { statusCode:403, body: JSON.stringify({ ok:false, error:'forbidden' }), ...headers };
-
+    // POST
     const body = JSON.parse(event.body || '{}') || {};
     const op  = String(body.op || '').toLowerCase();
-    const uid = String(body.uid || '').trim();
-    if (!uid) return { statusCode:400, body: JSON.stringify({ ok:false, error:'uid required' }), ...headers };
 
-    if (op === 'add') {
-      const { id, items } = await store.add(uid, body.notif || {});
-      return { statusCode:200, body: JSON.stringify({ ok:true, id, items }), ...headers };
-    }
-    if (op === 'markall') {
-      const items = await store.markAll(uid);
-      return { statusCode:200, body: JSON.stringify({ ok:true, items }), ...headers };
-    }
-    if (op === 'mark') {
-      const ids = Array.isArray(body.ids) ? body.ids : [];
-      const items = await store.mark(uid, ids);
-      return { statusCode:200, body: JSON.stringify({ ok:true, items }), ...headers };
+    // --- 1) ДЕЙСТВИЯ ОТ СЕРВЕРА (internal-token) ---
+    if (internal) {
+      const uid = String(body.uid || '').trim();
+      if (!uid) return { statusCode:400, headers:cors, body: JSON.stringify({ ok:false, error:'uid required' }) };
+      if (op === 'add') {
+        const { id, items } = await store.add(uid, body.notif || {});
+        return { statusCode:200, headers:cors, body: JSON.stringify({ ok:true, id, items }) };
+      }
+      if (op === 'markall') {
+        const items = await store.markAll(uid);
+        return { statusCode:200, headers:cors, body: JSON.stringify({ ok:true, items }) };
+      }
+      if (op === 'mark') {
+        const ids = Array.isArray(body.ids) ? body.ids : [];
+        const items = await store.mark(uid, ids);
+        return { statusCode:200, headers:cors, body: JSON.stringify({ ok:true, items }) };
+      }
+      return { statusCode:400, headers:cors, body: JSON.stringify({ ok:false, error:'unknown op' }) };
     }
 
-    return { statusCode:400, body: JSON.stringify({ ok:false, error:'unknown op' }), ...headers };
+    // --- 2) ДЕЙСТВИЯ ОТ ПОЛЬЗОВАТЕЛЯ (initData): СНИМАЕМ НЕПРОЧИТАННОЕ ---
+    if (op === 'markseen' || op === 'markmine') {
+      const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
+      const { uid } = verifyTgInitData(rawInit);
+      const targetUid = String(body.uid || '').trim();
+      if (!targetUid || targetUid !== uid) return { statusCode:403, headers:cors, body: JSON.stringify({ ok:false, error:'forbidden' }) };
+      const ids = Array.isArray(body.ids) ? body.ids : null;
+      const items = ids?.length ? await store.mark(uid, ids) : await store.markAll(uid);
+      return { statusCode:200, headers:cors, body: JSON.stringify({ ok:true, items }) };
+    }
+
+    return { statusCode:403, headers:cors, body: JSON.stringify({ ok:false, error:'forbidden' }) };
   } catch (e) {
     console.error('[notifs] handler error:', e);
-    return { statusCode:500, body: JSON.stringify({ ok:false, error:String(e) }), ...headers };
+    return { statusCode:500, headers:cors, body: JSON.stringify({ ok:false, error:String(e) }) };
   }
 }

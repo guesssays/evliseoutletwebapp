@@ -1,19 +1,13 @@
 // netlify/functions/orders.js
-// Централизованное хранилище заказов (Netlify Blobs) + операции админа
-// ENV: TG_BOT_TOKEN, ADMIN_CHAT_ID (может быть список через запятую), WEBAPP_URL
-//      ALLOWED_ORIGINS (опц.), ALLOW_MEMORY_FALLBACK=1 (только для DEV)
-//      NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN
-//
-// Поведение: в продакшене, если Netlify Blobs временно недоступны — возвращаем 503,
-// чтобы клиент НЕ обнулял локальный кэш и не «терял» заказы.
+// Хранилище заказов + уведомления + связка с лояльностью.
+// ENV: TG_BOT_TOKEN, ADMIN_CHAT_ID, WEBAPP_URL, ADMIN_API_TOKEN,
+//      ALLOWED_ORIGINS, ALLOW_MEMORY_FALLBACK, NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN
 
 const IS_PROD =
   (process.env.CONTEXT === 'production') ||
   (process.env.NODE_ENV === 'production');
 
 const ALLOW_MEMORY_FALLBACK = String(process.env.ALLOW_MEMORY_FALLBACK || '').trim() === '1';
-
-// Явные креды для Blobs (если заданы — используем их).
 const SITE_ID = process.env.NETLIFY_BLOBS_SITE_ID || '';
 const TOKEN   = process.env.NETLIFY_BLOBS_TOKEN   || '';
 
@@ -33,11 +27,8 @@ function originMatches(origin, rule) {
   if (!rule || rule === '*') return true;
   if (!origin) return false;
   if (rule.startsWith('*.')) {
-    try {
-      const host = new URL(origin).hostname;
-      const suffix = rule.slice(1);
-      return host === rule.slice(2) || host.endsWith(suffix);
-    } catch { return false; }
+    try { const host = new URL(origin).hostname; const suffix = rule.slice(1); return host === rule.slice(2) || host.endsWith(suffix); }
+    catch { return false; }
   }
   return origin === rule;
 }
@@ -58,9 +49,12 @@ function buildCorsHeaders(origin) {
   };
 }
 
-/* ---------- helper для вызовов в loyalty ---------- */
+/* ---------- calls to internal functions ---------- */
+function baseUrl(){
+  return (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/,'');
+}
 async function callLoyalty(op, payload){
-  const base = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/,'');
+  const base = baseUrl();
   if (!base) throw new Error('no base URL for loyalty');
   const url = `${base}/.netlify/functions/loyalty`;
   const r = await fetch(url, {
@@ -75,6 +69,17 @@ async function callLoyalty(op, payload){
   const j = await r.json().catch(()=> ({}));
   if (!r.ok || j?.ok === false) throw new Error(j?.error || j?.reason || 'loyalty error');
   return j;
+}
+async function callNotify(payload){
+  const base = baseUrl(); if (!base) return;
+  await fetch(`${base}/.netlify/functions/notify`, {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'X-Internal-Auth': process.env.ADMIN_API_TOKEN || ''
+    },
+    body: JSON.stringify(payload)
+  }).catch(()=>{});
 }
 
 /* ---------------- Netlify Function ---------------- */
@@ -95,7 +100,7 @@ export async function handler(event) {
   let store;
   let storeKind = 'blobs';
   try {
-    store = await getStoreSafe(); // Blobs или (в DEV) in-memory
+    store = await getStoreSafe();
     storeKind = store.__kind || 'blobs';
   } catch (e) {
     console.error('[orders] store init failed:', e?.message || e);
@@ -128,15 +133,41 @@ export async function handler(event) {
 
     if (op === 'add') {
       const id = await store.add(body.order || {});
-      try { await notifyAdminNewOrder(id, body.order); } catch (e) {
+      try {
+        await notifyAdminNewOrder(id, body.order);
+      } catch (e) {
         console.error('[orders] notifyAdminNewOrder error:', e);
       }
+      // уведомление покупателю — “оформлен”
+      try{
+        if (body.order?.userId) {
+          await callNotify({
+            chat_id: String(body.order.userId),
+            type: 'orderPlaced',
+            orderId: String(id),
+            shortId: body.order.shortId || body.order.code || null,
+            title: body.order?.cart?.[0]?.title || body.order?.title || ''
+          });
+        }
+      }catch(e){ console.warn('[orders] notify orderPlaced failed:', e?.message||e); }
       return ok({ id }, headers);
     }
 
     if (op === 'accept') {
       const id = String(body.id || '');
       const o = await store.accept(id);
+      // уведомление покупателю — “принят”
+      try{
+        if (o?.userId) {
+          await callNotify({
+            chat_id: String(o.userId),
+            type: 'orderAccepted',
+            orderId: String(o.id),
+            shortId: o.shortId || null,
+            title: o?.cart?.[0]?.title || o?.title || ''
+          });
+        }
+      }catch(e){ console.warn('[orders] notify orderAccepted failed:', e?.message||e); }
       return ok({ ok: !!o, order: o || null }, headers);
     }
 
@@ -145,14 +176,20 @@ export async function handler(event) {
       const reason = String(body.reason || '');
       const o = await store.cancel(id, reason);
 
-      // ▼ сервисные вызовы лояльности
       if (o && o.userId) {
+        // вернуть резервы и pending
+        try { await callLoyalty('finalizeredeem', { uid: String(o.userId), orderId: String(o.id), action: 'cancel' }); } catch(e){ console.warn('[orders] loyalty.finalizeredeem(cancel) failed:', e?.message||e); }
+        try { await callLoyalty('voidaccrual', { uid: String(o.userId), orderId: String(o.id) }); } catch(e){ console.warn('[orders] loyalty.voidaccrual failed:', e?.message||e); }
+        // уведомление покупателю — “отменён”
         try {
-          await callLoyalty('finalizeredeem', { uid: String(o.userId), orderId: String(o.id), action: 'cancel' });
-        } catch(e){ console.warn('[orders] loyalty.finalizeredeem(cancel) failed:', e?.message||e); }
-        try {
-          await callLoyalty('voidaccrual', { uid: String(o.userId), orderId: String(o.id) });
-        } catch(e){ console.warn('[orders] loyalty.voidaccrual failed:', e?.message||e); }
+          await callNotify({
+            chat_id: String(o.userId),
+            type: 'orderCanceled',
+            orderId: String(o.id),
+            shortId: o.shortId || null,
+            title: o?.cart?.[0]?.title || o?.title || ''
+          });
+        } catch(e){ console.warn('[orders] notify orderCanceled failed:', e?.message||e); }
       }
 
       return ok({ ok: !!o, order: o || null }, headers);
@@ -163,24 +200,32 @@ export async function handler(event) {
       const status = String(body.status || '');
       const o = await store.status(id, status);
 
-      // ✅ подтверждаем кэшбек при «выдан» (плюс пометка, чтобы крон не дублировал)
-      if (o && o.userId && status === 'выдан') {
-        try {
-          await callLoyalty('confirmaccrual', { uid: String(o.userId), orderId: String(o.id) });
-          try { await store.markAccrualConfirmed(String(o.id)); } catch {}
-        } catch (e) {
-          console.warn('[orders] loyalty.confirmaccrual failed:', e?.message || e);
+      if (o && o.userId) {
+        // подтверждение кэшбэка при “выдан”
+        if (status === 'выдан') {
+          try {
+            await callLoyalty('confirmaccrual', { uid: String(o.userId), orderId: String(o.id) });
+            try { await store.markAccrualConfirmed(String(o.id)); } catch {}
+          } catch (e) {
+            console.warn('[orders] loyalty.confirmaccrual failed:', e?.message || e);
+          }
         }
-      }
+        // при “отменён” — возвраты
+        if (status === 'отменён') {
+          try { await callLoyalty('finalizeredeem', { uid: String(o.userId), orderId: String(o.id), action: 'cancel' }); } catch(e){ console.warn('[orders] loyalty.finalizeredeem(cancel) failed (status):', e?.message||e); }
+          try { await callLoyalty('voidaccrual', { uid: String(o.userId), orderId: String(o.id) }); } catch(e){ console.warn('[orders] loyalty.voidaccrual failed (status):', e?.message||e); }
+        }
 
-      // ✅ при «отменён» — вернуть резерв и погасить pending
-      if (o && o.userId && status === 'отменён') {
+        // уведомление покупателю — “смена статуса”
         try {
-          await callLoyalty('finalizeredeem', { uid: String(o.userId), orderId: String(o.id), action: 'cancel' });
-        } catch(e){ console.warn('[orders] loyalty.finalizeredeem(cancel) failed (status):', e?.message||e); }
-        try {
-          await callLoyalty('voidaccrual', { uid: String(o.userId), orderId: String(o.id) });
-        } catch(e){ console.warn('[orders] loyalty.voidaccrual failed (status):', e?.message||e); }
+          await callNotify({
+            chat_id: String(o.userId),
+            type: 'statusChanged',
+            orderId: String(o.id),
+            shortId: o.shortId || null,
+            title: o?.cart?.[0]?.title || o?.title || ''
+          });
+        } catch(e){ console.warn('[orders] notify statusChanged failed:', e?.message||e); }
       }
 
       return ok({ ok: !!o, order: o || null }, headers);
@@ -193,31 +238,24 @@ export async function handler(event) {
   }
 }
 
-/* ---------------- Storage (Blobs v7 getStore) ---------------- */
+/* ---------------- Storage (Blobs v7) ---------------- */
 async function getStoreSafe(){
   try {
     const { getStore } = await import('@netlify/blobs');
-
-    // Явные креды имеют приоритет (устраняет "environment has not been configured" на рантайме)
     const store = (SITE_ID && TOKEN)
       ? getStore({ name: 'orders', siteID: SITE_ID, token: TOKEN })
-      : getStore('orders'); // авто-конфиг от Netlify
+      : getStore('orders');
 
-    // Жёсткая проверка R/W. Если Blobs паузятся — бросим исключение.
     const healthKey = '__health__';
     await store.setJSON(healthKey, { ts: Date.now() });
     await store.get(healthKey, { type: 'json', consistency: 'strong' });
 
-    console.log('[orders] Using Netlify Blobs via getStore',
-      SITE_ID && TOKEN ? '(explicit creds)' : '(auto)');
     return makeBlobsStore(store);
   } catch (e) {
     console.warn('[orders] Netlify Blobs not available:', e?.message || e);
-    // В проде не уходим в память (иначе обнулим историю).
     if (!ALLOW_MEMORY_FALLBACK || IS_PROD) {
       throw new Error('Persistent store unavailable');
     }
-    console.warn('[orders] Falling back to in-memory (DEV only).');
     return makeMemoryStore();
   }
 }
@@ -235,8 +273,6 @@ function makeBlobsStore(store){
 
   const core = makeStoreCore(readAll, writeAll);
   core.__kind = 'blobs';
-
-  // служебный метод — пометить подтверждение кэшбэка
   core.markAccrualConfirmed = async function(id){
     const list = await readAll();
     const i = list.findIndex(o => String(o.id) === String(id));
@@ -247,7 +283,6 @@ function makeBlobsStore(store){
     }
     return true;
   };
-
   return core;
 }
 
@@ -269,42 +304,28 @@ function makeMemoryStore(){
   return core;
 }
 
-/* ---------------- Store core (общая логика CRUD) ---------------- */
+/* ---------------- Store core ---------------- */
 function makeStoreCore(readAll, writeAll){
   function writeHistory(order, status, extra = {}) {
     const rec = { ts: Date.now(), status, ...extra };
     order.history = Array.isArray(order.history) ? [...order.history, rec] : [rec];
   }
   return {
-    async count(){
-      const arr = await readAll();
-      return Array.isArray(arr) ? arr.length : null;
-    },
-    async list(){
-      const arr = await readAll();
-      arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-      return arr;
-    },
-    async get(id){
-      const list = await readAll();
-      return list.find(o=>String(o.id)===String(id)) || null;
-    },
+    async count(){ const arr = await readAll(); return Array.isArray(arr) ? arr.length : null; },
+    async list(){ const arr = await readAll(); arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)); return arr; },
+    async get(id){ const list = await readAll(); return list.find(o=>String(o.id)===String(id)) || null; },
     async add(order){
       const list = await readAll();
-
       const shortId = order.shortId ?? order.code ?? null;
-
       const id = order.id ?? String(Date.now());
       const now = Date.now();
       const initialStatus = order.status ?? 'новый';
       const next = {
         id,
-        shortId, // короткий номер
+        shortId,
         userId: order.userId ?? null,
         username: order.username ?? '',
-        // ⬇️ сохраняем Telegram chat_id покупателя (если пришёл с клиента)
         chatId: order.chatId ?? null,
-
         productId: order.productId ?? null,
         size: order.size ?? null,
         color: order.color ?? null,
@@ -378,7 +399,7 @@ function makeStoreCore(readAll, writeAll){
   };
 }
 
-/* ---------------- Telegram admin notify (server-side, multi-admin) ---------------- */
+/* ---------------- Telegram admin notify ---------------- */
 async function notifyAdminNewOrder(id, order){
   const token = process.env.TG_BOT_TOKEN;
   const adminIds = String(process.env.ADMIN_CHAT_ID || '')
@@ -412,18 +433,15 @@ async function notifyAdminNewOrder(id, order){
   };
 
   try{
-    const results = await Promise.allSettled(
+    await Promise.allSettled(
       adminIds.map(chat_id =>
         fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ chat_id, ...payloadBase })
         })
-        .then(r => r.json())
       )
     );
-    const allFailed = results.every(r => r.status === 'rejected' || (r.value && r.value.ok === false));
-    if (allFailed) console.error('[orders] telegram notify failed for all admins:', results);
   }catch(e){
     console.error('[orders] telegram notify error:', e);
   }
@@ -432,6 +450,4 @@ async function notifyAdminNewOrder(id, order){
 /* ---------------- helpers ---------------- */
 function ok(json, headers){ return { statusCode:200, body: JSON.stringify({ ok:true, ...json }), ...headers }; }
 function bad(msg, headers){ return { statusCode:400, body: JSON.stringify({ ok:false, error: msg }), ...headers }; }
-function svcUnavailable(headers, msg='service unavailable'){
-  return { statusCode: 503, body: JSON.stringify({ ok:false, error: msg }), ...headers };
-}
+function svcUnavailable(headers, msg='service unavailable'){ return { statusCode: 503, body: JSON.stringify({ ok:false, error: msg }), ...headers }; }
