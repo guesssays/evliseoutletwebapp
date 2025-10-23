@@ -4,7 +4,7 @@
 // ENV:
 //   TG_BOT_TOKEN
 //   ADMIN_API_TOKEN
-//   ADMIN_CHAT_ID
+//   ADMIN_CHAT_ID            // можно через запятую (несколько админов)
 //   WEBAPP_URL
 //   ALLOWED_ORIGINS
 
@@ -15,7 +15,13 @@ function isTelegramOrigin(origin){ return origin==='https://t.me'||origin==='htt
 function originMatches(origin, rule){
   if (!rule||rule==='*') return true;
   if (!origin) return false;
-  if (rule.startsWith('*.')){ try{ const host=new URL(origin).hostname; const suf=rule.slice(1); return host===rule.slice(2)||host.endsWith(suf);}catch{return false;} }
+  if (rule.startsWith('*.')){
+    try{
+      const host=new URL(origin).hostname;
+      const suf=rule.slice(1);
+      return host===rule.slice(2)||host.endsWith(suf);
+    }catch{ return false; }
+  }
   return origin===rule;
 }
 function buildCorsHeaders(origin, isInternal=false){
@@ -92,6 +98,9 @@ async function sendTg(token, chatId, text, kb, type){
   if (!r.ok || data?.ok===false) throw new Error('telegram send failed');
 }
 
+/* Типы, связанные с заказами: ранее требовали initData даже для internal */
+const ORDER_ONLY_USER = new Set(['orderPlaced','orderAccepted','statusChanged','orderCanceled']);
+
 export async function handler(event){
   const origin = event.headers?.origin || event.headers?.Origin || '';
   const internal = isInternalCall(event);
@@ -109,10 +118,6 @@ export async function handler(event){
     if (!type) return { statusCode:400, body:'type required', ...headers };
 
     const webappUrl = process.env.WEBAPP_URL || '';
-    const adminChatIds = String(process.env.ADMIN_CHAT_ID || '').split(',').map(s=>s.trim()).filter(Boolean);
-
-    const isMarketing = (type==='cartReminder' || type==='favReminder');
-    const ORDER_ONLY_USER = new Set(['orderPlaced','orderAccepted','statusChanged','orderCanceled']);
 
     const safeTitle = (t)=> (t ? String(t).slice(0,140) : '').trim();
     const goods = safeTitle(title) || 'товар';
@@ -139,26 +144,14 @@ export async function handler(event){
         case 'cartReminder':            finalText = `Вы оставили товары в корзине. ${hint}`; break;
         case 'favReminder':             finalText = `У вас есть товары в избранном. ${hint}`; break;
         case 'referralJoined':          finalText = `🎉 Новый реферал! Пользователь зарегистрировался по вашей ссылке. ${hint}`; break;
-        case 'referralOrderCashback':   finalText = `💸 Заказ реферала: начислено 5% кэшбека (ожидает 24ч). ${hint}`; break;
+        case 'referralOrderCashback':   finalText = `💸 Заказ реферала: начислено 5% кэшбека (ожидает ~24ч). ${hint}`; break;
         case 'cashbackMatured':         finalText = `✅ Кэшбек доступен для оплаты! Используйте баллы при оформлении заказа.`; break;
         default:                        finalText = `${about} ${hint}`;
       }
     }
     const kb = kbForType(type);
 
-    // ===== Политика отправки =====
-    // 1) Пользовательские и маркетинговые — ТОЛЬКО пользователю. Требуют initData и совпадения chat_id.
-    if (isMarketing || ORDER_ONLY_USER.has(type)) {
-      const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
-      const { uid } = verifyTgInitData(rawInit);
-      if (!clientChatId || String(clientChatId)!==uid) {
-        return { statusCode:403, body: JSON.stringify({ ok:false, error:'chat_id mismatch or missing' }), ...headers };
-      }
-      await sendTg(token, String(uid), finalText, kb, type);
-      return { statusCode:200, body: JSON.stringify({ ok:true }), ...headers };
-    }
-
-    // 2) Внутренние события (server-to-user/admin) — только с internal-token
+    // === ПРИОРИТЕТ: INTERNAL ===
     if (internal) {
       if (clientChatId) {
         await sendTg(token, String(clientChatId), finalText, kb, type);
@@ -174,7 +167,19 @@ export async function handler(event){
       return { statusCode:400, body:'chat_id required', ...headers };
     }
 
-    // 3) Внешний вызов без internal и без user-only типов — запрещаем
+    // === ВНЕШНИЕ ВЫЗОВЫ (только через проверенное initData) ===
+    const isMarketing = (type==='cartReminder' || type==='favReminder');
+    if (isMarketing || ORDER_ONLY_USER.has(type)) {
+      const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
+      const { uid } = verifyTgInitData(rawInit);
+      if (!clientChatId || String(clientChatId)!==uid) {
+        return { statusCode:403, body: JSON.stringify({ ok:false, error:'chat_id mismatch or missing' }), ...headers };
+      }
+      await sendTg(token, String(uid), finalText, kb, type);
+      return { statusCode:200, body: JSON.stringify({ ok:true }), ...headers };
+    }
+
+    // Прочее запрещаем
     return { statusCode:403, body: JSON.stringify({ ok:false, error:'forbidden' }), ...headers };
   } catch (err) {
     console.error('[notify] handler error:', err);
