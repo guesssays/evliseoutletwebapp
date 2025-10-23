@@ -1,6 +1,6 @@
 // netlify/functions/users-data.js
-// Источник данных для mkt-pings: отдаёт корзину/избранное/метки и принимает патч.
-// Берём из Netlify Blobs('users') с явной конфигурацией siteID+token.
+// Источник данных для mkt-pings: GET — список пользователей для рассылки,
+// POST — патч меток анти-дублей (lastCartReminderDay / lastFavReminderTs / индексы вариантов).
 
 import { getStore } from '@netlify/blobs';
 
@@ -14,25 +14,20 @@ function ok(body, code = 200) {
   });
 }
 function bad(msg, code = 400) {
-  return ok({ ok: false, error: String(msg) }, code);
+  return ok({ ok:false, error:String(msg) }, code);
 }
 
 export async function handler(event) {
   try {
-    // Проверяем наличие переменных окружения
     if (!SITE_ID || !TOKEN) {
       return bad('NETLIFY_BLOBS_SITE_ID or NETLIFY_BLOBS_TOKEN is missing', 500);
     }
 
-    // Явно передаём siteID и token (важно на Free-плане/без автоконфига)
-    const store = getStore({
-      name: 'users',
-      siteID: SITE_ID,
-      token : TOKEN,
-    });
+    // ВАЖНО: создаём store с явной авторизацией
+    const store = getStore({ name: 'users', siteID: SITE_ID, token: TOKEN });
 
     if (event.httpMethod === 'GET') {
-      // Лёгкий срез по всем пользователям
+      // Срез по всем пользователям
       const listed = await store.list({ prefix: 'user__', paginate: false }).catch(() => null);
       const blobs = listed?.blobs || [];
       const out = [];
@@ -51,7 +46,7 @@ export async function handler(event) {
           favVariantIdx : Number.isInteger(u.favVariantIdx)  ? u.favVariantIdx  : 0,
         });
       }
-      return ok({ ok: true, users: out });
+      return ok({ ok:true, users: out });
     }
 
     if (event.httpMethod === 'POST') {
@@ -72,7 +67,7 @@ export async function handler(event) {
 
       const next = { ...u, ...patch, updatedAt: Date.now() };
       await store.setJSON(key, next);
-      return ok({ ok: true, saved: true });
+      return ok({ ok:true, saved:true });
     }
 
     return bad('Method Not Allowed', 405);
