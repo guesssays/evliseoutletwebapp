@@ -32,6 +32,8 @@ function buildCorsHeaders(origin, isInternal=false){
       'Access-Control-Allow-Origin': allow ? (origin||'*') : 'null',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Internal-Auth',
+      'Access-Control-Max-Age': '86400',
+      'Content-Type': 'application/json; charset=utf-8',
       'Vary':'Origin'
     },
     isAllowed: allow
@@ -89,7 +91,9 @@ async function sendTg(token, chatId, text, kb, type){
 
   const common = { chat_id: chatId, parse_mode:'HTML', ...(kb?{ reply_markup:{ inline_keyboard: kb } }:{}) };
   const method = imgUrl ? 'sendPhoto' : 'sendMessage';
-  const payload = imgUrl ? { ...common, photo: imgUrl, caption: text, disable_notification:false } : { ...common, text, disable_web_page_preview:true };
+  const payload = imgUrl
+    ? { ...common, photo: imgUrl, caption: text, disable_notification:false }
+    : { ...common, text, disable_web_page_preview:true };
 
   const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
@@ -114,7 +118,10 @@ export async function handler(event){
     const token = process.env.TG_BOT_TOKEN;
     if (!token) return { statusCode:500, body:'TG_BOT_TOKEN is not set', ...headers };
 
-    const { chat_id: clientChatId, type, orderId, shortId, title, text } = JSON.parse(event.body || '{}') || {};
+    let parsed = {};
+    try { parsed = JSON.parse(event.body || '{}') || {}; } catch { parsed = {}; }
+
+    const { chat_id: clientChatId, type, orderId, shortId, title, text } = parsed;
     if (!type) return { statusCode:400, body:'type required', ...headers };
 
     const webappUrl = process.env.WEBAPP_URL || '';
