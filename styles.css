@@ -790,3 +790,26 @@ html, body, .view, .section, .checkout{ overflow-x:hidden; }
 
 /* 4) Страховка — центр не распирает строку */
 .cart-row > div:nth-child(2){ min-width:0 !important; }
+/* === FINAL: счётчик количества всегда справа в одной строке === */
+.checkout .cart-row{
+  grid-template-columns: 72px minmax(0,1fr) max-content !important;
+  align-items: center !important;
+}
+.checkout .cart-row > div:nth-child(2){ min-width:0 !important; }
+
+.checkout .cart-row .qty-mini{
+  grid-column: auto !important;
+  justify-self: end !important;
+  align-self: center !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  gap: 10px;
+}
+
+/* Очень узкие экраны — просто уменьшаем первый столбец, но 3 колонки сохраняем */
+@media (max-width:360px){
+  .checkout .cart-row{
+    grid-template-columns: 64px minmax(0,1fr) max-content !important;
+  }
+  .checkout .cart-img{ width:64px; height:64px; }
+}
