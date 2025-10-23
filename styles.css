@@ -620,3 +620,30 @@ img, video { max-width: 100%; height: auto; display:block; }
   .qty-mini{ grid-column: 1 / -1; justify-content:flex-end; }
   .cart-img{ width:64px; height:64px; }
 }
+/* ===== Cart overflow hotfix ===== */
+html, body, .view, .section, .checkout { max-width:100vw; overflow-x:hidden; }
+
+/* строка товара: центральная колонка может сжиматься */
+.cart-row{ grid-template-columns:72px minmax(0,1fr) auto !important; }
+.cart-row > div:nth-child(2){ min-width:0 !important; }
+.cart-title, .cart-sub{ overflow-wrap:anywhere; word-break:break-word; }
+
+/* блок списания (cashback): инпут + кнопки не распирают сетку */
+.cashback-box .row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto; /* инпут сжимается, кнопки занимают остаток */
+  gap:8px; align-items:center;
+}
+.cashback-box .btns{ display:flex; gap:6px; flex-wrap:wrap; }
+.cashback-box input.input{ width:100%; min-width:0; }
+
+/* строки «итого»: текстовые столбцы не распирают */
+.payrow span{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
+
+/* очень узкие экраны — счётчик вниз, чтобы ничего не распирал */
+@media (max-width:380px){
+  .cart-row{ grid-template-columns:64px 1fr !important; }
+  .qty-mini{ grid-column:1 / -1; justify-content:flex-end; }
+  .cart-img{ width:64px; height:64px; }
+  .cashback-box .row{ grid-template-columns:1fr; } /* кнопки под инпут */
+}
