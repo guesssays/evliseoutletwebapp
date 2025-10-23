@@ -2,6 +2,7 @@
 // Централизованное хранилище заказов (Netlify Blobs) + операции админа
 // ENV: TG_BOT_TOKEN, ADMIN_CHAT_ID (может быть список через запятую), WEBAPP_URL
 //      ALLOWED_ORIGINS (опц.), ALLOW_MEMORY_FALLBACK=1 (только для DEV)
+//      NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN
 //
 // Поведение: в продакшене, если Netlify Blobs временно недоступны — возвращаем 503,
 // чтобы клиент НЕ обнулял локальный кэш и не «терял» заказы.
@@ -11,6 +12,10 @@ const IS_PROD =
   (process.env.NODE_ENV === 'production');
 
 const ALLOW_MEMORY_FALLBACK = String(process.env.ALLOW_MEMORY_FALLBACK || '').trim() === '1';
+
+// Явные креды для Blobs (если заданы — используем их).
+const SITE_ID = process.env.NETLIFY_BLOBS_SITE_ID || '';
+const TOKEN   = process.env.NETLIFY_BLOBS_TOKEN   || '';
 
 /* ---------------- CORS ---------------- */
 function parseAllowed() {
@@ -164,7 +169,7 @@ export async function handler(event) {
         }
       }
 
-      // ✅ НОВОЕ: при статусе «отменён» (через op=status) — вернуть резерв и погасить pending
+      // ✅ при «отменён» — вернуть резерв и погасить pending
       if (o && o.userId && status === 'отменён') {
         try {
           await callLoyalty('finalizeredeem', { uid: String(o.userId), orderId: String(o.id), action: 'cancel' });
@@ -188,14 +193,19 @@ export async function handler(event) {
 async function getStoreSafe(){
   try {
     const { getStore } = await import('@netlify/blobs');
-    const store = getStore('orders'); // общий namespace сайта
+
+    // Явные креды имеют приоритет (устраняет "environment has not been configured" на рантайме)
+    const store = (SITE_ID && TOKEN)
+      ? getStore({ name: 'orders', siteID: SITE_ID, token: TOKEN })
+      : getStore('orders'); // авто-конфиг от Netlify
 
     // Жёсткая проверка R/W. Если Blobs паузятся — бросим исключение.
     const healthKey = '__health__';
     await store.setJSON(healthKey, { ts: Date.now() });
     await store.get(healthKey, { type: 'json', consistency: 'strong' });
 
-    console.log('[orders] Using Netlify Blobs via getStore');
+    console.log('[orders] Using Netlify Blobs via getStore',
+      SITE_ID && TOKEN ? '(explicit creds)' : '(auto)');
     return makeBlobsStore(store);
   } catch (e) {
     console.warn('[orders] Netlify Blobs not available:', e?.message || e);
