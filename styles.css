@@ -598,3 +598,25 @@ body.has-cta .tabbar-inner .btn::after{
 .thumbs{
   border-radius:0 !important;
 }
+/* 1) Глобальная страховка от горизонтального скролла */
+html, body { max-width: 100%; overflow-x: hidden; }
+.view, .section, .checkout { max-width: 100vw; overflow-x: hidden; }
+img, video { max-width: 100%; height: auto; display:block; }
+
+/* 2) Строка товара в корзине: центральная колонка может сжиматься */
+.cart-row { grid-template-columns: 72px minmax(0,1fr) auto; } /* было max-content */
+.cart-row > div:nth-child(2) { min-width: 0; }                /* НЕ распираем сетку */
+.cart-title, .cart-sub { overflow-wrap:anywhere; word-break:break-word; }
+
+/* 3) Блок списания баллов: строка с инпутом и кнопками — без переполнения */
+.cashback-box input.input { width: 100%; }
+.cashback-box .btns { display:flex; gap:6px; flex-wrap:wrap; }
+.cashback-box .row { display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center; }
+.cashback-box .row > * { min-width:0; }
+
+/* 4) Очень узкие экраны — уводим счётчик количества на новую строку */
+@media (max-width: 380px){
+  .cart-row{ grid-template-columns: 64px 1fr; }
+  .qty-mini{ grid-column: 1 / -1; justify-content:flex-end; }
+  .cart-img{ width:64px; height:64px; }
+}

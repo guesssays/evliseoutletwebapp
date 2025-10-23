@@ -340,26 +340,39 @@ export async function renderCart(){
         <a class="pill" href="#/account/addresses">${ad ? 'Изменить адрес' : 'Добавить адрес'}</a>
       </div>
     </div>
+    
+<!-- Блок списания баллов -->
+<div class="cashback-box" style="margin-top:10px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:12px;padding:10px;background:var(--card,rgba(0,0,0,.03))">
+  <div class="cart-title" style="display:flex;align-items:center;gap:8px">
+    <i data-lucide="coins"></i>
+    <span>Списать баллы</span>
+    <span class="muted" style="margin-left:auto">Доступно: <b id="cbAvail">${(availablePoints|0).toLocaleString('ru-RU')}</b></span>
+  </div>
 
-    <!-- Блок списания баллов -->
-    <div class="cashback-box" style="margin-top:10px;border:1px solid var(--border,rgba(0,0,0,.12));border-radius:12px;padding:10px;background:var(--card,rgba(0,0,0,.03))">
-      <div class="cart-title" style="display:flex;align-items:center;gap:8px">
-        <i data-lucide="coins"></i>
-        <span>Списать баллы</span>
-        <span class="muted" style="margin-left:auto">Доступно: <b id="cbAvail">${(availablePoints|0).toLocaleString('ru-RU')}</b></span>
-      </div>
-      <div class="muted mini" style="margin:6px 0 8px">
-        Минимум к списанию: ${MIN_REDEEM_POINTS.toLocaleString('ru-RU')} · максимум: <b id="redeemMaxVal">${Math.max(0, redeemMax).toLocaleString('ru-RU')}</b> (не больше 30% от суммы и не более 150&nbsp;000)
-      </div>
-      <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
-        <input id="redeemInput" class="input" inputmode="numeric" pattern="[0-9]*" value="${redeemInit||''}" placeholder="0">
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="pill" id="redeemMaxBtn">Макс</button>
-          <button class="pill" id="redeemClearBtn">Сброс</button>
-        </div>
-      </div>
-      <div id="redeemHint" class="muted mini" style="margin-top:6px"></div>
+  <div class="muted mini" style="margin:6px 0 8px">
+    Минимум к списанию: ${MIN_REDEEM_POINTS.toLocaleString('ru-RU')} · максимум:
+    <b id="redeemMaxVal">${Math.max(0, redeemMax).toLocaleString('ru-RU')}</b>
+    (не больше 30% от суммы и не более 150&nbsp;000)
+  </div>
+
+  <div class="row">
+    <input
+      id="redeemInput"
+      class="input"
+      inputmode="numeric"
+      pattern="[0-9]*"
+      value="${redeemInit||''}"
+      placeholder="0"
+    >
+    <div class="btns">
+      <button class="pill" id="redeemMaxBtn">Макс</button>
+      <button class="pill" id="redeemClearBtn">Сброс</button>
     </div>
+  </div>
+
+  <div id="redeemHint" class="muted mini" style="margin-top:6px"></div>
+</div>
+
 
     <div class="payline">
       <div class="payrow"><span>Товары (${items.reduce((s,i)=>s+i.qty,0)} шт.)</span><b id="sumRaw">${priceFmt(totalRaw)}</b></div>
