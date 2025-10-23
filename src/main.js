@@ -39,8 +39,8 @@ import {
   notifyOrderAccepted,
   notifyStatusChanged,
   notifyOrderCanceled,
-  // notifyCartReminder,           // ← БОЛЬШЕ НЕ ИСПОЛЬЗУЕМ С ФРОНТА
-  // notifyFavoritesReminder,      // ← БОЛЬШЕ НЕ ИСПОЛЬЗУЕМ С ФРОНТА
+  // notifyCartReminder,
+  // notifyFavoritesReminder,
 } from './core/botNotify.js';
 
 /* ===== Реферал/кешбэк: deeplink-капчер + bind ===== */
@@ -259,6 +259,11 @@ loadProfile();
 loadFavorites();
 updateCartBadge();
 initTelegramChrome();
+
+/* === Новое: полностью отключаем автопамять скролла браузера === */
+try {
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+} catch {}
 
 /* ---------- ADMIN MODE ---------- */
 function setAdminMode(on){

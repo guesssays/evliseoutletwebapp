@@ -209,7 +209,25 @@ function addReferrerPendingIfAny(paidAmount, orderId){
 
 const OP_CHAT_URL = 'https://t.me/evliseorder';
 
+/* ---------- scroll control helpers ---------- */
+function forceTop(){
+  try{ document.activeElement?.blur?.(); }catch{}
+  const se = document.scrollingElement || document.documentElement;
+  window.scrollTo(0, 0);
+  se.scrollTop = 0;
+}
+function keepCartOnTopWhileLoading(root){
+  const stillCart = () => location.hash.startsWith('#/cart');
+  if (!root) return;
+  root.querySelectorAll('img').forEach(img=>{
+    img.addEventListener('load', ()=>{ if (stillCart()) forceTop(); }, { once:true });
+  });
+}
+
 export async function renderCart(){
+  // Сразу поднимаем страницу вверх перед тяжёлым DOM
+  forceTop();
+
   // Всегда тянем свежий серверный баланс перед рендером
   try { await fetchMyLoyalty(); } catch {}
   const walletLike = getLocalLoyalty() || { available:0, pending:0 };
@@ -234,6 +252,7 @@ export async function renderCart(){
     document.getElementById('cartBack')?.addEventListener('click', ()=>history.back());
     // гарантированно в начало
     resetScrollTop();
+    keepCartOnTopWhileLoading(v);
     return;
   }
 
@@ -428,8 +447,10 @@ export async function renderCart(){
 
   window.lucide?.createIcons && lucide.createIcons();
 
-  // гарантированно фиксируем скролл на начало после рендера
+  // жёстко фиксируем верх после вставки DOM
   resetScrollTop();
+  // и не даём подгрузке картинок сдвинуть страницу
+  keepCartOnTopWhileLoading(v);
 
   document.getElementById('cartBack')?.addEventListener('click', ()=>history.back());
 
@@ -540,11 +561,8 @@ export async function renderCart(){
 
 /* ---------- scroll control: гарантированно в начало ---------- */
 function resetScrollTop(){
-  try{ document.activeElement?.blur?.(); }catch{}
-  requestAnimationFrame(()=> {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    requestAnimationFrame(()=> window.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
-  });
+  forceTop();
+  requestAnimationFrame(forceTop);
 }
 
 /* ---------- изменение количества / удаление ---------- */

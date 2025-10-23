@@ -65,7 +65,11 @@ async function callLoyalty(op, payload){
   const url = `${base}/.netlify/functions/loyalty`;
   const r = await fetch(url, {
     method:'POST',
-    headers:{'Content-Type':'application/json', 'Origin': base},
+    headers:{
+      'Content-Type':'application/json',
+      'Origin': base,
+      'X-Internal-Auth': process.env.ADMIN_API_TOKEN || ''
+    },
     body: JSON.stringify({ op, ...payload })
   });
   const j = await r.json().catch(()=> ({}));
