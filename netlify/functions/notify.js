@@ -139,11 +139,16 @@ export async function handler(event) {
       .map(s => s.trim())
       .filter(Boolean);
 
-    // «маркетинговые» пинги — только пользователю
-    const isMarketing = (type === 'cartReminder' || type === 'favReminder');
+  // «маркетинговые» пинги — только пользователю
+  const isMarketing = (type === 'cartReminder' || type === 'favReminder');
 
-    // ✅ Типы, которые НЕЛЬЗЯ отправлять админам — только пользователю
-    const CUSTOMER_ONLY = new Set(['statusChanged']);
+  // ✅ Заказные типы, которые никогда не шлём админам (только владельцу заказа)
+  const ORDER_ONLY_USER = new Set([
+    'orderPlaced',
+    'orderAccepted',
+    'statusChanged',
+    'orderCanceled',
+  ]);
 
     const safeTitle = (t)=> (t ? String(t).slice(0,140) : '').trim();
     const goods = safeTitle(title) || 'товар';
@@ -190,8 +195,8 @@ export async function handler(event) {
 
     const kb = kbForType(type);
 
-    // 1) Customer-only и маркетинг — ТОЛЬКО пользователю
-    if (isMarketing || CUSTOMER_ONLY.has(type)) {
+    // 1) Маркетинг и любые заказные типы — ТОЛЬКО пользователю
+    if (isMarketing || ORDER_ONLY_USER.has(type)) {
       if (!clientChatId) {
         return { statusCode: 400, body: 'chat_id required for user-only type', ...headers };
       }

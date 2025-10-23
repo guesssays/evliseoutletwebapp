@@ -182,6 +182,15 @@ function makeCore(readAll, writeAll){
       }
     }
 
+    // 🔁 ДОПОЛНИТЕЛЬНО: если по заказу уже были списания (used) и резерва нет — вернём пользователю
+    const usedAbs = Math.max(0, Number(ord.used||0)|0);
+    if (usedAbs > 0) {
+      const buyer = safeUser(db, ord.uid);
+      buyer.available += usedAbs;
+      addHist(buyer, { kind:'reserve_cancel', orderId, pts:+usedAbs, info:'Возврат оплаченных баллов (отмена заказа)' });
+      ord.used = 0;
+    }
+
     db.orders[orderId] = {
       ...(ord||{}),
       canceled: true,
@@ -406,6 +415,14 @@ function makeCore(readAll, writeAll){
       if (action === 'cancel'){
         user.available += res.pts;
         addHist(user, { kind:'reserve_cancel', orderId, pts:+res.pts, info:'Возврат резерва' });
+        // 🔁 синхронизируем карточку заказа: уменьшаем used на величину отменённого резерва
+        const o = db.orders[orderId];
+        if (o) {
+          const take = Math.max(0, Math.min(Number(o.used||0), Math.abs(res.pts|0)));
+          if (take > 0) {
+            o.used = Math.max(0, (o.used|0) - take);
+          }
+        }
       }else{
         addHist(user, { kind:'redeem', orderId, pts:-Math.abs(res.pts|0), info:`Оплата баллами ${res.pts}` });
       }
