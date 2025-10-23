@@ -2,15 +2,10 @@
 // Источник данных для mkt-pings: отдаёт корзину/избранное/метки и принимает патч.
 // Сейчас берём из Netlify Blobs('users'); контракт можно оставить тем же при замене на БД.
 
-import { getStore, setStoreConfig } from '@netlify/blobs';
+import { getStore } from '@netlify/blobs';
 
 const SITE_ID = process.env.NETLIFY_BLOBS_SITE_ID || '';
 const TOKEN   = process.env.NETLIFY_BLOBS_TOKEN   || '';
-
-// Жёстко настраиваем Blobs SDK (важно сделать это ДО первого getStore)
-if (SITE_ID && TOKEN) {
-  setStoreConfig({ siteID: SITE_ID, token: TOKEN });
-}
 
 function ok(body, code = 200) {
   return new Response(JSON.stringify(body), {
@@ -24,12 +19,13 @@ function bad(msg, code = 400) {
 
 export async function handler(event) {
   try {
-    // Проверим, что токены заданы — иначе SDK упадёт при первом вызове
+    // Без этих переменных SDK не сможет подключиться к Blobs из функции
     if (!SITE_ID || !TOKEN) {
       return bad('NETLIFY_BLOBS_SITE_ID or NETLIFY_BLOBS_TOKEN is missing', 500);
     }
 
-    const store = getStore('users');
+    // ✅ передаём siteID+token прямо при создании стора
+    const store = getStore({ name: 'users', siteID: SITE_ID, token: TOKEN });
 
     if (event.httpMethod === 'GET') {
       // Вернуть лёгкий срез по всем пользователям
@@ -40,7 +36,7 @@ export async function handler(event) {
       for (const b of blobs) {
         const u = await store.get(b.key, { type: 'json', consistency: 'strong' }).catch(() => null);
         if (!u) continue;
-        // Минимально необходимое крону
+        // минимально необходимое крону: uid, chatId, cart, favorites, метки, индексы
         out.push({
           uid: String(u.uid || ''),
           chatId: String(u.chatId || ''),
