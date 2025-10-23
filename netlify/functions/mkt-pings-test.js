@@ -1,7 +1,6 @@
-// Ручной пуск рассылки «как в кроне», но по запросу.
-// Параметры:
-//   ?only=uid1,uid2  — ограничить юзерами (опц.)
-//   ?dry=1           — сухой прогон: не слать в TG, а вернуть превью (опц.)
+// Ручной пуск рассылки «как в кроне».
+// ?only=uid1,uid2 — ограничить пользователями
+// ?dry=1          — сухой прогон: ничего не шлёт, возвращает превью
 
 const USERS_DATA_ENDPOINT = '/.netlify/functions/users-data';
 const NOTIFY_ENDPOINT     = '/.netlify/functions/notify';
@@ -29,7 +28,7 @@ async function postNotify(base, payload){
   return httpJSON(base, NOTIFY_ENDPOINT, { method:'POST', body: payload });
 }
 
-// те же варианты, что в прод-кроне
+// те же варианты, что в mkt-pings.js
 const CART_VARIANTS = [
   ({title, count}) => `Ваша корзина ждёт: «${title}»${count>1?` + ещё ${count-1}`:''}. Оформим?`,
   ({title})        => `Не забыли про «${title}»? Всего пара кликов до заказа ✨`,
@@ -57,7 +56,9 @@ function pickVariant(list, idx){
 export async function handler(event){
   try{
     const base = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/,'');
-    if (!base)  return new Response(JSON.stringify({ ok:false, error:'no base url' }), { status:500 });
+    if (!base) {
+      return { statusCode:500, body: JSON.stringify({ ok:false, error:'no base url' }) };
+    }
 
     const qs   = event?.queryStringParameters || {};
     const dry  = String(qs.dry || '') === '1';
@@ -96,7 +97,7 @@ export async function handler(event){
           previews.push({ uid:u.uid, kind:'cart', text });
         }else{
           await postNotify(base, { type:'cartReminder', chat_id: chatId, title, text });
-          // сдвигаем метки (как в проде)
+          // как в прод-кроне: зафиксируем метки и индексы
           await httpJSON(base, USERS_DATA_ENDPOINT, {
             method:'POST',
             body: { uid: u.uid, lastCartReminderDay: today, cartVariantIdx: nextIdx }
@@ -111,7 +112,7 @@ export async function handler(event){
         const text = build({});
 
         if (dry){
-          Previews.push({ uid:u.uid, kind:'fav', text });
+          previews.push({ uid:u.uid, kind:'fav', text }); // ← ИСПРАВЛЕНО (previews, не Previews)
         }else{
           await postNotify(base, { type:'favReminder', chat_id: chatId, text });
           await httpJSON(base, USERS_DATA_ENDPOINT, {
@@ -123,8 +124,8 @@ export async function handler(event){
       }
     }
 
-    return new Response(JSON.stringify({ ok:true, dry, users: users.length, considered, sent, previews }), { status:200 });
+    return { statusCode:200, body: JSON.stringify({ ok:true, dry, users: users.length, considered, sent, previews }) };
   }catch(e){
-    return new Response(JSON.stringify({ ok:false, error:String(e?.message||e) }), { status:500 });
+    return { statusCode:500, body: JSON.stringify({ ok:false, error:String(e?.message||e) }) };
   }
 }
