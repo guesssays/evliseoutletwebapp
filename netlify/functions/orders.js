@@ -262,7 +262,6 @@ function makeStoreCore(readAll, writeAll){
     async add(order){
       const list = await readAll();
 
-      // ✅ сохраняем короткий публичный ID, если он передан с клиента
       const shortId = order.shortId ?? order.code ?? null;
 
       const id = order.id ?? String(Date.now());
@@ -270,9 +269,12 @@ function makeStoreCore(readAll, writeAll){
       const initialStatus = order.status ?? 'новый';
       const next = {
         id,
-        shortId, // ← короткий номер
+        shortId, // короткий номер
         userId: order.userId ?? null,
         username: order.username ?? '',
+        // ⬇️ сохраняем Telegram chat_id покупателя (если пришёл с клиента)
+        chatId: order.chatId ?? null,
+
         productId: order.productId ?? null,
         size: order.size ?? null,
         color: order.color ?? null,
@@ -362,7 +364,6 @@ async function notifyAdminNewOrder(id, order){
   const caption = extra>0 ? `${title} + ещё ${extra}` : title;
   const link = webappUrl ? `${webappUrl}#/admin` : undefined;
 
-  // ✅ показываем короткий номер, если есть
   const displayId = String(order?.shortId || id);
 
   const text = [

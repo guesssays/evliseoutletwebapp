@@ -74,10 +74,7 @@ const TYPE_IMG = {
   cashbackMatured:        '/assets/notify/cashback_ready1.jpg',
 };
 
-/** Короткий отображаемый номер заказа:
- *  1) если передан shortId — используем его (в верхнем регистре)
- *  2) иначе fallback: последние 6 символов от полного id (в верхнем регистре)
- */
+/** Короткий отображаемый номер заказа */
 function makeDisplayOrderId(orderId, shortId){
   const s = (shortId || '').toString().trim();
   if (s) return s.toUpperCase();
@@ -86,9 +83,7 @@ function makeDisplayOrderId(orderId, shortId){
   return full.slice(-6).toUpperCase();
 }
 
-/**
- * Универсальная отправка: если есть картинка для type — sendPhoto, иначе sendMessage
- */
+/** Универсальная отправка: если есть картинка для type — sendPhoto, иначе sendMessage */
 async function sendTg(token, chatId, text, kb, type){
   const imgPath = TYPE_IMG[type];
   const imgUrl = (imgPath && BASE_ASSET_URL) ? `${BASE_ASSET_URL}${imgPath}` : null;
@@ -132,7 +127,6 @@ export async function handler(event) {
   }
 
   try {
-    // ✅ Принимаем и shortId, чтобы в тексте указывать короткий номер
     const { chat_id: clientChatId, type, orderId, shortId, title, text } = JSON.parse(event.body || '{}') || {};
     if (!type) return { statusCode: 400, body: 'type required', ...headers };
 
@@ -145,8 +139,11 @@ export async function handler(event) {
       .map(s => s.trim())
       .filter(Boolean);
 
-    // «маркетинговые» пинги, которые не шлём админам
+    // «маркетинговые» пинги — только пользователю
     const isMarketing = (type === 'cartReminder' || type === 'favReminder');
+
+    // ✅ Типы, которые НЕЛЬЗЯ отправлять админам — только пользователю
+    const CUSTOMER_ONLY = new Set(['statusChanged']);
 
     const safeTitle = (t)=> (t ? String(t).slice(0,140) : '').trim();
     const goods = safeTitle(title) || 'товар';
@@ -175,7 +172,6 @@ export async function handler(event) {
 
     let finalText;
     if (typeof text === 'string' && text.trim()){
-      // если text уже задан — используем его как есть (не добавляем id второй раз)
       finalText = text.trim();
     } else {
       switch (type) {
@@ -194,14 +190,23 @@ export async function handler(event) {
 
     const kb = kbForType(type);
 
-    // 1) Если указан clientChatId — отправляем только клиенту
+    // 1) Customer-only и маркетинг — ТОЛЬКО пользователю
+    if (isMarketing || CUSTOMER_ONLY.has(type)) {
+      if (!clientChatId) {
+        return { statusCode: 400, body: 'chat_id required for user-only type', ...headers };
+      }
+      await sendTg(token, String(clientChatId), finalText, kb, type);
+      return { statusCode: 200, body: JSON.stringify({ ok:true }), ...headers };
+    }
+
+    // 2) Если явно указан chat_id — отправляем пользователю
     if (clientChatId) {
       await sendTg(token, String(clientChatId), finalText, kb, type);
       return { statusCode: 200, body: JSON.stringify({ ok:true }), ...headers };
     }
 
-    // 2) Иначе (служебные), рассылаем всем админам (если не маркетинг)
-    if (!isMarketing && adminChatIds.length) {
+    // 3) Иначе (не user-only, не маркетинг) — рассылка админам
+    if (adminChatIds.length) {
       const results = await Promise.allSettled(
         adminChatIds.map(id => sendTg(token, String(id), finalText, kb, type))
       );
