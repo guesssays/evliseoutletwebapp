@@ -139,7 +139,7 @@ export async function handler(event) {
           await callLoyalty('finalizeredeem', { uid: String(o.userId), orderId: String(o.id), action: 'cancel' });
         } catch(e){ console.warn('[orders] loyalty.finalizeredeem(cancel) failed:', e?.message||e); }
         try {
-          await callLoyalty('voidaccrual', { orderId: String(o.id) });
+          await callLoyalty('voidaccrual', { uid: String(o.userId), orderId: String(o.id) });
         } catch(e){ console.warn('[orders] loyalty.voidaccrual failed:', e?.message||e); }
       }
 
@@ -159,6 +159,16 @@ export async function handler(event) {
         } catch (e) {
           console.warn('[orders] loyalty.confirmaccrual failed:', e?.message || e);
         }
+      }
+
+      // ✅ НОВОЕ: при статусе «отменён» (через op=status) — вернуть резерв и погасить pending
+      if (o && o.userId && status === 'отменён') {
+        try {
+          await callLoyalty('finalizeredeem', { uid: String(o.userId), orderId: String(o.id), action: 'cancel' });
+        } catch(e){ console.warn('[orders] loyalty.finalizeredeem(cancel) failed (status):', e?.message||e); }
+        try {
+          await callLoyalty('voidaccrual', { uid: String(o.userId), orderId: String(o.id) });
+        } catch(e){ console.warn('[orders] loyalty.voidaccrual failed (status):', e?.message||e); }
       }
 
       return ok({ ok: !!o, order: o || null }, headers);

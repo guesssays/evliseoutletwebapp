@@ -569,9 +569,18 @@ export async function handler(event){
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
     }
     if (op === 'voidaccrual'){
-      const { orderId } = body;
+      // 🔄 НОВОЕ: если передан uid — вернём ещё и актуальный баланс пользователя
+      const { uid=null, orderId } = body;
       const r = await store.voidAccrual(String(orderId));
-      return { statusCode:200, headers:cors, body: JSON.stringify({ ok:r.ok!==false, reason:r.reason||null }) };
+      let balance = null;
+      if (uid) {
+        try { balance = await store.getBalance(String(uid)); } catch {}
+      }
+      return {
+        statusCode:200,
+        headers:cors,
+        body: JSON.stringify({ ok:r.ok!==false, reason:r.reason||null, ...(balance ? { balance } : {}) })
+      };
     }
     if (op === 'getreferrals'){
       const { uid } = body;

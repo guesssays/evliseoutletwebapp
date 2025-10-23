@@ -9,7 +9,7 @@ import {
   confirmAccrual as loyaltyConfirmAccrual,      // для клиента (own uid)
   finalizeRedeemFor as loyaltyFinalizeRedeemFor, // ⬅ для конкретного uid (админ-выдача/отмена)
   confirmAccrualFor as loyaltyConfirmAccrualFor, // ⬅ для конкретного uid (админ-выдача)
-  loyaltyVoidAccrualFor,                         // ⬅ НОВОЕ: погасить pending-начисления по заказу
+  loyaltyVoidAccrualFor,                         // ⬅ погасить pending-начисления по заказу
 } from './loyalty.js';
 
 // ▼ Бот-уведомления (со shortId)
@@ -165,7 +165,6 @@ function writeHistory(order, status, extra = {}){
 export async function getOrders(){
   const list = await apiGetList();
   const local = getOrdersLocal();
-  // Страховка: если сервер по какой-то причине вернул пусто, а локально есть данные — не затираем.
   if (Array.isArray(list) && list.length === 0 && Array.isArray(local) && local.length > 0){
     return local.map(normalizeOrder);
   }
@@ -347,7 +346,7 @@ export async function updateOrderStatus(orderId, status){
     updatedOrder = o;
   }
 
-  // ▼ Бот-уведомление со shortId
+  // ▼ Бот-уведомление со shortId (без принудительного chat_id здесь)
   try {
     notifyStatusChanged(null, {
       orderId: updatedOrder?.id,
@@ -363,9 +362,19 @@ export async function updateOrderStatus(orderId, status){
       try { await loyaltyFinalizeRedeemFor(uid, orderId, 'commit'); } catch {}
       try { await loyaltyConfirmAccrualFor(uid, orderId); } catch {}
     }else{
-      // безопасный фолбэк
       try { await loyaltyFinalizeRedeem(orderId, 'commit'); } catch {}
       try { await loyaltyConfirmAccrual(orderId); } catch {}
+    }
+  }
+
+  // ✅ НОВОЕ: при «отменён» — вернуть резерв и погасить pending
+  if (stCanon === 'отменён') {
+    const uid = String(updatedOrder?.userId || '');
+    if (uid){
+      try { await loyaltyFinalizeRedeemFor(uid, orderId, 'cancel'); } catch {}
+      try { await loyaltyVoidAccrualFor(uid, orderId); } catch {}
+    } else {
+      try { await loyaltyFinalizeRedeem(orderId, 'cancel'); } catch {}
     }
   }
 
