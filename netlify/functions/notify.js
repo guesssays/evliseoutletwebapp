@@ -139,16 +139,22 @@ export async function handler(event) {
       .map(s => s.trim())
       .filter(Boolean);
 
-  // «маркетинговые» пинги — только пользователю
-  const isMarketing = (type === 'cartReminder' || type === 'favReminder');
+    // «маркетинговые» пинги — только пользователю
+    const isMarketing = (type === 'cartReminder' || type === 'favReminder');
 
-  // ✅ Заказные типы, которые никогда не шлём админам (только владельцу заказа)
-  const ORDER_ONLY_USER = new Set([
-    'orderPlaced',
-    'orderAccepted',
-    'statusChanged',
-    'orderCanceled',
-  ]);
+    // ✅ Заказные типы, которые никогда не шлём админам (только владельцу заказа)
+    const ORDER_ONLY_USER = new Set([
+      'orderPlaced',
+      'orderAccepted',
+      'statusChanged',
+      'orderCanceled',
+    ]);
+
+    // helper: указан ли админский chat_id как получатель
+    const isAdminTarget = (id) => {
+      const s = String(id || '').trim();
+      return !!s && adminChatIds.includes(s);
+    };
 
     const safeTitle = (t)=> (t ? String(t).slice(0,140) : '').trim();
     const goods = safeTitle(title) || 'товар';
@@ -195,16 +201,17 @@ export async function handler(event) {
 
     const kb = kbForType(type);
 
-    // 1) Маркетинг и любые заказные типы — ТОЛЬКО пользователю
+    // 1) Маркетинг и заказные — ТОЛЬКО пользователю.
+    // Если chat_id нет или он админский — ПРОПУСКАЕМ (не шлём никому).
     if (isMarketing || ORDER_ONLY_USER.has(type)) {
-      if (!clientChatId) {
-        return { statusCode: 400, body: 'chat_id required for user-only type', ...headers };
+      if (!clientChatId || isAdminTarget(clientChatId)) {
+        return { statusCode: 200, body: JSON.stringify({ ok:false, skipped:true }), ...headers };
       }
       await sendTg(token, String(clientChatId), finalText, kb, type);
       return { statusCode: 200, body: JSON.stringify({ ok:true }), ...headers };
     }
 
-    // 2) Если явно указан chat_id — отправляем пользователю
+    // 2) Если явно указан chat_id (и тип НЕ заказной/маркетинговый) — отправляем туда
     if (clientChatId) {
       await sendTg(token, String(clientChatId), finalText, kb, type);
       return { statusCode: 200, body: JSON.stringify({ ok:true }), ...headers };

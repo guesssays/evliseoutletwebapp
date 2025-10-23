@@ -46,7 +46,6 @@ function buildCorsHeaders(origin) {
 }
 
 /* ===== ВСПОМОГАТЕЛЬНОЕ: короткий номер заказа ===== */
-/** Отображаемый короткий id: shortId приоритетно, иначе «хвост» длинного id (6 симв., CAPS) */
 function makeDisplayOrderId(orderId, shortId){
   const s = (shortId || '').toString().trim();
   if (s) return s.toUpperCase();
@@ -60,24 +59,15 @@ async function fireAndForgetNotify(chatId, type, extra = {}) {
   try {
     const id = String(chatId || '').trim();
     if (!/^\d+$/.test(id)) return;
-
-    // ⚠️ ВАЖНО: используем абсолютный URL; поддерживаем DEPLOY_URL как fallback
     const baseRaw = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/, '');
     if (!baseRaw) {
       console.warn('[loyalty] notify skipped: no process.env.URL/DEPLOY_URL');
       return;
     }
     const url  = `${baseRaw}/.netlify/functions/notify`;
-
     const payload = { chat_id: id, type, ...extra };
-
-    // server-to-server: НЕ отправляем Origin — notify сам разрешает пустой Origin
-    await fetch(url, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify(payload)
-    });
-  } catch { /* swallow */ }
+    await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+  } catch {}
 }
 
 /* ===== SERVER→APP (список уведомлений внутри приложения) ===== */
@@ -86,14 +76,11 @@ async function fireAndForgetAppNotif(uid, notif = {}){
     const baseRaw = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/, '');
     if (!baseRaw || !uid) return;
     const url = `${baseRaw}/.netlify/functions/notifs`;
-    await fetch(url, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ op:'add', uid: String(uid), notif })
-    });
+    await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ op:'add', uid: String(uid), notif }) });
   }catch{}
 }
 
+/* ====== ХРАНИЛИЩЕ ====== */
 async function getStoreSafe() {
   try{
     const { getStore } = await import('@netlify/blobs');
@@ -106,27 +93,138 @@ async function getStoreSafe() {
   }
 }
 
+/* --- Утилиты мерджа для защиты от перезаписи --- */
+function clone(obj){ return JSON.parse(JSON.stringify(obj||{})); }
+
+function mergeHist(oldArr=[], newArr=[]){
+  const out = [...(oldArr||[])];
+  for (const rec of (newArr||[])) {
+    // дедуп по (ts, kind, orderId, pts)
+    const key = `${rec.ts||0}|${rec.kind||''}|${rec.orderId||''}|${rec.pts||0}`;
+    if (!out.some(v => `${v.ts||0}|${v.kind||''}|${v.orderId||''}|${v.pts||0}` === key)) {
+      out.push(rec);
+    }
+  }
+  // ограничение длины как в addHist
+  return out.slice(-500);
+}
+
+function mergeUsers(oldUsers={}, newUsers={}){
+  const res = clone(oldUsers);
+  for (const uid of Object.keys(newUsers||{})) {
+    const oldU = oldUsers[uid] || { available:0, pending:0, history:[] };
+    const newU = newUsers[uid] || {};
+    res[uid] = {
+      available: typeof newU.available==='number' ? newU.available : oldU.available||0,
+      pending:   typeof newU.pending==='number'   ? newU.pending   : oldU.pending||0,
+      history:   mergeHist(oldU.history, newU.history)
+    };
+  }
+  return res;
+}
+
+function uniqBy(arr, getKey){
+  const seen = new Set();
+  const out=[];
+  for (const x of (arr||[])) {
+    const k = getKey(x);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(x);
+  }
+  return out;
+}
+
+function mergeReferrals(oldR={}, newR={}){
+  const out = clone(oldR);
+  out.inviteeToInviter = { ...(oldR.inviteeToInviter||{}), ...(newR.inviteeToInviter||{}) };
+  // inviterToInvitees: concat + дедуп по uid
+  const tmp = { ...(oldR.inviterToInvitees||{}) };
+  for (const inviter of Object.keys(newR.inviterToInvitees||{})) {
+    const merged = uniqBy([...(oldR.inviterToInvitees?.[inviter]||[]), ...(newR.inviterToInvitees?.[inviter]||[])],
+      v => `${v.uid}`);
+    tmp[inviter] = merged;
+  }
+  out.inviterToInvitees = tmp;
+  // monthCount: берём максимум по ключу
+  const mc = { ...(oldR.monthCount||{}) };
+  for (const k of Object.keys(newR.monthCount||{})) {
+    mc[k] = Math.max(mc[k]||0, newR.monthCount[k]||0);
+  }
+  out.monthCount = mc;
+  // inviteesFirst: логическое объединение
+  const ifirst = { ...(oldR.inviteesFirst||{}) };
+  for (const k of Object.keys(newR.inviteesFirst||{})) ifirst[k] = !!(newR.inviteesFirst[k] || ifirst[k]);
+  out.inviteesFirst = ifirst;
+  return out;
+}
+
+function mergeReservations(oldArr=[], newArr=[]){
+  const combined = [...(oldArr||[]), ...(newArr||[])];
+  return uniqBy(combined, r => `${r.uid}|${r.orderId}`); // на уровне бизнес-процесса держим один активный резерв на заказ/пользователя
+}
+
+function deepMergeDb(oldDb, newDb){
+  const oldSafe = clone(oldDb||{ users:{}, referrals:{}, reservations:[], orders:{} });
+  const newSafe = clone(newDb||{ users:{}, referrals:{}, reservations:[], orders:{} });
+  return {
+    users:        mergeUsers(oldSafe.users, newSafe.users),
+    referrals:    mergeReferrals(oldSafe.referrals, newSafe.referrals),
+    reservations: mergeReservations(oldSafe.reservations, newSafe.reservations),
+    orders:       { ...(oldSafe.orders||{}), ...(newSafe.orders||{}) },
+  };
+}
+
 function makeBlobsStore(store){
   const KEY = 'loyalty_all';
+
   async function readAll(){
     try{
       const data = await store.get(KEY, { type:'json', consistency:'strong' });
-      return data && typeof data==='object' ? data : { users:{}, referrals:{}, reservations:[], orders:{} };
-    }catch{ return { users:{}, referrals:{}, reservations:[], orders:{} }; }
+      if (data && typeof data==='object') return data;
+      // если ключ пуст — вернём «пустую схему», но ПРИ записи будет мердж с существующим
+      return { users:{}, referrals:{}, reservations:[], orders:{} };
+    }catch(e){
+      console.warn('[loyalty] readAll error, returning empty shell (write is merge-protected):', e?.message||e);
+      return { users:{}, referrals:{}, reservations:[], orders:{} };
+    }
   }
+
+  // 🔐 КРИТИЧЕСКО: всегда мерджим с текущим состоянием, чтобы не перезатирать историю
   async function writeAll(obj){
-    await store.setJSON(KEY, obj);
+    let merged = obj;
+    try{
+      const existing = await store.get(KEY, { type:'json', consistency:'strong' });
+      if (existing && typeof existing==='object'){
+        merged = deepMergeDb(existing, obj);
+      }
+    }catch(e){
+      console.warn('[loyalty] writeAll: failed to load existing for merge, writing provided object. Err:', e?.message||e);
+    }
+    // необязательная «poor-man backup»: сохраняем снапшот раз в 5 минут
+    try{
+      const now = Date.now();
+      const bucket = Math.floor(now / (5*60*1000)) * (5*60*1000);
+      const snapKey = `${KEY}__snap_${bucket}`;
+      await store.setJSON(snapKey, merged);
+    }catch{}
+    await store.setJSON(KEY, merged);
   }
+
   return makeCore(readAll, writeAll);
 }
 
 const __mem = { users:{}, referrals:{}, reservations:[], orders:{} };
 function makeMemoryStore(){
   async function readAll(){ return JSON.parse(JSON.stringify(__mem)); }
-  async function writeAll(obj){ Object.assign(__mem, JSON.parse(JSON.stringify(obj))); }
+  async function writeAll(obj){
+    const merged = deepMergeDb(__mem, obj);
+    Object.assign(__mem, JSON.parse(JSON.stringify(merged)));
+  }
   return makeCore(readAll, writeAll);
 }
 
+/* ====== CORE (доменные операции) ====== */
 function makeCore(readAll, writeAll){
   function safeUser(db, uid){
     if (!db.users[uid]) db.users[uid] = { available:0, pending:0, history:[] };
@@ -157,7 +255,6 @@ function makeCore(readAll, writeAll){
   async function voidAccrualInternal(db, orderId){
     const ord = db.orders[orderId];
     if (!ord) return { ok:false, reason:'no_order' };
-    // если уже выпущено — ничего не трогаем (available не откатываем)
     if (ord.released) return { ok:true, reason:'already_released' };
 
     const buyerPts = ord.accrual?.buyer|0 || 0;
@@ -182,7 +279,7 @@ function makeCore(readAll, writeAll){
       }
     }
 
-    // 🔁 ДОПОЛНИТЕЛЬНО: если по заказу уже были списания (used) и резерва нет — вернём пользователю
+    // если по заказу были списания и активного резерва нет — вернём
     const usedAbs = Math.max(0, Number(ord.used||0)|0);
     if (usedAbs > 0) {
       const buyer = safeUser(db, ord.uid);
@@ -191,11 +288,7 @@ function makeCore(readAll, writeAll){
       ord.used = 0;
     }
 
-    db.orders[orderId] = {
-      ...(ord||{}),
-      canceled: true,
-      released: false,
-    };
+    db.orders[orderId] = { ...(ord||{}), canceled: true, released: false };
     return { ok:true };
   }
 
@@ -214,7 +307,6 @@ function makeCore(readAll, writeAll){
       if (!db.referrals.inviterToInvitees) db.referrals.inviterToInvitees = {};
       if (alreadyHasInviter(db, invitee)) return { ok:false, reason:'exists' };
 
-      // лимит 10 рефералов/месяц
       const mk = monthKey();
       if (!db.referrals.monthCount) db.referrals.monthCount = {};
       const key = `${inviter}:${mk}`;
@@ -228,37 +320,24 @@ function makeCore(readAll, writeAll){
 
       await writeAll(db);
 
-      // App-уведомление инвайтеру
-      await fireAndForgetAppNotif(inviter, {
-        icon:'users',
-        title:'Новый реферал',
-        sub:'Пользователь зарегистрировался по вашей ссылке'
-      });
-
-      // TG (если знаем telegram chat_id инвайтера)
-      await fireAndForgetNotify(inviter, 'referralJoined', {
-        text: '🎉 Новый реферал! Зайдите в «Аккаунт → Рефералы».'
-      });
+      await fireAndForgetAppNotif(inviter, { icon:'users', title:'Новый реферал', sub:'Пользователь зарегистрировался по вашей ссылке' });
+      await fireAndForgetNotify(inviter, 'referralJoined', { text: '🎉 Новый реферал! Зайдите в «Аккаунт → Рефералы».' });
 
       return { ok:true };
     },
 
-    /** ИДЕМПОТЕНТНОЕ начисление: покупателю -> pending (5% или 10%), рефереру -> pending 5%
-     *  shortId (опционально) — сохраняем в карточку заказа для уведомлений
-     */
+    /** Идемпотентное начисление */
     async accrue(uid, orderId, total, currency, shortId=null){
       const db = await readAll();
 
-      // если уже подтверждён — ничего не делаем
       const existing = db.orders[orderId];
       if (existing?.released) {
         return { ok:true, balance: await this.getBalance(uid) };
       }
 
       const buyer = safeUser(db, uid);
-      const inviter = getInviter(db, uid);
+      const inviter = db.referrals ? (db.referrals.inviteeToInviter?.[uid] || null) : null;
 
-      // 🧹 очистка легаси-флага, если нет инвайтера
       if (!inviter && db?.referrals?.inviteesFirst?.[uid]) {
         delete db.referrals.inviteesFirst[uid];
       }
@@ -268,12 +347,10 @@ function makeCore(readAll, writeAll){
       const newBuyerPts = Math.floor(total * buyerRate);
       const newRefPts   = inviter ? Math.floor(total * CFG.REFERRER_EARN_RATE) : 0;
 
-      // предыдущие расчёты по заказу (если уже были)
       const prevBuyerPts = existing?.accrual?.buyer || 0;
       const prevRefPts   = existing?.accrual?.refPts || 0;
       const prevInviter  = existing?.accrual?.inviter || null;
 
-      // === ПОКУПАТЕЛЬ: применяем только ДЕЛЬТУ ===
       const deltaBuyer = newBuyerPts - prevBuyerPts;
       if (deltaBuyer !== 0) {
         buyer.pending += deltaBuyer;
@@ -286,24 +363,14 @@ function makeCore(readAll, writeAll){
             : `Корректировка начисления (${deltaBuyer})`,
         });
 
-        // App: отобразим pending-начисление
         if (deltaBuyer > 0) {
           const disp = makeDisplayOrderId(orderId, shortId || existing?.shortId);
-          await fireAndForgetAppNotif(uid, {
-            icon:'coins',
-            title:`Начисление по заказу #${disp}`,
-            sub:`Ожидает подтверждения: ${deltaBuyer} балл(ов)`
-          });
+          await fireAndForgetAppNotif(uid, { icon:'coins', title:`Начисление по заказу #${disp}`, sub:`Ожидает подтверждения: ${deltaBuyer} балл(ов)` });
         }
       }
-      // помечаем первый заказ только если буст применился в ЭТОМ вызове и ранее не помечен
-      if (eligibleForBoost && !wasFirstAlready(db, uid)) {
-        markFirstOrder(db, uid);
-      }
+      if (eligibleForBoost && !wasFirstAlready(db, uid)) markFirstOrder(db, uid);
 
-      // === РЕФЕРЕР: учитываем смену инвайтера и дельты ===
       if (prevInviter && prevInviter !== inviter) {
-        // убрать старому рефереру его pending
         const oldRefUser = safeUser(db, prevInviter);
         if (prevRefPts > 0) {
           oldRefUser.pending = Math.max(0, (oldRefUser.pending|0) - prevRefPts);
@@ -312,42 +379,29 @@ function makeCore(readAll, writeAll){
       }
       if (inviter) {
         const refUser = safeUser(db, inviter);
-        // если инвайтер тот же — применяем дельту; если новый — вся сумма как новая
         const basePrevForDelta = (prevInviter === inviter) ? prevRefPts : 0;
         const deltaRef = newRefPts - basePrevForDelta;
         if (deltaRef !== 0) {
           refUser.pending += deltaRef;
           addHist(refUser, {
             kind: deltaRef > 0 ? 'ref_accrue' : 'ref_accrue_adjust',
-            orderId,
-            from: uid,
-            pts: deltaRef,
+            orderId, from: uid, pts: deltaRef,
             info: deltaRef > 0 ? 'Реферальное начисление 5% (ожидает 24ч)' : 'Корректировка реф.начисления',
           });
 
           if (deltaRef > 0) {
             const disp = makeDisplayOrderId(orderId, shortId || existing?.shortId);
-            await fireAndForgetAppNotif(inviter, {
-              icon:'gift',
-              title:`Реферальное начисление по #${disp}`,
-              sub:`Ожидает подтверждения: ${deltaRef} балл(ов)`
-            });
-            // уведомление рефереру — id заказа в тексте (без клика)
-            await fireAndForgetNotify(inviter, 'referralOrderCashback', {
-              text: `💸 Заказ реферала: начислено ${deltaRef} баллов (ожидает подтверждения).`
-            });
+            await fireAndForgetAppNotif(inviter, { icon:'gift', title:`Реферальное начисление по #${disp}`, sub:`Ожидает подтверждения: ${deltaRef} балл(ов)` });
+            await fireAndForgetNotify(inviter, 'referralOrderCashback', { text: `💸 Заказ реферала: начислено ${deltaRef} баллов (ожидает подтверждения).` });
           }
         }
       }
 
-      // === сохранить расчёт в orders (текущие значения) ===
       db.orders[orderId] = {
         ...(existing || {}),
-        uid,
-        total,
-        currency,
+        uid, total, currency,
         used: existing?.used || 0,
-        shortId: shortId || existing?.shortId || null, // <— сохраняем shortId
+        shortId: shortId || existing?.shortId || null,
         accrual: { buyer: newBuyerPts, inviter: inviter || null, refPts: newRefPts },
         createdAt: existing?.createdAt || Date.now(),
         released: existing?.released || false,
@@ -357,9 +411,7 @@ function makeCore(readAll, writeAll){
       return { ok:true, balance: { available: buyer.available, pending: buyer.pending, history: buyer.history } };
     },
 
-    /** Резервирование списания в момент оформления
-     *  Принимаем shortId (опционально) и кладём в заказ для будущих уведомлений.
-     */
+    /** Резервирование списания в момент оформления */
     async reserve(uid, pts, orderId, totalArg = 0, shortId=null){
       const db = await readAll();
       const user = safeUser(db, uid);
@@ -388,13 +440,12 @@ function makeCore(readAll, writeAll){
           currency: 'UZS',
           used: 0,
           accrual: null,
-          shortId: shortId || null, // <— сохраняем shortId
+          shortId: shortId || null,
           createdAt: Date.now(),
           released: false
         };
       }
       db.orders[orderId].used = (db.orders[orderId].used || 0) + pts;
-      // если передали shortId позже — обновим
       if (shortId && !db.orders[orderId].shortId) db.orders[orderId].shortId = shortId;
 
       await writeAll(db);
@@ -415,13 +466,10 @@ function makeCore(readAll, writeAll){
       if (action === 'cancel'){
         user.available += res.pts;
         addHist(user, { kind:'reserve_cancel', orderId, pts:+res.pts, info:'Возврат резерва' });
-        // 🔁 синхронизируем карточку заказа: уменьшаем used на величину отменённого резерва
         const o = db.orders[orderId];
         if (o) {
           const take = Math.max(0, Math.min(Number(o.used||0), Math.abs(res.pts|0)));
-          if (take > 0) {
-            o.used = Math.max(0, (o.used|0) - take);
-          }
+          if (take > 0) o.used = Math.max(0, (o.used|0) - take);
         }
       }else{
         addHist(user, { kind:'redeem', orderId, pts:-Math.abs(res.pts|0), info:`Оплата баллами ${res.pts}` });
@@ -430,9 +478,7 @@ function makeCore(readAll, writeAll){
       return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };
     },
 
-    /** Подтверждение начислений: pending→available
-     *  Уведомления в TG теперь показывают КОРОТКИЙ id (#shortId или хвост длинного).
-     */
+    /** Подтверждение начислений: pending→available */
     async confirm(uid, orderId){
       const db = await readAll();
       const user = safeUser(db, uid);
@@ -451,18 +497,10 @@ function makeCore(readAll, writeAll){
         buyer.available += bPts;
         addHist(buyer, { kind:'confirm', orderId, pts:+bPts, info:'Начисление подтверждено' });
 
-        // App-уведомление
-        await fireAndForgetAppNotif(ord.uid, {
-          icon:'check-circle',
-          title:`Кэшбек доступен по #${disp}`,
-          sub:`Зачислено: ${bPts} балл(ов)`
-        });
-
-        // 🔔 Показываем короткий id в телеграм-тексте
+        await fireAndForgetAppNotif(ord.uid, { icon:'check-circle', title:`Кэшбек доступен по #${disp}`, sub:`Зачислено: ${bPts} балл(ов)` });
         await fireAndForgetNotify(ord.uid, 'cashbackMatured', {
           text: `✅ Кэшбек по заказу #${disp}: ${bPts} баллов доступны к оплате.`,
-          orderId,             // на всякий случай пробросим оба
-          shortId: ord.shortId // чтобы notify мог тоже сформировать «about», если нужно
+          orderId, shortId: ord.shortId
         });
       }
 
@@ -475,18 +513,10 @@ function makeCore(readAll, writeAll){
           ref.available += rPts;
           addHist(ref, { kind:'ref_confirm', orderId, pts:+rPts, info:'Реферальные подтверждены' });
 
-          // App
-          await fireAndForgetAppNotif(ord.accrual.inviter, {
-            icon:'check-circle',
-            title:`Реферальные подтверждены по #${disp}`,
-            sub:`Зачислено: ${rPts} балл(ов)`
-          });
-
-          // TG
+          await fireAndForgetAppNotif(ord.accrual.inviter, { icon:'check-circle', title:`Реферальные подтверждены по #${disp}`, sub:`Зачислено: ${rPts} балл(ов)` });
           await fireAndForgetNotify(ord.accrual.inviter, 'cashbackMatured', {
             text: `✅ Реферальные баллы по заказу #${disp}: ${rPts} подтверждены.`,
-            orderId,
-            shortId: ord.shortId
+            orderId, shortId: ord.shortId
           });
         }
       }
@@ -566,12 +596,12 @@ export async function handler(event){
       return { statusCode:200, headers:cors, body: JSON.stringify({ ok:r.ok!==false, reason:r.reason||null }) };
     }
     if (op === 'accrue'){
-      const { uid, orderId, total=0, currency='UZS', shortId=null } = body; // <— принимаем shortId
+      const { uid, orderId, total=0, currency='UZS', shortId=null } = body;
       const r = await store.accrue(String(uid), String(orderId), Number(total||0), String(currency||'UZS'), shortId ? String(shortId) : null);
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
     }
     if (op === 'reserveredeem'){
-      const { uid, pts=0, orderId, total=0, shortId=null } = body; // <— принимаем shortId
+      const { uid, pts=0, orderId, total=0, shortId=null } = body;
       const r = await store.reserve(String(uid), Number(pts||0), String(orderId), Number(total||0), shortId ? String(shortId) : null);
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
     }
@@ -586,18 +616,13 @@ export async function handler(event){
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
     }
     if (op === 'voidaccrual'){
-      // 🔄 НОВОЕ: если передан uid — вернём ещё и актуальный баланс пользователя
       const { uid=null, orderId } = body;
       const r = await store.voidAccrual(String(orderId));
       let balance = null;
       if (uid) {
         try { balance = await store.getBalance(String(uid)); } catch {}
       }
-      return {
-        statusCode:200,
-        headers:cors,
-        body: JSON.stringify({ ok:r.ok!==false, reason:r.reason||null, ...(balance ? { balance } : {}) })
-      };
+      return { statusCode:200, headers:cors, body: JSON.stringify({ ok:r.ok!==false, reason:r.reason||null, ...(balance ? { balance } : {}) }) };
     }
     if (op === 'getreferrals'){
       const { uid } = body;
