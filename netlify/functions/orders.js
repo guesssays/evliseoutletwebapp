@@ -42,7 +42,8 @@ function buildCorsHeaders(origin) {
     headers: {
       'Access-Control-Allow-Origin': allowOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      // ↑ расширили заголовки — пригодится для internal-token и init-data, если решите использовать
+      'Access-Control-Allow-Headers': 'Content-Type, X-Internal-Auth, X-Tg-Init-Data',
       'Vary': 'Origin',
     },
     isAllowed,
@@ -97,6 +98,9 @@ export async function handler(event) {
     return { statusCode: 403, body: 'Forbidden by CORS', ...headers };
   }
 
+  // простая проверка «внутреннего» запроса
+  const isInternal = (event.headers?.['x-internal-auth'] || event.headers?.['X-Internal-Auth'] || '') === (process.env.ADMIN_API_TOKEN || '');
+
   let store;
   let storeKind = 'blobs';
   try {
@@ -150,7 +154,31 @@ export async function handler(event) {
           });
         }
       }catch(e){ console.warn('[orders] notify orderPlaced failed:', e?.message||e); }
+
+      // ✅ начисление pending-кэшбэка/рефералки сразу после создания заказа
+      try {
+        const cartTotal =
+          Array.isArray(body.order?.cart)
+            ? body.order.cart.reduce((s,x)=> s + (Number(x.price||0) * (Number(x.qty||0)||1)), 0)
+            : Number(body.order?.total||0);
+
+        await callLoyalty('accrue', {
+          uid: String(body.order?.userId || ''),
+          orderId: String(id),
+          total: cartTotal,
+          currency: String(body.order?.currency || 'UZS'),
+          shortId: body.order?.shortId || null
+        });
+      } catch (e) {
+        console.warn('[orders] loyalty.accrue failed:', e?.message||e);
+      }
+
       return ok({ id }, headers);
+    }
+
+    // ↓↓↓ админские операции — только с INTERNAL-токеном ↓↓↓
+    if (['accept','cancel','status'].includes(op) && !isInternal) {
+      return bad('forbidden', headers);
     }
 
     if (op === 'accept') {

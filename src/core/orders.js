@@ -2,16 +2,6 @@
 
 // Простое локальное хранилище заказов + утилиты для админки/клиента
 import { getUID } from './state.js';
-// ▼ Лояльность
-import {
-  accrueOnOrderPlaced,
-  finalizeRedeem as loyaltyFinalizeRedeem,      // для клиента (own uid)
-  confirmAccrual as loyaltyConfirmAccrual,      // для клиента (own uid)
-  finalizeRedeemFor as loyaltyFinalizeRedeemFor, // ⬅ для конкретного uid (админ-выдача/отмена)
-  confirmAccrualFor as loyaltyConfirmAccrualFor, // ⬅ для конкретного uid (админ-выдача)
-  loyaltyVoidAccrualFor,                         // ⬅ погасить pending-начисления по заказу
-} from './loyalty.js';
-
 // ▼ Бот-уведомления (со shortId)
 import { notifyStatusChanged } from './botNotify.js';
 
@@ -22,6 +12,29 @@ const API_BASE = '/.netlify/functions/orders';
 
 // Небольшой таймаут, чтобы UI не «подвисал» при сетевых проблемах
 const FETCH_TIMEOUT_MS = 10000;
+
+// --- админ-операции, которые требуют internal-токен на сервере
+const ADMIN_OPS = new Set(['accept', 'cancel', 'status']);
+
+/* ===================== ADMIN TOKEN (клиент) ===================== */
+// Где берём токен:
+//  1) window.__ADMIN_API_TOKEN__ (можно положить в index.html админки),
+//  2) localStorage('admin_api_token') — если вы логините админа в UI,
+//  3) window.ADMIN_API_TOKEN (вдруг так удобнее).
+export function setAdminToken(token = '') {
+  try { localStorage.setItem('admin_api_token', String(token || '')); } catch {}
+}
+function getAdminToken() {
+  try {
+    return (
+      (typeof window !== 'undefined' && (window.__ADMIN_API_TOKEN__ || window.ADMIN_API_TOKEN)) ||
+      localStorage.getItem('admin_api_token') ||
+      ''
+    );
+  } catch {
+    return '';
+  }
+}
 
 function withTimeout(promise, ms = FETCH_TIMEOUT_MS){
   return new Promise((resolve, reject) => {
@@ -77,9 +90,15 @@ async function apiGetOne(id){
   }catch{ return null; }
 }
 async function apiPost(op, body){
+  // добавим internal-токен для админских операций, если доступен на клиенте
+  const headers = { 'Content-Type': 'application/json' };
+  if (ADMIN_OPS.has(op)) {
+    const token = getAdminToken();
+    if (token) headers['X-Internal-Auth'] = token;
+  }
   const res = await withTimeout(fetch(API_BASE, {
     method:'POST',
-    headers:{ 'Content-Type':'application/json' },
+    headers,
     body: JSON.stringify({ op, ...body })
   }));
   const data = await res.json().catch(()=> ({}));
@@ -239,9 +258,6 @@ export async function addOrder(order){
     saveOrders([next, ...list]);
   }
 
-  // ▼ Начисления (pending) — даже если баллы не списывались
-  try { await accrueOnOrderPlaced({ ...next, id: createdId }); } catch {}
-
   return createdId;
 }
 
@@ -317,23 +333,7 @@ export async function cancelOrder(orderId, reason = ''){
     saveOrders(list);
   }
 
-  // ▼ корректное гашение лояльности именно по UID покупателя
-  try {
-    const list = getOrdersLocal();
-    const cur  = list.find(o => String(o.id) === String(orderId));
-    const uid  = String(cur?.userId || '');
-
-    if (uid) {
-      // 1) Откатить резерв списания (если был)
-      try { await loyaltyFinalizeRedeemFor(uid, orderId, 'cancel'); } catch {}
-      // 2) Погасить pending-начисления (покупатель + реферер — на бэке)
-      try { await loyaltyVoidAccrualFor(uid, orderId); } catch {}
-    } else {
-      // фолбэк — откат по текущему пользователю
-      try { await loyaltyFinalizeRedeem(orderId, 'cancel'); } catch {}
-    }
-  } catch {}
-
+  // ❗️Клиент больше НЕ трогает лояльность — всё делает сервер в orders.js
   saveOrders(getOrdersLocal());
 }
 
@@ -387,34 +387,8 @@ export async function updateOrderStatus(orderId, status){
     });
   } catch {}
 
-  // ▼ При выдаче — коммитим резервы и подтверждаем начисления ДЛЯ ПОКУПАТЕЛЯ
-  if (stCanon === 'выдан'){
-    const uid = String(updatedOrder?.userId || '');
-    if (uid){
-      try { await loyaltyFinalizeRedeemFor(uid, orderId, 'commit'); } catch {}
-      try { await loyaltyConfirmAccrualFor(uid, orderId); } catch {}
-    }else{
-      try { await loyaltyFinalizeRedeem(orderId, 'commit'); } catch {}
-      try { await loyaltyConfirmAccrual(orderId); } catch {}
-    }
-  }
-
-  // ✅ НОВОЕ: при «отменён» — вернуть резерв и погасить pending
-  if (stCanon === 'отменён') {
-    const uid = String(updatedOrder?.userId || '');
-    if (uid){
-      try { await loyaltyFinalizeRedeemFor(uid, orderId, 'cancel'); } catch {}
-      try { await loyaltyVoidAccrualFor(uid, orderId); } catch {}
-    } else {
-      try { await loyaltyFinalizeRedeem(orderId, 'cancel'); } catch {}
-    }
-  }
-
+  // ❗️Лояльность коммит/отмена и подтверждение начислений — теперь ТОЛЬКО на сервере.
   saveOrders(getOrdersLocal());
-}
-
-export function markCompleted(orderId){
-  updateOrderStatus(orderId, 'выдан');
 }
 
 /* Демосидирование отключено */

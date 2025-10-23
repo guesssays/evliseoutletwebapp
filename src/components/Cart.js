@@ -587,11 +587,22 @@ function remove(productId,size,color){
   persistCart(); updateCartBadge(); toast('Удалено'); renderCart();
 }
 
-/* ====================== ЛОЯЛЬНОСТЬ: клиент ====================== */
+/* ====================== ЛОЯЛЬНОСТЬ: клиент ====================== */ 
+/**
+ * ВАЖНО: теперь каждая клиентская операция к бэку лояльности 
+ * сопровождается подписью Mini App — заголовок X-Tg-Init-Data.
+ */
 async function callLoyalty(op, data){
+  const tgInit = (() => {
+    try { return window?.Telegram?.WebApp?.initData || ''; } catch { return ''; }
+  })();
   const r = await fetch('/.netlify/functions/loyalty', {
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:{
+      'Content-Type':'application/json',
+      // ✅ подпись Telegram для валидации на бэке
+      'X-Tg-Init-Data': tgInit
+    },
     body: JSON.stringify({ op, ...data })
   });
   const j = await r.json().catch(()=> ({}));
@@ -746,6 +757,9 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
   const mb = document.getElementById('modalBody');
   const mt = document.getElementById('modalTitle');
   const ma = document.getElementById('modalActions');
+
+  // защита: помечаем «модалка открыта» и снимем флаг при закрытии
+  document.body.dataset.checkoutModalOpen = '1';
 
   const pay = getPayRequisites();
 
@@ -936,7 +950,13 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       try{
         if (toSpend > 0){
           // РЕЗЕРВИРУЕМ списание на сервере лояльности (идемпотентный orderId)
-          await callLoyalty('reserveRedeem', { uid: getUID(), pts: toSpend, orderId, total: totalRaw });
+          await callLoyalty('reserveRedeem', {
+            uid: getUID(),
+            pts: toSpend,
+            orderId,
+            total: totalRaw,
+            shortId: publicId        // ← пробрасываем короткий ID (для логов/уведомлений)
+          });
           reserved = true;
         }
       }catch(e){
@@ -984,7 +1004,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
         setSubmitDisabled(false); __orderSubmitBusy = false; return;
       }
 
-      // Финализируем списание и начисляем pending кешбэк/реф
+      // Финализируем списание и начисляем pending кешбэк/реф (это делает бэк лояльности)
       try{
         if (toSpend > 0 && reserved){
           await callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'commit' });
@@ -1006,9 +1026,10 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       close();
       showOrderConfirmationModal(publicId); // показываем короткий ID пользователю
 
-      // Сбросить idempotency ключи — следующая покупка получит новые
+      // Сбросить idempotency ключи и черновик списания — следующая покупка получит новые
       clearDraftOrderId();
       clearDraftPublicId();
+      try{ sessionStorage.removeItem(KEY_REDEEM_DRAFT()); }catch{}
 
       try{
         const ev = new CustomEvent('client:orderPlaced', { detail:{ id: orderId, shortId: publicId } });
@@ -1022,6 +1043,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
 
   function close(){
     modal.classList.remove('show');
+    delete document.body.dataset.checkoutModalOpen; // ← снимаем флаг модалки
   }
 }
 
