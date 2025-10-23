@@ -1,34 +1,29 @@
-// Ручной пуск рассылки «как в кроне».
+// Ручной пуск рассылки "как в кроне".
 // ?only=uid1,uid2 — ограничить пользователями
 // ?dry=1          — сухой прогон: ничего не шлёт, возвращает превью
 
-const USERS_DATA_ENDPOINT = '/.netlify/functions/users-data';
-const NOTIFY_ENDPOINT     = '/.netlify/functions/notify';
+import { getStore } from '@netlify/blobs';
+
+const NOTIFY_ENDPOINT = '/.netlify/functions/notify';
 
 function dayKey(ts){
   const d = new Date(ts || Date.now());
   return `${d.getUTCFullYear()}-${d.getUTCMonth()+1}-${d.getUTCDate()}`;
 }
-async function httpJSON(base, path, { method='GET', body=null } = {}){
-  const url = new URL(path, base).toString();
+
+async function postNotify(baseUrl, payload){
+  const url = new URL(NOTIFY_ENDPOINT, baseUrl).toString();
   const r = await fetch(url, {
-    method,
-    headers: { 'Content-Type':'application/json' },
-    body: body ? JSON.stringify(body) : undefined
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify(payload),
   });
-  const j = await r.json().catch(() => ({}));
+  const j = await r.json().catch(()=> ({}));
   if (!r.ok || j?.ok === false) throw new Error(j?.error || `${r.status}`);
   return j;
 }
-async function getUsers(base){
-  const j = await httpJSON(base, USERS_DATA_ENDPOINT, { method:'GET' });
-  return Array.isArray(j.users) ? j.users : [];
-}
-async function postNotify(base, payload){
-  return httpJSON(base, NOTIFY_ENDPOINT, { method:'POST', body: payload });
-}
 
-// те же варианты, что в mkt-pings.js
+/* ------ те же варианты, что в mkt-pings.js ------ */
 const CART_VARIANTS = [
   ({title, count}) => `Ваша корзина ждёт: «${title}»${count>1?` + ещё ${count-1}`:''}. Оформим?`,
   ({title})        => `Не забыли про «${title}»? Всего пара кликов до заказа ✨`,
@@ -56,25 +51,30 @@ function pickVariant(list, idx){
 export async function handler(event){
   try{
     const base = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/,'');
-    if (!base) {
-      return { statusCode:500, body: JSON.stringify({ ok:false, error:'no base url' }) };
-    }
+    if (!base) return { statusCode:500, body: JSON.stringify({ ok:false, error:'no base url' }) };
 
     const qs   = event?.queryStringParameters || {};
     const dry  = String(qs.dry || '') === '1';
     const onlySet = new Set(String(qs.only || '').split(',').map(s=>s.trim()).filter(Boolean));
 
+    const usersStore = getStore('users');
+    const listed = await usersStore.list({ prefix:'user__', paginate:false }).catch(()=>null);
+    const blobs = listed?.blobs || [];
+
     const now = Date.now();
     const today = dayKey(now);
     const THREE_DAYS = 3*24*60*60*1000;
 
-    const users = await getUsers(base);
-    const list  = users.filter(u => !onlySet.size || onlySet.has(String(u.uid||'')));
-
     let sent = 0, considered = 0;
     const previews = [];
 
-    for (const u of list){
+    for (const entry of blobs){
+      const u = await usersStore.get(entry.key, { type:'json', consistency:'strong' }).catch(()=>null);
+      if (!u) continue;
+
+      // фильтр only=
+      if (onlySet.size && !onlySet.has(String(u.uid||''))) continue;
+
       const chatId = String(u?.chatId || '');
       if (!/^\d+$/.test(chatId)) continue;
 
@@ -85,7 +85,7 @@ export async function handler(event){
       if (!hasCart && !hasFav) continue;
       considered++;
 
-      // корзина — не чаще 1/день
+      // КОРЗИНА — не чаще 1 раза в день
       if (hasCart && u.lastCartReminderDay !== today){
         const first = cart[0];
         const title = String(first?.title || 'товар').slice(0,140);
@@ -97,34 +97,31 @@ export async function handler(event){
           previews.push({ uid:u.uid, kind:'cart', text });
         }else{
           await postNotify(base, { type:'cartReminder', chat_id: chatId, title, text });
-          // как в прод-кроне: зафиксируем метки и индексы
-          await httpJSON(base, USERS_DATA_ENDPOINT, {
-            method:'POST',
-            body: { uid: u.uid, lastCartReminderDay: today, cartVariantIdx: nextIdx }
-          });
+          u.lastCartReminderDay = today;
+          u.cartVariantIdx = nextIdx;
+          await usersStore.setJSON(entry.key, u);
           sent++;
         }
       }
 
-      // избранное — раз в 3 дня
+      // ИЗБРАННОЕ — раз в 3 дня
       if (hasFav && Number(u.lastFavReminderTs||0) + THREE_DAYS <= now){
         const { build, nextIdx } = pickVariant(FAV_VARIANTS, u.favVariantIdx || 0);
         const text = build({});
 
         if (dry){
-          previews.push({ uid:u.uid, kind:'fav', text }); // ← ИСПРАВЛЕНО (previews, не Previews)
+          previews.push({ uid:u.uid, kind:'fav', text });
         }else{
           await postNotify(base, { type:'favReminder', chat_id: chatId, text });
-          await httpJSON(base, USERS_DATA_ENDPOINT, {
-            method:'POST',
-            body: { uid: u.uid, lastFavReminderTs: now, favVariantIdx: nextIdx }
-          });
+          u.lastFavReminderTs = now;
+          u.favVariantIdx = nextIdx;
+          await usersStore.setJSON(entry.key, u);
           sent++;
         }
       }
     }
 
-    return { statusCode:200, body: JSON.stringify({ ok:true, dry, users: users.length, considered, sent, previews }) };
+    return { statusCode:200, body: JSON.stringify({ ok:true, dry, considered, sent, previews }) };
   }catch(e){
     return { statusCode:500, body: JSON.stringify({ ok:false, error:String(e?.message||e) }) };
   }
