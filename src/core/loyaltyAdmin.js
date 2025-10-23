@@ -1,19 +1,21 @@
 // src/core/loyaltyAdmin.js
 // Админ-вызовы к serverless-функции лояльности (только с internal-token)
 
+import { getAdminToken } from './orders.js';
+
 function adminToken() {
-  // Токен можно инжектить на страницу как window.ENV.ADMIN_API_TOKEN
-  // или через безопасный прокси. Если пусто — вызовы вернут 403 на бэке.
-  return (window?.ENV?.ADMIN_API_TOKEN || '').toString();
+  // Единый источник правды — localStorage('admin_api_token') через getAdminToken()
+  return (getAdminToken() || '').toString();
 }
 
 async function call(op, payload) {
+  const headers = { 'Content-Type': 'application/json' };
+  const token = adminToken();
+  if (token) headers['X-Internal-Auth'] = token;
+
   const r = await fetch('/.netlify/functions/loyalty', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Internal-Auth': adminToken()
-    },
+    headers,
     body: JSON.stringify({ op, ...payload })
   });
   const j = await r.json().catch(()=> ({}));

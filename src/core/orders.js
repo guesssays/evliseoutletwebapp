@@ -24,7 +24,7 @@ const ADMIN_OPS = new Set(['accept', 'cancel', 'status']);
 export function setAdminToken(token = '') {
   try { localStorage.setItem('admin_api_token', String(token || '')); } catch {}
 }
-function getAdminToken() {
+export function getAdminToken() {
   try {
     return (
       (typeof window !== 'undefined' && (window.__ADMIN_API_TOKEN__ || window.ADMIN_API_TOKEN)) ||
@@ -35,7 +35,6 @@ function getAdminToken() {
     return '';
   }
 }
-
 function withTimeout(promise, ms = FETCH_TIMEOUT_MS){
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error('timeout')), ms);
