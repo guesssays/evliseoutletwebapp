@@ -52,11 +52,16 @@ function normalizeOrder(o = {}){
 }
 /* =============================================================== */
 
+let __lastStoreKind = 'unknown';
+
 async function apiGetList(){
   try{
     const res = await withTimeout(fetch(`${API_BASE}?op=list`, { method:'GET' }));
     const data = await res.json();
-    if (res.ok && data?.ok && Array.isArray(data.orders)) return data.orders.map(normalizeOrder);
+    if (res.ok && data?.ok && Array.isArray(data.orders)) {
+      __lastStoreKind = data?.meta?.store || 'unknown';
+      return data.orders.map(normalizeOrder);
+    }
     throw new Error('bad response');
   }catch(e){
     // оффлайн/фолбэк — вернём локальный кэш
@@ -81,6 +86,45 @@ async function apiPost(op, body){
   if (!res.ok || !data?.ok) throw new Error(data?.error || 'api error');
   return data;
 }
+
+/* ===== utils для безопасного обновления локального кэша ===== */
+
+function getOrdersLocal(){
+  try{ return JSON.parse(localStorage.getItem(KEY) || '[]'); }catch{ return []; }
+}
+function setOrdersLocal(list){
+  localStorage.setItem(KEY, JSON.stringify(list));
+}
+/** Сохранить и уведомить UI */
+export function saveOrders(list){
+  setOrdersLocal((list||[]).map(normalizeOrder));
+  try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
+}
+/** Тихо заменить кэш */
+function replaceOrdersCacheSilently(list){
+  setOrdersLocal((list||[]).map(normalizeOrder));
+}
+/** Полная очистка (на всякий случай) */
+export function clearAllOrders(){
+  try{
+    localStorage.removeItem(KEY);
+    try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
+  }catch{}
+}
+
+function writeHistory(order, status, extra = {}){
+  const rec = { ts: Date.now(), status: canonStatus(status), ...extra };
+  order.history = Array.isArray(order.history) ? [...order.history, rec] : [rec];
+}
+
+/** Слияние списков по id, с приоритетом свежих данных и сортировкой по createdAt desc */
+function mergeById(oldList = [], fresh = []){
+  const map = new Map(oldList.map(o => [String(o.id), o]));
+  for (const o of fresh) map.set(String(o.id), o);
+  return Array.from(map.values()).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+}
+
+/* ===================== Публичные API ===================== */
 
 /**
  * Статусы (ключи)
@@ -127,38 +171,6 @@ export const ADMIN_STAGE_OPTIONS = [
   'забран с почты',
   'выдан',
 ];
-
-// ======== ЛОКАЛЬНЫЙ КЭШ ========
-function getOrdersLocal(){
-  try{ return JSON.parse(localStorage.getItem(KEY) || '[]'); }catch{ return []; }
-}
-function setOrdersLocal(list){
-  localStorage.setItem(KEY, JSON.stringify(list));
-}
-
-/** Сохранить и уведомить UI */
-export function saveOrders(list){
-  setOrdersLocal((list||[]).map(normalizeOrder));
-  try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
-}
-
-/** Тихо заменить кэш */
-function replaceOrdersCacheSilently(list){
-  setOrdersLocal((list||[]).map(normalizeOrder));
-}
-
-/** Полная очистка (на всякий случай) */
-export function clearAllOrders(){
-  try{
-    localStorage.removeItem(KEY);
-    try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
-  }catch{}
-}
-
-function writeHistory(order, status, extra = {}){
-  const rec = { ts: Date.now(), status: canonStatus(status), ...extra };
-  order.history = Array.isArray(order.history) ? [...order.history, rec] : [rec];
-}
 
 // ======== СЕРВЕР-ПЕРВЫЕ API (с фолбэком) ========
 
@@ -212,7 +224,12 @@ export async function addOrder(order){
     createdId = id || next.id;
     try{
       const fresh = await apiGetList();
-      replaceOrdersCacheSilently(fresh);
+      const localBefore = getOrdersLocal();
+      const nextList =
+        (__lastStoreKind === 'memory' || fresh.length < localBefore.length)
+          ? mergeById(localBefore, fresh)
+          : fresh;
+      replaceOrdersCacheSilently(nextList);
     }catch{
       const list = getOrdersLocal();
       saveOrders([next, ...list]);
@@ -245,7 +262,12 @@ export async function acceptOrder(orderId){
       replaceOrdersCacheSilently(list);
     }else{
       const fresh = await apiGetList();
-      replaceOrdersCacheSilently(fresh);
+      const localBefore = getOrdersLocal();
+      const nextList =
+        (__lastStoreKind === 'memory' || fresh.length < localBefore.length)
+          ? mergeById(localBefore, fresh)
+          : fresh;
+      replaceOrdersCacheSilently(nextList);
     }
   }catch{
     const list = getOrdersLocal();
@@ -273,7 +295,12 @@ export async function cancelOrder(orderId, reason = ''){
       replaceOrdersCacheSilently(list);
     }else{
       const fresh = await apiGetList();
-      replaceOrdersCacheSilently(fresh);
+      const localBefore = getOrdersLocal();
+      const nextList =
+        (__lastStoreKind === 'memory' || fresh.length < localBefore.length)
+          ? mergeById(localBefore, fresh)
+          : fresh;
+      replaceOrdersCacheSilently(nextList);
     }
   }catch{
     const list = getOrdersLocal();
@@ -327,8 +354,13 @@ export async function updateOrderStatus(orderId, status){
       replaceOrdersCacheSilently(list);
     }else{
       const fresh = await apiGetList();
-      replaceOrdersCacheSilently(fresh);
-      updatedOrder = fresh.find(o => String(o.id)===String(orderId)) || null;
+      const localBefore = getOrdersLocal();
+      const nextList =
+        (__lastStoreKind === 'memory' || fresh.length < localBefore.length)
+          ? mergeById(localBefore, fresh)
+          : fresh;
+      replaceOrdersCacheSilently(nextList);
+      updatedOrder = nextList.find(o => String(o.id)===String(orderId)) || null;
     }
   }catch{
     const list = getOrdersLocal();

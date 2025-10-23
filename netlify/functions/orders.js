@@ -6,7 +6,10 @@
 // Поведение: в продакшене, если Netlify Blobs временно недоступны — возвращаем 503,
 // чтобы клиент НЕ обнулял локальный кэш и не «терял» заказы.
 
-const IS_PROD = process.env.NODE_ENV === 'production';
+const IS_PROD =
+  (process.env.CONTEXT === 'production') ||
+  (process.env.NODE_ENV === 'production');
+
 const ALLOW_MEMORY_FALLBACK = String(process.env.ALLOW_MEMORY_FALLBACK || '').trim() === '1';
 
 /* ---------------- CORS ---------------- */
@@ -101,7 +104,7 @@ export async function handler(event) {
 
       if (op === 'list') {
         const items = await store.list();
-        return ok({ orders: items }, headers);
+        return ok({ orders: items, meta:{ store: storeKind } }, headers);
       }
       if (op === 'get' && event.queryStringParameters?.id) {
         const o = await store.get(String(event.queryStringParameters.id));
@@ -187,15 +190,18 @@ async function getStoreSafe(){
     const { getStore } = await import('@netlify/blobs');
     const store = getStore('orders'); // общий namespace сайта
 
-    // Проверка доступности с strong-консистентностью
-    await store.get('__ping__', { type: 'json', consistency: 'strong' });
+    // Жёсткая проверка R/W. Если Blobs паузятся — бросим исключение.
+    const healthKey = '__health__';
+    await store.setJSON(healthKey, { ts: Date.now() });
+    await store.get(healthKey, { type: 'json', consistency: 'strong' });
 
     console.log('[orders] Using Netlify Blobs via getStore');
     return makeBlobsStore(store);
   } catch (e) {
     console.warn('[orders] Netlify Blobs not available:', e?.message || e);
-    if (IS_PROD && !ALLOW_MEMORY_FALLBACK) {
-      throw new Error('Persistent store unavailable in production');
+    // В проде не уходим в память (иначе обнулим историю).
+    if (!ALLOW_MEMORY_FALLBACK || IS_PROD) {
+      throw new Error('Persistent store unavailable');
     }
     console.warn('[orders] Falling back to in-memory (DEV only).');
     return makeMemoryStore();
