@@ -692,3 +692,69 @@ html, body, .view, .section, .checkout { max-width:100vw; overflow-x:hidden; }
 
 /* 5) Страховка от любого «левого» переполнения */
 html, body, .view, .section, .checkout{ max-width:100vw !important; overflow-x:hidden !important; }
+/* === Cart/UI targeted fix (override) === */
+
+/* 1) Строка товара: нормальные колонки + центр сжимается, счётчик не прыгает */
+.checkout .cart-row{
+  grid-template-columns:72px minmax(0,1fr) max-content; /* как было по дизайну */
+  gap:14px;
+}
+.checkout .cart-row > div:nth-child(2){ min-width:0; }  /* центр не распирает */
+.checkout .qty-mini{
+  white-space:nowrap;            /* всегда в одну строку */
+  align-self:center;             /* выравнивание по центру строки */
+}
+
+/* маленькие экраны: переносим счётчик ВНИЗ только на очень узких ширинах */
+@media (max-width:380px){
+  .checkout .cart-row{ grid-template-columns:64px 1fr; }
+  .checkout .qty-mini{ grid-column:1 / -1; justify-content:flex-end; }
+  .checkout .cart-img{ width:64px; height:64px; }
+}
+
+/* 2) Заголовок блока кэшбэка: не даём тексту сливаться, выставляем отступы */
+.cashback-box .cart-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  overflow:visible;          /* убираем глобальный ellipsis */
+  white-space:normal;        /* разрешаем переносы */
+  text-overflow:unset;
+}
+.cashback-box .cart-title .muted{
+  margin-left:auto;          /* «Доступно: …» уезжает вправо */
+}
+
+/* 3) Поле + кнопки кэшбэка — без переполнений и без сплющивания */
+.cashback-box .row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px;
+  align-items:center;
+}
+.cashback-box input.input{ width:100%; min-width:0; }
+.cashback-box .btns{ display:flex; gap:6px; flex-wrap:wrap; }
+@media (max-width:400px){
+  .cashback-box .row{ grid-template-columns:1fr; }      /* кнопки под инпут */
+  .cashback-box .btns{ justify-content:flex-end; }
+}
+
+/* 4) Эллипсисы оставляем ТОЛЬКО в строках товаров/заказов,
+      а в остальных заголовках — не трогаем текст */
+.cart-row .cart-title,
+.order-row .cart-title{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* 5) Итого/строки оплаты — не распирают контейнер длинными значениями */
+.payline .payrow span,
+.payline .payrow b{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* 6) Мягкая страховка от горизонтального скролла */
+html, body, .view, .section, .checkout{ overflow-x:hidden; }
