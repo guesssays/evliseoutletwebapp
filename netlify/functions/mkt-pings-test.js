@@ -1,16 +1,14 @@
-// netlify/functions/mkt-pings.js
-// Крон: те же слоты 20:00–22:59 Asia/Tashkent (15–17 UTC), те же тексты/ротации/антидубли,
-// НО данные берутся с сервера через /.netlify/functions/users-data (а не напрямую из Blobs).
-
-export const config = { schedule: '*/15 15-17 * * *' };
+// Ручной пуск рассылки «как в кроне», но по запросу.
+// Параметры:
+//   ?only=uid1,uid2  — ограничить юзерами (опц.)
+//   ?dry=1           — сухой прогон: не слать в TG, а вернуть превью (опц.)
 
 const USERS_DATA_ENDPOINT = '/.netlify/functions/users-data';
 const NOTIFY_ENDPOINT     = '/.netlify/functions/notify';
 
-/* ---------- helpers ---------- */
 function dayKey(ts){
   const d = new Date(ts || Date.now());
-  return `${d.getUTCFullYear()}-${d.getUTCMonth()+1}-${d.getUTCDate()}`; // UTC, как и раньше
+  return `${d.getUTCFullYear()}-${d.getUTCMonth()+1}-${d.getUTCDate()}`;
 }
 async function httpJSON(base, path, { method='GET', body=null } = {}){
   const url = new URL(path, base).toString();
@@ -23,19 +21,15 @@ async function httpJSON(base, path, { method='GET', body=null } = {}){
   if (!r.ok || j?.ok === false) throw new Error(j?.error || `${r.status}`);
   return j;
 }
-async function postNotify(base, payload){
-  return httpJSON(base, NOTIFY_ENDPOINT, { method:'POST', body: payload });
-}
 async function getUsers(base){
   const j = await httpJSON(base, USERS_DATA_ENDPOINT, { method:'GET' });
   return Array.isArray(j.users) ? j.users : [];
 }
-async function patchUser(base, uid, patch){
-  return httpJSON(base, USERS_DATA_ENDPOINT, { method:'POST', body: { uid, ...patch } });
+async function postNotify(base, payload){
+  return httpJSON(base, NOTIFY_ENDPOINT, { method:'POST', body: payload });
 }
 
-/* ---------- тексты (как у тебя) ---------- */
-// Корзина — с title первого товара
+// те же варианты, что в прод-кроне
 const CART_VARIANTS = [
   ({title, count}) => `Ваша корзина ждёт: «${title}»${count>1?` + ещё ${count-1}`:''}. Оформим?`,
   ({title})        => `Не забыли про «${title}»? Всего пара кликов до заказа ✨`,
@@ -46,7 +40,6 @@ const CART_VARIANTS = [
   ({title})        => `Готовы завершить заказ? «${title}» уже в корзине.`,
   ({title, count}) => `Корзина на месте: «${title}»${count>1?` и ещё ${count-1}`:''}. Успеем сегодня?`,
 ];
-// Избранное — без названий (на сервере есть только id)
 const FAV_VARIANTS = [
   () => `Напоминание: у вас есть товары в избранном. Проверьте наличие размеров 👀`,
   () => `В избранном лежат ваши находки. Возможно, пора оформить заказ ✨`,
@@ -55,76 +48,83 @@ const FAV_VARIANTS = [
   () => `Сделаем следующий шаг? Откройте избранное и выберите подходящий размер.`,
   () => `Избранное на месте, как вы оставили. Проверьте актуальные цены и размеры.`,
 ];
-function pickVariant(list, currentIdx){
-  const len = list.length;
-  if (!len) return { build: () => '', nextIdx: 0 };
-  const idx = Number.isInteger(currentIdx) ? ((currentIdx % len)+len)%len : 0;
-  const build = list[idx];
-  const nextIdx = (idx + 1) % len;
-  return { build, nextIdx };
+function pickVariant(list, idx){
+  const len = list.length || 1;
+  const i = Number.isInteger(idx) ? ((idx % len)+len)%len : 0;
+  return { build: list[i], nextIdx: (i+1)%len };
 }
 
-/* ---------- handler ---------- */
-export async function handler(){
+export async function handler(event){
   try{
-    const base = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/, '');
-    if (!base) return new Response(JSON.stringify({ ok:false, error:'no base url' }), { status:500 });
-    if (!process.env.TG_BOT_TOKEN) {
-      // notify сам проверит, но дадим явный сигнал
-      return new Response(JSON.stringify({ ok:false, error:'TG_BOT_TOKEN missing' }), { status:500 });
-    }
+    const base = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/,'');
+    if (!base)  return new Response(JSON.stringify({ ok:false, error:'no base url' }), { status:500 });
+
+    const qs   = event?.queryStringParameters || {};
+    const dry  = String(qs.dry || '') === '1';
+    const onlySet = new Set(String(qs.only || '').split(',').map(s=>s.trim()).filter(Boolean));
 
     const now = Date.now();
     const today = dayKey(now);
     const THREE_DAYS = 3*24*60*60*1000;
 
-    // 1) получаем пользователей и их актуальные cart/favorites с СЕРВЕРА
     const users = await getUsers(base);
+    const list  = users.filter(u => !onlySet.size || onlySet.has(String(u.uid||'')));
 
     let sent = 0, considered = 0;
+    const previews = [];
 
-    for (const u of users) {
-      const chatId = String(u.chatId || '').trim();
-      if (!/^\d+$/.test(chatId)) continue; // нельзя слать без chat_id
+    for (const u of list){
+      const chatId = String(u?.chatId || '');
+      if (!/^\d+$/.test(chatId)) continue;
 
       const cart = Array.isArray(u.cart) ? u.cart : [];
       const favs = Array.isArray(u.favorites) ? u.favorites : [];
       const hasCart = cart.length > 0;
       const hasFav  = favs.length > 0;
-
       if (!hasCart && !hasFav) continue;
       considered++;
 
-      // === Корзина: 1 раз в день (по dayKey, UTC)
-      if (hasCart && u.lastCartReminderDay !== today) {
+      // корзина — не чаще 1/день
+      if (hasCart && u.lastCartReminderDay !== today){
         const first = cart[0];
-        const title = String(first?.title || 'товар').slice(0, 140);
+        const title = String(first?.title || 'товар').slice(0,140);
         const count = cart.length;
-
         const { build, nextIdx } = pickVariant(CART_VARIANTS, u.cartVariantIdx || 0);
         const text = build({ title, count });
 
-        await postNotify(base, { type: 'cartReminder', chat_id: chatId, title, text });
-
-        // метки и индекс варианта — ПИШЕМ обратно на СЕРВЕР
-        await patchUser(base, u.uid, { lastCartReminderDay: today, cartVariantIdx: nextIdx });
-        sent++;
+        if (dry){
+          previews.push({ uid:u.uid, kind:'cart', text });
+        }else{
+          await postNotify(base, { type:'cartReminder', chat_id: chatId, title, text });
+          // сдвигаем метки (как в проде)
+          await httpJSON(base, USERS_DATA_ENDPOINT, {
+            method:'POST',
+            body: { uid: u.uid, lastCartReminderDay: today, cartVariantIdx: nextIdx }
+          });
+          sent++;
+        }
       }
 
-      // === Избранное: раз в 3 дня (по таймштампу)
-      if (hasFav && Number(u.lastFavReminderTs || 0) + THREE_DAYS <= now) {
+      // избранное — раз в 3 дня
+      if (hasFav && Number(u.lastFavReminderTs||0) + THREE_DAYS <= now){
         const { build, nextIdx } = pickVariant(FAV_VARIANTS, u.favVariantIdx || 0);
         const text = build({});
 
-        await postNotify(base, { type: 'favReminder', chat_id: chatId, text });
-
-        await patchUser(base, u.uid, { lastFavReminderTs: now, favVariantIdx: nextIdx });
-        sent++;
+        if (dry){
+          Previews.push({ uid:u.uid, kind:'fav', text });
+        }else{
+          await postNotify(base, { type:'favReminder', chat_id: chatId, text });
+          await httpJSON(base, USERS_DATA_ENDPOINT, {
+            method:'POST',
+            body: { uid: u.uid, lastFavReminderTs: now, favVariantIdx: nextIdx }
+          });
+          sent++;
+        }
       }
     }
 
-    return new Response(JSON.stringify({ ok:true, users: users.length, considered, sent }), { status:200 });
-  } catch (e) {
+    return new Response(JSON.stringify({ ok:true, dry, users: users.length, considered, sent, previews }), { status:200 });
+  }catch(e){
     return new Response(JSON.stringify({ ok:false, error:String(e?.message||e) }), { status:500 });
   }
 }
