@@ -1,14 +1,18 @@
-// Ручной пуск рассылки "как в кроне".
+// netlify/functions/mkt-pings-test.js
+// Ручной пуск рассылки «как в кроне».
 // ?only=uid1,uid2 — ограничить пользователями
 // ?dry=1          — сухой прогон: ничего не шлёт, возвращает превью
 
 import { getStore } from '@netlify/blobs';
 
+const SITE_ID = process.env.NETLIFY_BLOBS_SITE_ID || '';
+const TOKEN   = process.env.NETLIFY_BLOBS_TOKEN   || '';
+
 const NOTIFY_ENDPOINT = '/.netlify/functions/notify';
 
 function dayKey(ts){
   const d = new Date(ts || Date.now());
-  return `${d.getUTCFullYear()}-${d.getUTCMonth()+1}-${d.getUTCDate()}`;
+  return `${d.getUTCFullYear()}-${d.getUTCMonth()+1}-${d.getUTCDate()}`; // UTC
 }
 
 async function postNotify(baseUrl, payload){
@@ -23,7 +27,7 @@ async function postNotify(baseUrl, payload){
   return j;
 }
 
-/* ------ те же варианты, что в mkt-pings.js ------ */
+/* ------ тексты ------ */
 const CART_VARIANTS = [
   ({title, count}) => `Ваша корзина ждёт: «${title}»${count>1?` + ещё ${count-1}`:''}. Оформим?`,
   ({title})        => `Не забыли про «${title}»? Всего пара кликов до заказа ✨`,
@@ -53,11 +57,17 @@ export async function handler(event){
     const base = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/,'');
     if (!base) return { statusCode:500, body: JSON.stringify({ ok:false, error:'no base url' }) };
 
+    if (!SITE_ID || !TOKEN) {
+      return { statusCode:500, body: JSON.stringify({ ok:false, error:'NETLIFY_BLOBS_SITE_ID or NETLIFY_BLOBS_TOKEN is missing' }) };
+    }
+
+    // Берём store с явной авторизацией
+    const usersStore = getStore({ name:'users', siteID:SITE_ID, token:TOKEN });
+
     const qs   = event?.queryStringParameters || {};
     const dry  = String(qs.dry || '') === '1';
     const onlySet = new Set(String(qs.only || '').split(',').map(s=>s.trim()).filter(Boolean));
 
-    const usersStore = getStore('users');
     const listed = await usersStore.list({ prefix:'user__', paginate:false }).catch(()=>null);
     const blobs = listed?.blobs || [];
 
@@ -72,7 +82,6 @@ export async function handler(event){
       const u = await usersStore.get(entry.key, { type:'json', consistency:'strong' }).catch(()=>null);
       if (!u) continue;
 
-      // фильтр only=
       if (onlySet.size && !onlySet.has(String(u.uid||''))) continue;
 
       const chatId = String(u?.chatId || '');

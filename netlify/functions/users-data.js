@@ -24,7 +24,7 @@ export async function handler(event) {
       return bad('NETLIFY_BLOBS_SITE_ID or NETLIFY_BLOBS_TOKEN is missing', 500);
     }
 
-    // ВАЖНО: передаём siteID и token прямо сюда
+    // Явно передаём siteID и token (важно на Free-плане/без автоконфига)
     const store = getStore({
       name: 'users',
       siteID: SITE_ID,

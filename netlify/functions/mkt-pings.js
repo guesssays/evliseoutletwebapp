@@ -34,8 +34,7 @@ async function patchUser(base, uid, patch){
   return httpJSON(base, USERS_DATA_ENDPOINT, { method:'POST', body: { uid, ...patch } });
 }
 
-/* ---------- тексты (как у тебя) ---------- */
-// Корзина — с title первого товара
+/* ---------- тексты ---------- */
 const CART_VARIANTS = [
   ({title, count}) => `Ваша корзина ждёт: «${title}»${count>1?` + ещё ${count-1}`:''}. Оформим?`,
   ({title})        => `Не забыли про «${title}»? Всего пара кликов до заказа ✨`,
@@ -46,7 +45,6 @@ const CART_VARIANTS = [
   ({title})        => `Готовы завершить заказ? «${title}» уже в корзине.`,
   ({title, count}) => `Корзина на месте: «${title}»${count>1?` и ещё ${count-1}`:''}. Успеем сегодня?`,
 ];
-// Избранное — без названий (на сервере есть только id)
 const FAV_VARIANTS = [
   () => `Напоминание: у вас есть товары в избранном. Проверьте наличие размеров 👀`,
   () => `В избранном лежат ваши находки. Возможно, пора оформить заказ ✨`,
@@ -70,7 +68,6 @@ export async function handler(){
     const base = (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/, '');
     if (!base) return new Response(JSON.stringify({ ok:false, error:'no base url' }), { status:500 });
     if (!process.env.TG_BOT_TOKEN) {
-      // notify сам проверит, но дадим явный сигнал
       return new Response(JSON.stringify({ ok:false, error:'TG_BOT_TOKEN missing' }), { status:500 });
     }
 
@@ -78,14 +75,14 @@ export async function handler(){
     const today = dayKey(now);
     const THREE_DAYS = 3*24*60*60*1000;
 
-    // 1) получаем пользователей и их актуальные cart/favorites с СЕРВЕРА
+    // 1) получаем пользователей и их актуальные cart/favorites с сервера
     const users = await getUsers(base);
 
     let sent = 0, considered = 0;
 
     for (const u of users) {
       const chatId = String(u.chatId || '').trim();
-      if (!/^\d+$/.test(chatId)) continue; // нельзя слать без chat_id
+      if (!/^\d+$/.test(chatId)) continue;
 
       const cart = Array.isArray(u.cart) ? u.cart : [];
       const favs = Array.isArray(u.favorites) ? u.favorites : [];
@@ -95,7 +92,7 @@ export async function handler(){
       if (!hasCart && !hasFav) continue;
       considered++;
 
-      // === Корзина: 1 раз в день (по dayKey, UTC)
+      // === Корзина: 1 раз в день (UTC)
       if (hasCart && u.lastCartReminderDay !== today) {
         const first = cart[0];
         const title = String(first?.title || 'товар').slice(0, 140);
@@ -105,19 +102,16 @@ export async function handler(){
         const text = build({ title, count });
 
         await postNotify(base, { type: 'cartReminder', chat_id: chatId, title, text });
-
-        // метки и индекс варианта — ПИШЕМ обратно на СЕРВЕР
         await patchUser(base, u.uid, { lastCartReminderDay: today, cartVariantIdx: nextIdx });
         sent++;
       }
 
-      // === Избранное: раз в 3 дня (по таймштампу)
+      // === Избранное: раз в 3 дня
       if (hasFav && Number(u.lastFavReminderTs || 0) + THREE_DAYS <= now) {
         const { build, nextIdx } = pickVariant(FAV_VARIANTS, u.favVariantIdx || 0);
         const text = build({});
 
         await postNotify(base, { type: 'favReminder', chat_id: chatId, text });
-
         await patchUser(base, u.uid, { lastFavReminderTs: now, favVariantIdx: nextIdx });
         sent++;
       }
