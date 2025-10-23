@@ -647,3 +647,48 @@ html, body, .view, .section, .checkout { max-width:100vw; overflow-x:hidden; }
   .cart-img{ width:64px; height:64px; }
   .cashback-box .row{ grid-template-columns:1fr; } /* кнопки под инпут */
 }
+/* ===== Cart hard-fix: no horizontal overflow, incl. cashback ===== */
+
+/* 0) Никто в корзине не может требовать min-content > контейнера */
+.checkout, .checkout * { min-width: 0 !important; }
+
+/* 1) Строка товара: третий столбец не «max-content», а авто и сжимается */
+.cart-row{
+  grid-template-columns: 72px minmax(0,1fr) auto !important;
+}
+.cart-row > div:nth-child(2){ min-width:0 !important; } /* центр сжимается */
+.cart-row .qty-mini{ min-width:0 !important; white-space:normal !important; } /* счётчик не распирает */
+
+/* 2) Блок списания баллов: сетка, где кнопки НЕ расширяют родителя */
+.cashback-box .row{
+  display:grid !important;
+  grid-template-columns: minmax(0,1fr) auto !important;  /* инпут тянется, колонка кнопок авто */
+  gap:8px !important;
+  align-items:center !important;
+}
+.cashback-box .btns{
+  display:flex !important;
+  gap:6px !important;
+  flex-wrap:wrap !important;          /* если не влазит — переносятся */
+  max-width:100% !important;
+}
+.cashback-box .btns .pill{ white-space:normal !important; } /* текст кнопок можно переносить */
+.cashback-box input.input{ width:100% !important; }
+
+/* 3) Любые длинные подписи/числа не распирают строки итогов */
+.payrow span, .payrow b{
+  min-width:0 !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+
+/* 4) На узких экранах (iPhone 12/13 mini, SE и т.п.) — кнопки под инпутом */
+@media (max-width: 480px){
+  .cashback-box .row{ grid-template-columns: 1fr !important; }
+  .cashback-box .btns{ justify-content:flex-end !important; }
+  .cart-row{ grid-template-columns: 64px 1fr !important; }
+  .qty-mini{ grid-column: 1 / -1; justify-content:flex-end; }
+}
+
+/* 5) Страховка от любого «левого» переполнения */
+html, body, .view, .section, .checkout{ max-width:100vw !important; overflow-x:hidden !important; }
