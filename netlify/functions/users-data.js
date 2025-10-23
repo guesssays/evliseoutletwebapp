@@ -1,6 +1,6 @@
 // netlify/functions/users-data.js
 // Источник данных для mkt-pings: отдаёт корзину/избранное/метки и принимает патч.
-// Сейчас берём из Netlify Blobs('users'); контракт можно оставить тем же при замене на БД.
+// Берём из Netlify Blobs('users') с явной конфигурацией siteID+token.
 
 import { getStore } from '@netlify/blobs';
 
@@ -19,16 +19,20 @@ function bad(msg, code = 400) {
 
 export async function handler(event) {
   try {
-    // Без этих переменных SDK не сможет подключиться к Blobs из функции
+    // Проверяем наличие переменных окружения
     if (!SITE_ID || !TOKEN) {
       return bad('NETLIFY_BLOBS_SITE_ID or NETLIFY_BLOBS_TOKEN is missing', 500);
     }
 
-    // ✅ передаём siteID+token прямо при создании стора
-    const store = getStore({ name: 'users', siteID: SITE_ID, token: TOKEN });
+    // ВАЖНО: передаём siteID и token прямо сюда
+    const store = getStore({
+      name: 'users',
+      siteID: SITE_ID,
+      token : TOKEN,
+    });
 
     if (event.httpMethod === 'GET') {
-      // Вернуть лёгкий срез по всем пользователям
+      // Лёгкий срез по всем пользователям
       const listed = await store.list({ prefix: 'user__', paginate: false }).catch(() => null);
       const blobs = listed?.blobs || [];
       const out = [];
@@ -36,7 +40,6 @@ export async function handler(event) {
       for (const b of blobs) {
         const u = await store.get(b.key, { type: 'json', consistency: 'strong' }).catch(() => null);
         if (!u) continue;
-        // минимально необходимое крону: uid, chatId, cart, favorites, метки, индексы
         out.push({
           uid: String(u.uid || ''),
           chatId: String(u.chatId || ''),
@@ -45,14 +48,14 @@ export async function handler(event) {
           lastCartReminderDay: u.lastCartReminderDay ?? null,
           lastFavReminderTs: Number(u.lastFavReminderTs || 0),
           cartVariantIdx: Number.isInteger(u.cartVariantIdx) ? u.cartVariantIdx : 0,
-          favVariantIdx: Number.isInteger(u.favVariantIdx) ? u.favVariantIdx : 0,
+          favVariantIdx : Number.isInteger(u.favVariantIdx)  ? u.favVariantIdx  : 0,
         });
       }
       return ok({ ok: true, users: out });
     }
 
     if (event.httpMethod === 'POST') {
-      // Принять патч меток для одного uid
+      // Патч меток для одного uid
       const body = JSON.parse(event.body || '{}') || {};
       const uid = String(body.uid || '').trim();
       if (!uid) return bad('uid required');
