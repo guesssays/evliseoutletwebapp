@@ -1,38 +1,38 @@
-// Тонкий клиент к /.netlify/functions/loyalty для нужд админки
+// src/core/loyaltyAdmin.js
+// Клиент для админ-операций лояльности. Требует, чтобы сервер узнавал админа по initData.
 
-const ENDPOINT = '/.netlify/functions/loyalty';
+function getTgInitDataRaw(){
+  try { return window?.Telegram?.WebApp?.initData || ''; } catch { return ''; }
+}
 
-async function call(op, payload = {}) {
-  const res = await fetch(ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json' },
-    body: JSON.stringify({ op, ...payload })
+const API = '/.netlify/functions/loyalty';
+
+async function call(op, body = {}){
+  const r = await fetch(API, {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'X-Tg-Init-Data': getTgInitDataRaw(),
+    },
+    body: JSON.stringify({ op, ...body })
   });
-  const data = await res.json().catch(()=> ({}));
-  if (!res.ok || data?.ok === false) {
-    const msg = data?.error || data?.reason || 'loyalty call failed';
-    throw new Error(msg);
-  }
-  return data;
+  const j = await r.json().catch(()=> ({}));
+  if (!r.ok || j?.ok === false) throw new Error(j?.error || j?.reason || 'loyalty admin api error');
+  return j;
 }
 
-export async function adminCalc(orderId) {
-  const r = await call('admincalc', { orderId: String(orderId) });
-  return r.calc || null;
+// ▼ используется в Admin.js
+export async function adminCalc(orderId){
+  const { calc } = await call('adminCalc', { orderId:String(orderId) });
+  return calc || null;
 }
 
-export async function getBalance(uid) {
-  const r = await call('getbalance', { uid: String(uid) });
-  return r.balance || { available:0, pending:0, history:[] };
+export async function getBalance(uid){
+  const { balance } = await call('getBalance', { uid:String(uid) });
+  return balance || { available:0, pending:0, history:[] };
 }
 
-export async function confirmAccrual(uid, orderId) {
-  // Переводит начисления pending -> available (по пользователю заказа и его инвайтеру)
-  const r = await call('confirmaccrual', { uid: String(uid), orderId: String(orderId) });
-  return r.balance || null;
-}
-
-export async function getReferrals(uid) {
-  const r = await call('getreferrals', { uid: String(uid) });
-  return r.data || null;
+export async function confirmAccrual(uid, orderId){
+  const { ok } = await call('confirmAccrualFor', { uid:String(uid), orderId:String(orderId) });
+  return ok === true;
 }
