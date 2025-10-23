@@ -1,14 +1,34 @@
 // netlify/functions/users-data.js
-// Серверный источник данных для mkt-pings: отдаёт корзину/избранное/метки и принимает патч.
-// Сегодня берём из Blobs('users'), завтра легко заменить на настоящую БД (оставив тот же контракт).
+// Источник данных для mkt-pings: отдаёт корзину/избранное/метки и принимает патч.
+// Сейчас берём из Netlify Blobs('users'); контракт можно оставить тем же при замене на БД.
 
-import { getStore } from '@netlify/blobs';
+import { getStore, setStoreConfig } from '@netlify/blobs';
 
-function ok(body, code = 200) { return new Response(JSON.stringify(body), { status: code, headers: { 'Content-Type': 'application/json' } }); }
-function bad(msg, code = 400)  { return ok({ ok:false, error:String(msg) }, code); }
+const SITE_ID = process.env.NETLIFY_BLOBS_SITE_ID || '';
+const TOKEN   = process.env.NETLIFY_BLOBS_TOKEN   || '';
+
+// Жёстко настраиваем Blobs SDK (важно сделать это ДО первого getStore)
+if (SITE_ID && TOKEN) {
+  setStoreConfig({ siteID: SITE_ID, token: TOKEN });
+}
+
+function ok(body, code = 200) {
+  return new Response(JSON.stringify(body), {
+    status: code,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+function bad(msg, code = 400) {
+  return ok({ ok: false, error: String(msg) }, code);
+}
 
 export async function handler(event) {
   try {
+    // Проверим, что токены заданы — иначе SDK упадёт при первом вызове
+    if (!SITE_ID || !TOKEN) {
+      return bad('NETLIFY_BLOBS_SITE_ID or NETLIFY_BLOBS_TOKEN is missing', 500);
+    }
+
     const store = getStore('users');
 
     if (event.httpMethod === 'GET') {
@@ -20,7 +40,7 @@ export async function handler(event) {
       for (const b of blobs) {
         const u = await store.get(b.key, { type: 'json', consistency: 'strong' }).catch(() => null);
         if (!u) continue;
-        // минимально необходимое крону: uid, chatId, cart, favorites, метки, индексы
+        // Минимально необходимое крону
         out.push({
           uid: String(u.uid || ''),
           chatId: String(u.chatId || ''),
