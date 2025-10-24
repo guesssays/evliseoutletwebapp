@@ -36,11 +36,12 @@
   <meta name="twitter:description" content="Стильные вещи по Outlet-ценам. Смотрите каталог и заказывайте в пару кликов." />
   <meta name="twitter:image" content="assets/images/og-evlise.png" />
 
-  <!-- Fonts / styles / libs -->
+  <!-- Fonts / styles -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=2025-10-24-02" />
 
-  <!-- Версия билда: меняй на каждом деплое -->
+  <!-- Версия билда (для принудительного обновления HTML в WebView) -->
   <script>
     window.__BUILD_VERSION__ = '2025-10-24-02';
     try {
@@ -48,18 +49,21 @@
       const prev = localStorage.getItem(KEY);
       const curr = window.__BUILD_VERSION__;
       if (prev && prev !== curr) {
-        sessionStorage.clear();
+        sessionStorage.clear(); // чистим только UI-кэш
       }
       localStorage.setItem(KEY, curr);
     } catch {}
   </script>
 
-  <!-- Основные стили -->
-  <link rel="stylesheet" href="styles.css?v=2025-10-24-02" />
-
-  <!-- Telegram WebApp + иконки -->
+  <!-- Telegram WebApp -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+  <!-- Lucide (пинованная версия) + безопасный запуск иконок -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/lucide@0.454.0/dist/umd/lucide.min.js"
+    defer
+    onload="try{window.lucide?.createIcons?.()}catch{}">
+  </script>
 </head>
 
 <body>
@@ -168,10 +172,10 @@
   <script type="module" src="src/main.js?v=2025-10-24-02"></script>
 
   <script>
-    // иконки после монтирования
-    window.lucide && lucide.createIcons && lucide.createIcons();
+    // Иконки после монтирования (запасной вызов, если onload не сработал)
+    try { window.lucide?.createIcons?.(); } catch {}
 
-    // форс-перезагрузка по версии (на случай закэшированного HTML)
+    // Форс-перезагрузка по версии (на случай закэшированного HTML)
     (function(){
       try{
         const qv = new URLSearchParams(location.search).get('v');
@@ -179,7 +183,7 @@
         if (need && qv !== need) {
           const url = new URL(location.href);
           url.searchParams.set('v', need);
-          location.replace(url.toString());
+          location.replace(url.toString()); // без добавления в историю
         }
       }catch{}
     })();
