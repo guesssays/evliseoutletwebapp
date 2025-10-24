@@ -58,7 +58,7 @@ function buildCorsHeaders(origin, isInternal=false){
     'Access-Control-Allow-Origin': allow ? (origin || '*') : 'null',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Internal-Auth',
-    'Content-Type': 'application/json; charset=utf-8', // ← добавили явный content-type
+    'Content-Type': 'application/json; charset=utf-8',
     'Vary': 'Origin',
   };
 }
@@ -603,11 +603,22 @@ export async function handler(event){
     const op = String(body.op || '').toLowerCase();
     const store = await getStoreSafe();
 
+    // === правка: мягкий фолбэк initData для read-only операций ===
     let userUid = null;
     if (!internal) {
       const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
-      const { user } = verifyTgInitData(rawInit);
-      userUid = String(user.id);
+      try {
+        const { user } = verifyTgInitData(rawInit);
+        userUid = String(user.id);
+      } catch (e) {
+        // разрешаем без initData ТОЛЬКО безопасные операции чтения
+        if (op === 'getbalance' || op === 'getreferrals') {
+          userUid = String(body.uid || '').trim();
+          if (!userUid) throw e;
+        } else {
+          throw e;
+        }
+      }
     }
 
     const uidFor = (fallback) => internal ? String(fallback||'') : userUid;

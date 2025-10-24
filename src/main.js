@@ -115,12 +115,24 @@ async function notifApiAdd(uid, notif){
   if (!res.ok || data?.ok === false) throw new Error('notif add error');
   return data.id || notif.id || Date.now();
 }
+/* === ПРАВКА ЗДЕСЬ ===
+   если есть валидный initData — используем защищённый op: 'markmine'
+   иначе — совместимый путь op: 'markAll' (для веб-запуска без Telegram) */
 async function notifApiMarkAll(uid){
-  // Для клиента используем markmine/markseen — без internal-токена.
+  const initData = getTgInitDataRaw();
+  const hasInit  = !!(initData && initData.length);
+
+  const headers = { 'Content-Type':'application/json' };
+  if (hasInit) headers['X-Tg-Init-Data'] = initData;
+
+  const body = hasInit
+    ? { op:'markmine', uid:String(uid) }   // владелец по проверенному initData
+    : { op:'markAll', uid:String(uid) };   // совместимость для веба/без initData
+
   const res = await fetch(NOTIF_API, {
     method:'POST',
-    headers:{ 'Content-Type':'application/json', 'X-Tg-Init-Data': getTgInitDataRaw() },
-    body: JSON.stringify({ op:'markmine', uid:String(uid) })
+    headers,
+    body: JSON.stringify(body)
   });
   const data = await res.json().catch(()=>({}));
   if (!res.ok || data?.ok === false) throw new Error('notif mark error');

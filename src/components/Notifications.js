@@ -122,15 +122,20 @@ async function fetchServerListSafe(){
 async function markAllServerSafe(){
   const uid = getUID();
   if (!uid) return null;
+
+  const initData = getTgInitDataRaw();
+  const hasInit = !!(initData && initData.length);
+
   try{
     const r = await withTimeout(fetch(ENDPOINT, {
       method:'POST',
       headers:{
         'Content-Type':'application/json',
-        'X-Tg-Init-Data': getTgInitDataRaw(),
+        ...(hasInit ? { 'X-Tg-Init-Data': initData } : {}),
       },
-      // ВАЖНО: оп должен быть строго в нижнем регистре — notifs.js ожидает 'markseen' / 'markmine'
-      body: JSON.stringify({ op:'markseen', uid })
+      // если есть initData — используем защищённый путь markseen/markmine,
+      // иначе — совместимый публичный путь markAll по uid
+      body: JSON.stringify(hasInit ? { op:'markseen', uid } : { op:'markAll', uid })
     }));
     const j = await r.json().catch(()=> ({}));
     if (!r.ok || j?.ok === false) return null;
