@@ -33,16 +33,6 @@ import { renderAdminLogin } from './components/AdminLogin.js';
 import { getOrders, getStatusLabel } from './core/orders.js';
 import { canAccessAdmin, tryUnlockFromStartParam } from './core/auth.js';
 
-// Пинг в бота (маркетинг/события)
-import {
-  notifyOrderPlaced,
-  notifyOrderAccepted,
-  notifyStatusChanged,
-  notifyOrderCanceled,
-  // notifyCartReminder,
-  // notifyFavoritesReminder,
-} from './core/botNotify.js';
-
 /* ===== Реферал/кешбэк: deeplink-капчер + bind ===== */
 import {
   captureInviterFromContext,
@@ -98,32 +88,43 @@ function makeDisplayOrderId(order) {
 const NOTIF_API = '/.netlify/functions/notifs';
 const USER_JOIN_API = '/.netlify/functions/user-join';
 
+function getTgInitDataRaw(){
+  try {
+    return typeof window?.Telegram?.WebApp?.initData === 'string'
+      ? window.Telegram.WebApp.initData
+      : '';
+  } catch { return ''; }
+}
+
 async function notifApiList(uid){
   const url = `${NOTIF_API}?op=list&uid=${encodeURIComponent(uid)}`;
-  const res = await fetch(url, { method: 'GET' });
+  const res = await fetch(url, { method: 'GET', headers: { 'X-Tg-Init-Data': getTgInitDataRaw() }});
   const data = await res.json().catch(()=>({}));
-  if (!res.ok || !data?.ok) throw new Error('notif list error');
+  if (!res.ok || data?.ok === false) throw new Error('notif list error');
   return Array.isArray(data.items) ? data.items : [];
 }
 async function notifApiAdd(uid, notif){
+  // На сервере op:add доступен только internal — этот вызов, скорее всего, вернёт 403,
+  // а мы зарезервировали локальный фолбэк ниже.
   const res = await fetch(NOTIF_API, {
     method:'POST',
-    headers:{ 'Content-Type':'application/json' },
+    headers:{ 'Content-Type':'application/json', 'X-Tg-Init-Data': getTgInitDataRaw() },
     body: JSON.stringify({ op:'add', uid:String(uid), notif })
   });
   const data = await res.json().catch(()=>({}));
-  if (!res.ok || !data?.ok) throw new Error('notif add error');
+  if (!res.ok || data?.ok === false) throw new Error('notif add error');
   return data.id || notif.id || Date.now();
 }
 async function notifApiMarkAll(uid){
+  // Для клиента используем markmine/markseen — без internal-токена.
   const res = await fetch(NOTIF_API, {
     method:'POST',
-    headers:{ 'Content-Type':'application/json' },
-    body: JSON.stringify({ op:'markAll', uid:String(uid) })
+    headers:{ 'Content-Type':'application/json', 'X-Tg-Init-Data': getTgInitDataRaw() },
+    body: JSON.stringify({ op:'markmine', uid:String(uid) })
   });
   const data = await res.json().catch(()=>({}));
-  if (!res.ok || !data?.ok) throw new Error('notif markAll error');
-  // сервер теперь отдаёт актуальный список
+  if (!res.ok || data?.ok === false) throw new Error('notif mark error');
+  // сервер отдаёт актуальный список после отметки
   return Array.isArray(data.items) ? data.items : null;
 }
 
@@ -162,7 +163,7 @@ async function serverPushFor(uid, notif){
     sub: String(notif.sub || '')
   };
   try{
-    await notifApiAdd(uid, safe);
+    await notifApiAdd(uid, safe); // может свалиться (403) — ниже фолбэк
   }catch{
     if (String(uid) === String(getUID?.())){
       const cache = getNotifications();
@@ -710,7 +711,7 @@ async function init(){
     }
   }
 
-  // === УВЕДОМЛЕНИЯ: ЕДИНЫЙ КОРОТКИЙ НОМЕР ===
+  // === УВЕДОМЛЕНИЯ (клиент): только локальный пуш и серверный notifs через orders-функции ===
   window.addEventListener('client:orderPlaced', async (e)=>{
     try{
       const id = e.detail?.id;
@@ -718,7 +719,6 @@ async function init(){
       // подтянем заказ (нужен shortId для единого отображения)
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
       const dispId = makeDisplayOrderId(order);
-      const title = buildOrderShortTitle(order);
 
       const notif = {
         id: `order-placed-${id}`,
@@ -734,10 +734,7 @@ async function init(){
 
       await serverPushFor(getUID(), notif);
 
-      const uid = state?.user?.id;
-      // В бота отправляем и orderId, и shortId — сервер унифицирует текст
-      notifyOrderPlaced(uid, { orderId: id, shortId: order?.shortId || null, title });
-
+      // Дальше уведомления (в бота/приложение) шлёт серверная функция orders -> notify/notifs
       window.dispatchEvent(new CustomEvent('orders:updated'));
     }catch{}
   });
@@ -747,7 +744,6 @@ async function init(){
       const { id, userId } = e.detail || {};
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
       const dispId = makeDisplayOrderId(order);
-      const title = buildOrderShortTitle(order);
 
       const notif = {
         icon: 'shield-check',
@@ -758,7 +754,7 @@ async function init(){
       await serverPushFor(userId, notif);
       instantLocalIfSelf(userId, notif);
 
-      notifyOrderAccepted(userId, { orderId: id, shortId: order?.shortId || null, title });
+      // Отправка бот-уведомлений теперь централизована на сервере (orders.js)
     }catch{}
   });
 
@@ -767,7 +763,6 @@ async function init(){
       const { id, status, userId } = e.detail || {};
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
       const dispId = makeDisplayOrderId(order);
-      const title = buildOrderShortTitle(order);
 
       const notif = {
         icon: 'refresh-ccw',
@@ -778,7 +773,7 @@ async function init(){
       await serverPushFor(userId, notif);
       instantLocalIfSelf(userId, notif);
 
-      notifyStatusChanged(userId, { orderId: id, shortId: order?.shortId || null, title });
+      // Бот-уведомления — со стороны сервера
     }catch{}
   });
 
@@ -798,8 +793,7 @@ async function init(){
       await serverPushFor(userId, notif);
       instantLocalIfSelf(userId, notif);
 
-      const title = buildOrderShortTitle(order);
-      notifyOrderCanceled(userId, { orderId: id, shortId: order?.shortId || null, title });
+      // Бот-уведомления — со стороны сервера
     }catch{}
   });
 
@@ -820,6 +814,11 @@ async function init(){
 
   // === ВМЕСТО scheduleMarketingBotPings(): серверная синхронизация снапшота ===
   startUserSnapshotSync();
+
+  // === Лёгкий поллер заказов, чтобы статусы «оживали» даже без событий ===
+  setInterval(async () => {
+    try { await getOrders(); /* saveOrders внутри дернётся, события улетят */ } catch {}
+  }, 45000);
 }
 init();
 

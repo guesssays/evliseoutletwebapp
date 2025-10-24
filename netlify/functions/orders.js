@@ -43,6 +43,7 @@ function buildCorsHeaders(origin) {
       'Access-Control-Allow-Origin': allowOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, X-Internal-Auth, X-Tg-Init-Data',
+      'Content-Type': 'application/json; charset=utf-8',
       'Vary': 'Origin',
     },
     isAllowed,
@@ -156,10 +157,9 @@ export async function handler(event) {
 
     if (op === 'add') {
       const id = await store.add(body.order || {});
-      // ——— Админу: Телеграм + дополнительно через internal notify (гарантированно всем ADMIN_CHAT_ID)
+      // ——— Админу: одно (!) уведомление в Telegram
       try {
         await notifyAdminNewOrder(id, body.order);
-        await callNotify({ type: 'orderPlaced', text: '🆕 Новый заказ', orderId: String(id), shortId: body.order?.shortId || body.order?.code || null });
       } catch (e) {
         console.error('[orders] notifyAdminNewOrder error:', e);
       }
@@ -210,7 +210,7 @@ export async function handler(event) {
         if (o?.userId) {
           await callNotify({
             chat_id: String(o.userId),
-            type: 'orderAccepted',
+            type: 'orderAccepted', // было statusChanged
             orderId: String(o.id),
             shortId: o.shortId || null,
             title: o?.cart?.[0]?.title || o?.title || ''
@@ -233,7 +233,7 @@ export async function handler(event) {
         try {
           await callNotify({
             chat_id: String(o.userId),
-            type: 'orderCanceled',
+            type: 'orderCanceled', // было statusChanged
             orderId: String(o.id),
             shortId: o.shortId || null,
             title: o?.cart?.[0]?.title || o?.title || ''
@@ -269,6 +269,7 @@ export async function handler(event) {
           await callNotify({
             chat_id: String(o.userId),
             type: 'statusChanged',
+            status,
             orderId: String(o.id),
             shortId: o.shortId || null,
             title: o?.cart?.[0]?.title || o?.title || ''
@@ -417,7 +418,11 @@ function makeStoreCore(readAll, writeAll){
       const i = list.findIndex(o=>String(o.id)===String(id));
       if (i===-1) return null;
       const o = list[i];
-      if (o.status!=='новый') return null;
+
+      // раньше: отменять разрешалось только из 'новый'
+      // теперь: можно отменять из любого не финального состояния (не 'выдан' и не уже отменён)
+      if (o.canceled || o.status === 'отменён' || o.status === 'выдан') return null;
+
       o.canceled = true;
       o.cancelReason = String(reason || '').trim();
       o.canceledAt = Date.now();
@@ -437,8 +442,8 @@ function makeStoreCore(readAll, writeAll){
       const i = list.findIndex(o=>String(o.id)===String(id));
       if (i===-1) return null;
       const o = list[i];
-      if (o.status==='новый') return null;
       if (o.status==='отменён' || o.canceled) return null;
+      if (o.status==='новый' && status !== 'принят') return null; // принятие только через accept(), либо status->'принят'
       o.status = status;
       if (!o.accepted && status!=='отменён') o.accepted = true;
       if (status==='выдан') o.completedAt = Date.now();

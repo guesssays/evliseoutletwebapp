@@ -18,14 +18,30 @@ export const state = {
 
 /* ===== user scoping (per-user localStorage) ===== */
 const UID_KEY = 'nas_uid';
+
+function readTgUserId() {
+  try {
+    const id = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    return id ? String(id) : null;
+  } catch { return null; }
+}
+
 export function getUID(){
   try{
-    const v = localStorage.getItem(UID_KEY);
-    return v ? String(v) : 'guest';
-  }catch{ return 'guest'; }
+    let v = localStorage.getItem(UID_KEY);
+    if (v) return String(v);
+    const tg = readTgUserId();
+    if (tg) {
+      localStorage.setItem(UID_KEY, tg);
+      return tg;
+    }
+    // важно: возвращаем null, чтобы не слать запросы как "guest"
+    return null;
+  }catch{ return null; }
 }
-export function k(base){ return `${base}__${getUID()}`; }
-export function kFor(base, uid){ return `${base}__${uid}`; }
+
+export function k(base){ return `${base}__${getUID() || 'nouid'}`; }
+export function kFor(base, uid){ return `${base}__${uid || 'nouid'}`; }
 export function migrateOnce(base){
   try{
     const old = localStorage.getItem(base);
@@ -42,18 +58,16 @@ export function persistCart(){ localStorage.setItem(k('nas_cart'), JSON.stringif
 
 /**
  * ВАЖНО: больше НЕ переносим общий ключ 'nas_cart' в персональный.
- * Это исправляет баг с автодобавлением демо-товара (например, "Худи Ford") всем новым пользователям.
+ * Это исправляет баг с автодобавлением демо-товара всем новым пользователям.
  * Дополнительно: одноразово удаляем legacy-ключ 'nas_cart', если он когда-то существовал.
  */
 export function loadCart(){
-  // удалить возможный общий ключ (во избежание повторной «миграции» где-либо)
   try{ localStorage.removeItem('nas_cart'); }catch{}
 
   try{
     const raw = localStorage.getItem(k('nas_cart'));
     const parsed = raw ? JSON.parse(raw) : { items: [] };
 
-    // Санитайз: только валидные строки
     const items = Array.isArray(parsed?.items) ? parsed.items : [];
     state.cart = {
       items: items
@@ -115,7 +129,7 @@ export function persistAddresses(){
   localStorage.setItem(k(ADDR_BASE), JSON.stringify(state.addresses));
 }
 
-/* ===== Профиль (телефон/ФИО плательщика) ===== */
+/* ===== Профиль ===== */
 const PROF_BASE = 'nas_profile';
 export function loadProfile(){
   migrateOnce(PROF_BASE);
@@ -136,7 +150,7 @@ export function persistProfile(){
   }));
 }
 
-/* ===== Избранное (персонально на UID) ===== */
+/* ===== Избранное ===== */
 const FAV_BASE = 'nas_favorites';
 export function loadFavorites(){
   migrateOnce(FAV_BASE);
@@ -161,7 +175,7 @@ export function toggleFav(productId){
   try{ window.dispatchEvent(new CustomEvent('force:rerender')); }catch{}
 }
 
-/* ===== Уведомления (персонально на UID) ===== */
+/* ===== Уведомления (персонально) ===== */
 const NOTIF_BASE = 'nas_notifications';
 
 export function getNotifications(){
@@ -175,8 +189,6 @@ export function pushNotification(n){
   list.push({ id: Date.now(), ts: Date.now(), read:false, icon:'bell', title:'', sub:'', ...n });
   setNotifications(list);
 }
-
-/** Положить уведомление конкретному пользователю (по userId/uid) */
 export function pushNotificationFor(uid, n){
   if (!uid) return;
   const key = kFor(NOTIF_BASE, String(uid));

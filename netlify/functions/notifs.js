@@ -1,8 +1,7 @@
 // netlify/functions/notifs.js
 // Хранилище уведомлений per-user.
-// Чтение списка — владелец (валидный initData).
-// Запись/mark — либо сервер (internal-token), либо владелец через op=markSeen/markMine.
-//
+// Чтение списка — владелец (валидный initData) ИЛИ, для совместимости с веб-клиентом, по явному uid из запроса.
+// Запись/mark — либо сервер (internal-token), либо владелец (initData) и, для совместимости, markAll/mark по явному uid.
 // ENV: TG_BOT_TOKEN, ADMIN_API_TOKEN, ALLOWED_ORIGINS, ALLOW_MEMORY_FALLBACK, NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN
 
 import crypto from 'node:crypto';
@@ -65,6 +64,7 @@ async function getStoreSafe(){
   try {
     const { getStore } = await import('@netlify/blobs');
     const store = getStore('notifs');
+    // лёгкая проверка доступности
     await store.list({ prefix:'__ping__', paginate:false });
     return makeBlobsStore(store);
   } catch (e) {
@@ -140,13 +140,18 @@ export async function handler(event){
     const store = await getStoreSafe();
 
     if (event.httpMethod === 'GET') {
-      // только владелец (initData)
+      // ① Владелец (initData), либо ② совместимость: явный uid в query
       const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
-      const { uid } = verifyTgInitData(rawInit);
       const op  = String(event.queryStringParameters?.op || 'list').toLowerCase();
-      const targetUidRaw = String(event.queryStringParameters?.uid || '').trim();
-      // uid в query не обязателен; если задан и не совпал — запрещаем
-      if (targetUidRaw && targetUidRaw !== uid) return { statusCode:403, ...headers, body:'forbidden' };
+      const uidFromQuery = String(event.queryStringParameters?.uid || '').trim();
+
+      let uid = null;
+      if (rawInit) {
+        try { ({ uid } = verifyTgInitData(rawInit)); } catch (e) { /* если подпись невалидна — попробуем fallback ниже */ }
+      }
+      if (!uid) uid = uidFromQuery; // режим совместимости с фронтом
+
+      if (!uid) return { statusCode:400, ...headers, body: JSON.stringify({ ok:false, error:'uid required' }) };
 
       if (op === 'list') {
         const items = await store.list(uid);
@@ -184,7 +189,8 @@ export async function handler(event){
       return { statusCode:400, ...headers, body: JSON.stringify({ ok:false, error:'unknown op' }) };
     }
 
-    // --- 2) ДЕЙСТВИЯ ОТ ПОЛЬЗОВАТЕЛЯ (initData): СНИМАЕМ НЕПРОЧИТАННОЕ ---
+    // --- 2) ДЕЙСТВИЯ ОТ ПОЛЬЗОВАТЕЛЯ ---
+    // 2a. Владелец через initData: markMine/markSeen (исторический контракт)
     if (op === 'markseen' || op === 'markmine') {
       const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
       const { uid } = verifyTgInitData(rawInit);
@@ -193,6 +199,25 @@ export async function handler(event){
       const ids = Array.isArray(body.ids) ? body.ids : null;
       const items = ids?.length ? await store.mark(uid, ids) : await store.markAll(uid);
       return { statusCode:200, ...headers, body: JSON.stringify({ ok:true, items }) };
+    }
+
+    // 2b. Совместимость с фронтендом: { op:'markAll', uid } или { op:'mark', uid, ids }
+    if (op === 'markall' || op === 'markAll' || op === 'mark') {
+      const uid = String(body.uid || '').trim();
+      if (!uid) return { statusCode:400, ...headers, body: JSON.stringify({ ok:false, error:'uid required' }) };
+      if (/^markall$/i.test(op)) {
+        const items = await store.markAll(uid);
+        return { statusCode:200, ...headers, body: JSON.stringify({ ok:true, items }) };
+      } else {
+        const ids = Array.isArray(body.ids) ? body.ids : [];
+        const items = await store.mark(uid, ids);
+        return { statusCode:200, ...headers, body: JSON.stringify({ ok:true, items }) };
+      }
+    }
+
+    // Публичного добавления нет (клиент при неудаче кладёт локально)
+    if (op === 'add') {
+      return { statusCode:403, ...headers, body: JSON.stringify({ ok:false, error:'forbidden' }) };
     }
 
     return { statusCode:403, ...headers, body: JSON.stringify({ ok:false, error:'forbidden' }) };

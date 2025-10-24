@@ -1,26 +1,17 @@
 // src/core/orders.js
+// Работа с заказами: клиент → сервер (remote-first) + локальный кэш.
+// Также включает admin token-хэндлинг.
 
-// Простое локальное хранилище заказов + утилиты для админки/клиента
 import { getUID } from './state.js';
-// ▼ Бот-уведомления (со shortId)
+// ▼ (опционально) пуш в бота с клиента — скрыто флагом, по умолчанию OFF
 import { notifyStatusChanged } from './botNotify.js';
 
 const KEY = 'nas_orders';
-
-// === централизованный backend ===
 const API_BASE = '/.netlify/functions/orders';
-
-// Небольшой таймаут, чтобы UI не «подвисал» при сетевых проблемах
 const FETCH_TIMEOUT_MS = 10000;
-
-// --- админ-операции, которые требуют internal-токен на сервере
 const ADMIN_OPS = new Set(['accept', 'cancel', 'status']);
 
-/* ===================== ADMIN TOKEN (клиент) ===================== */
-// Где берём токен:
-//  1) window.__ADMIN_API_TOKEN__ (можно положить в index.html админки),
-//  2) localStorage('admin_api_token') — если вы логините админа в UI,
-//  3) window.ADMIN_API_TOKEN (вдруг так удобнее).
+/* ===== Admin token ===== */
 export function setAdminToken(token = '') {
   try { localStorage.setItem('admin_api_token', String(token || '')); } catch {}
 }
@@ -35,6 +26,7 @@ export function getAdminToken() {
     return '';
   }
 }
+
 function withTimeout(promise, ms = FETCH_TIMEOUT_MS){
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error('timeout')), ms);
@@ -43,28 +35,24 @@ function withTimeout(promise, ms = FETCH_TIMEOUT_MS){
   });
 }
 
-/* ===================== КАНОНИЗАЦИЯ СТАТУСОВ ===================== */
+/* ===== Канонизация статусов ===== */
 function canonStatus(s = ''){
   const x = String(s || '').trim().toLowerCase();
   if (x === 'отменен') return 'отменён';
   return x || 'новый';
 }
-
 function normalizeOrder(o = {}){
   o.status = canonStatus(o.status || 'новый');
-  if (o.canceled) {
-    o.status = 'отменён';
-    o.accepted = false;
-  }
+  if (o.canceled) { o.status = 'отменён'; o.accepted = false; }
   return o;
 }
-/* =============================================================== */
 
 let __lastStoreKind = 'unknown';
 
+/* ===== API low-level ===== */
 async function apiGetList(){
   try{
-    const res = await withTimeout(fetch(`${API_BASE}?op=list`, { method:'GET' }));
+    const res = await withTimeout(fetch(`${API_BASE}?op=list&ts=${Date.now()}`, { method:'GET', headers:{'Cache-Control':'no-store'} }));
     const data = await res.json();
     if (res.ok && data?.ok && Array.isArray(data.orders)) {
       __lastStoreKind = data?.meta?.store || 'unknown';
@@ -77,7 +65,7 @@ async function apiGetList(){
 }
 async function apiGetOne(id){
   try{
-    const res = await withTimeout(fetch(`${API_BASE}?op=get&id=${encodeURIComponent(id)}`, { method:'GET' }));
+    const res = await withTimeout(fetch(`${API_BASE}?op=get&id=${encodeURIComponent(id)}&ts=${Date.now()}`, { method:'GET', headers:{'Cache-Control':'no-store'} }));
     const data = await res.json();
     if (res.ok && data?.ok) return data.order ? normalizeOrder(data.order) : null;
     return null;
@@ -99,8 +87,7 @@ async function apiPost(op, body){
   return data;
 }
 
-/* ===== utils для безопасного обновления локального кэша ===== */
-
+/* ===== Local cache ===== */
 function getOrdersLocal(){
   try{ return JSON.parse(localStorage.getItem(KEY) || '[]'); }catch{ return []; }
 }
@@ -120,62 +107,32 @@ export function clearAllOrders(){
     try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
   }catch{}
 }
-
 function writeHistory(order, status, extra = {}){
   const rec = { ts: Date.now(), status: canonStatus(status), ...extra };
   order.history = Array.isArray(order.history) ? [...order.history, rec] : [rec];
 }
-
 function mergeById(oldList = [], fresh = []){
   const map = new Map(oldList.map(o => [String(o.id), o]));
   for (const o of fresh) map.set(String(o.id), o);
   return Array.from(map.values()).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
 }
 
-/* ===================== Публичные API ===================== */
-
+/* ===== Публичные ===== */
 export const ORDER_STATUSES = [
-  'новый',
-  'принят',
-  'собирается в китае',
-  'вылетел в узб',
-  'на таможне',
-  'на почте',
-  'забран с почты',
-  'выдан',
-  'отменён',
+  'новый','принят','собирается в китае','вылетел в узб','на таможне','на почте','забран с почты','выдан','отменён',
 ];
-
 export const STATUS_LABELS = {
-  'новый':                 'В обработке',
-  'принят':                'Подтверждён',
-  'собирается в китае':    'Собирается продавцом',
-  'вылетел в узб':         'Вылетел из Китая',
-  'на таможне':            'На таможне в Узбекистане',
-  'на почте':              'В отделении почты',
-  'забран с почты':        'Получен с почты',
-  'выдан':                 'Выдан',
-  'отменён':               'Отменён',
-  'отменен':               'Отменён',
+  'новый':'В обработке','принят':'Подтверждён','собирается в китае':'Собирается продавцом',
+  'вылетел в узб':'Вылетел из Китая','на таможне':'На таможне в Узбекистане','на почте':'В отделении почты',
+  'забран с почты':'Получен с почты','выдан':'Выдан','отменён':'Отменён','отменен':'Отменён',
 };
-
 export function getStatusLabel(statusKey){
   const key = canonStatus(statusKey);
   return STATUS_LABELS[key] || String(key || '');
 }
+export const ADMIN_STAGE_OPTIONS = ['принят','собирается в китае','вылетел в узб','на таможне','на почте','забран с почты','выдан'];
 
-export const ADMIN_STAGE_OPTIONS = [
-  'принят',
-  'собирается в китае',
-  'вылетел в узб',
-  'на таможне',
-  'на почте',
-  'забран с почты',
-  'выдан',
-];
-
-// ======== СЕРВЕР-ПЕРВЫЕ API (с фолбэком) ========
-
+/* ====== Server-first ====== */
 export async function getOrders(){
   const list = await apiGetList();
   const local = getOrdersLocal();
@@ -190,7 +147,6 @@ export async function addOrder(order){
   const idLocal = order.id ?? String(Date.now());
   const now = Date.now();
   const initialStatus = canonStatus(order.status ?? 'новый');
-
   const safeUserId = order.userId ?? getUID() ?? null;
 
   const next = normalizeOrder({
@@ -251,9 +207,11 @@ export async function getOrdersForUser(userId){
 }
 
 export async function acceptOrder(orderId){
+  let updated = null;
   try{
-    await apiPost('accept', { id: String(orderId) });
-    const one = await apiGetOne(orderId);
+    const { order } = await apiPost('accept', { id: String(orderId) });
+    updated = order || null;
+    const one = updated || await apiGetOne(orderId);
     if (one){
       const list = getOrdersLocal();
       const i = list.findIndex(o => String(o.id) === String(orderId));
@@ -271,22 +229,25 @@ export async function acceptOrder(orderId){
   }catch{
     const list = getOrdersLocal();
     const i = list.findIndex(o => String(o.id) === String(orderId));
-    if (i === -1) return;
-    const o = list[i];
-    if (canonStatus(o.status) !== 'новый' || o.canceled) return;
-    o.accepted = true;
-    o.status = 'принят';
-    writeHistory(o, 'принят');
-    saveOrders(list);
-    return;
+    if (i !== -1) {
+      const o = list[i];
+      if (canonStatus(o.status) === 'новый' && !o.canceled) {
+        o.accepted = true; o.status = 'принят'; writeHistory(o, 'принят');
+        updated = o;
+        saveOrders(list);
+      }
+    }
   }
   saveOrders(getOrdersLocal());
+  return updated;
 }
 
 export async function cancelOrder(orderId, reason = ''){
+  let updated = null;
   try{
-    await apiPost('cancel', { id: String(orderId), reason: String(reason||'') });
-    const one = await apiGetOne(orderId);
+    const { order } = await apiPost('cancel', { id: String(orderId), reason: String(reason||'') });
+    updated = order || null;
+    const one = updated || await apiGetOne(orderId);
     if (one){
       const list = getOrdersLocal();
       const i = list.findIndex(o => String(o.id) === String(orderId));
@@ -304,31 +265,34 @@ export async function cancelOrder(orderId, reason = ''){
   }catch{
     const list = getOrdersLocal();
     const i = list.findIndex(o => String(o.id) === String(orderId));
-    if (i === -1) return;
-    const o = list[i];
-    if (canonStatus(o.status) !== 'новый') return;
-    o.canceled = true;
-    o.cancelReason = String(reason || '').trim();
-    o.canceledAt = Date.now();
-    o.accepted = false;
-    o.status = 'отменён';
-    writeHistory(o, 'отменён', { comment: o.cancelReason });
-    saveOrders(list);
+    if (i !== -1) {
+      const o = list[i];
+      if (canonStatus(o.status) === 'новый') {
+        o.canceled = true;
+        o.cancelReason = String(reason || '').trim();
+        o.canceledAt = Date.now();
+        o.accepted = false;
+        o.status = 'отменён';
+        writeHistory(o, 'отменён', { comment: o.cancelReason });
+        updated = o;
+        saveOrders(list);
+      }
+    }
   }
-
-  // Лояльность — только на сервере.
   saveOrders(getOrdersLocal());
+  return updated;
 }
 
 export async function updateOrderStatus(orderId, status){
   const stCanon = canonStatus(status);
-  if (!ORDER_STATUSES.includes(stCanon)) return;
+  if (!ORDER_STATUSES.includes(stCanon)) return null;
 
   let updatedOrder = null;
 
   try{
-    await apiPost('status', { id:String(orderId), status:String(stCanon) });
-    const one = await apiGetOne(orderId);
+    const { order } = await apiPost('status', { id:String(orderId), status:String(stCanon) });
+    updatedOrder = order || null;
+    const one = updatedOrder || await apiGetOne(orderId);
     if (one){
       updatedOrder = one;
       const list = getOrdersLocal();
@@ -348,22 +312,22 @@ export async function updateOrderStatus(orderId, status){
   }catch{
     const list = getOrdersLocal();
     const i = list.findIndex(o => String(o.id) === String(orderId));
-    if (i === -1) return;
-    const o = list[i];
-    const cur = canonStatus(o.status);
-    if (cur === 'новый') return;
-    if (cur === 'отменён' || o.canceled) return;
-    o.status = stCanon;
-    if (!o.accepted && stCanon !== 'отменён') o.accepted = true;
-    if (stCanon === 'выдан'){ o.completedAt = Date.now(); }
-    writeHistory(o, stCanon);
-    saveOrders(list);
-    updatedOrder = o;
+    if (i !== -1) {
+      const o = list[i];
+      const cur = canonStatus(o.status);
+      if (cur !== 'новый' && cur !== 'отменён' && !o.canceled) {
+        o.status = stCanon;
+        if (!o.accepted && stCanon !== 'отменён') o.accepted = true;
+        if (stCanon === 'выдан'){ o.completedAt = Date.now(); }
+        writeHistory(o, stCanon);
+        updatedOrder = o;
+        saveOrders(list);
+      }
+    }
   }
 
-  // ▼ клиентское уведомление выключено по умолчанию (включается флагом)
   try {
-    if (typeof window !== 'undefined' && window.__ALLOW_CLIENT_NOTIFY__ === true) {
+    if (typeof window !== 'undefined' && window.__ALLOW_CLIENT_NOTIFY__ === true && updatedOrder) {
       notifyStatusChanged(null, {
         orderId: updatedOrder?.id,
         shortId: updatedOrder?.shortId ?? null,
@@ -373,6 +337,7 @@ export async function updateOrderStatus(orderId, status){
   } catch {}
 
   saveOrders(getOrdersLocal());
+  return updatedOrder;
 }
 
 /* Демосидирование отключено */

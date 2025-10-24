@@ -57,6 +57,22 @@ export async function renderAdmin(){
   let mode = 'list';
   let selectedId = null;
 
+  // ——— Автопуллинг (чтобы новые заказы гарантированно показывались)
+  let pollTimer = null;
+  function startPolling(){
+    stopPolling();
+    pollTimer = setInterval(async ()=>{
+      // не дергаем сервер, если пользователь не в админке/не в списке
+      if (!document.body.classList.contains('admin-mode')) return;
+      if (mode !== 'list') return;
+      await getAll();
+      render(); // перерисуем список/вкладку с актуальными данными
+    }, 15000);
+  }
+  function stopPolling(){
+    if (pollTimer){ clearInterval(pollTimer); pollTimer = null; }
+  }
+
   const getAll = async ()=> {
     const orders = await getOrders();
     state.orders = orders;
@@ -64,7 +80,7 @@ export async function renderAdmin(){
   };
 
   const filterByTab = (list)=>{
-    if (tab==='new')    return list.filter(o => o.status==='новый' && !o.accepted);
+    if (tab==='new')    return list.filter(o => o.status==='новый' && !o.accepted && !o.canceled);
     if (tab==='active') return list.filter(o => !['новый','выдан','отменён'].includes(o.status));
     if (tab==='done')   return list.filter(o => ['выдан','отменён'].includes(o.status));
     return list;
@@ -170,6 +186,9 @@ export async function renderAdmin(){
         hook(card);
       }
     });
+
+    // в режиме списка запускаем автопуллинг
+    startPolling();
   }
 
   // ====== Состав заказа (детали) ======
@@ -256,7 +275,8 @@ export async function renderAdmin(){
     const usedPts   = Number(calc.usedPoints||0);
     const paidShare = (o.total>0 && usedPts>0) ? Math.round(100*usedPts/Number(o.total)) : 0;
     const refText   = calc.referrer ? `да (инвайтер: <code>${String(calc.referrer)}</code>)` : 'нет';
-    const released  = !!calc.pendingReleased;
+    // if pendingReleased не пришёл — считаем, что ещё не переведено → покажем кнопку
+    const released  = calc.pendingReleased === true;
 
     return `
       <div class="subsection-title" style="margin-top:14px">Реальные данные лояльности</div>
@@ -276,7 +296,7 @@ export async function renderAdmin(){
       </div>
       ${released ? '' : `
         <div class="muted mini" style="margin:8px 0 0">Можно подтвердить начисления вручную, если заказ выдан.</div>
-        <button class="btn btn--sm" id="btnConfirmAccrual" data-uid="${String(calc.uid||o.userId)}" data-oid="${String(calc.orderId||o.id)}">
+        <button class="btn btn--sm" id="btnConfirmAccrual" data-uid="${String(calc.uid||o.userId||'')}" data-oid="${String(calc.orderId||o.id)}">
           Подтвердить начисления (pending → available)
         </button>
       `}
@@ -285,6 +305,7 @@ export async function renderAdmin(){
 
   // ====== Детальная карточка заказа ======
   async function detailView(){
+    stopPolling(); // в деталях не дёргаем список
     const orders = await getAll();
     const o = orders.find(x=>String(x.id)===String(selectedId));
     if(!o){
@@ -423,24 +444,21 @@ export async function renderAdmin(){
     // принять
     document.getElementById('btnAccept')?.addEventListener('click', async ()=>{
       await acceptOrder(o.id);
-      // форсим обновление списка/вкладок
+      // глобальные события (для синка остальных частей приложения)
+      dispatchGlobal('orders:updated');
+      dispatchGlobal('admin:orderAccepted', { id: o.id, userId: o.userId });
+      // остаёмся в карточке, но обновим данные
       mode='detail';
       selectedId = o.id;
       await render();
-      try{
-        const ev = new CustomEvent('admin:orderAccepted', { detail:{ id: o.id, userId: o.userId } });
-        window.dispatchEvent(ev);
-      }catch{}
     });
 
     // отменить
     document.getElementById('btnCancel')?.addEventListener('click', async ()=>{
-      const reason = prompt('Причина отмены (будет видна клиенту):');
-      await cancelOrder(o.id, reason||'');
-      try{
-        const ev = new CustomEvent('admin:orderCanceled', { detail:{ id:o.id, reason:reason||'', userId:o.userId } });
-        window.dispatchEvent(ev);
-      }catch{}
+      const reason = prompt('Причина отмены (будет видна клиенту):') || '';
+      await cancelOrder(o.id, reason);
+      dispatchGlobal('orders:updated');
+      dispatchGlobal('admin:orderCanceled', { id:o.id, reason, userId:o.userId });
       mode='list'; tab='done'; render();
     });
 
@@ -452,10 +470,8 @@ export async function renderAdmin(){
       if (!st) return;
       await updateOrderStatus(o.id, st);
 
-      try{
-        const ev = new CustomEvent('admin:statusChanged', { detail:{ id:o.id, status:st, userId:o.userId } });
-        window.dispatchEvent(ev);
-      }catch{}
+      dispatchGlobal('orders:updated');
+      dispatchGlobal('admin:statusChanged', { id:o.id, status:st, userId:o.userId });
 
       if (st === 'выдан'){ mode='list'; tab='done'; }
       render();
@@ -471,6 +487,7 @@ export async function renderAdmin(){
       }catch(err){
         alert('Не удалось подтвердить начисления: ' + (err?.message || err));
       }
+      dispatchGlobal('orders:updated');
       render();
     });
   }
@@ -488,6 +505,10 @@ export async function renderAdmin(){
 }
 
 /* helpers */
+function dispatchGlobal(name, detail=null){
+  try{ window.dispatchEvent(new CustomEvent(name, { detail })); }catch{}
+}
+
 function openReceiptPreview(url=''){
   const modal = document.getElementById('modal');
   const mb = document.getElementById('modalBody');
