@@ -8,6 +8,7 @@
 //   ALLOWED_ORIGINS            (список через запятую, включая тг-домены)
 //   ALLOW_MEMORY_FALLBACK=0/1  (в проде — 0)
 //   NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN  (рекомендуется явно)
+//   DEBUG_LOYALTY=1            (включить подробные логи)
 
 import crypto from 'node:crypto';
 
@@ -16,6 +17,15 @@ const IS_PROD =
   (process.env.CONTEXT === 'production') ||
   (process.env.NODE_ENV === 'production');
 const ALLOW_MEMORY_FALLBACK = String(process.env.ALLOW_MEMORY_FALLBACK||'').trim()==='1';
+
+const DEBUG = String(process.env.DEBUG_LOYALTY || '').trim() === '1';
+function logD(...args){ if (DEBUG) console.log('[loyalty]', ...args); }
+function logE(...args){ console.error('[loyalty]', ...args); }
+function redact(str='', keep=8){
+  const s = String(str||'');
+  return s.length<=keep ? s : `${s.slice(0,2)}…${s.slice(-Math.min(keep-2,6))}`;
+}
+function tail(str='', n=6){ const s=String(str||''); return s.slice(-n); }
 
 const CFG = {
   BASE_RATE: 0.05,
@@ -64,7 +74,7 @@ function buildCorsHeaders(origin, isInternal=false){
 }
 
 /* ====== TG initData verification ====== */
-function verifyTgInitData(rawInitData) {
+function verifyTgInitData(rawInitData, reqId='') {
   const token = process.env.TG_BOT_TOKEN || '';
   if (!token) throw new Error('TG_BOT_TOKEN not set');
   const urlEncoded = new URLSearchParams(String(rawInitData||''));
@@ -82,7 +92,22 @@ function verifyTgInitData(rawInitData) {
   const secretKey = crypto.createHash('sha256').update(token).digest();
   const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
-  if (hmac !== hash) throw new Error('initData signature invalid');
+  if (hmac !== hash){
+    if (DEBUG){
+      const u = urlEncoded.get('user') || '';
+      let uidSafe = null;
+      try{ uidSafe = JSON.parse(u)?.id || null; }catch{}
+      logD(`[req:${reqId}] initData mismatch`, {
+        token_tail: tail(token),
+        init_len: String(rawInitData||'').length,
+        user_id: uidSafe ? String(uidSafe) : null,
+        got_hash: redact(hash, 10),
+        calc_hash: redact(hmac, 10),
+        keys: Array.from(urlEncoded.keys()).slice(0,10)
+      });
+    }
+    throw new Error('initData signature invalid');
+  }
 
   const userJson = urlEncoded.get('user') || '';
   let user = null;
@@ -141,13 +166,18 @@ async function getStoreSafe() {
 
     await base.list({ prefix:'__ping__', paginate:false });
 
-    return makeBlobsStore(base);
+    const store = makeBlobsStore(base);
+    logD('store ready:', store.__kind || 'blobs');
+    return store;
   }catch(e){
     if (IS_PROD || !ALLOW_MEMORY_FALLBACK) {
+      logE('blobs init failed:', e?.message || e);
       throw new Error('[loyalty] persistent store unavailable');
     }
     console.warn('[loyalty] fallback to memory (DEV only):', e?.message||e);
-    return makeMemoryStore();
+    const store = makeMemoryStore();
+    logD('store ready:', store.__kind || 'memory');
+    return store;
   }
 }
 
@@ -366,6 +396,7 @@ function makeCore(readAll, writeAll){
 
     async accrue(uid, orderId, total, currency, shortId=null){
       const db = await readDb();
+      logD('accrue in', { uid, orderId, total, currency, shortId });
       const existing = db.orders[orderId];
       if (existing?.released) {
         const me = safeUser(db, uid);
@@ -435,6 +466,7 @@ function makeCore(readAll, writeAll){
       };
 
       await writeAll(db);
+      logD('accrue out', { orderId, buyerPending: buyer.pending, inviter, buyerPts:newBuyerPts, refPts:newRefPts });
       return { ok:true, balance: { available: buyer.available, pending: buyer.pending, history: buyer.history } };
     },
 
@@ -442,18 +474,19 @@ function makeCore(readAll, writeAll){
       const db = await readDb();
       const user = safeUser(db, uid);
 
-      if (pts < CFG.MIN_REDEEM) return { ok:false, reason:'min' };
+      if (pts < CFG.MIN_REDEEM){ logD('reserve: reject min', { uid, pts, min: CFG.MIN_REDEEM, orderId }); return { ok:false, reason:'min' }; }
 
       const ordExisting = db.orders[orderId];
       const baseTotal = Number((ordExisting?.total ?? 0) || totalArg || 0);
-      if (baseTotal <= 0) return { ok:false, reason:'total' };
+      if (baseTotal <= 0){ logD('reserve: reject total<=0', { uid, pts, orderId, totalArg, existingTotal: ordExisting?.total||0 }); return { ok:false, reason:'total' }; }
 
       const byShare = Math.floor(baseTotal * CFG.MAX_CART_DISCOUNT_FRAC);
       const maxAllowed = Math.min(byShare, CFG.MAX_REDEEM);
 
-      if (pts > maxAllowed)     return { ok:false, reason:'rule' };
-      if (pts > user.available) return { ok:false, reason:'balance' };
+      if (pts > maxAllowed){ logD('reserve: reject rule', { uid, pts, maxAllowed, byShare, MAX_REDEEM:CFG.MAX_REDEEM, baseTotal }); return { ok:false, reason:'rule' }; }
+      if (pts > user.available){ logD('reserve: reject balance', { uid, pts, available:user.available }); return { ok:false, reason:'balance' }; }
 
+      logD('reserve: accept', { uid, pts, beforeAvail:user.available, orderId, baseTotal, byShare, maxAllowed, shortId });
       user.available -= pts;
       user.history.push({ ts:Date.now(), kind:'reserve', orderId, pts:-pts, info:'Резерв на оплату' });
       if (user.history.length>500) user.history = user.history.slice(-500);
@@ -476,6 +509,7 @@ function makeCore(readAll, writeAll){
       if (shortId && !db.orders[orderId].shortId) db.orders[orderId].shortId = shortId;
 
       await writeAll(db);
+      logD('reserve: done', { uid, orderId, newAvail:user.available, orderUsed: db.orders[orderId].used });
       return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };
     },
 
@@ -484,12 +518,14 @@ function makeCore(readAll, writeAll){
       const user = safeUser(db, uid);
       const idx = db.reservations.findIndex(r => String(r.uid)===String(uid) && String(r.orderId)===String(orderId));
       if (idx === -1){
+        logD('finalize: no reservation', { uid, orderId, action });
         return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };
       }
       const res = db.reservations[idx];
       db.reservations.splice(idx, 1);
 
       if (action === 'cancel'){
+        logD('finalize: cancel', { uid, orderId, pts: res.pts, beforeAvail:user.available });
         user.available += res.pts;
         user.history.push({ ts:Date.now(), kind:'reserve_cancel', orderId, pts:+res.pts, info:'Возврат резерва' });
         if (user.history.length>500) user.history = user.history.slice(-500);
@@ -499,15 +535,18 @@ function makeCore(readAll, writeAll){
           if (take > 0) o.used = Math.max(0, (o.used|0) - take);
         }
       }else{
+        logD('finalize: commit', { uid, orderId, pts: res.pts });
         user.history.push({ ts:Date.now(), kind:'redeem', orderId, pts:-Math.abs(res.pts|0), info:`Оплата баллами ${res.pts}` });
         if (user.history.length>500) user.history = user.history.slice(-500);
       }
       await writeAll(db);
+      logD('finalize: done', { uid, orderId, action, newAvail:user.available });
       return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };
     },
 
     async confirm(uid, orderId){
       const db = await readDb();
+      logD('confirm in', { uid, orderId });
       const user = safeUser(db, uid);
       const ord = db.orders[orderId];
       if (!ord || ord.released || ord.canceled) {
@@ -542,6 +581,7 @@ function makeCore(readAll, writeAll){
       ord.released = true;
       ord.releasedAt = Date.now();
       await writeAll(db);
+      logD('confirm out', { orderId, released: ord?.released, buyerAvail: buyer?.available });
 
       const me = safeUser(db, uid);
       return { ok:true, balance:{ available: me.available, pending: me.pending, history: me.history } };
@@ -551,6 +591,7 @@ function makeCore(readAll, writeAll){
       const db = await readDb();
       const r = await voidAccrualInternal(db, String(orderId));
       await writeAll(db);
+      logD('voidAccrual', { orderId, result:r });
       return r;
     },
 
@@ -587,9 +628,21 @@ function makeCore(readAll, writeAll){
 
 /* ================= HTTP Handler ================= */
 export async function handler(event){
+  const reqId = crypto.randomBytes(4).toString('hex');
   const origin = event.headers?.origin || event.headers?.Origin || '';
   const internal = isInternalCall(event);
   const cors = buildCorsHeaders(origin, internal);
+  if (DEBUG){
+    const h = event.headers||{};
+    const tgLen = String(h['x-tg-init-data']||h['X-Tg-Init-Data']||'').length;
+    logD(`[req:${reqId}] incoming`, {
+      method: event.httpMethod,
+      origin,
+      internal,
+      tg_init_len: tgLen,
+      ua: (h['user-agent']||'').slice(0,64),
+    });
+  }
 
   if (event.httpMethod === 'OPTIONS'){
     return { statusCode:204, headers:cors };
@@ -608,13 +661,16 @@ export async function handler(event){
     if (!internal) {
       const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
       try {
-        const { user } = verifyTgInitData(rawInit);
+        const { user } = verifyTgInitData(rawInit, reqId);
         userUid = String(user.id);
+        if (DEBUG) logD(`[req:${reqId}] tg ok, uid=${userUid}`);
       } catch (e) {
+        if (DEBUG) logD(`[req:${reqId}] tg verify failed:`, String(e?.message||e));
         // разрешаем без initData ТОЛЬКО безопасные операции чтения
         if (op === 'getbalance' || op === 'getreferrals') {
           userUid = String(body.uid || '').trim();
           if (!userUid) throw e;
+          if (DEBUG) logD(`[req:${reqId}] readonly op without tg:`, op, 'uid=', userUid);
         } else {
           throw e;
         }
@@ -625,6 +681,7 @@ export async function handler(event){
 
     if (op === 'getbalance'){
       const uid = uidFor(body.uid);
+      if (DEBUG) logD(`[req:${reqId}] getbalance uid=${uid}`);
       const balance = await store.getBalance(String(uid));
       return { statusCode:200, headers:cors, body: JSON.stringify({ ok:true, balance }) };
     }
@@ -632,6 +689,7 @@ export async function handler(event){
     if (op === 'bindreferral'){
       const inviter = String(body.inviter||'');
       const invitee = uidFor(body.invitee);
+      if (DEBUG) logD(`[req:${reqId}] bindReferral inviter=${inviter} invitee=${invitee}`);
       const r = await store.bindReferral(inviter, invitee);
       return { statusCode:200, headers:cors, body: JSON.stringify({ ok:r.ok!==false, reason:r.reason||null }) };
     }
@@ -639,6 +697,7 @@ export async function handler(event){
     if (op === 'accrue'){
       if (!internal) return { statusCode:403, headers:cors, body: JSON.stringify({ ok:false, error:'forbidden' }) };
       const { uid, orderId, total=0, currency='UZS', shortId=null } = body;
+      if (DEBUG) logD(`[req:${reqId}] accrue`, { uid, orderId, total, currency, shortId });
       const r = await store.accrue(String(uid), String(orderId), Number(total||0), String(currency||'UZS'), shortId ? String(shortId) : null);
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
     }
@@ -646,20 +705,25 @@ export async function handler(event){
     if (op === 'reserveredeem'){
       const uid = uidFor(body.uid);
       const { pts=0, orderId, total=0, shortId=null } = body;
+      if (DEBUG) logD(`[req:${reqId}] reserveRedeem in`, { uid, pts, orderId, total, shortId });
       const r = await store.reserve(String(uid), Number(pts||0), String(orderId), Number(total||0), shortId ? String(shortId) : null);
+      if (DEBUG) logD(`[req:${reqId}] reserveRedeem out`, r);
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
     }
 
     if (op === 'finalizeredeem'){
       const uid = uidFor(body.uid);
       const { orderId, action } = body;
+      if (DEBUG) logD(`[req:${reqId}] finalizeRedeem in`, { uid, orderId, action });
       const r = await store.finalize(String(uid), String(orderId), String(action));
+      if (DEBUG) logD(`[req:${reqId}] finalizeRedeem out`, r);
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
     }
 
     if (op === 'confirmaccrual'){
       const uid = uidFor(body.uid);
       const { orderId } = body;
+      if (DEBUG) logD(`[req:${reqId}] confirmAccrual`, { uid, orderId });
       const r = await store.confirm(String(uid), String(orderId));
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
     }
@@ -667,6 +731,7 @@ export async function handler(event){
     if (op === 'voidaccrual'){
       if (!internal) return { statusCode:403, headers:cors, body: JSON.stringify({ ok:false, error:'forbidden' }) };
       const { uid=null, orderId } = body;
+      if (DEBUG) logD(`[req:${reqId}] voidAccrual`, { uid, orderId });
       const r = await store.voidAccrual(String(orderId));
       let balance = null;
       if (uid) { try { balance = await store.getBalance(String(uid)); } catch {} }
@@ -675,6 +740,7 @@ export async function handler(event){
 
     if (op === 'getreferrals'){
       const uid = uidFor(body.uid);
+      if (DEBUG) logD(`[req:${reqId}] getReferrals uid=${uid}`);
       const r = await store.getReferrals(String(uid));
       return { statusCode:200, headers:cors, body: JSON.stringify({ ok:true, ...r }) };
     }
@@ -682,13 +748,14 @@ export async function handler(event){
     if (op === 'admincalc'){
       if (!internal) return { statusCode:403, headers:cors, body: JSON.stringify({ ok:false, error:'forbidden' }) };
       const { orderId } = body;
+      if (DEBUG) logD(`[req:${reqId}] adminCalc`, { orderId });
       const r = await store.calc(String(orderId));
       return { statusCode:200, headers:cors, body: JSON.stringify({ ok:true, ...r }) };
     }
 
     return { statusCode:400, headers:cors, body: JSON.stringify({ ok:false, error:'unknown op' }) };
   }catch(e){
-    console.error('[loyalty] error:', e);
+    logE(`[req:${reqId}] error:`, e);
     return { statusCode:500, headers:cors, body: JSON.stringify({ ok:false, error:String(e?.message||e) }) };
   }
 }
