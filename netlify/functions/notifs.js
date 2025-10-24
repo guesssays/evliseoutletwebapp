@@ -144,8 +144,9 @@ export async function handler(event){
       const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
       const { uid } = verifyTgInitData(rawInit);
       const op  = String(event.queryStringParameters?.op || 'list').toLowerCase();
-      const targetUid = String(event.queryStringParameters?.uid || '').trim();
-      if (!targetUid || targetUid!==uid) return { statusCode:403, ...headers, body:'forbidden' };
+      const targetUidRaw = String(event.queryStringParameters?.uid || '').trim();
+      // uid в query не обязателен; если задан и не совпал — запрещаем
+      if (targetUidRaw && targetUidRaw !== uid) return { statusCode:403, ...headers, body:'forbidden' };
 
       if (op === 'list') {
         const items = await store.list(uid);
@@ -187,8 +188,8 @@ export async function handler(event){
     if (op === 'markseen' || op === 'markmine') {
       const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
       const { uid } = verifyTgInitData(rawInit);
-      const targetUid = String(body.uid || '').trim();
-      if (!targetUid || targetUid !== uid) return { statusCode:403, ...headers, body: JSON.stringify({ ok:false, error:'forbidden' }) };
+      const targetUidRaw = String(body.uid || '').trim();
+      if (targetUidRaw && targetUidRaw !== uid) return { statusCode:403, ...headers, body: JSON.stringify({ ok:false, error:'forbidden' }) };
       const ids = Array.isArray(body.ids) ? body.ids : null;
       const items = ids?.length ? await store.mark(uid, ids) : await store.markAll(uid);
       return { statusCode:200, ...headers, body: JSON.stringify({ ok:true, items }) };

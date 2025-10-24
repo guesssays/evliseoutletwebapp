@@ -26,7 +26,7 @@ const CFG = {
   MAX_REDEEM: 150000,
   PENDING_DELAY_MS: DAY,
   MONTHLY_REF_LIMIT: 10,
-  RESERVE_TTL_MS: 60*60*1000, // ⬅ TTL резерва: 60 минут
+  RESERVE_TTL_MS: 60*60*1000, // TTL резерва: 60 минут
 };
 
 /* ====== CORS ====== */
@@ -50,7 +50,7 @@ function originMatches(origin, rule) {
 }
 function buildCorsHeaders(origin, isInternal=false){
   const allowed = parseAllowed();
-  const allow = isInternal // server-to-server без Origin через internal-token
+  const allow = isInternal
     || !allowed.length
     || isTelegramOrigin(origin)
     || allowed.some(rule => originMatches(origin, rule));
@@ -58,6 +58,7 @@ function buildCorsHeaders(origin, isInternal=false){
     'Access-Control-Allow-Origin': allow ? (origin || '*') : 'null',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Internal-Auth',
+    'Content-Type': 'application/json; charset=utf-8', // ← добавили явный content-type
     'Vary': 'Origin',
   };
 }
@@ -70,7 +71,6 @@ function verifyTgInitData(rawInitData) {
   const hash = urlEncoded.get('hash');
   if (!hash) throw new Error('no hash in initData');
 
-  // Сортированный data_check_string без hash
   const pairs = [];
   for (const [k,v] of urlEncoded.entries()) {
     if (k === 'hash') continue;
@@ -84,7 +84,6 @@ function verifyTgInitData(rawInitData) {
 
   if (hmac !== hash) throw new Error('initData signature invalid');
 
-  // Достаём user
   const userJson = urlEncoded.get('user') || '';
   let user = null;
   try { user = JSON.parse(userJson); } catch {}
@@ -136,12 +135,10 @@ async function getStoreSafe() {
   try{
     const { getStore } = await import('@netlify/blobs');
 
-    // использовать явные креды если есть
     const siteID = process.env.NETLIFY_BLOBS_SITE_ID || '';
     const token  = process.env.NETLIFY_BLOBS_TOKEN   || '';
     const base   = siteID && token ? getStore({ name:'loyalty', siteID, token }) : getStore('loyalty');
 
-    // ping
     await base.list({ prefix:'__ping__', paginate:false });
 
     return makeBlobsStore(base);
@@ -154,7 +151,7 @@ async function getStoreSafe() {
   }
 }
 
-/* --- Мердж-утилиты (как было) --- */
+/* --- merge helpers (как было) --- */
 function clone(obj){ return JSON.parse(JSON.stringify(obj||{})); }
 function mergeHist(oldArr=[], newArr=[]){
   const out = [...(oldArr||[])];
@@ -236,7 +233,6 @@ function makeBlobsStore(store){
         merged = deepMergeDb(existing, obj);
       }
     }catch{}
-    // Снапшоты раз в 5 минут
     try{
       const now=Date.now(); const bucket = Math.floor(now/(5*60*1000))*(5*60*1000);
       await store.setJSON(`${KEY}__snap_${bucket}`, merged);
@@ -279,13 +275,11 @@ function makeCore(readAll, writeAll){
     db.referrals.inviteesFirst[invitee] = true;
   }
 
-  // TTL очистка резервов (лениво, при каждом обращении)
   function cleanupExpiredReservations(db){
     const now = Date.now();
     const keep = [];
     for (const r of (db.reservations||[])) {
       if ((now - (r.ts||0)) <= CFG.RESERVE_TTL_MS) { keep.push(r); continue; }
-      // срок вышел — вернуть средства
       const u = safeUser(db, r.uid);
       u.available += Math.abs(r.pts|0);
       addHist(u, { kind:'reserve_expire', orderId:r.orderId, pts:+Math.abs(r.pts|0), info:`Снятие резерва по TTL (${Math.floor(CFG.RESERVE_TTL_MS/60000)}м)` });
@@ -298,7 +292,6 @@ function makeCore(readAll, writeAll){
   async function readDb(){
     const db = await readAll();
     cleanupExpiredReservations(db);
-    // сохраняем, если что-то почистили
     await writeAll(db);
     return db;
   }
@@ -522,7 +515,6 @@ function makeCore(readAll, writeAll){
       }
       const disp = makeDisplayOrderId(orderId, ord?.shortId);
 
-      // покупатель
       const buyer = safeUser(db, ord.uid);
       const bPts = ord.accrual?.buyer || 0;
       if (bPts > 0 && buyer.pending >= bPts){
@@ -534,7 +526,6 @@ function makeCore(readAll, writeAll){
         await fireAndForgetNotify(ord.uid, 'cashbackMatured', { text:`✅ Кэшбек по заказу #${disp}: ${bPts} баллов доступны к оплате.`, orderId, shortId: ord.shortId });
       }
 
-      // реферер
       if (ord.accrual?.inviter){
         const ref = safeUser(db, ord.accrual.inviter);
         const rPts = ord.accrual?.refPts || 0;
@@ -612,7 +603,6 @@ export async function handler(event){
     const op = String(body.op || '').toLowerCase();
     const store = await getStoreSafe();
 
-    // Пользовательская аутентификация по initData
     let userUid = null;
     if (!internal) {
       const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
@@ -620,7 +610,6 @@ export async function handler(event){
       userUid = String(user.id);
     }
 
-    // helper: uid из проверенного initData или (для внутренних) из body
     const uidFor = (fallback) => internal ? String(fallback||'') : userUid;
 
     if (op === 'getbalance'){
@@ -637,7 +626,6 @@ export async function handler(event){
     }
 
     if (op === 'accrue'){
-      // вызывать должен ТОЛЬКО сервер заказов по internal-token
       if (!internal) return { statusCode:403, headers:cors, body: JSON.stringify({ ok:false, error:'forbidden' }) };
       const { uid, orderId, total=0, currency='UZS', shortId=null } = body;
       const r = await store.accrue(String(uid), String(orderId), Number(total||0), String(currency||'UZS'), shortId ? String(shortId) : null);
@@ -652,7 +640,6 @@ export async function handler(event){
     }
 
     if (op === 'finalizeredeem'){
-      // пользователь может завершать только свои; сервер — любые
       const uid = uidFor(body.uid);
       const { orderId, action } = body;
       const r = await store.finalize(String(uid), String(orderId), String(action));
@@ -660,7 +647,6 @@ export async function handler(event){
     }
 
     if (op === 'confirmaccrual'){
-      // пользователь подтверждает своё; сервер — любые
       const uid = uidFor(body.uid);
       const { orderId } = body;
       const r = await store.confirm(String(uid), String(orderId));
@@ -668,7 +654,6 @@ export async function handler(event){
     }
 
     if (op === 'voidaccrual'){
-      // только внутренний вызов
       if (!internal) return { statusCode:403, headers:cors, body: JSON.stringify({ ok:false, error:'forbidden' }) };
       const { uid=null, orderId } = body;
       const r = await store.voidAccrual(String(orderId));

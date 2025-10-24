@@ -89,7 +89,7 @@ async function sendTg(token, chatId, text, kb, type){
   const imgPath = TYPE_IMG[type];
   const imgUrl = (imgPath && BASE_ASSET_URL) ? `${BASE_ASSET_URL}${imgPath}` : null;
 
-  const common = { chat_id: chatId, parse_mode:'HTML', ...(kb?{ reply_markup:{ inline_keyboard: kb } }:{}) };
+  const common = { chat_id: chatId, parse_mode:'HTML', ...(kb?{ reply_markup: { inline_keyboard: kb } }:{}) };
   const method = imgUrl ? 'sendPhoto' : 'sendMessage';
   const payload = imgUrl
     ? { ...common, photo: imgUrl, caption: text, disable_notification:false }
@@ -102,7 +102,7 @@ async function sendTg(token, chatId, text, kb, type){
   if (!r.ok || data?.ok===false) throw new Error('telegram send failed');
 }
 
-/* Типы, связанные с заказами: ранее требовали initData даже для internal */
+/* Типы, связанные с заказами: требуем initData для внешних вызовов */
 const ORDER_ONLY_USER = new Set(['orderPlaced','orderAccepted','statusChanged','orderCanceled']);
 
 export async function handler(event){
@@ -158,7 +158,7 @@ export async function handler(event){
     }
     const kb = kbForType(type);
 
-    // === ПРИОРИТЕТ: INTERNAL ===
+    // INTERNAL: можно слать прямо по chat_id (покупателю или админам)
     if (internal) {
       if (clientChatId) {
         await sendTg(token, String(clientChatId), finalText, kb, type);
@@ -174,7 +174,7 @@ export async function handler(event){
       return { statusCode:400, body:'chat_id required', ...headers };
     }
 
-    // === ВНЕШНИЕ ВЫЗОВЫ (только через проверенное initData) ===
+    // ВНЕШНИЕ ВЫЗОВЫ: только через проверенное initData
     const isMarketing = (type==='cartReminder' || type==='favReminder');
     if (isMarketing || ORDER_ONLY_USER.has(type)) {
       const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
@@ -186,7 +186,6 @@ export async function handler(event){
       return { statusCode:200, body: JSON.stringify({ ok:true }), ...headers };
     }
 
-    // Прочее запрещаем
     return { statusCode:403, body: JSON.stringify({ ok:false, error:'forbidden' }), ...headers };
   } catch (err) {
     console.error('[notify] handler error:', err);

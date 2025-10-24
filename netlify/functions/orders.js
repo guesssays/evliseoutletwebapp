@@ -42,7 +42,6 @@ function buildCorsHeaders(origin) {
     headers: {
       'Access-Control-Allow-Origin': allowOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      // ↑ расширили заголовки — пригодится для internal-token и init-data, если решите использовать
       'Access-Control-Allow-Headers': 'Content-Type, X-Internal-Auth, X-Tg-Init-Data',
       'Vary': 'Origin',
     },
@@ -98,7 +97,6 @@ export async function handler(event) {
     return { statusCode: 403, body: 'Forbidden by CORS', ...headers };
   }
 
-  // простая проверка «внутреннего» запроса
   const isInternal = (event.headers?.['x-internal-auth'] || event.headers?.['X-Internal-Auth'] || '') === (process.env.ADMIN_API_TOKEN || '');
 
   let store;
@@ -131,7 +129,6 @@ export async function handler(event) {
       return bad('unknown op', headers);
     }
 
-    // POST
     const body = JSON.parse(event.body || '{}') || {};
     const op = String(body.op || '').toLowerCase();
 
@@ -142,7 +139,6 @@ export async function handler(event) {
       } catch (e) {
         console.error('[orders] notifyAdminNewOrder error:', e);
       }
-      // уведомление покупателю — “оформлен”
       try{
         if (body.order?.userId) {
           await callNotify({
@@ -155,7 +151,6 @@ export async function handler(event) {
         }
       }catch(e){ console.warn('[orders] notify orderPlaced failed:', e?.message||e); }
 
-      // ✅ начисление pending-кэшбэка/рефералки сразу после создания заказа
       try {
         const cartTotal =
           Array.isArray(body.order?.cart)
@@ -176,7 +171,6 @@ export async function handler(event) {
       return ok({ id }, headers);
     }
 
-    // ↓↓↓ админские операции — только с INTERNAL-токеном ↓↓↓
     if (['accept','cancel','status'].includes(op) && !isInternal) {
       return bad('forbidden', headers);
     }
@@ -184,7 +178,6 @@ export async function handler(event) {
     if (op === 'accept') {
       const id = String(body.id || '');
       const o = await store.accept(id);
-      // уведомление покупателю — “принят”
       try{
         if (o?.userId) {
           await callNotify({
@@ -205,10 +198,8 @@ export async function handler(event) {
       const o = await store.cancel(id, reason);
 
       if (o && o.userId) {
-        // вернуть резервы и pending
         try { await callLoyalty('finalizeredeem', { uid: String(o.userId), orderId: String(o.id), action: 'cancel' }); } catch(e){ console.warn('[orders] loyalty.finalizeredeem(cancel) failed:', e?.message||e); }
         try { await callLoyalty('voidaccrual', { uid: String(o.userId), orderId: String(o.id) }); } catch(e){ console.warn('[orders] loyalty.voidaccrual failed:', e?.message||e); }
-        // уведомление покупателю — “отменён”
         try {
           await callNotify({
             chat_id: String(o.userId),
@@ -229,7 +220,6 @@ export async function handler(event) {
       const o = await store.status(id, status);
 
       if (o && o.userId) {
-        // подтверждение кэшбэка при “выдан”
         if (status === 'выдан') {
           try {
             await callLoyalty('confirmaccrual', { uid: String(o.userId), orderId: String(o.id) });
@@ -238,13 +228,11 @@ export async function handler(event) {
             console.warn('[orders] loyalty.confirmaccrual failed:', e?.message || e);
           }
         }
-        // при “отменён” — возвраты
         if (status === 'отменён') {
           try { await callLoyalty('finalizeredeem', { uid: String(o.userId), orderId: String(o.id), action: 'cancel' }); } catch(e){ console.warn('[orders] loyalty.finalizeredeem(cancel) failed (status):', e?.message||e); }
           try { await callLoyalty('voidaccrual', { uid: String(o.userId), orderId: String(o.id) }); } catch(e){ console.warn('[orders] loyalty.voidaccrual failed (status):', e?.message||e); }
         }
 
-        // уведомление покупателю — “смена статуса”
         try {
           await callNotify({
             chat_id: String(o.userId),

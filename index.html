@@ -147,5 +147,41 @@
 
     <script type="module" src="src/main.js"></script>
     <script>window.lucide && lucide.createIcons();</script>
+<!-- ADMIN TOKEN INJECTION (работает на загрузке и при переходе в #/admin) -->
+<script>
+(function () {
+  const B64 = 'VXNBXjU5NzZKSmJENGc2aip0XmprSk1vTWElKkhvIWo='; // base64 твоего токена
+  let injected = false;
+
+  function maybeInject() {
+    const isAdminView =
+      (location.hash && location.hash.startsWith('#/admin')) ||
+      location.pathname.includes('/admin');
+    if (!isAdminView || injected) return;
+
+    try {
+      const token = atob(B64);
+      if (token && token !== 'VXNBXjU5NzZKSmJENGc2aip0XmprSk1vTWElKkhvIWo=') {
+        window.__ADMIN_API_TOKEN__ = token;
+        try { localStorage.setItem('admin_api_token', token); } catch {}
+        injected = true;
+        console.log('[admin] token injected');
+      } else {
+        console.warn('[admin] токен не подставлен');
+      }
+    } catch (e) {
+      console.warn('[admin] atob fail:', e);
+    }
+  }
+
+  // при загрузке
+  maybeInject();
+  // при смене хэша внутри SPA
+  window.addEventListener('hashchange', maybeInject);
+})();
+</script>
+
+
+
   </body>
 </html>

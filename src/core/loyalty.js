@@ -1,9 +1,9 @@
 // src/core/loyalty.js
-// Центр логики кешбэка/рефералок (клиент) + thin-API к serverless-функции
+// Клиентская обвязка к serverless-функции лояльности + локальные хелперы
 
 import { getUID, k } from './state.js';
 
-/* ===== Конфиг программы ===== */
+/* ===== Конфиг ===== */
 export const CASHBACK_CFG = {
   POINT_IS_SUM: 1,
   BASE_RATE: 0.05,
@@ -17,9 +17,9 @@ export const CASHBACK_CFG = {
 };
 
 /* ====== Telegram Mini App: имя бота для deeplink ====== */
-export const BOT_USERNAME = 'evliseoutletbot'; // <-- замени на актуальный username бота
+export const BOT_USERNAME = 'evliseoutletbot';
 
-/* ===== Локальные вспомогательные ключи (перс.) ===== */
+/* ===== Локальные ключи ===== */
 const LKEY_BALANCE    = 'loyalty_balance';
 const LKEY_REDEEM_RES = 'loyalty_redeem_reservations';
 const LKEY_REF        = 'loyalty_ref';
@@ -27,10 +27,19 @@ const LKEY_INVITER    = 'pending_inviter_uid';
 
 /* ===== Helpers: raw initData из Telegram ===== */
 function getTgInitDataRaw(){
+  try { return typeof window?.Telegram?.WebApp?.initData === 'string'
+    ? window.Telegram.WebApp.initData : ''; } catch { return ''; }
+}
+
+/* ===== Админ-токен (для внутренних операций) ===== */
+const ADMIN_OPS = new Set(['adminCalc', 'voidAccrual', 'accrue']); // accrue — строго internal
+function getAdminToken() {
   try {
-    // при запуске в Mini App — строка вида "query_id=...&user=...&hash=..."
-    const raw = window?.Telegram?.WebApp?.initData;
-    return typeof raw === 'string' ? raw : '';
+    return (
+      (typeof window !== 'undefined' && (window.__ADMIN_API_TOKEN__ || window.ADMIN_API_TOKEN)) ||
+      localStorage.getItem('admin_api_token') ||
+      ''
+    );
   } catch { return ''; }
 }
 
@@ -49,7 +58,7 @@ export function setLocalLoyalty(obj){
   }));
 }
 export function getLocalReservations(){
-  try{ return JSON.parse(localStorage.getItem(k(LKEY_REDEEM_RES)) || '[]'); }catch{ return []; }
+  try{ return JSON.parse(localStorage.getItem(k(LKEY_REDEEM_RES) )|| '[]'); }catch{ return []; }
 }
 export function setLocalReservations(list){
   localStorage.setItem(k(LKEY_REDEEM_RES), JSON.stringify(Array.isArray(list)?list:[]));
@@ -65,13 +74,18 @@ export function setLocalRef(obj){
 const API = '/.netlify/functions/loyalty';
 
 async function api(op, body = {}){
+  const headers = {
+    'Content-Type':'application/json',
+    'X-Tg-Init-Data': getTgInitDataRaw(),
+  };
+  // для внутренних операций добавляем admin header
+  if (ADMIN_OPS.has(String(op))) {
+    const t = getAdminToken();
+    if (t) headers['X-Internal-Auth'] = t;
+  }
   const r = await fetch(API, {
     method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      // ⬇️ критично: передаём сырое initData для валидации подписи на бэке
-      'X-Tg-Init-Data': getTgInitDataRaw(),
-    },
+    headers,
     body: JSON.stringify({ op, ...body })
   });
   const data = await r.json().catch(()=> ({}));
@@ -189,8 +203,10 @@ export async function finalizeRedeemFor(uid, orderId, action){
   if (ok) setLocalLoyalty(balance);
   return { ok };
 }
+
+// ✅ фикс: на бэке оп называется confirmaccrual
 export async function confirmAccrualFor(uid, orderId){
-  const { ok, balance } = await api('confirmAccrualFor', { uid:String(uid), orderId:String(orderId) });
+  const { ok, balance } = await api('confirmAccrual', { uid:String(uid), orderId:String(orderId) });
   if (ok) setLocalLoyalty(balance);
   return { ok };
 }
@@ -201,6 +217,7 @@ export async function loyaltyVoidAccrualFor(uid, orderId){
   return { ok };
 }
 
+// NB: accrue — internal-only; будет работать только внутри админ-панели с прокинутым ADMIN_API_TOKEN
 export async function accrueOnOrderPlaced(order){
   const uid = String(order.userId || getUID());
   const { ok, balance } = await api('accrue', {

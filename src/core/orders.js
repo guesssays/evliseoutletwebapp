@@ -46,16 +46,12 @@ function withTimeout(promise, ms = FETCH_TIMEOUT_MS){
 /* ===================== КАНОНИЗАЦИЯ СТАТУСОВ ===================== */
 function canonStatus(s = ''){
   const x = String(s || '').trim().toLowerCase();
-  // любые варианты "отменен" → "отменён"
   if (x === 'отменен') return 'отменён';
   return x || 'новый';
 }
 
 function normalizeOrder(o = {}){
-  // привести статус к канону
   o.status = canonStatus(o.status || 'новый');
-
-  // если сервер вернул canceled: true — форсируем статус «отменён»
   if (o.canceled) {
     o.status = 'отменён';
     o.accepted = false;
@@ -76,7 +72,6 @@ async function apiGetList(){
     }
     throw new Error('bad response');
   }catch(e){
-    // оффлайн/фолбэк — вернём локальный кэш
     return getOrdersLocal().map(normalizeOrder);
   }
 }
@@ -89,7 +84,6 @@ async function apiGetOne(id){
   }catch{ return null; }
 }
 async function apiPost(op, body){
-  // добавим internal-токен для админских операций, если доступен на клиенте
   const headers = { 'Content-Type': 'application/json' };
   if (ADMIN_OPS.has(op)) {
     const token = getAdminToken();
@@ -113,16 +107,13 @@ function getOrdersLocal(){
 function setOrdersLocal(list){
   localStorage.setItem(KEY, JSON.stringify(list));
 }
-/** Сохранить и уведомить UI */
 export function saveOrders(list){
   setOrdersLocal((list||[]).map(normalizeOrder));
   try{ window.dispatchEvent(new CustomEvent('orders:updated')); }catch{}
 }
-/** Тихо заменить кэш */
 function replaceOrdersCacheSilently(list){
   setOrdersLocal((list||[]).map(normalizeOrder));
 }
-/** Полная очистка (на всякий случай) */
 export function clearAllOrders(){
   try{
     localStorage.removeItem(KEY);
@@ -135,7 +126,6 @@ function writeHistory(order, status, extra = {}){
   order.history = Array.isArray(order.history) ? [...order.history, rec] : [rec];
 }
 
-/** Слияние списков по id, с приоритетом свежих данных и сортировкой по createdAt desc */
 function mergeById(oldList = [], fresh = []){
   const map = new Map(oldList.map(o => [String(o.id), o]));
   for (const o of fresh) map.set(String(o.id), o);
@@ -144,9 +134,6 @@ function mergeById(oldList = [], fresh = []){
 
 /* ===================== Публичные API ===================== */
 
-/**
- * Статусы (ключи)
- */
 export const ORDER_STATUSES = [
   'новый',
   'принят',
@@ -159,7 +146,6 @@ export const ORDER_STATUSES = [
   'отменён',
 ];
 
-/** Отображаемые названия */
 export const STATUS_LABELS = {
   'новый':                 'В обработке',
   'принят':                'Подтверждён',
@@ -170,7 +156,6 @@ export const STATUS_LABELS = {
   'забран с почты':        'Получен с почты',
   'выдан':                 'Выдан',
   'отменён':               'Отменён',
-  // подстрахуемся
   'отменен':               'Отменён',
 };
 
@@ -179,7 +164,6 @@ export function getStatusLabel(statusKey){
   return STATUS_LABELS[key] || String(key || '');
 }
 
-/** Этапы, доступные администратору */
 export const ADMIN_STAGE_OPTIONS = [
   'принят',
   'собирается в китае',
@@ -211,7 +195,7 @@ export async function addOrder(order){
 
   const next = normalizeOrder({
     id: idLocal,
-    shortId: order.shortId ?? order.code ?? null,   // ⬅️ сохраняем короткий номер и на клиенте
+    shortId: order.shortId ?? order.code ?? null,
     userId: safeUserId,
     username: order.username ?? '',
     productId: order.productId ?? null,
@@ -219,7 +203,7 @@ export async function addOrder(order){
     color: order.color ?? null,
     link: order.link ?? (order.productId ? `#/product/${order.productId}` : ''),
     cart: Array.isArray(order.cart) ? order.cart : [],
-    total: Number(order.total || 0), // к оплате (после списания)
+    total: Number(order.total || 0),
     address: typeof order.address === 'string' ? order.address : (order.address?.address || ''),
     phone: order.phone ?? '',
     payerFullName: order.payerFullName ?? '',
@@ -332,7 +316,7 @@ export async function cancelOrder(orderId, reason = ''){
     saveOrders(list);
   }
 
-  // ❗️Клиент больше НЕ трогает лояльность — всё делает сервер в orders.js
+  // Лояльность — только на сервере.
   saveOrders(getOrdersLocal());
 }
 
@@ -377,16 +361,17 @@ export async function updateOrderStatus(orderId, status){
     updatedOrder = o;
   }
 
-  // ▼ Бот-уведомление со shortId (без принудительного chat_id здесь)
+  // ▼ клиентское уведомление выключено по умолчанию (включается флагом)
   try {
-    notifyStatusChanged(null, {
-      orderId: updatedOrder?.id,
-      shortId: updatedOrder?.shortId ?? null,
-      title: updatedOrder?.cart?.[0]?.title || updatedOrder?.title || ''
-    });
+    if (typeof window !== 'undefined' && window.__ALLOW_CLIENT_NOTIFY__ === true) {
+      notifyStatusChanged(null, {
+        orderId: updatedOrder?.id,
+        shortId: updatedOrder?.shortId ?? null,
+        title: updatedOrder?.cart?.[0]?.title || updatedOrder?.title || ''
+      });
+    }
   } catch {}
 
-  // ❗️Лояльность коммит/отмена и подтверждение начислений — теперь ТОЛЬКО на сервере.
   saveOrders(getOrdersLocal());
 }
 

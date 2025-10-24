@@ -3,6 +3,17 @@ import { k, getUID } from '../core/state.js';
 
 const ENDPOINT = '/.netlify/functions/notifs';
 
+// Берём сырой initData из Telegram Mini App, чтобы сервер мог верифицировать владельца.
+function getTgInitDataRaw(){
+  try {
+    return typeof window?.Telegram?.WebApp?.initData === 'string'
+      ? window.Telegram.WebApp.initData
+      : '';
+  } catch {
+    return '';
+  }
+}
+
 export async function renderNotifications(onAfterMarkRead){
   const v = document.getElementById('view');
 
@@ -30,7 +41,7 @@ export async function renderNotifications(onAfterMarkRead){
   // 2) отмечаем прочитанными: сперва сервер, затем локальный кэш
   if (list.some(n=>!n.read)){
     await markAllServerSafe().catch(()=>{});
-    const updated = list.map(n=> ({ ...n, read:true })); // ✅ фикс синтаксиса
+    const updated = list.map(n=> ({ ...n, read:true }));
     setList(updated);
     onAfterMarkRead && onAfterMarkRead();
   }
@@ -61,11 +72,16 @@ function noteTpl(n){
 async function fetchServerListSafe(){
   const uid = getUID();
   if (!uid) return null;
-  const r = await fetch(`${ENDPOINT}?op=list&uid=${encodeURIComponent(uid)}`, { method:'GET' });
+  const r = await fetch(`${ENDPOINT}?op=list&uid=${encodeURIComponent(uid)}`, {
+    method:'GET',
+    headers:{
+      'X-Tg-Init-Data': getTgInitDataRaw(), // ключевой фикс
+    }
+  });
   const j = await r.json().catch(()=> ({}));
   if (!r.ok || j?.ok === false) return null;
   const items = Array.isArray(j.items) ? j.items : [];
-  // подстрахуемся от мусора
+  // нормализация
   const norm = items.map(n => ({
     id: String(n.id || Date.now()),
     ts: Number(n.ts || Date.now()),
@@ -84,8 +100,11 @@ async function markAllServerSafe(){
   try{
     await fetch(ENDPOINT, {
       method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ op:'markAll', uid })
+      headers:{
+        'Content-Type':'application/json',
+        'X-Tg-Init-Data': getTgInitDataRaw(), // фикс
+      },
+      body: JSON.stringify({ op:'markSeen', uid }) // фикс — корректный op
     });
   }catch{}
 }
