@@ -16,6 +16,16 @@ export const CASHBACK_CFG = {
   MONTHLY_REF_LIMIT: 10,
 };
 
+/* ===== Внутреннее: таймаут запросов, как в orders.js ===== */
+const FETCH_TIMEOUT_MS = 10000;
+function withTimeout(promise, ms = FETCH_TIMEOUT_MS){
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout')), ms);
+    promise.then(v => { clearTimeout(t); resolve(v); },
+                 e => { clearTimeout(t); reject(e); });
+  });
+}
+
 /* ====== Telegram Mini App: имя бота для deeplink ====== */
 export const BOT_USERNAME = 'evliseoutletbot';
 
@@ -39,7 +49,7 @@ function getTgInitDataRaw(){
 const ADMIN_OPS = new Set([
   'admincalc',         // админский расчёт по заказу
   'voidaccrual',       // аннулировать ожидаемое начисление
-  'accrue',            // начислить pending на заказ (вызов из orders.js)
+  'accrue',            // начислить pending на заказ (вызов из orders.js/админки)
   'confirmaccrual',    // ручное подтверждение начисления (админ)
 ]);
 
@@ -57,16 +67,21 @@ function getAdminToken() {
 export function getLocalLoyalty(){
   try{
     const raw = localStorage.getItem(k(LKEY_BALANCE));
-    return raw ? JSON.parse(raw) : { available:0, pending:0, history:[] };
+    const v = raw ? JSON.parse(raw) : {};
+    return {
+      available: Number(v.available||0),
+      pending:   Number(v.pending||0),
+      history:   Array.isArray(v.history) ? v.history : [],
+    };
   }catch{ return { available:0, pending:0, history:[] }; }
 }
 export function setLocalLoyalty(obj){
   localStorage.setItem(
     k(LKEY_BALANCE),
     JSON.stringify({
-      available: Number(obj.available||0),
-      pending:   Number(obj.pending||0),
-      history:   Array.isArray(obj.history)?obj.history:[],
+      available: Number(obj?.available||0),
+      pending:   Number(obj?.pending||0),
+      history:   Array.isArray(obj?.history)?obj.history:[],
     })
   );
 }
@@ -86,7 +101,7 @@ export function setLocalRef(obj){
 /* ===== Serverless API ===== */
 const API = '/.netlify/functions/loyalty';
 
-// Алиасы: принимаем «человеческие» имена, отправляем то, что ждёт бэк
+// Алисы: принимаем «человеческие» имена, отправляем то, что ждёт бэк
 const OP_ALIAS = new Map([
   // чтение
   ['getbalance', 'getbalance'],
@@ -135,11 +150,11 @@ async function api(op, body = {}){
     const t = getAdminToken();
     if (t) headers['X-Internal-Auth'] = t;
   }
-  const r = await fetch(API, {
+  const r = await withTimeout(fetch(API, {
     method:'POST',
     headers,
     body: JSON.stringify({ op: norm, ...body })
-  });
+  }), FETCH_TIMEOUT_MS);
   const data = await r.json().catch(()=> ({}));
   if (!r.ok || data?.ok === false) {
     throw new Error(data?.error || 'loyalty api error');
@@ -155,10 +170,15 @@ function clearPendingInviter(){ try{ localStorage.removeItem(k(LKEY_INVITER)); }
 /* ===== Публичные методы (клиент) ===== */
 
 export async function fetchMyLoyalty(){
-  const uid = getUID();
-  const { balance } = await api('getBalance', { uid });
-  setLocalLoyalty(balance);
-  return balance;
+  // Мягкий фолбэк: не роняем вызвавший код, если сеть упала
+  try{
+    const uid = getUID();
+    const { balance } = await api('getBalance', { uid });
+    setLocalLoyalty(balance || {});
+    return balance || getLocalLoyalty();
+  }catch{
+    return getLocalLoyalty();
+  }
 }
 
 export function makeReferralLink(){
@@ -215,10 +235,10 @@ export function previewEarnForPrice(priceUZS, opts = { refDouble:false }){
 
 export function computeMaxRedeem(total){
   const bal = getLocalLoyalty();
-  const maxByFrac = Math.floor(total * CASHBACK_CFG.MAX_CART_DISCOUNT_FRAC);
+  const maxByFrac = Math.floor(Number(total||0) * CASHBACK_CFG.MAX_CART_DISCOUNT_FRAC);
   const capByMax  = CASHBACK_CFG.MAX_REDEEM;
   const hardCap   = Math.min(maxByFrac, capByMax);
-  const allowed   = Math.min(hardCap, Math.floor(bal.available));
+  const allowed   = Math.min(hardCap, Math.floor(bal.available||0));
   if (allowed < CASHBACK_CFG.MIN_REDEEM) return 0;
   return allowed;
 }
@@ -233,7 +253,7 @@ export async function reserveRedeem(points, orderId, shortId = null){
     shortId: shortId ? String(shortId) : null,
   });
   if (ok){
-    setLocalLoyalty(balance);
+    setLocalLoyalty(balance || {});
     const res = getLocalReservations();
     res.push({ orderId:String(orderId), pts:Math.floor(points), ts:Date.now() });
     setLocalReservations(res);
@@ -245,7 +265,7 @@ export async function finalizeRedeem(orderId, action /* 'cancel' | 'commit' */){
   const uid = getUID();
   const { ok, balance } = await api('finalizeRedeem', { uid, orderId:String(orderId), action:String(action) });
   if (ok){
-    setLocalLoyalty(balance);
+    setLocalLoyalty(balance || {});
     const res = getLocalReservations().filter(r => String(r.orderId)!==String(orderId));
     setLocalReservations(res);
   }
@@ -254,20 +274,20 @@ export async function finalizeRedeem(orderId, action /* 'cancel' | 'commit' */){
 
 export async function finalizeRedeemFor(uid, orderId, action){
   const { ok, balance } = await api('finalizeRedeem', { uid:String(uid), orderId:String(orderId), action:String(action) });
-  if (ok) setLocalLoyalty(balance);
+  if (ok) setLocalLoyalty(balance || {});
   return { ok };
 }
 
 // РУЧНОЕ подтверждение админом (внутренняя операция)
 export async function confirmAccrualFor(uid, orderId){
   const { ok, balance } = await api('confirmAccrual', { uid:String(uid), orderId:String(orderId) });
-  if (ok) setLocalLoyalty(balance);
+  if (ok) setLocalLoyalty(balance || {});
   return { ok };
 }
 
 export async function loyaltyVoidAccrualFor(uid, orderId){
   const { ok, balance } = await api('voidAccrual', { uid:String(uid), orderId:String(orderId) });
-  if (ok) setLocalLoyalty(balance);
+  if (ok) setLocalLoyalty(balance || {});
   return { ok };
 }
 
@@ -281,7 +301,7 @@ export async function accrueOnOrderPlaced(order){
     currency: String(order.currency || 'UZS'),
     shortId: order?.shortId ? String(order.shortId) : null,
   });
-  if (ok) setLocalLoyalty(balance);
+  if (ok) setLocalLoyalty(balance || {});
   return { ok };
 }
 
@@ -289,7 +309,7 @@ export async function accrueOnOrderPlaced(order){
 export async function confirmAccrual(orderId){
   const uid = getUID();
   const { ok, balance } = await api('confirmAccrual', { uid, orderId:String(orderId) });
-  if (ok) setLocalLoyalty(balance);
+  if (ok) setLocalLoyalty(balance || {});
   return { ok };
 }
 

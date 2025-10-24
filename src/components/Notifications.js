@@ -2,6 +2,18 @@
 import { k, getUID } from '../core/state.js';
 
 const ENDPOINT = '/.netlify/functions/notifs';
+const FETCH_TIMEOUT_MS = 10000;
+
+/* ===== Общий таймаут (как в других модулях) ===== */
+function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout')), ms);
+    promise.then(
+      v => { clearTimeout(t); resolve(v); },
+      e => { clearTimeout(t); reject(e); }
+    );
+  });
+}
 
 // Берём сырой initData из Telegram Mini App, чтобы сервер смог верифицировать владельца.
 function getTgInitDataRaw(){
@@ -16,6 +28,7 @@ function getTgInitDataRaw(){
 
 export async function renderNotifications(onAfterMarkRead){
   const v = document.getElementById('view');
+  if (!v) return;
 
   // 1) грузим с сервера (fall back на локальное)
   let list = await fetchServerListSafe().catch(()=>null);
@@ -60,17 +73,17 @@ export async function renderNotifications(onAfterMarkRead){
 function noteTpl(n){
   const icon = n.icon || 'bell';
   const d = new Date(n.ts || Date.now());
-  const hh = String(d.getHours()).padStart(2,'0');
-  const mm = String(d.getMinutes()).padStart(2,'0');
-  const time = `${hh}:${mm}`;
+  // Показ локального времени пользователя; fallback на HH:MM
+  const time = d.toLocaleTimeString?.([], { hour:'2-digit', minute:'2-digit' }) ||
+               `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   return `
-    <div class="note" data-id="${n.id}">
-      <i data-lucide="${icon}"></i>
+    <div class="note ${n.read ? 'is-read' : ''}" data-id="${escapeAttr(n.id)}">
+      <i data-lucide="${escapeAttr(icon)}"></i>
       <div>
         <div class="note-title">${escapeHtml(n.title || '')}</div>
         ${n.sub ? `<div class="note-sub">${escapeHtml(n.sub)}</div>` : ''}
       </div>
-      <div class="time">${time}</div>
+      <div class="time">${escapeHtml(time)}</div>
     </div>
   `;
 }
@@ -90,25 +103,27 @@ function normalize(n){
 async function fetchServerListSafe(){
   const uid = getUID();
   if (!uid) return null;
-  const r = await fetch(`${ENDPOINT}?op=list&uid=${encodeURIComponent(uid)}`, {
-    method:'GET',
-    headers:{
-      'X-Tg-Init-Data': getTgInitDataRaw(),
-    }
-  });
-  const j = await r.json().catch(()=> ({}));
-  if (!r.ok || j?.ok === false) return null;
-  const items = Array.isArray(j.items) ? j.items : [];
-  const norm = items.map(normalize);
-  setList(norm);
-  return norm;
+  try{
+    const r = await withTimeout(fetch(`${ENDPOINT}?op=list&uid=${encodeURIComponent(uid)}&ts=${Date.now()}`, {
+      method:'GET',
+      headers:{ 'X-Tg-Init-Data': getTgInitDataRaw(), 'Cache-Control':'no-store' }
+    }));
+    const j = await r.json().catch(()=> ({}));
+    if (!r.ok || j?.ok === false) return null;
+    const items = Array.isArray(j.items) ? j.items : [];
+    const norm = items.map(normalize);
+    setList(norm);
+    return norm;
+  }catch{
+    return null;
+  }
 }
 
 async function markAllServerSafe(){
   const uid = getUID();
   if (!uid) return null;
   try{
-    const r = await fetch(ENDPOINT, {
+    const r = await withTimeout(fetch(ENDPOINT, {
       method:'POST',
       headers:{
         'Content-Type':'application/json',
@@ -116,7 +131,7 @@ async function markAllServerSafe(){
       },
       // ВАЖНО: оп должен быть строго в нижнем регистре — notifs.js ожидает 'markseen' / 'markmine'
       body: JSON.stringify({ op:'markseen', uid })
-    });
+    }));
     const j = await r.json().catch(()=> ({}));
     if (!r.ok || j?.ok === false) return null;
     return Array.isArray(j.items) ? j.items : null;
@@ -135,9 +150,12 @@ function setList(list){
 }
 
 /* ===== helpers ===== */
-function escapeHtml(s){
-  return String(s || '')
+function escapeHtml(s=''){
+  return String(s)
     .replace(/&/g,'&amp;')
     .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;');
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
 }
+function escapeAttr(s=''){ return escapeHtml(String(s)); }

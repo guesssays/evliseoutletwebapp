@@ -6,13 +6,18 @@ import {
   cancelOrder,
   updateOrderStatus,
   seedOrdersOnce,
-  getStatusLabel,
+  getStatusLabel as _getStatusLabel,
 } from '../core/orders.js';
 import { state } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 
 // ▼ НОВОЕ: клиент к loyalty-функции
 import { adminCalc, getBalance, confirmAccrual } from '../core/loyaltyAdmin.js';
+
+/* ====== Безопасная обёртка для лейблов статусов ====== */
+function getStatusLabel(s) {
+  try { return _getStatusLabel(s); } catch { return String(s || '—'); }
+}
 
 /* ====== Константы расчётов (должны совпадать с клиентскими) ====== */
 const CASHBACK_RATE_BASE  = 0.05;
@@ -24,7 +29,7 @@ const MAX_REDEEM_POINTS   = 150000;
 /* Общая функция: расчёт по заказу — без знания связок рефералов.
    Для дашборда показываем "базовый" расчёт + примечание */
 function computeOrderCalc(order){
-  const sum = Number(order.total||0);
+  const sum = Number(order?.total||0);
   const maxRedeemByShare = Math.floor(sum * MAX_DISCOUNT_SHARE);
   const maxRedeem = Math.min(maxRedeemByShare, MAX_REDEEM_POINTS);
 
@@ -43,6 +48,7 @@ function computeOrderCalc(order){
 
 export async function renderAdmin(){
   const v = document.getElementById('view');
+  if (!v) return;
   seedOrdersOnce();
 
   document.body.classList.add('admin-mode');
@@ -62,8 +68,9 @@ export async function renderAdmin(){
   function startPolling(){
     stopPolling();
     pollTimer = setInterval(async ()=>{
-      // не дергаем сервер, если пользователь не в админке/не в списке
+      // не дергаем сервер, если пользователь не в админке/не в списке/вкладка не активна
       if (!document.body.classList.contains('admin-mode')) return;
+      if (document.visibilityState === 'hidden') return;
       if (mode !== 'list') return;
       await getAll();
       render(); // перерисуем список/вкладку с актуальными данными
@@ -74,16 +81,22 @@ export async function renderAdmin(){
   }
 
   const getAll = async ()=> {
-    const orders = await getOrders();
-    state.orders = orders;
-    return orders;
+    try{
+      const orders = await getOrders();
+      state.orders = Array.isArray(orders) ? orders : [];
+      return state.orders;
+    }catch{
+      state.orders = Array.isArray(state.orders) ? state.orders : [];
+      return state.orders;
+    }
   };
 
   const filterByTab = (list)=>{
-    if (tab==='new')    return list.filter(o => o.status==='новый' && !o.accepted && !o.canceled);
-    if (tab==='active') return list.filter(o => !['новый','выдан','отменён'].includes(o.status));
-    if (tab==='done')   return list.filter(o => ['выдан','отменён'].includes(o.status));
-    return list;
+    const src = Array.isArray(list) ? list : [];
+    if (tab==='new')    return src.filter(o => o?.status==='новый' && !o?.accepted && !o?.canceled);
+    if (tab==='active') return src.filter(o => !['новый','выдан','отменён'].includes(o?.status));
+    if (tab==='done')   return src.filter(o => ['выдан','отменён'].includes(o?.status));
+    return src;
   };
 
   const currentProductsMap = ()=>{
@@ -113,7 +126,7 @@ export async function renderAdmin(){
     document.getElementById('adminTabs')?.addEventListener('click', (e)=>{
       const b = e.target.closest('.admin-tab');
       if(!b) return;
-      tab = b.getAttribute('data-k');
+      tab = b.getAttribute('data-k') || 'new';
       mode = 'list';
       selectedId = null;
       render();
@@ -128,31 +141,31 @@ export async function renderAdmin(){
     const html = orders.length ? `
       <div class="admin-list-mini" id="adminListMini">
         ${orders.map(o=>{
-          const items = Array.isArray(o.cart) ? o.cart : [];
+          const items = Array.isArray(o?.cart) ? o.cart : [];
           const itemsCount =
-            items.reduce((s,x)=> s + (Number(x.qty)||0), 0) ||
-            (o.qty||0) ||
+            items.reduce((s,x)=> s + (Number(x?.qty)||0), 0) ||
+            (o?.qty||0) ||
             (items.length || 0);
 
-          const calcSum = items.reduce((s,x)=> s + (Number(x.price)||0) * (Number(x.qty)||0), 0);
-          const total   = Number.isFinite(Number(o.total)) ? Number(o.total) : calcSum;
+          const calcSum = items.reduce((s,x)=> s + (Number(x?.price)||0) * (Number(x?.qty)||0), 0);
+          const total   = Number.isFinite(Number(o?.total)) ? Number(o.total) : calcSum;
           const totalFmt = priceFmt(total);
 
-          const prod  = pmap.get(String(o.productId));
+          const prod  = pmap.get(String(o?.productId));
           const singleTitle = items[0]?.title || prod?.title || 'Товар';
           const nameLineRaw = (items.length > 1 || itemsCount > 1)
             ? `${itemsCount} ${plural(itemsCount, 'товар', 'товара', 'товаров')}`
             : singleTitle;
 
           return `
-            <article class="order-mini" data-id="${o.id}" tabindex="0" role="button" aria-label="Открыть заказ #${o.id}">
+            <article class="order-mini" data-id="${escapeHtml(String(o?.id ?? ''))}" tabindex="0" role="button" aria-label="Открыть заказ #${escapeHtml(String(o?.id ?? ''))}">
               <div class="order-mini__left">
                 <div class="order-mini__sum">${totalFmt}</div>
                 <div class="muted mini" style="margin-top:4px">${escapeHtml(nameLineRaw)}</div>
                 <div class="order-mini__meta">
-                  <span class="chip-id">#${escapeHtml(o.id)}</span>
-                  <span class="chip-user">@${escapeHtml(o.username||'—')}</span>
-                  <span class="muted mini">· ${escapeHtml(getStatusLabel(o.status))}</span>
+                  <span class="chip-id">#${escapeHtml(String(o?.id ?? ''))}</span>
+                  <span class="chip-user">@${escapeHtml(o?.username||'—')}</span>
+                  <span class="muted mini">· ${escapeHtml(getStatusLabel(o?.status))}</span>
                 </div>
               </div>
               <div class="order-mini__right">
@@ -174,6 +187,7 @@ export async function renderAdmin(){
     const hook = (card)=>{
       if(!card) return;
       selectedId = card.getAttribute('data-id');
+      if (!selectedId) return;
       mode = 'detail';
       render();
     };
@@ -193,26 +207,26 @@ export async function renderAdmin(){
 
   // ====== Состав заказа (детали) ======
   function itemsBlock(o){
-    const items = Array.isArray(o.cart) ? o.cart : [];
+    const items = Array.isArray(o?.cart) ? o.cart : [];
     if (!items.length) return `
       <div class="muted" style="margin-top:12px">В заказе нет позиций</div>
     `;
 
     const rows = items.map((x,i)=>{
       const opts = [
-        x.size ? `Размер: ${escapeHtml(x.size)}` : '',
-        x.color ? `Цвет: <span title="${escapeHtml(String(x.color))}">${escapeHtml(humanColorName(x.color))}</span>` : '',
+        x?.size ? `Размер: ${escapeHtml(String(x.size))}` : '',
+        x?.color ? `Цвет: <span title="${escapeHtml(String(x.color))}">${escapeHtml(humanColorName(x.color))}</span>` : '',
       ].filter(Boolean).join(' · ');
-      const line = Number(x.qty||0) * Number(x.price||0);
+      const line = Number(x?.qty||0) * Number(x?.price||0);
       return `
         <tr>
           <td style="text-align:center">${i+1}</td>
           <td>
-            <div class="cart-title" style="font-weight:600">${escapeHtml(x.title||'Товар')}</div>
+            <div class="cart-title" style="font-weight:600">${escapeHtml(x?.title||'Товар')}</div>
             ${opts ? `<div class="muted mini">${opts}</div>` : ''}
           </td>
-          <td style="text-align:right">${escapeHtml(String(x.qty||0))}</td>
-          <td style="text-align:right">${priceFmt(x.price||0)}</td>
+          <td style="text-align:right">${escapeHtml(String(x?.qty||0))}</td>
+          <td style="text-align:right">${priceFmt(Number(x?.price||0))}</td>
           <td style="text-align:right"><b>${priceFmt(line)}</b></td>
         </tr>
       `;
@@ -235,7 +249,7 @@ export async function renderAdmin(){
           <tfoot>
             <tr>
               <td colspan="4" style="text-align:right">Итого</td>
-              <td style="text-align:right"><b>${priceFmt(o.total||0)}</b></td>
+              <td style="text-align:right"><b>${priceFmt(Number(o?.total||0))}</b></td>
             </tr>
           </tfoot>
         </table>
@@ -272,22 +286,21 @@ export async function renderAdmin(){
         <div class="muted">Нет данных по этому заказу.</div>
       `;
     }
-    const usedPts   = Number(calc.usedPoints||0);
-    const paidShare = (o.total>0 && usedPts>0) ? Math.round(100*usedPts/Number(o.total)) : 0;
-    const refText   = calc.referrer ? `да (инвайтер: <code>${String(calc.referrer)}</code>)` : 'нет';
-    // if pendingReleased не пришёл — считаем, что ещё не переведено → покажем кнопку
-    const released  = calc.pendingReleased === true;
+    const usedPts   = Number(calc?.usedPoints||0);
+    const paidShare = (Number(o?.total)>0 && usedPts>0) ? Math.round(100*usedPts/Number(o.total)) : 0;
+    const refText   = calc?.referrer ? `да (инвайтер: <code>${escapeHtml(String(calc.referrer))}</code>)` : 'нет';
+    const released  = calc?.pendingReleased === true;
 
     return `
       <div class="subsection-title" style="margin-top:14px">Реальные данные лояльности</div>
       <div class="table-wrap">
         <table class="size-table">
           <tbody>
-            <tr><td>UID покупателя</td><td style="text-align:right"><code>${String(calc.uid||o.userId||'—')}</code></td></tr>
+            <tr><td>UID покупателя</td><td style="text-align:right"><code>${escapeHtml(String(calc?.uid||o?.userId||'—'))}</code></td></tr>
             <tr><td>Реферальная связка</td><td style="text-align:right">${refText}</td></tr>
             <tr><td>Оплачено баллами</td><td style="text-align:right">−${usedPts.toLocaleString('ru-RU')} баллов${paidShare?` (${paidShare}%)`:''}</td></tr>
-            <tr><td>Кэшбек покупателю за этот заказ</td><td style="text-align:right">+${Number(calc.buyerCashback||0).toLocaleString('ru-RU')} баллов</td></tr>
-            <tr><td>Бонус инвайтеру</td><td style="text-align:right">+${Number(calc.referrerBonus||0).toLocaleString('ru-RU')} баллов</td></tr>
+            <tr><td>Кэшбек покупателю за этот заказ</td><td style="text-align:right">+${Number(calc?.buyerCashback||0).toLocaleString('ru-RU')} баллов</td></tr>
+            <tr><td>Бонус инвайтеру</td><td style="text-align:right">+${Number(calc?.referrerBonus||0).toLocaleString('ru-RU')} баллов</td></tr>
             <tr><td>Начисления переведены из ожидания</td><td style="text-align:right">${released ? 'да' : 'нет'}</td></tr>
             <tr><td>Баланс покупателя (доступно)</td><td style="text-align:right"><b>${Number(balance?.available||0).toLocaleString('ru-RU')}</b> баллов</td></tr>
             <tr><td>Баланс покупателя (в ожидании)</td><td style="text-align:right">${Number(balance?.pending||0).toLocaleString('ru-RU')} баллов</td></tr>
@@ -296,7 +309,7 @@ export async function renderAdmin(){
       </div>
       ${released ? '' : `
         <div class="muted mini" style="margin:8px 0 0">Можно подтвердить начисления вручную, если заказ выдан.</div>
-        <button class="btn btn--sm" id="btnConfirmAccrual" data-uid="${String(calc.uid||o.userId||'')}" data-oid="${String(calc.orderId||o.id)}">
+        <button class="btn btn--sm" id="btnConfirmAccrual" data-uid="${escapeHtml(String(calc?.uid||o?.userId||''))}" data-oid="${escapeHtml(String(calc?.orderId||o?.id||''))}">
           Подтвердить начисления (pending → available)
         </button>
       `}
@@ -307,34 +320,34 @@ export async function renderAdmin(){
   async function detailView(){
     stopPolling(); // в деталях не дёргаем список
     const orders = await getAll();
-    const o = orders.find(x=>String(x.id)===String(selectedId));
+    const o = orders.find(x=>String(x?.id)===String(selectedId));
     if(!o){
       mode='list';
       return listView();
     }
 
     // Заголовок
-    const items = Array.isArray(o.cart) ? o.cart : [];
+    const items = Array.isArray(o?.cart) ? o.cart : [];
     const itemsCount =
-      items.reduce((s,x)=> s + (Number(x.qty)||0), 0) ||
-      (o.qty||0) ||
+      items.reduce((s,x)=> s + (Number(x?.qty)||0), 0) ||
+      (o?.qty||0) ||
       (items.length || 0);
-    const calcSum = items.reduce((s,x)=> s + (Number(x.price)||0) * (Number(x.qty)||0), 0);
-    const total   = Number.isFinite(Number(o.total)) ? Number(o.total) : calcSum;
+    const calcSum = items.reduce((s,x)=> s + (Number(x?.price)||0) * (Number(x?.qty)||0), 0);
+    const total   = Number.isFinite(Number(o?.total)) ? Number(o.total) : calcSum;
     const totalFmt = priceFmt(total);
     const titleText = (items.length > 1 || itemsCount > 1)
       ? `${itemsCount} ${plural(itemsCount, 'товар', 'товара', 'товаров')} · <span class="muted">${totalFmt}</span>`
       : `${escapeHtml(items[0]?.title || 'Товар')} · <span class="muted">${totalFmt}</span>`;
 
-    const isNew  = o.status==='новый' && !o.accepted;
-    const isDone = ['выдан','отменён'].includes(o.status);
+    const isNew  = o?.status==='новый' && !o?.accepted;
+    const isDone = ['выдан','отменён'].includes(o?.status);
 
     // ▼ НОВОЕ: реальные данные лояльности
     let loyaltyCalc = null;
     let buyerBal = null;
     try {
       loyaltyCalc = await adminCalc(o.id);
-      buyerBal = await getBalance(loyaltyCalc?.uid || o.userId);
+      buyerBal = await getBalance(loyaltyCalc?.uid || o?.userId);
     } catch {
       // игнорируем — покажем пустой блок
     }
@@ -352,46 +365,46 @@ export async function renderAdmin(){
           <dl class="kv kv--detail">
             <div class="kv__row">
               <dt>Номер заказа</dt>
-              <dd>#${escapeHtml(o.id)}</dd>
+              <dd>#${escapeHtml(String(o?.id??''))}</dd>
             </div>
             <div class="kv__row">
               <dt>Клиент</dt>
-              <dd>@${escapeHtml(o.username||'—')}</dd>
+              <dd>@${escapeHtml(o?.username||'—')}</dd>
             </div>
             <div class="kv__row">
               <dt>Телефон</dt>
-              <dd>${escapeHtml(o.phone||'—')}</dd>
+              <dd>${escapeHtml(o?.phone||'—')}</dd>
             </div>
             <div class="kv__row">
               <dt>Адрес</dt>
-              <dd class="break">${escapeHtml(o.address||'—')}</dd>
+              <dd class="break">${escapeHtml(o?.address||'—')}</dd>
             </div>
             <div class="kv__row">
               <dt>Плательщик</dt>
-              <dd class="break">${escapeHtml(o.payerFullName||'—')}</dd>
+              <dd class="break">${escapeHtml(o?.payerFullName||'—')}</dd>
             </div>
             <div class="kv__row">
               <dt>Сумма</dt>
-              <dd>${priceFmt(o.total||0)}</dd>
+              <dd>${priceFmt(Number(o?.total||0))}</dd>
             </div>
             <div class="kv__row">
               <dt>Статус</dt>
-              <dd>${escapeHtml(getStatusLabel(o.status))}</dd>
+              <dd>${escapeHtml(getStatusLabel(o?.status))}</dd>
             </div>
-            ${o.status==='отменён' ? `
+            ${o?.status==='отменён' ? `
               <div class="kv__row">
                 <dt>Причина отмены</dt>
-                <dd class="break">${escapeHtml(o.cancelReason || '—')}</dd>
+                <dd class="break">${escapeHtml(o?.cancelReason || '—')}</dd>
               </div>` : ''}
             <div class="kv__row">
               <dt>Чек</dt>
               <dd>
-                ${o.paymentScreenshot ? `
+                ${o?.paymentScreenshot ? `
                   <div class="receipt-actions">
-                    <button class="btn btn--sm btn--outline" data-open="${escapeHtml(o.paymentScreenshot)}">
+                    <button class="btn btn--sm btn--outline" data-open="${escapeHtml(String(o.paymentScreenshot))}">
                       <i data-lucide="external-link"></i><span>&nbsp;Открыть</span>
                     </button>
-                    <button class="btn btn--sm btn--primary" data-download="${escapeHtml(o.paymentScreenshot)}" data-oid="${escapeHtml(o.id)}">
+                    <button class="btn btn--sm btn--primary" data-download="${escapeHtml(String(o.paymentScreenshot))}" data-oid="${escapeHtml(String(o?.id??''))}">
                       <i data-lucide="download"></i><span>&nbsp;Скачать</span>
                     </button>
                   </div>
@@ -406,14 +419,14 @@ export async function renderAdmin(){
 
           <div class="order-detail__actions">
             ${isNew ? `
-              <button class="btn btn--primary" id="btnAccept" data-id="${o.id}">Принять</button>
-              <button class="btn btn--outline" id="btnCancel" data-id="${o.id}">Отменить</button>
+              <button class="btn btn--primary" id="btnAccept" data-id="${escapeHtml(String(o?.id??''))}">Принять</button>
+              <button class="btn btn--outline" id="btnCancel" data-id="${escapeHtml(String(o?.id??''))}">Отменить</button>
             ` : ''}
 
             ${(!isNew && !isDone) ? `
               <div class="stage-list" id="stageList" role="group" aria-label="Этапы заказа">
                 ${ORDER_STATUSES.filter(s=>!['новый','отменён'].includes(s)).map(s=>`
-                  <button class="stage-btn ${o.status===s?'is-active':''}" data-st="${s}">${getStatusLabel(s)}</button>
+                  <button class="stage-btn ${o?.status===s?'is-active':''}" data-st="${escapeHtml(s)}">${getStatusLabel(s)}</button>
                 `).join('')}
               </div>
             ` : ''}
@@ -432,34 +445,46 @@ export async function renderAdmin(){
 
     // чек
     document.querySelector('[data-open]')?.addEventListener('click', (e)=>{
-      const url = e.currentTarget.getAttribute('data-open');
+      const url = e.currentTarget.getAttribute('data-open') || '';
       openReceiptPreview(url);
     });
     document.querySelector('[data-download]')?.addEventListener('click', async (e)=>{
-      const url = e.currentTarget.getAttribute('data-download');
+      const url = e.currentTarget.getAttribute('data-download') || '';
       const oid = e.currentTarget.getAttribute('data-oid') || 'receipt';
       await triggerDownload(url, suggestReceiptFilename(url, oid));
     });
 
     // принять
-    document.getElementById('btnAccept')?.addEventListener('click', async ()=>{
-      await acceptOrder(o.id);
-      // глобальные события (для синка остальных частей приложения)
-      dispatchGlobal('orders:updated');
-      dispatchGlobal('admin:orderAccepted', { id: o.id, userId: o.userId });
-      // остаёмся в карточке, но обновим данные
-      mode='detail';
-      selectedId = o.id;
-      await render();
+    const btnAccept = document.getElementById('btnAccept');
+    btnAccept?.addEventListener('click', async ()=>{
+      if (btnAccept.disabled) return;
+      btnAccept.disabled = true;
+      try{
+        await acceptOrder(o.id);
+        dispatchGlobal('orders:updated');
+        dispatchGlobal('admin:orderAccepted', { id: o.id, userId: o.userId });
+        mode='detail';
+        selectedId = o.id;
+        await render();
+      } finally {
+        btnAccept.disabled = false;
+      }
     });
 
     // отменить
-    document.getElementById('btnCancel')?.addEventListener('click', async ()=>{
+    const btnCancel = document.getElementById('btnCancel');
+    btnCancel?.addEventListener('click', async ()=>{
+      if (btnCancel.disabled) return;
       const reason = prompt('Причина отмены (будет видна клиенту):') || '';
-      await cancelOrder(o.id, reason);
-      dispatchGlobal('orders:updated');
-      dispatchGlobal('admin:orderCanceled', { id:o.id, reason, userId:o.userId });
-      mode='list'; tab='done'; render();
+      btnCancel.disabled = true;
+      try{
+        await cancelOrder(o.id, reason);
+        dispatchGlobal('orders:updated');
+        dispatchGlobal('admin:orderCanceled', { id:o.id, reason, userId:o.userId });
+        mode='list'; tab='done'; render();
+      } finally {
+        btnCancel.disabled = false;
+      }
     });
 
     // смена этапа
@@ -468,24 +493,41 @@ export async function renderAdmin(){
       if (!btn) return;
       const st = btn.getAttribute('data-st');
       if (!st) return;
-      await updateOrderStatus(o.id, st);
 
-      dispatchGlobal('orders:updated');
-      dispatchGlobal('admin:statusChanged', { id:o.id, status:st, userId:o.userId });
+      // визуальный антидубль
+      const prevText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '...';
 
-      if (st === 'выдан'){ mode='list'; tab='done'; }
-      render();
+      try{
+        await updateOrderStatus(o.id, st);
+        dispatchGlobal('orders:updated');
+        dispatchGlobal('admin:statusChanged', { id:o.id, status:st, userId:o.userId });
+
+        if (st === 'выдан'){ mode='list'; tab='done'; }
+        render();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = prevText;
+      }
     });
 
     // ▼ НОВОЕ: ручное подтверждение начислений
     document.getElementById('btnConfirmAccrual')?.addEventListener('click', async (e)=>{
-      const uid = e.currentTarget.getAttribute('data-uid');
-      const oid = e.currentTarget.getAttribute('data-oid');
+      const uid = e.currentTarget.getAttribute('data-uid') || '';
+      const oid = e.currentTarget.getAttribute('data-oid') || '';
+      if (!uid || !oid) return;
+      const prev = e.currentTarget.textContent;
+      e.currentTarget.disabled = true;
+      e.currentTarget.textContent = 'Подтверждаем...';
       try{
         await confirmAccrual(uid, oid);
         alert('Начисления подтверждены.');
       }catch(err){
         alert('Не удалось подтвердить начисления: ' + (err?.message || err));
+      } finally {
+        e.currentTarget.disabled = false;
+        e.currentTarget.textContent = prev;
       }
       dispatchGlobal('orders:updated');
       render();
@@ -510,6 +552,7 @@ function dispatchGlobal(name, detail=null){
 }
 
 function openReceiptPreview(url=''){
+  if (!url) return;
   const modal = document.getElementById('modal');
   const mb = document.getElementById('modalBody');
   const mt = document.getElementById('modalTitle');
@@ -554,7 +597,8 @@ function isProbablyPdf(url=''){
     const u = new URL(url, location.href);
     const path = (u.pathname||'').toLowerCase();
     const type = (u.searchParams.get('type')||'').toLowerCase();
-    return path.endsWith('.pdf') || type === 'pdf';
+    const dl   = (u.searchParams.get('dl')||'').toLowerCase();
+    return path.endsWith('.pdf') || type === 'pdf' || dl === 'pdf';
   }catch{
     return /\.pdf(\?|$)/i.test(url);
   }
@@ -565,6 +609,7 @@ function safeOpenInNewTab(url){
 }
 
 async function triggerDownload(url, filename='receipt.jpg'){
+  if (!url) return;
   try{
     const a = document.createElement('a');
     a.href = url; a.download = filename; a.rel='noopener'; a.style.display='none';
@@ -600,8 +645,12 @@ function suggestReceiptFilename(url, orderId=''){
 }
 
 function extensionFromMime(mime=''){
-  const map = { 'image/jpeg':'jpg','image/jpg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','image/bmp':'bmp','image/heic':'heic','image/heif':'heif','application/pdf':'pdf' };
-  return map[mime.toLowerCase()] || '';
+  const map = {
+    'image/jpeg':'jpg','image/jpg':'jpg','image/png':'png','image/webp':'webp',
+    'image/gif':'gif','image/bmp':'bmp','image/heic':'heic','image/heif':'heif',
+    'application/pdf':'pdf'
+  };
+  return map[(mime||'').toLowerCase()] || '';
 }
 function ensureExt(name, ext){
   if (!ext) return name;

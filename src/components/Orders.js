@@ -1,7 +1,16 @@
 // src/components/Orders.js
 import { state, getUID } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
-import { getOrdersForUser, getStatusLabel } from '../core/orders.js';
+import { getOrdersForUser, getStatusLabel as _getStatusLabel } from '../core/orders.js';
+
+/* ===== безопасный label для статуса ===== */
+function getStatusLabel(s) {
+  try {
+    return _getStatusLabel(s);
+  } catch {
+    return String(s || '—');
+  }
+}
 
 /* ===== helpers for short ids ===== */
 function getDisplayId(o){
@@ -34,9 +43,31 @@ function matchesAnyId(o, val){
 }
 
 export async function renderOrders(){
-  const v=document.getElementById('view');
-  const myUid = getUID();
-  const myOrders = (await getOrdersForUser(myUid) || []).slice();
+  const v = document.getElementById('view');
+  const myUid = getUID?.() || '';
+
+  // если по какой-то причине нет UID — покажем заглушку
+  if (!myUid) {
+    v.innerHTML = `
+      <div class="section-title" style="display:flex;align-items:center;gap:10px">
+        <button class="square-btn" id="ordersBack"><i data-lucide="chevron-left"></i></button>
+        Мои заказы
+      </div>
+      <section class="checkout">
+        <div class="cart-sub">Похоже, вы не авторизованы.</div>
+      </section>`;
+    window.lucide?.createIcons && lucide.createIcons();
+    document.getElementById('ordersBack')?.addEventListener('click', ()=> history.back());
+    return;
+  }
+
+  let myOrders = [];
+  try {
+    const list = await getOrdersForUser(myUid);
+    myOrders = Array.isArray(list) ? list.slice() : [];
+  } catch {
+    myOrders = [];
+  }
 
   if (!myOrders.length){
     v.innerHTML = `
@@ -56,11 +87,11 @@ export async function renderOrders(){
     return;
   }
 
-  myOrders.sort((a,b)=> (b.createdAt||0) - (a.createdAt||0));
+  myOrders.sort((a,b)=> (b?.createdAt||0) - (a?.createdAt||0));
 
-  const inProgress = myOrders.filter(o => !['выдан','отменён'].includes(o.status));
-  const received   = myOrders.filter(o => o.status === 'выдан');
-  const canceled   = myOrders.filter(o => o.status === 'отменён');
+  const inProgress = myOrders.filter(o => !['выдан','отменён'].includes(o?.status));
+  const received   = myOrders.filter(o => o?.status === 'выдан');
+  const canceled   = myOrders.filter(o => o?.status === 'отменён');
 
   v.innerHTML = `
     <div class="section-title" style="display:flex;align-items:center;gap:10px">
@@ -79,7 +110,7 @@ export async function renderOrders(){
 }
 
 function groupBlock(title, list){
-  const count = list.length;
+  const count = Array.isArray(list) ? list.length : 0;
   return `
     <div class="orders-group">
       <div class="subsection-title" style="display:flex;align-items:center;justify-content:space-between;margin:8px 0 6px">
@@ -92,18 +123,18 @@ function groupBlock(title, list){
 }
 
 function orderCard(o){
-  const cover = o.cart?.[0]?.images?.[0] || 'assets/placeholder.jpg';
+  const cover = (o?.cart?.[0]?.images?.[0]) || 'assets/placeholder.jpg';
 
   const displayId = getDisplayId(o);
   const link = `#/track/${encodeURIComponent(displayId)}`;
 
   let actionHtml = `<a class="pill" href="${link}">Подробнее</a>`;
-  if (o.status === 'выдан'){
+  if (o?.status === 'выдан'){
     actionHtml = `
       <a class="pill" href="${link}" style="display:inline-flex;align-items:center;gap:6px">
         <i data-lucide="check-circle"></i><span>Детали</span>
       </a>`;
-  } else if (o.status === 'отменён'){
+  } else if (o?.status === 'отменён'){
     actionHtml = `
       <a class="pill outline" href="${link}" style="display:inline-flex;align-items:center;gap:6px">
         <i data-lucide="x-circle"></i><span>Детали</span>
@@ -111,8 +142,8 @@ function orderCard(o){
   }
 
   const subLines = [];
-  subLines.push(getStatusLabel(o.status));
-  if (o.status === 'отменён' && o.cancelReason){
+  subLines.push(getStatusLabel(o?.status));
+  if (o?.status === 'отменён' && o?.cancelReason){
     subLines.push(`Причина: ${escapeHtml(o.cancelReason)}`);
   }
 
@@ -122,7 +153,7 @@ function orderCard(o){
       <div>
         <div class="cart-title">${'Заказ #'+escapeHtml(displayId)}</div>
         <div class="cart-sub" style="overflow-wrap:anywhere">${subLines.map(escapeHtml).join(' · ')}</div>
-        <div class="cart-price">${priceFmt(o.total || 0)}</div>
+        <div class="cart-price">${priceFmt(Number(o?.total || 0))}</div>
       </div>
       ${actionHtml}
     </div>
@@ -130,12 +161,19 @@ function orderCard(o){
 }
 
 export async function renderTrack({id}){
-  const v=document.getElementById('view');
-  const myUid = getUID();
-  const list = await getOrdersForUser(myUid);
+  const v = document.getElementById('view');
+  const myUid = getUID?.() || '';
+
+  let list = [];
+  try {
+    const l = await getOrdersForUser(myUid);
+    list = Array.isArray(l) ? l : [];
+  } catch {
+    list = [];
+  }
 
   // поддерживаем и длинный id, и shortId/code, и «хвост» длинного id
-  const o = (list || []).find(x => matchesAnyId(x, id));
+  const o = list.find(x => matchesAnyId(x, id));
   if(!o){
     v.innerHTML = `
       <div class="section-title" style="display:flex;align-items:center;gap:10px">
@@ -155,7 +193,7 @@ export async function renderTrack({id}){
   ];
   const steps = stepsKeys.map(k => ({ key:k, label:getStatusLabel(k) }));
   const curIdx = Math.max(steps.findIndex(s=>s.key===o.status), 0);
-  const progress = Math.max(0, Math.min(100, Math.round(curIdx * 100 / (steps.length - 1))));
+  const progress = Math.max(0, Math.min(100, Math.round(curIdx * 100 / Math.max(1, (steps.length - 1)))));
 
   const itemsHtml = itemsBlock(o);
   const displayId = getDisplayId(o);
@@ -177,7 +215,14 @@ export async function renderTrack({id}){
         .track-status{text-align:left}
       }
 
-      .progress-bar{width:100%; overflow:hidden; border-radius:999px}
+      .progress-bar{
+        width:100%; overflow:hidden; border-radius:999px;
+        height:8px; background:var(--border, rgba(0,0,0,.08));
+      }
+      .progress-bar b{
+        display:block; height:100%; background:var(--primary,#111);
+        transition:width .25s ease;
+      }
       .progress-list{display:grid; gap:8px}
       .progress-item{display:flex; align-items:center; gap:8px; min-width:0}
       .progress-label{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%}
@@ -283,25 +328,25 @@ export async function renderTrack({id}){
 }
 
 function itemsBlock(o){
-  const items = Array.isArray(o.cart) ? o.cart : [];
+  const items = Array.isArray(o?.cart) ? o.cart : [];
   if (!items.length){
     return `<div class="muted" style="margin-top:12px">В заказе нет позиций</div>`;
   }
 
   const rows = items.map((x)=>{
-    const cover = x.images?.[0] || 'assets/placeholder.jpg';
-    const colorLabel = x.color ? `Цвет: ${escapeHtml(colorNameFromValue(String(x.color)))}` : '';
+    const cover = x?.images?.[0] || 'assets/placeholder.jpg';
+    const colorLabel = x?.color ? `Цвет: ${escapeHtml(colorNameFromValue(String(x.color)))}` : '';
     const opts = [
-      x.size ? `Размер: ${escapeHtml(x.size)}` : '',
+      x?.size ? `Размер: ${escapeHtml(x.size)}` : '',
       colorLabel
     ].filter(Boolean).join(' · ');
-    const qty = `×${escapeHtml(String(x.qty||0))}`;
-    const line = Number(x.qty||0) * Number(x.price||0);
+    const qty = `×${escapeHtml(String(x?.qty||0))}`;
+    const line = Number(x?.qty||0) * Number(x?.price||0);
     return `
       <div class="order-item">
         <div class="cart-img"><img src="${cover}" alt=""></div>
         <div class="order-item__meta">
-          <div class="cart-title">${escapeHtml(x.title || 'Товар')}</div>
+          <div class="cart-title">${escapeHtml(x?.title || 'Товар')}</div>
           <div class="cart-sub">
             ${opts ? `<span>${opts}</span>` : ''}
             <span class="order-item__qty-inline">${qty}</span>
@@ -316,7 +361,7 @@ function itemsBlock(o){
     <div class="subsection-title" style="margin-top:12px">Состав заказа</div>
     ${rows}
     <div style="display:flex;justify-content:flex-end;margin-top:6px">
-      <div style="text-align:right"><b>Итого: ${priceFmt(o.total||0)}</b></div>
+      <div style="text-align:right"><b>Итого: ${priceFmt(Number(o?.total||0))}</b></div>
     </div>
   `;
 }

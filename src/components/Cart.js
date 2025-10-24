@@ -285,7 +285,10 @@ export async function renderCart(){
   const draft = Number(sessionStorage.getItem(KEY_REDEEM_DRAFT())||0) | 0;
   const redeemInit = Math.max(0, Math.min(redeemMax, draft));
 
-  const ad = state.addresses.list.find(a=>a.id===state.addresses.defaultId) || null;
+  // 🔧 фикс: безопасно читаем адреса (если state.addresses ещё не готов)
+  const addressesList = state.addresses?.list || [];
+  const defaultAddrId = state.addresses?.defaultId;
+  const ad = addressesList.find(a=>a.id===defaultAddrId) || null;
 
   v.innerHTML = `
   <style>
@@ -339,7 +342,9 @@ export async function renderCart(){
       .qty-mini{ grid-column: 1 / -1; justify-content:flex-end; }
       .cart-img{ width:64px; height:64px; }
     }
-  </style>
+  </style`
+
+  + `
 
   <div class="section-title" style="display:flex;align-items:center;gap:10px">
     <button class="square-btn" id="cartBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
@@ -649,8 +654,8 @@ function checkoutFlow(items, addr, totalRaw, bill){
 
   mt.textContent = 'Подтверждение данных';
 
-  const list = state.addresses.list.slice();
-  const def = state.addresses.defaultId;
+  const list = (state.addresses?.list || []).slice();
+  const def = state.addresses?.defaultId;
   const defItem = list.find(a=>a.id===def) || addr;
 
   mb.innerHTML = `
@@ -730,7 +735,7 @@ function checkoutFlow(items, addr, totalRaw, bill){
     picker.addEventListener('click', (e)=>{
       const row = e.target.closest('.addr-p-row'); if (!row) return;
       const id = Number(row.getAttribute('data-id'));
-      const sel = state.addresses.list.find(x=>Number(x.id)===id);
+      const sel = (state.addresses?.list || []).find(x=>Number(x.id)===id);
       if (!sel) return;
       addrInput.value = sel.address || '';
       if (savedName) savedName.textContent = sel.nickname || 'Без названия';
@@ -738,9 +743,10 @@ function checkoutFlow(items, addr, totalRaw, bill){
     });
   }
 
-  document.getElementById('modalClose').onclick = close;
-  document.getElementById('cfCancel').onclick = close;
-  document.getElementById('cfNext').onclick = ()=>{
+  // 🔧 фикс: безопасно вешаем обработчик на крестик модалки
+  const mc1 = document.getElementById('modalClose'); if (mc1) mc1.onclick = close;
+  document.getElementById('cfCancel')?.addEventListener('click', close);
+  document.getElementById('cfNext')?.addEventListener('click', ()=>{
     const phone = (document.getElementById('cfPhone')?.value||'').trim();
     const payer = (document.getElementById('cfPayer')?.value||'').trim();
     const address= (document.getElementById('cfAddr')?.value||'').trim();
@@ -757,7 +763,7 @@ function checkoutFlow(items, addr, totalRaw, bill){
 
     close();
     openPayModal({ items, address, phone, payer, totalRaw, bill });
-  };
+  });
 
   function close(){
     modal.classList.remove('show');
@@ -937,9 +943,10 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
     payDoneBtn.setAttribute('aria-busy', dis ? 'true' : 'false');
   }
 
-  document.getElementById('modalClose').onclick = close;
-  document.getElementById('payBack').onclick = close;
-  document.getElementById('payDone').onclick = async ()=>{
+  // 🔧 фикс: безопасно вешаем обработчик на крестик модалки
+  const mc2 = document.getElementById('modalClose'); if (mc2) mc2.onclick = close;
+  document.getElementById('payBack')?.addEventListener('click', close);
+  document.getElementById('payDone')?.addEventListener('click', async ()=>{
     // блокируем повторный сабмит
     if (__orderSubmitBusy) return;
     if (shotBusy){ toast('Подождите, изображение ещё обрабатывается'); return; }
@@ -1056,7 +1063,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       setSubmitDisabled(false);
       __orderSubmitBusy = false;
     }
-  };
+  });
 
   function close(){
     modal.classList.remove('show');
@@ -1126,14 +1133,15 @@ function showOrderConfirmationModal(displayId){
   modal.classList.add('show');
   window.lucide?.createIcons && lucide.createIcons();
 
-  document.getElementById('modalClose').onclick = close;
-  document.getElementById('okOrders').onclick = ()=>{
+  // 🔧 фикс: безопасно вешаем обработчик на крестик модалки
+  const mc3 = document.getElementById('modalClose'); if (mc3) mc3.onclick = close;
+  document.getElementById('okOrders')?.addEventListener('click', ()=>{
     close();
     location.hash = '#/orders';
-  };
-  document.getElementById('okOperator').onclick = ()=>{
+  });
+  document.getElementById('okOperator')?.addEventListener('click', ()=>{
     openExternal(OP_CHAT_URL);
-  };
+  });
 
   function close(){ modal.classList.remove('show'); }
 }
