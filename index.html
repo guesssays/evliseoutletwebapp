@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-title" content="EVLISE OUTLET" />
   <meta name="format-detection" content="telephone=no" />
 
-  <!-- Анти-кэш для HTML в браузерах/вебвью -->
+  <!-- Анти-кэш для HTML -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -42,22 +42,19 @@
 
   <!-- Версия билда: меняй на каждом деплое -->
   <script>
-    window.__BUILD_VERSION__ = '2025-10-24-02'; // <-- ОБНОВЛЯЙ
-    // небольшая страховка: если версия сменилась, принудительно перезагрузим мини-апп,
-    // чтобы Telegram WebView точно подтянул новую сборку
+    window.__BUILD_VERSION__ = '2025-10-24-02';
     try {
       const KEY = 'app_build_version';
       const prev = localStorage.getItem(KEY);
       const curr = window.__BUILD_VERSION__;
       if (prev && prev !== curr) {
-        // на смене версии чистим только кэш UI (без пользовательских данных)
         sessionStorage.clear();
       }
       localStorage.setItem(KEY, curr);
     } catch {}
   </script>
 
-  <!-- Основные стили с версионированием -->
+  <!-- Основные стили -->
   <link rel="stylesheet" href="styles.css?v=2025-10-24-02" />
 
   <!-- Telegram WebApp + иконки -->
@@ -67,7 +64,7 @@
 
 <body>
   <div id="app">
-    <!-- Статичный хедер (всегда существует) -->
+    <!-- Статичный хедер -->
     <header class="app-header" role="banner">
       <div class="hdr-left">
         <div class="brand">
@@ -82,7 +79,7 @@
       </div>
     </header>
 
-    <!-- Фиксированный хедер для страницы товара (по умолчанию скрыт) -->
+    <!-- Фикс-хедер товара -->
     <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
       <button id="btnFixBack" class="fixbtn" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
       <button id="btnFixFav" class="fixbtn" aria-label="В избранное" aria-pressed="false"><i data-lucide="heart"></i></button>
@@ -167,13 +164,14 @@
     </template>
   </div>
 
-  <!-- Главный модуль с версионированием -->
-<script src="app.legacy.js?v=2025-10-24-02"></script>
+  <!-- Главный модуль: НИКАКИХ бандлов -->
+  <script type="module" src="src/main.js?v=2025-10-24-02"></script>
+
   <script>
     // иконки после монтирования
     window.lucide && lucide.createIcons && lucide.createIcons();
 
-    // Доп. страховка для WebView/Telegram: если HTML закешировался, форс-перезагрузка по версии
+    // форс-перезагрузка по версии (на случай закэшированного HTML)
     (function(){
       try{
         const qv = new URLSearchParams(location.search).get('v');
@@ -181,25 +179,22 @@
         if (need && qv !== need) {
           const url = new URL(location.href);
           url.searchParams.set('v', need);
-          // избегаем истории "назад"
           location.replace(url.toString());
         }
       }catch{}
     })();
   </script>
 
-  <!-- ADMIN TOKEN INJECTION (работает на загрузке и при переходе в #/admin) -->
+  <!-- ADMIN TOKEN INJECTION -->
   <script>
     (function () {
-      const B64 = 'VXNBXjU5NzZKSmJENGc2aip0XmprSk1vTWElKkhvIWo='; // base64 твоего токена
+      const B64 = 'VXNBXjU5NzZKSmJENGc2aip0XmprSk1vTWElKkhvIWo=';
       let injected = false;
-
       function maybeInject() {
         const isAdminView =
           (location.hash && location.hash.startsWith('#/admin')) ||
           location.pathname.includes('/admin');
         if (!isAdminView || injected) return;
-
         try {
           const token = atob(B64);
           if (token && token !== 'VXNBXjU5NzZKSmJENGc2aip0XmprSk1vTWElKkhvIWo=') {
@@ -214,10 +209,7 @@
           console.warn('[admin] atob fail:', e);
         }
       }
-
-      // при загрузке
       maybeInject();
-      // при смене хэша внутри SPA
       window.addEventListener('hashchange', maybeInject);
     })();
   </script>
