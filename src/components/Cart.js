@@ -213,16 +213,33 @@ const OP_CHAT_URL = 'https://t.me/evliseorder';
 function forceTop(){
   try{ document.activeElement?.blur?.(); }catch{}
   const se = document.scrollingElement || document.documentElement;
+  // двойной выстрел + rAF помогает против «упругости» в WebView
   window.scrollTo(0, 0);
   se.scrollTop = 0;
+  requestAnimationFrame(()=>{ window.scrollTo(0, 0); se.scrollTop = 0; });
 }
+
 function keepCartOnTopWhileLoading(root){
   const stillCart = () => location.hash.startsWith('#/cart');
   if (!root) return;
-  root.querySelectorAll('img').forEach(img=>{
-    img.addEventListener('load', ()=>{ if (stillCart()) forceTop(); }, { once:true });
+
+  const imgs = root.querySelectorAll('img');
+
+  imgs.forEach(img => {
+    // 1) Если изображение уже загружено из кэша — сразу фиксируем верх
+    if (img.complete && img.naturalWidth > 0) {
+      if (stillCart()) forceTop();
+      return;
+    }
+    // 2) Иначе — один раз после загрузки
+    const onLoad = () => { if (stillCart()) forceTop(); img.removeEventListener('load', onLoad); };
+    img.addEventListener('load', onLoad, { once: true });
   });
+
+  // 3) Страховочный таймер, если браузер «схватил» размер позже
+  setTimeout(()=>{ if (stillCart()) forceTop(); }, 250);
 }
+
 
 export async function renderCart(){
   // Сразу поднимаем страницу вверх перед тяжёлым DOM
