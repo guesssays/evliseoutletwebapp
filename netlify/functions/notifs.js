@@ -63,7 +63,13 @@ async function getStoreSafe(){
   const allowFallback = (process.env.ALLOW_MEMORY_FALLBACK ?? '1') !== '0';
   try {
     const { getStore } = await import('@netlify/blobs');
-    const store = getStore('notifs');
+    const SITE_ID = process.env.NETLIFY_BLOBS_SITE_ID || '';
+    const TOKEN   = process.env.NETLIFY_BLOBS_TOKEN   || '';
+    // Явно используем siteID/token, если заданы — чтобы избежать "environment not configured"
+    const store = (SITE_ID && TOKEN)
+      ? getStore({ name: 'notifs', siteID: SITE_ID, token: TOKEN })
+      : getStore('notifs');
+
     // лёгкая проверка доступности
     await store.list({ prefix:'__ping__', paginate:false });
     return makeBlobsStore(store);
@@ -80,13 +86,13 @@ function makeBlobsStore(store){
   const prefix='notifs__';
   const keyFor = uid => `${prefix}${uid}`;
   async function read(uid){ try{ const data=await store.get(keyFor(uid),{type:'json',consistency:'strong'}); return Array.isArray(data)?data:[]; }catch{ return []; } }
-  async function write(uid,list){ await store.setJSON(keyFor(uid), list); }
+  async function write(uid,list){ await store.setJSON(keyFor(uid), Array.isArray(list)?list:[]); }
   return makeStoreCore(read, write, 'blobs');
 }
 const __mem = new Map();
 function makeMemoryStore(){
   async function read(uid){ return __mem.get(uid)||[]; }
-  async function write(uid,list){ __mem.set(uid, list.slice()); }
+  async function write(uid,list){ __mem.set(uid, Array.isArray(list)?list.slice():[]); }
   return makeStoreCore(read, write, 'memory');
 }
 
