@@ -83,7 +83,8 @@ function verifyTgInitData(rawInitData, reqId='') {
 
   const pairs = [];
   for (const [k,v] of urlEncoded.entries()) {
-    if (k === 'hash') continue;
+    // 🔧 фикс: игнорируем и hash, и signature (signature не участвует в data_check_string)
+    if (k === 'hash' || k === 'signature') continue;
     pairs.push(`${k}=${v}`);
   }
   pairs.sort();
