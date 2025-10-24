@@ -3,7 +3,7 @@ import { k, getUID } from '../core/state.js';
 
 const ENDPOINT = '/.netlify/functions/notifs';
 
-// Берём сырой initData из Telegram Mini App, чтобы сервер мог верифицировать владельца.
+// Берём сырой initData из Telegram Mini App, чтобы сервер смог верифицировать владельца.
 function getTgInitDataRaw(){
   try {
     return typeof window?.Telegram?.WebApp?.initData === 'string'
@@ -21,7 +21,7 @@ export async function renderNotifications(onAfterMarkRead){
   let list = await fetchServerListSafe().catch(()=>null);
   if (!Array.isArray(list)) list = getList();
 
-  // сортировка (на всякий случай)
+  // сортировка на всякий случай
   list = list.slice().sort((a,b)=> (b.ts||0) - (a.ts||0));
 
   if (!list.length){
@@ -40,9 +40,16 @@ export async function renderNotifications(onAfterMarkRead){
 
   // 2) отмечаем прочитанными: сперва сервер, затем локальный кэш
   if (list.some(n=>!n.read)){
-    await markAllServerSafe().catch(()=>{});
-    const updated = list.map(n=> ({ ...n, read:true }));
-    setList(updated);
+    const serverItems = await markAllServerSafe().catch(()=>null);
+    if (Array.isArray(serverItems) && serverItems.length){
+      // сервер вернул актуальный список — синхронизируем локальное состояние с ним
+      const norm = serverItems.map(n => normalize(n));
+      setList(norm.sort((a,b)=> (b.ts||0)-(a.ts||0)));
+    } else {
+      // если сервер недоступен — помечаем локально
+      const updated = list.map(n=> ({ ...n, read:true }));
+      setList(updated);
+    }
     onAfterMarkRead && onAfterMarkRead();
   }
 
@@ -68,6 +75,17 @@ function noteTpl(n){
   `;
 }
 
+function normalize(n){
+  return {
+    id: String(n.id || Date.now()),
+    ts: Number(n.ts || Date.now()),
+    read: !!n.read,
+    icon: String(n.icon || 'bell'),
+    title: String(n.title || ''),
+    sub: String(n.sub || ''),
+  };
+}
+
 /* ===== server API ===== */
 async function fetchServerListSafe(){
   const uid = getUID();
@@ -75,38 +93,36 @@ async function fetchServerListSafe(){
   const r = await fetch(`${ENDPOINT}?op=list&uid=${encodeURIComponent(uid)}`, {
     method:'GET',
     headers:{
-      'X-Tg-Init-Data': getTgInitDataRaw(), // ключевой фикс
+      'X-Tg-Init-Data': getTgInitDataRaw(),
     }
   });
   const j = await r.json().catch(()=> ({}));
   if (!r.ok || j?.ok === false) return null;
   const items = Array.isArray(j.items) ? j.items : [];
-  // нормализация
-  const norm = items.map(n => ({
-    id: String(n.id || Date.now()),
-    ts: Number(n.ts || Date.now()),
-    read: !!n.read,
-    icon: String(n.icon || 'bell'),
-    title: String(n.title || ''),
-    sub: String(n.sub || ''),
-  }));
+  const norm = items.map(normalize);
   setList(norm);
   return norm;
 }
 
 async function markAllServerSafe(){
   const uid = getUID();
-  if (!uid) return;
+  if (!uid) return null;
   try{
-    await fetch(ENDPOINT, {
+    const r = await fetch(ENDPOINT, {
       method:'POST',
       headers:{
         'Content-Type':'application/json',
-        'X-Tg-Init-Data': getTgInitDataRaw(), // фикс
+        'X-Tg-Init-Data': getTgInitDataRaw(),
       },
-      body: JSON.stringify({ op:'markSeen', uid }) // фикс — корректный op
+      // ВАЖНО: оп должен быть строго в нижнем регистре — notifs.js ожидает 'markseen' / 'markmine'
+      body: JSON.stringify({ op:'markseen', uid })
     });
-  }catch{}
+    const j = await r.json().catch(()=> ({}));
+    if (!r.ok || j?.ok === false) return null;
+    return Array.isArray(j.items) ? j.items : null;
+  }catch{
+    return null;
+  }
 }
 
 /* ===== local cache ===== */

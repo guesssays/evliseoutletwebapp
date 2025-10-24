@@ -1,3 +1,4 @@
+// src/components/Admin.js
 import {
   ORDER_STATUSES,
   getOrders,
@@ -422,11 +423,14 @@ export async function renderAdmin(){
     // принять
     document.getElementById('btnAccept')?.addEventListener('click', async ()=>{
       await acceptOrder(o.id);
+      // форсим обновление списка/вкладок
+      mode='detail';
+      selectedId = o.id;
+      await render();
       try{
         const ev = new CustomEvent('admin:orderAccepted', { detail:{ id: o.id, userId: o.userId } });
         window.dispatchEvent(ev);
       }catch{}
-      mode='detail'; selectedId = o.id; render();
     });
 
     // отменить

@@ -82,6 +82,28 @@ async function callNotify(payload){
   }).catch(()=>{});
 }
 
+/* ---------- App notifications (внутренние) ---------- */
+async function appNotif(uid, notif) {
+  try {
+    const base = baseUrl(); if (!base) return;
+    await fetch(`${base}/.netlify/functions/notifs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Auth': process.env.ADMIN_API_TOKEN || ''
+      },
+      body: JSON.stringify({ op: 'add', uid: String(uid), notif })
+    });
+  } catch {}
+}
+function makeDisplayId(orderId, shortId){
+  const s = (shortId||'').toString().trim();
+  if (s) return s.toUpperCase();
+  const full = (orderId||'').toString().trim();
+  if (!full) return '';
+  return full.slice(-6).toUpperCase();
+}
+
 /* ---------------- Netlify Function ---------------- */
 export async function handler(event) {
   const origin = event.headers?.origin || event.headers?.Origin || '';
@@ -134,11 +156,14 @@ export async function handler(event) {
 
     if (op === 'add') {
       const id = await store.add(body.order || {});
+      // ——— Админу: Телеграм + дополнительно через internal notify (гарантированно всем ADMIN_CHAT_ID)
       try {
         await notifyAdminNewOrder(id, body.order);
+        await callNotify({ type: 'orderPlaced', text: '🆕 Новый заказ', orderId: String(id), shortId: body.order?.shortId || body.order?.code || null });
       } catch (e) {
         console.error('[orders] notifyAdminNewOrder error:', e);
       }
+      // ——— Пользователю: Telegram + App notifs
       try{
         if (body.order?.userId) {
           await callNotify({
@@ -148,9 +173,12 @@ export async function handler(event) {
             shortId: body.order.shortId || body.order.code || null,
             title: body.order?.cart?.[0]?.title || body.order?.title || ''
           });
+          const disp = makeDisplayId(id, body.order?.shortId || body.order?.code);
+          await appNotif(body.order.userId, { icon:'package', title:`Оформлен заказ #${disp}`, sub:'Мы начали обработку', ts: Date.now(), read:false });
         }
       }catch(e){ console.warn('[orders] notify orderPlaced failed:', e?.message||e); }
 
+      // ——— Лояльность: начислить pending
       try {
         const cartTotal =
           Array.isArray(body.order?.cart)
@@ -187,6 +215,8 @@ export async function handler(event) {
             shortId: o.shortId || null,
             title: o?.cart?.[0]?.title || o?.title || ''
           });
+          const disp = makeDisplayId(o.id, o.shortId);
+          await appNotif(o.userId, { icon:'check-circle', title:`Заказ #${disp} подтверждён`, sub:'Мы начали сборку', ts: Date.now(), read:false });
         }
       }catch(e){ console.warn('[orders] notify orderAccepted failed:', e?.message||e); }
       return ok({ ok: !!o, order: o || null }, headers);
@@ -208,6 +238,8 @@ export async function handler(event) {
             shortId: o.shortId || null,
             title: o?.cart?.[0]?.title || o?.title || ''
           });
+          const disp = makeDisplayId(o.id, o.shortId);
+          await appNotif(o.userId, { icon:'x-circle', title:`Заказ #${disp} отменён`, sub: reason ? `Причина: ${reason}` : 'Отменён', ts: Date.now(), read:false });
         } catch(e){ console.warn('[orders] notify orderCanceled failed:', e?.message||e); }
       }
 
@@ -241,6 +273,8 @@ export async function handler(event) {
             shortId: o.shortId || null,
             title: o?.cart?.[0]?.title || o?.title || ''
           });
+          const disp = makeDisplayId(o.id, o.shortId);
+          await appNotif(o.userId, { icon:'bell', title:`Статус заказа #${disp} обновлён`, sub:`Текущий статус: ${status}`, ts: Date.now(), read:false });
         } catch(e){ console.warn('[orders] notify statusChanged failed:', e?.message||e); }
       }
 
