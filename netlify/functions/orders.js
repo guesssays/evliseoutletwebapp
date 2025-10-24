@@ -29,16 +29,25 @@ function originMatches(origin, rule) {
   if (!rule || rule === '*') return true;
   if (!origin) return false;
   if (rule.startsWith('*.')) {
-    try { const host = new URL(origin).hostname; const suffix = rule.slice(1); return host === rule.slice(2) || host.endsWith(suffix); }
-    catch { return false; }
+    try {
+      const host = new URL(origin).hostname;
+      const suffix = rule.slice(1);
+      return host === rule.slice(2) || host.endsWith(suffix);
+    } catch {
+      return false;
+    }
   }
   return origin === rule;
 }
 function buildCorsHeaders(origin) {
   const allowed = parseAllowed();
-  const isAllowed = !allowed.length ||
-                    isTelegramOrigin(origin) ||
-                    allowed.some(rule => originMatches(origin, rule));
+  // ✅ Правка: разрешаем и пустой Origin (навигация напрямую / открытие функции в браузере)
+  const isAllowed =
+    !allowed.length ||
+    !origin ||
+    isTelegramOrigin(origin) ||
+    allowed.some(rule => originMatches(origin, rule));
+
   const allowOrigin = isAllowed ? (origin || '*') : 'null';
   return {
     headers: {
