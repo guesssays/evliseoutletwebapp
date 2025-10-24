@@ -199,12 +199,19 @@ export async function handler(event){
     // 2a. Владелец через initData: markMine/markSeen (исторический контракт)
     if (op === 'markseen' || op === 'markmine') {
       const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
-      const { uid } = verifyTgInitData(rawInit);
-      const targetUidRaw = String(body.uid || '').trim();
-      if (targetUidRaw && targetUidRaw !== uid) return { statusCode:403, ...headers, body: JSON.stringify({ ok:false, error:'forbidden' }) };
-      const ids = Array.isArray(body.ids) ? body.ids : null;
-      const items = ids?.length ? await store.mark(uid, ids) : await store.markAll(uid);
-      return { statusCode:200, ...headers, body: JSON.stringify({ ok:true, items }) };
+      try {
+        const { uid } = verifyTgInitData(rawInit);
+        const targetUidRaw = String(body.uid || '').trim();
+        if (targetUidRaw && targetUidRaw !== uid) {
+          return { statusCode:403, ...headers, body: JSON.stringify({ ok:false, error:'forbidden' }) };
+        }
+        const ids = Array.isArray(body.ids) ? body.ids : null;
+        const items = ids?.length ? await store.mark(uid, ids) : await store.markAll(uid);
+        return { statusCode:200, ...headers, body: JSON.stringify({ ok:true, items }) };
+      } catch {
+        // 🔸 мягкий отказ, чтобы фронт мог перейти на публичный путь markAll без 500
+        return { statusCode:401, ...headers, body: JSON.stringify({ ok:false, error:'unauthorized' }) };
+      }
     }
 
     // 2b. Совместимость с фронтендом: { op:'markAll', uid } или { op:'mark', uid, ids }
