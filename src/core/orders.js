@@ -27,6 +27,20 @@ export function getAdminToken() {
   }
 }
 
+/* ===== Telegram initData ===== */
+function getTgInitData() {
+  try {
+    // Telegram WebApp среда
+    const raw =
+      (typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) ||
+      '';
+    // Возможна ручная подмена в dev
+    return String(window?.__TG_INIT_DATA__ || raw || '').trim();
+  } catch {
+    return '';
+  }
+}
+
 function withTimeout(promise, ms = FETCH_TIMEOUT_MS){
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error('timeout')), ms);
@@ -49,10 +63,21 @@ function normalizeOrder(o = {}){
 
 let __lastStoreKind = 'unknown';
 
+/* ===== Базовые заголовки для API ===== */
+function baseHeaders() {
+  const headers = { 'Content-Type': 'application/json' };
+  const initData = getTgInitData();
+  if (initData) headers['X-Tg-Init-Data'] = initData; // <<< главный фикс: передаём initData на сервер
+  return headers;
+}
+
 /* ===== API low-level ===== */
 async function apiGetList(){
   try{
-    const res = await withTimeout(fetch(`${API_BASE}?op=list&ts=${Date.now()}`, { method:'GET', headers:{'Cache-Control':'no-store'} }));
+    const res = await withTimeout(fetch(`${API_BASE}?op=list&ts=${Date.now()}`, {
+      method: 'GET',
+      headers: { ...baseHeaders(), 'Cache-Control':'no-store' }
+    }));
     const data = await res.json();
     if (res.ok && data?.ok && Array.isArray(data.orders)) {
       __lastStoreKind = data?.meta?.store || 'unknown';
@@ -65,18 +90,24 @@ async function apiGetList(){
 }
 async function apiGetOne(id){
   try{
-    const res = await withTimeout(fetch(`${API_BASE}?op=get&id=${encodeURIComponent(id)}&ts=${Date.now()}`, { method:'GET', headers:{'Cache-Control':'no-store'} }));
+    const res = await withTimeout(fetch(`${API_BASE}?op=get&id=${encodeURIComponent(id)}&ts=${Date.now()}`, {
+      method:'GET',
+      headers: { ...baseHeaders(), 'Cache-Control':'no-store' }
+    }));
     const data = await res.json();
     if (res.ok && data?.ok) return data.order ? normalizeOrder(data.order) : null;
     return null;
   }catch{ return null; }
 }
 async function apiPost(op, body){
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = baseHeaders();
+
+  // Админские операции — добавляем внутренний токен
   if (ADMIN_OPS.has(op)) {
     const token = getAdminToken();
     if (token) headers['X-Internal-Auth'] = token;
   }
+
   const res = await withTimeout(fetch(API_BASE, {
     method:'POST',
     headers,
@@ -147,7 +178,16 @@ export async function addOrder(order){
   const idLocal = order.id ?? String(Date.now());
   const now = Date.now();
   const initialStatus = canonStatus(order.status ?? 'новый');
+
+  // Пытаемся получить uid из state; если его нет — не даём оформить заказ,
+  // т.к. сервер всё равно отвергнет без X-Tg-Init-Data/uid.
   const safeUserId = order.userId ?? getUID() ?? null;
+  if (!safeUserId) {
+    // Явная ошибка для UI — предложить открыть внутри Telegram
+    const err = new Error('Требуется авторизация через Telegram. Откройте приложение внутри Telegram.');
+    // Бросаем ошибку сразу — не пишем в локальный кэш «гостевых» заказов
+    throw err;
+  }
 
   const next = normalizeOrder({
     id: idLocal,
@@ -193,6 +233,9 @@ export async function addOrder(order){
       saveOrders([next, ...list]);
     }
   }catch{
+    // Если сервер не принял (например, без initData) — не оставляем «локальный» заказ без uid
+    // Но на случай сетевого офлайна, когда сервер недоступен, можно сохранить локально,
+    // так как uid у нас есть (safeUserId). Оставим прежнюю офлайн-ветку:
     const list = getOrdersLocal();
     saveOrders([next, ...list]);
   }

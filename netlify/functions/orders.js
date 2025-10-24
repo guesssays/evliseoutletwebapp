@@ -3,6 +3,8 @@
 // ENV: TG_BOT_TOKEN, ADMIN_CHAT_ID, WEBAPP_URL, ADMIN_API_TOKEN,
 //      ALLOWED_ORIGINS, ALLOW_MEMORY_FALLBACK, NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN
 
+import crypto from 'node:crypto';
+
 const IS_PROD =
   (process.env.CONTEXT === 'production') ||
   (process.env.NODE_ENV === 'production');
@@ -48,6 +50,34 @@ function buildCorsHeaders(origin) {
     },
     isAllowed,
   };
+}
+
+/* ---------- Telegram initData → uid ---------- */
+function verifyTgInitData(raw) {
+  try {
+    const token = process.env.TG_BOT_TOKEN || '';
+    if (!token) return null;
+    const p = new URLSearchParams(String(raw || ''));
+    const hash = p.get('hash');
+    if (!hash) return null;
+
+    const pairs = [];
+    for (const [k, v] of p.entries()) {
+      if (k === 'hash') continue;
+      pairs.push(`${k}=${v}`);
+    }
+    pairs.sort();
+    const dataCheckString = pairs.join('\n');
+
+    const secretKey = crypto.createHash('sha256').update(token).digest();
+    const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+    if (hmac !== hash) return null;
+
+    const u = JSON.parse(p.get('user') || '{}');
+    return u?.id ? String(u.id) : null;
+  } catch {
+    return null;
+  }
 }
 
 /* ---------- calls to internal functions ---------- */
@@ -156,41 +186,52 @@ export async function handler(event) {
     const op = String(body.op || '').toLowerCase();
 
     if (op === 'add') {
-      const id = await store.add(body.order || {});
+      // === ФИКС: гарантируем userId из Telegram initData, иначе 400 ===
+      const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
+      const uidFromInit = verifyTgInitData(rawInit);
+      const orderIn = body.order || {};
+      const withUid = { ...orderIn, userId: orderIn.userId || uidFromInit || null };
+
+      if (!withUid.userId) {
+        // Не создаём “гостевой” заказ: такой заказ потом не попадёт в “Мои заказы”, лояльность не начислится.
+        return bad('uid required (open inside Telegram)', headers);
+      }
+
+      const id = await store.add(withUid);
+
       // ——— Админу: одно (!) уведомление в Telegram
       try {
-        await notifyAdminNewOrder(id, body.order);
+        await notifyAdminNewOrder(id, withUid);
       } catch (e) {
         console.error('[orders] notifyAdminNewOrder error:', e);
       }
+
       // ——— Пользователю: Telegram + App notifs
       try{
-        if (body.order?.userId) {
-          await callNotify({
-            chat_id: String(body.order.userId),
-            type: 'orderPlaced',
-            orderId: String(id),
-            shortId: body.order.shortId || body.order.code || null,
-            title: body.order?.cart?.[0]?.title || body.order?.title || ''
-          });
-          const disp = makeDisplayId(id, body.order?.shortId || body.order?.code);
-          await appNotif(body.order.userId, { icon:'package', title:`Оформлен заказ #${disp}`, sub:'Мы начали обработку', ts: Date.now(), read:false });
-        }
+        await callNotify({
+          chat_id: String(withUid.userId),
+          type: 'orderPlaced',
+          orderId: String(id),
+          shortId: withUid.shortId || withUid.code || null,
+          title: withUid?.cart?.[0]?.title || withUid?.title || ''
+        });
+        const disp = makeDisplayId(id, withUid?.shortId || withUid?.code);
+        await appNotif(withUid.userId, { icon:'package', title:`Оформлен заказ #${disp}`, sub:'Мы начали обработку', ts: Date.now(), read:false });
       }catch(e){ console.warn('[orders] notify orderPlaced failed:', e?.message||e); }
 
       // ——— Лояльность: начислить pending
       try {
         const cartTotal =
-          Array.isArray(body.order?.cart)
-            ? body.order.cart.reduce((s,x)=> s + (Number(x.price||0) * (Number(x.qty||0)||1)), 0)
-            : Number(body.order?.total||0);
+          Array.isArray(withUid?.cart)
+            ? withUid.cart.reduce((s,x)=> s + (Number(x.price||0) * (Number(x.qty||0)||1)), 0)
+            : Number(withUid?.total||0);
 
         await callLoyalty('accrue', {
-          uid: String(body.order?.userId || ''),
+          uid: String(withUid.userId),
           orderId: String(id),
           total: cartTotal,
-          currency: String(body.order?.currency || 'UZS'),
-          shortId: body.order?.shortId || null
+          currency: String(withUid?.currency || 'UZS'),
+          shortId: withUid?.shortId || null
         });
       } catch (e) {
         console.warn('[orders] loyalty.accrue failed:', e?.message||e);
