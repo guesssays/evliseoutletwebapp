@@ -62,10 +62,12 @@ body{
   pointer-events:auto;
   width:48px; height:48px; border-radius:999px;
   display:grid; place-items:center;
-  background:#fff; border:1px solid var(--stroke); box-shadow:var(--shadow);
-  color:#var(--text); cursor:pointer;
+  background:#fff; border:1px solid var(--stroke);
+  box-shadow:var(--shadow);
+  color: var(--text);
   position:absolute; top:0;
 }
+
 #btnFixBack{ left:12px; } #btnFixFav{ right:12px; }
 .product-fixhdr .fixbtn i{ width:22px; height:22px }
 #btnFixFav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none }
@@ -256,9 +258,10 @@ body{
 .note .time{ color:var(--muted); font-size:12px; white-space:nowrap; }
 .notes-empty{
   margin:0 18px 18px; padding:14px;
-  border:1px dashed var(--stroke); border-radius:14px;
-  background:#fff; color:#muted;
+  border:1px dashed var(--stroke); border-radius:14px; background:#fff; 
+  color: var(--muted);
 }
+
 
 /* ===== ТАББАР ===== */
 .tabbar{ position:fixed; left:0; right:0; bottom:0; z-index:50; padding-bottom:max(8px, var(--safe)); background:transparent; pointer-events:none; }

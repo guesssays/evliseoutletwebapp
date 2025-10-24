@@ -6,7 +6,7 @@
 
   <title>EVLISE OUTLET — интернет-магазин одежды</title>
   <meta name="description" content="EVLISE OUTLET — стильная женская и мужская одежда со скидками. Новинки, акции и быстрый заказ прямо в Telegram WebApp." />
-  <meta name="keywords" content="Evlise Outlet, одежда, магазин, распродажа, скидки, платье, куртка, худи, штаны, аксессуары" />
+  <!-- meta keywords удалён как бесполезный для SEO -->
   <meta name="theme-color" content="#121111" />
   <meta name="application-name" content="EVLISE OUTLET" />
   <meta name="apple-mobile-web-app-title" content="EVLISE OUTLET" />
@@ -58,11 +58,10 @@
   <!-- Telegram WebApp -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-  <!-- Lucide (пинованная версия) + безопасный запуск иконок -->
+  <!-- Lucide (пинованная версия) -->
   <script
     src="https://cdn.jsdelivr.net/npm/lucide@0.454.0/dist/umd/lucide.min.js"
-    defer
-    onload="try{window.lucide?.createIcons?.()}catch{}">
+    defer>
   </script>
 </head>
 
@@ -76,7 +75,12 @@
         </div>
       </div>
       <div class="hdr-right">
-        <button id="openNotifications" class="icon-btn notif-btn" aria-label="Уведомления">
+        <button
+          id="openNotifications"
+          class="icon-btn notif-btn"
+          aria-label="Уведомления"
+          aria-live="polite"
+          aria-atomic="true">
           <i data-lucide="bell"></i>
           <b id="notifBadge" class="badge" hidden>0</b>
         </button>
@@ -172,7 +176,7 @@
   <script type="module" src="src/main.js?v=2025-10-24-02"></script>
 
   <script>
-    // Иконки после монтирования (запасной вызов, если onload не сработал)
+    // Иконки после монтирования (запасной вызов)
     try { window.lucide?.createIcons?.(); } catch {}
 
     // Форс-перезагрузка по версии (на случай закэшированного HTML)
@@ -189,33 +193,6 @@
     })();
   </script>
 
-  <!-- ADMIN TOKEN INJECTION -->
-  <script>
-    (function () {
-      const B64 = 'VXNBXjU5NzZKSmJENGc2aip0XmprSk1vTWElKkhvIWo=';
-      let injected = false;
-      function maybeInject() {
-        const isAdminView =
-          (location.hash && location.hash.startsWith('#/admin')) ||
-          location.pathname.includes('/admin');
-        if (!isAdminView || injected) return;
-        try {
-          const token = atob(B64);
-          if (token && token !== 'VXNBXjU5NzZKSmJENGc2aip0XmprSk1vTWElKkhvIWo=') {
-            window.__ADMIN_API_TOKEN__ = token;
-            try { localStorage.setItem('admin_api_token', token); } catch {}
-            injected = true;
-            console.log('[admin] token injected');
-          } else {
-            console.warn('[admin] токен не подставлен');
-          }
-        } catch (e) {
-          console.warn('[admin] atob fail:', e);
-        }
-      }
-      maybeInject();
-      window.addEventListener('hashchange', maybeInject);
-    })();
-  </script>
+  <!-- Блок ADMIN TOKEN INJECTION удалён — админ-аутентификация должна быть серверной -->
 </body>
 </html>

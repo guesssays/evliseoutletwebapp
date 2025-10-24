@@ -1,16 +1,17 @@
-// src/views/adminLogin.js
-
+// src/views/AdminLogin.js
 import { canAccessAdmin, isAdminByTelegram, unlockAdminWithPasscode, logoutAdmin } from '../core/auth.js';
 import { setAdminToken, getAdminToken } from '../core/orders.js';
+
+// ❗ Встроенный админ-токен API (по вашей задаче)
+const DEFAULT_ADMIN_API_TOKEN = 'UsA^5976JJbD4g6j*t^jkJMoMa%*Ho!j';
 
 export function renderAdminLogin(){
   const v = document.getElementById('view');
 
-  // Если токен инжектнули через window — сразу положим его в localStorage
+  // Если токен ещё не задан — проставим дефолтный
   try {
-    if (typeof window !== 'undefined') {
-      const injected = window.__ADMIN_API_TOKEN__ || window.ADMIN_API_TOKEN;
-      if (injected && !getAdminToken()) setAdminToken(String(injected));
+    if (!getAdminToken()) {
+      setAdminToken(DEFAULT_ADMIN_API_TOKEN);
     }
   } catch {}
 
@@ -19,7 +20,7 @@ export function renderAdminLogin(){
     ? 'Вы авторизованы в Telegram как администратор. Можете перейти в админ-панель.'
     : 'Введите секретный код администратора, чтобы получить доступ. При необходимости укажите внутр. токен API.';
 
-  const existingToken = getAdminToken();
+  const existingToken = !!getAdminToken();
 
   v.innerHTML = `
     <section class="section">
@@ -55,17 +56,19 @@ export function renderAdminLogin(){
   `;
   window.lucide?.createIcons && lucide.createIcons();
 
-  // «Открыть админку» — просто джамп на #/admin, роутер покажет предупреждение и переведёт UI в админ режим
+  // «Открыть админку»
   document.getElementById('goAdmin')?.addEventListener('click', ()=>{
     location.hash = '#/admin';
   });
 
+  // Сброс
   document.getElementById('btnLogout')?.addEventListener('click', ()=>{
     try { setAdminToken(''); } catch {}
     logoutAdmin();
     location.hash = '#/admin-login';
   });
 
+  // Сохранить токен вручную (если хотят переопределить дефолтный)
   const saveTokenBtn = document.getElementById('saveToken');
   if (saveTokenBtn){
     saveTokenBtn.addEventListener('click', ()=>{
@@ -78,20 +81,16 @@ export function renderAdminLogin(){
     });
   }
 
+  // Войти по коду (локальная разблокировка UI)
   const enterBtn = document.getElementById('admEnter');
   if (enterBtn){
     enterBtn.addEventListener('click', ()=>{
       const code = (document.getElementById('admCode')?.value || '').trim();
-      // если пользователь ввёл токен — сохраним его
+
+      // Если ввели токен — сохраним; иначе оставим уже проставленный дефолтный
       const maybeToken = (document.getElementById('admToken')?.value || '').trim();
       if (maybeToken && maybeToken !== '••••••••') {
         setAdminToken(maybeToken);
-      } else {
-        // попробуем подтянуть из window, если ещё не сохранили
-        try {
-          const injected = window.__ADMIN_API_TOKEN__ || window.ADMIN_API_TOKEN;
-          if (injected && !getAdminToken()) setAdminToken(String(injected));
-        } catch {}
       }
 
       const ok = unlockAdminWithPasscode(code);
@@ -100,7 +99,7 @@ export function renderAdminLogin(){
         if (e){ e.style.display='block'; }
         return;
       }
-      location.hash = '#/admin'; // роутер покажет предупреждение
+      location.hash = '#/admin';
     });
   }
 }
