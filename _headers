@@ -1,0 +1,75 @@
+# -----------------------------
+# БАЗОВЫЕ БЕЗОПАСНЫЕ ЗАГОЛОВКИ
+# -----------------------------
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), fullscreen=*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+
+# -----------------------------
+# КЭШИРОВАНИЕ ДЛЯ SPA
+# -----------------------------
+
+# HTML — не кэшируем, чтобы SPA всегда подтягивала свежую версию
+/
+  Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
+
+/index.html
+  Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
+
+# Все HTML внутри подпапок — тоже без кэша
+/*.html
+  Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
+
+# Статические ассеты (css/js/fonts/images) — агрессивное кэширование.
+# В продакшене обычно у вас хеши в именах файлов, поэтому можно ставить «immutable».
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.css
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/images/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Данные каталога (если не хешированы). Можно ослабить до часа-двух.
+/data/*
+  Cache-Control: public, max-age=300
+
+# Картинки-иконки/манифесты
+/manifest.webmanifest
+  Cache-Control: public, max-age=604800
+
+/assets/favicon.png
+  Cache-Control: public, max-age=604800
+
+/assets/images/* 
+  Cache-Control: public, max-age=31536000, immutable
+
+# -----------------------------
+# ФОЛЛБЭКИ/РОУТИНГ ДЛЯ SPA (если нужен)
+# -----------------------------
+# Если у вас включён file-based SPA routing через перезапись, этот блок не обязателен.
+# Он нужен только если вы делаете редиректы через _redirects. В _headers сам роутинг не настраивается.
+#
+# Пример для справки (в _redirects):
+# /*   /index.html   200
+#
+# -----------------------------
+# ФУНКЦИИ (настраиваются в коде)
+# -----------------------------
+# Для /.netlify/functions/* лучше выставлять CORS/Cache-Control из самих функций.
+# Здесь ничего не задаём, чтобы не конфликтовать с заголовками функций.

@@ -12,9 +12,13 @@
   <meta name="apple-mobile-web-app-title" content="EVLISE OUTLET" />
   <meta name="format-detection" content="telephone=no" />
 
+  <!-- Анти-кэш для HTML в браузерах/вебвью -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
   <!-- Favicon / icons -->
   <link rel="icon" type="image/png" href="assets/favicon.png" />
-  <!-- Если есть — добавьте свою картинку 180x180 -->
   <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png" />
 
   <!-- Open Graph -->
@@ -23,7 +27,6 @@
   <meta property="og:title" content="EVLISE OUTLET — интернет-магазин одежды" />
   <meta property="og:description" content="Стильные вещи по Outlet-ценам. Смотрите каталог и заказывайте в пару кликов." />
   <meta property="og:locale" content="ru_RU" />
-  <!-- Замените путь, если ваш баннер в другом месте/с другим именем -->
   <meta property="og:image" content="assets/images/og-evlise.png" />
   <meta property="og:image:alt" content="EVLISE OUTLET — баннер магазина" />
 
@@ -36,152 +39,187 @@
   <!-- Fonts / styles / libs -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Версия билда: меняй на каждом деплое -->
+  <script>
+    window.__BUILD_VERSION__ = '2025-10-24-02'; // <-- ОБНОВЛЯЙ
+    // небольшая страховка: если версия сменилась, принудительно перезагрузим мини-апп,
+    // чтобы Telegram WebView точно подтянул новую сборку
+    try {
+      const KEY = 'app_build_version';
+      const prev = localStorage.getItem(KEY);
+      const curr = window.__BUILD_VERSION__;
+      if (prev && prev !== curr) {
+        // на смене версии чистим только кэш UI (без пользовательских данных)
+        sessionStorage.clear();
+      }
+      localStorage.setItem(KEY, curr);
+    } catch {}
+  </script>
+
+  <!-- Основные стили с версионированием -->
+  <link rel="stylesheet" href="styles.css?v=2025-10-24-02" />
 
   <!-- Telegram WebApp + иконки -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
 
-  <body>
-    <div id="app">
-      <!-- Статичный хедер (всегда существует) -->
-      <header class="app-header" role="banner">
-        <div class="hdr-left">
-          <div class="brand">
-            <span class="app-title" aria-label="EVLISE OUTLET">EVLISE OUTLET</span>
-          </div>
+<body>
+  <div id="app">
+    <!-- Статичный хедер (всегда существует) -->
+    <header class="app-header" role="banner">
+      <div class="hdr-left">
+        <div class="brand">
+          <span class="app-title" aria-label="EVLISE OUTLET">EVLISE OUTLET</span>
         </div>
-        <div class="hdr-right">
-          <button id="openNotifications" class="icon-btn notif-btn" aria-label="Уведомления">
-            <i data-lucide="bell"></i>
-            <b id="notifBadge" class="badge" hidden>0</b>
-          </button>
-        </div>
-      </header>
-
-      <!-- Фиксированный хедер для страницы товара (по умолчанию скрыт) -->
-      <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
-        <button id="btnFixBack" class="fixbtn" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
-        <button id="btnFixFav" class="fixbtn" aria-label="В избранное" aria-pressed="false"><i data-lucide="heart"></i></button>
       </div>
-
-      <!-- Поиск + фильтры -->
-      <section class="section section-search">
-        <div class="search-wrap">
-          <i data-lucide="search" class="search-ico"></i>
-          <input id="searchInput" class="search" placeholder="Поиск одежды…" />
-        </div>
-        <button id="openFilters" class="square-btn" aria-label="Открыть фильтры">
-          <i data-lucide="sliders-horizontal"></i>
+      <div class="hdr-right">
+        <button id="openNotifications" class="icon-btn notif-btn" aria-label="Уведомления">
+          <i data-lucide="bell"></i>
+          <b id="notifBadge" class="badge" hidden>0</b>
         </button>
-      </section>
-
-      <!-- Категории -->
-      <section class="section">
-        <div class="chipbar" id="catChips" aria-label="Категории"></div>
-      </section>
-
-      <!-- Активные фильтры -->
-      <section class="section" id="activeFilters" aria-live="polite"></section>
-
-      <!-- Контент -->
-      <main id="view" class="view"></main>
-
-      <!-- Модалка -->
-      <div id="modal" class="modal" aria-hidden="true">
-        <div class="modal-dialog" role="dialog" aria-modal="true">
-          <div class="modal-head">
-            <div id="modalTitle"></div>
-            <button id="modalClose" class="icon-btn" aria-label="Закрыть"><i data-lucide="x"></i></button>
-          </div>
-          <div id="modalBody" class="modal-body"></div>
-          <div id="modalActions" class="modal-actions"></div>
-        </div>
       </div>
+    </header>
 
-      <div id="toastWrap" class="toast-wrap"></div>
-
-      <!-- Нижний таббар -->
-      <nav class="tabbar" role="tablist" aria-label="Основная навигация">
-        <div class="tabbar-inner">
-          <a href="#/" data-tab="home" class="tab active" role="tab" aria-selected="true">
-            <i data-lucide="home"></i><span>Главная</span>
-          </a>
-          <a href="#/favorites" data-tab="saved" class="tab" role="tab" aria-selected="false">
-            <i data-lucide="heart"></i><span>Избранное</span>
-          </a>
-          <a href="#/cart" data-tab="cart" class="tab badge-wrap" role="tab" aria-selected="false">
-            <i data-lucide="shopping-bag"></i><span>Корзина</span>
-            <b id="cartBadge" class="badge" hidden></b>
-          </a>
-          <a href="#/account" data-tab="account" class="tab" role="tab" aria-selected="false">
-            <i data-lucide="user-round"></i><span>Аккаунт</span>
-          </a>
-        </div>
-      </nav>
-
-      <!-- Шаблоны -->
-      <template id="product-card">
-        <a class="card" href="#">
-          <div class="card-img">
-            <img loading="lazy" alt="">
-            <button class="fav" aria-label="В избранное" aria-pressed="false">
-              <i data-lucide="heart"></i>
-            </button>
-          </div>
-          <div class="card-body">
-            <div class="title"></div>
-            <div class="subtitle"></div>
-            <div class="price-row">
-              <div class="price"></div>
-            </div>
-          </div>
-        </a>
-      </template>
-
-      <template id="filter-chip">
-        <span class="chip chip-mini"></span>
-      </template>
+    <!-- Фиксированный хедер для страницы товара (по умолчанию скрыт) -->
+    <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
+      <button id="btnFixBack" class="fixbtn" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
+      <button id="btnFixFav" class="fixbtn" aria-label="В избранное" aria-pressed="false"><i data-lucide="heart"></i></button>
     </div>
 
-    <script type="module" src="src/main.js"></script>
-    <script>window.lucide && lucide.createIcons();</script>
-<!-- ADMIN TOKEN INJECTION (работает на загрузке и при переходе в #/admin) -->
-<script>
-(function () {
-  const B64 = 'VXNBXjU5NzZKSmJENGc2aip0XmprSk1vTWElKkhvIWo='; // base64 твоего токена
-  let injected = false;
+    <!-- Поиск + фильтры -->
+    <section class="section section-search">
+      <div class="search-wrap">
+        <i data-lucide="search" class="search-ico"></i>
+        <input id="searchInput" class="search" placeholder="Поиск одежды…" />
+      </div>
+      <button id="openFilters" class="square-btn" aria-label="Открыть фильтры">
+        <i data-lucide="sliders-horizontal"></i>
+      </button>
+    </section>
 
-  function maybeInject() {
-    const isAdminView =
-      (location.hash && location.hash.startsWith('#/admin')) ||
-      location.pathname.includes('/admin');
-    if (!isAdminView || injected) return;
+    <!-- Категории -->
+    <section class="section">
+      <div class="chipbar" id="catChips" aria-label="Категории"></div>
+    </section>
 
-    try {
-      const token = atob(B64);
-      if (token && token !== 'VXNBXjU5NzZKSmJENGc2aip0XmprSk1vTWElKkhvIWo=') {
-        window.__ADMIN_API_TOKEN__ = token;
-        try { localStorage.setItem('admin_api_token', token); } catch {}
-        injected = true;
-        console.log('[admin] token injected');
-      } else {
-        console.warn('[admin] токен не подставлен');
+    <!-- Активные фильтры -->
+    <section class="section" id="activeFilters" aria-live="polite"></section>
+
+    <!-- Контент -->
+    <main id="view" class="view"></main>
+
+    <!-- Модалка -->
+    <div id="modal" class="modal" aria-hidden="true">
+      <div class="modal-dialog" role="dialog" aria-modal="true">
+        <div class="modal-head">
+          <div id="modalTitle"></div>
+          <button id="modalClose" class="icon-btn" aria-label="Закрыть"><i data-lucide="x"></i></button>
+        </div>
+        <div id="modalBody" class="modal-body"></div>
+        <div id="modalActions" class="modal-actions"></div>
+      </div>
+    </div>
+
+    <div id="toastWrap" class="toast-wrap"></div>
+
+    <!-- Нижний таббар -->
+    <nav class="tabbar" role="tablist" aria-label="Основная навигация">
+      <div class="tabbar-inner">
+        <a href="#/" data-tab="home" class="tab active" role="tab" aria-selected="true">
+          <i data-lucide="home"></i><span>Главная</span>
+        </a>
+        <a href="#/favorites" data-tab="saved" class="tab" role="tab" aria-selected="false">
+          <i data-lucide="heart"></i><span>Избранное</span>
+        </a>
+        <a href="#/cart" data-tab="cart" class="tab badge-wrap" role="tab" aria-selected="false">
+          <i data-lucide="shopping-bag"></i><span>Корзина</span>
+          <b id="cartBadge" class="badge" hidden></b>
+        </a>
+        <a href="#/account" data-tab="account" class="tab" role="tab" aria-selected="false">
+          <i data-lucide="user-round"></i><span>Аккаунт</span>
+        </a>
+      </div>
+    </nav>
+
+    <!-- Шаблоны -->
+    <template id="product-card">
+      <a class="card" href="#">
+        <div class="card-img">
+          <img loading="lazy" alt="">
+          <button class="fav" aria-label="В избранное" aria-pressed="false">
+            <i data-lucide="heart"></i>
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="title"></div>
+          <div class="subtitle"></div>
+          <div class="price-row">
+            <div class="price"></div>
+          </div>
+        </div>
+      </a>
+    </template>
+
+    <template id="filter-chip">
+      <span class="chip chip-mini"></span>
+    </template>
+  </div>
+
+  <!-- Главный модуль с версионированием -->
+  <script type="module" src="src/main.js?v=2025-10-24-02"></script>
+  <script>
+    // иконки после монтирования
+    window.lucide && lucide.createIcons && lucide.createIcons();
+
+    // Доп. страховка для WebView/Telegram: если HTML закешировался, форс-перезагрузка по версии
+    (function(){
+      try{
+        const qv = new URLSearchParams(location.search).get('v');
+        const need = window.__BUILD_VERSION__;
+        if (need && qv !== need) {
+          const url = new URL(location.href);
+          url.searchParams.set('v', need);
+          // избегаем истории "назад"
+          location.replace(url.toString());
+        }
+      }catch{}
+    })();
+  </script>
+
+  <!-- ADMIN TOKEN INJECTION (работает на загрузке и при переходе в #/admin) -->
+  <script>
+    (function () {
+      const B64 = 'VXNBXjU5NzZKSmJENGc2aip0XmprSk1vTWElKkhvIWo='; // base64 твоего токена
+      let injected = false;
+
+      function maybeInject() {
+        const isAdminView =
+          (location.hash && location.hash.startsWith('#/admin')) ||
+          location.pathname.includes('/admin');
+        if (!isAdminView || injected) return;
+
+        try {
+          const token = atob(B64);
+          if (token && token !== 'VXNBXjU5NzZKSmJENGc2aip0XmprSk1vTWElKkhvIWo=') {
+            window.__ADMIN_API_TOKEN__ = token;
+            try { localStorage.setItem('admin_api_token', token); } catch {}
+            injected = true;
+            console.log('[admin] token injected');
+          } else {
+            console.warn('[admin] токен не подставлен');
+          }
+        } catch (e) {
+          console.warn('[admin] atob fail:', e);
+        }
       }
-    } catch (e) {
-      console.warn('[admin] atob fail:', e);
-    }
-  }
 
-  // при загрузке
-  maybeInject();
-  // при смене хэша внутри SPA
-  window.addEventListener('hashchange', maybeInject);
-})();
-</script>
-
-
-
-  </body>
+      // при загрузке
+      maybeInject();
+      // при смене хэша внутри SPA
+      window.addEventListener('hashchange', maybeInject);
+    })();
+  </script>
+</body>
 </html>
