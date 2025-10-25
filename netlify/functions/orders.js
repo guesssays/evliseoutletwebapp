@@ -1,6 +1,6 @@
 // netlify/functions/orders.js
 // Хранилище заказов + уведомления + связка с лояльностью.
-// ENV: TG_BOT_TOKEN, ADMIN_CHAT_ID, WEBAPP_URL, ADMIN_API_TOKEN,
+// ENV: TG_BOT_TOKEN, ALT_TG_BOT_TOKENS, ADMIN_CHAT_ID, WEBAPP_URL, ADMIN_API_TOKEN,
 //      ALLOWED_ORIGINS, ALLOW_MEMORY_FALLBACK, NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN
 
 import crypto from 'node:crypto';
@@ -41,7 +41,7 @@ function originMatches(origin, rule) {
 }
 function buildCorsHeaders(origin) {
   const allowed = parseAllowed();
-  // ✅ Правка: разрешаем и пустой Origin (навигация напрямую / открытие функции в браузере)
+  // ✅ Разрешаем и пустой Origin (например, прямой вызов функции)
   const isAllowed =
     !allowed.length ||
     !origin ||
@@ -53,7 +53,9 @@ function buildCorsHeaders(origin) {
     headers: {
       'Access-Control-Allow-Origin': allowOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-Internal-Auth, X-Tg-Init-Data',
+      // ✅ добавили X-Bot-Username
+      'Access-Control-Allow-Headers': 'Content-Type, X-Internal-Auth, X-Tg-Init-Data, X-Bot-Username',
+      'Access-Control-Max-Age': '86400',
       'Content-Type': 'application/json; charset=utf-8',
       'Vary': 'Origin',
     },
@@ -61,32 +63,99 @@ function buildCorsHeaders(origin) {
   };
 }
 
-/* ---------- Telegram initData → uid ---------- */
-function verifyTgInitData(raw) {
+/* ---------- Telegram initData: надёжная валидация (WebApp + Login), decoded/raw, fix +→%20 ---------- */
+// нормализация сырой строки
+function normalizeInitRaw(raw) {
+  let s = String(raw || '');
+  if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1);
+  s = s.replace(/\r?\n/g, '&'); // иногда на iOS/Safari попадаются переводы строк
+  return s.trim();
+}
+function splitRawPairs(raw) {
+  return String(raw||'')
+    .split(/[&\n]/)
+    .map(x => x.trim())
+    .filter(Boolean)
+    .map(x => {
+      const i = x.indexOf('=');
+      return i === -1 ? [x, ''] : [x.slice(0,i), x.slice(i+1)];
+    });
+}
+function timingEqHex(aHex, bHex) {
   try {
-    const token = process.env.TG_BOT_TOKEN || '';
-    if (!token) return null;
-    const p = new URLSearchParams(String(raw || ''));
-    const hash = p.get('hash');
-    if (!hash) return null;
+    const a = Buffer.from(String(aHex||''), 'hex');
+    const b = Buffer.from(String(bHex||''), 'hex');
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  } catch { return false; }
+}
+function calcFromDcs(tokenStr, dataCheckString) {
+  // WebApp-путь
+  const secretWebApp = crypto.createHmac('sha256', 'WebAppData').update(tokenStr).digest();
+  const calcWebApp   = crypto.createHmac('sha256', secretWebApp).update(dataCheckString).digest('hex');
+  // Login-путь
+  const secretLogin  = crypto.createHash('sha256').update(tokenStr).digest();
+  const calcLogin    = crypto.createHmac('sha256', secretLogin).update(dataCheckString).digest('hex');
+  return { calcWebApp, calcLogin };
+}
+function parseAndCalc(tokenStr, raw) {
+  // decoded (как в доках)
+  const usp = new URLSearchParams(raw);
+  let hash = usp.get('hash') || usp.get('signature') || '';
+  const pairs = [];
+  for (const [k,v] of usp.entries()) if (k !== 'hash' && k !== 'signature') pairs.push(`${k}=${v}`);
+  pairs.sort();
+  const dcsDecoded = pairs.join('\n');
 
-    const pairs = [];
-    for (const [k, v] of p.entries()) {
-      if (k === 'hash') continue;
-      pairs.push(`${k}=${v}`);
+  // raw без декодирования (устойчиво к «+» как пробелам)
+  const rawPairs = splitRawPairs(raw).filter(([k]) => k!=='hash' && k!=='signature');
+  rawPairs.sort((a,b)=> a[0]<b[0]? -1 : a[0]>b[0]? 1 : 0);
+  const dcsRaw = rawPairs.map(([k,v]) => `${k}=${v}`).join('\n');
+
+  const A = calcFromDcs(tokenStr, dcsDecoded);
+  const B = calcFromDcs(tokenStr, dcsRaw);
+
+  const ok =
+    (hash && (timingEqHex(A.calcWebApp, hash) || timingEqHex(A.calcLogin, hash))) ||
+    (hash && (timingEqHex(B.calcWebApp, hash) || timingEqHex(B.calcLogin, hash)));
+
+  return { ok };
+}
+function getBotTokens(){
+  const primary = (process.env.TG_BOT_TOKEN||'').trim();
+  const extra = String(process.env.ALT_TG_BOT_TOKENS||'')
+    .split(',').map(s=>s.trim()).filter(Boolean);
+  return [primary, ...extra].filter(Boolean);
+}
+/**
+ * Возвращает uid (строка) при валидной подписи, иначе null (без исключения).
+ */
+function verifyTgInitData(rawInit) {
+  const tokens = getBotTokens();
+  if (!tokens.length) return null;
+
+  const rawBase = normalizeInitRaw(rawInit);
+
+  for (const token of tokens) {
+    // прямой расчёт
+    let r = parseAndCalc(token, rawBase);
+    // fix: "+ → %20"
+    if (!r.ok) {
+      const fixed = rawBase.replace(/\+/g, '%20');
+      if (fixed !== rawBase) {
+        const r2 = parseAndCalc(token, fixed);
+        if (r2.ok) r = r2;
+      }
     }
-    pairs.sort();
-    const dataCheckString = pairs.join('\n');
-
-    const secretKey = crypto.createHash('sha256').update(token).digest();
-    const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-    if (hmac !== hash) return null;
-
-    const u = JSON.parse(p.get('user') || '{}');
-    return u?.id ? String(u.id) : null;
-  } catch {
-    return null;
+    if (r.ok) {
+      const usp = new URLSearchParams(rawBase);
+      let u = null;
+      try { u = JSON.parse(usp.get('user') || ''); } catch {}
+      if (u && u.id) return String(u.id);
+      return null;
+    }
   }
+  return null;
 }
 
 /* ---------- calls to internal functions ---------- */
@@ -150,13 +219,13 @@ export async function handler(event) {
   const { headers, isAllowed } = buildCorsHeaders(origin);
 
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, ...headers };
+    return { statusCode: 204, headers };
   }
   if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed', ...headers };
+    return { statusCode: 405, headers, body: 'Method Not Allowed' };
   }
   if (!isAllowed) {
-    return { statusCode: 403, body: 'Forbidden by CORS', ...headers };
+    return { statusCode: 403, headers, body: 'Forbidden by CORS' };
   }
 
   const isInternal = (event.headers?.['x-internal-auth'] || event.headers?.['X-Internal-Auth'] || '') === (process.env.ADMIN_API_TOKEN || '');
@@ -195,14 +264,14 @@ export async function handler(event) {
     const op = String(body.op || '').toLowerCase();
 
     if (op === 'add') {
-      // === ФИКС: гарантируем userId из Telegram initData, иначе 400 ===
+      // === Гарантируем userId из Telegram initData, иначе 400 ===
       const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
-      const uidFromInit = verifyTgInitData(rawInit);
+      const uidFromInit = verifyTgInitData(rawInit); // string | null
       const orderIn = body.order || {};
       const withUid = { ...orderIn, userId: orderIn.userId || uidFromInit || null };
 
       if (!withUid.userId) {
-        // Не создаём “гостевой” заказ: такой заказ потом не попадёт в “Мои заказы”, лояльность не начислится.
+        // Не создаём “гостевой” заказ: без uid не будет «Мои заказы» и начисления лояльности
         return bad('uid required (open inside Telegram)', headers);
       }
 
@@ -260,7 +329,7 @@ export async function handler(event) {
         if (o?.userId) {
           await callNotify({
             chat_id: String(o.userId),
-            type: 'orderAccepted', // было statusChanged
+            type: 'orderAccepted',
             orderId: String(o.id),
             shortId: o.shortId || null,
             title: o?.cart?.[0]?.title || o?.title || ''
@@ -283,7 +352,7 @@ export async function handler(event) {
         try {
           await callNotify({
             chat_id: String(o.userId),
-            type: 'orderCanceled', // было statusChanged
+            type: 'orderCanceled',
             orderId: String(o.id),
             shortId: o.shortId || null,
             title: o?.cart?.[0]?.title || o?.title || ''
@@ -335,7 +404,7 @@ export async function handler(event) {
     return bad('unknown op', headers);
   } catch (e) {
     console.error('[orders] handler op error:', e);
-    return { statusCode: 500, body: JSON.stringify({ ok:false, error: String(e) }), ...headers };
+    return { statusCode: 500, headers, body: JSON.stringify({ ok:false, error: String(e?.message||e) }) };
   }
 }
 
@@ -469,8 +538,7 @@ function makeStoreCore(readAll, writeAll){
       if (i===-1) return null;
       const o = list[i];
 
-      // раньше: отменять разрешалось только из 'новый'
-      // теперь: можно отменять из любого не финального состояния (не 'выдан' и не уже отменён)
+      // можно отменять из любого не финального состояния (кроме уже выдан/отменён)
       if (o.canceled || o.status === 'отменён' || o.status === 'выдан') return null;
 
       o.canceled = true;
@@ -493,7 +561,7 @@ function makeStoreCore(readAll, writeAll){
       if (i===-1) return null;
       const o = list[i];
       if (o.status==='отменён' || o.canceled) return null;
-      if (o.status==='новый' && status !== 'принят') return null; // принятие только через accept(), либо status->'принят'
+      if (o.status==='новый' && status !== 'принят') return null; // принятие только через accept() или status->'принят'
       o.status = status;
       if (!o.accepted && status!=='отменён') o.accepted = true;
       if (status==='выдан') o.completedAt = Date.now();
@@ -553,6 +621,6 @@ async function notifyAdminNewOrder(id, order){
 }
 
 /* ---------------- helpers ---------------- */
-function ok(json, headers){ return { statusCode:200, body: JSON.stringify({ ok:true, ...json }), ...headers }; }
-function bad(msg, headers){ return { statusCode:400, body: JSON.stringify({ ok:false, error: msg }), ...headers }; }
-function svcUnavailable(headers, msg='service unavailable'){ return { statusCode: 503, body: JSON.stringify({ ok:false, error: msg }), ...headers }; }
+function ok(json, headers){ return { statusCode:200, headers, body: JSON.stringify({ ok:true, ...json }) }; }
+function bad(msg, headers){ return { statusCode:400, headers, body: JSON.stringify({ ok:false, error: msg }) }; }
+function svcUnavailable(headers, msg='service unavailable'){ return { statusCode: 503, headers, body: JSON.stringify({ ok:false, error: msg }) }; }

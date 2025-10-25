@@ -2,7 +2,7 @@
 // Хранилище уведомлений per-user.
 // Чтение списка — владелец (валидный initData) ИЛИ, для совместимости с веб-клиентом, по явному uid из запроса.
 // Запись/mark — либо сервер (internal-token), либо владелец (initData) и, для совместимости, markAll/mark по явному uid.
-// ENV: TG_BOT_TOKEN, ADMIN_API_TOKEN, ALLOWED_ORIGINS, ALLOW_MEMORY_FALLBACK, NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN
+// ENV: TG_BOT_TOKEN, ALT_TG_BOT_TOKENS, ADMIN_API_TOKEN, ALLOWED_ORIGINS, ALLOW_MEMORY_FALLBACK, NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN
 
 import crypto from 'node:crypto';
 
@@ -28,7 +28,8 @@ function buildCors(origin, isInternal=false){
     headers:{
       'Access-Control-Allow-Origin': allow ? (origin||'*') : 'null',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Internal-Auth',
+      // 🔽 добавили X-Bot-Username
+      'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Internal-Auth, X-Bot-Username',
       'Access-Control-Max-Age': '86400',
       'Content-Type': 'application/json; charset=utf-8',
       'Vary':'Origin',
@@ -46,16 +47,97 @@ function isInternalCall(event){
   const t=getInternalAuth(event);
   return t && process.env.ADMIN_API_TOKEN && t===process.env.ADMIN_API_TOKEN;
 }
-function verifyTgInitData(raw){
-  const token = process.env.TG_BOT_TOKEN||''; if (!token) throw new Error('TG_BOT_TOKEN not set');
-  const params = new URLSearchParams(String(raw||'')); const hash=params.get('hash'); if (!hash) throw new Error('no hash');
-  const pairs=[]; for (const [k,v] of params.entries()){ if (k==='hash') continue; pairs.push(`${k}=${v}`); } pairs.sort();
-  const dataCheckString = pairs.join('\n');
-  const secretKey = crypto.createHash('sha256').update(token).digest();
-  const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-  if (hmac !== hash) throw new Error('bad signature');
-  const user = JSON.parse(params.get('user')||'{}'); if (!user?.id) throw new Error('no user');
-  return { uid: String(user.id) };
+
+/* ====== Надёжная проверка Telegram initData (WebApp + Login) ====== */
+// Нормализация "сырой" строки initData: убираем кавычки, склейка переносов в &, трим.
+function normalizeInitRaw(raw) {
+  let s = String(raw || '');
+  if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1);
+  s = s.replace(/\r?\n/g, '&');
+  return s.trim();
+}
+function splitRawPairs(raw) {
+  return String(raw||'')
+    .split(/[&\n]/)
+    .map(x => x.trim())
+    .filter(Boolean)
+    .map(x => {
+      const i = x.indexOf('=');
+      return i === -1 ? [x, ''] : [x.slice(0,i), x.slice(i+1)];
+    });
+}
+function sigOk(aHex, bHex) {
+  try {
+    const a = Buffer.from(String(aHex||''), 'hex');
+    const b = Buffer.from(String(bHex||''), 'hex');
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  } catch { return false; }
+}
+// Считаем подписи двумя способами:
+//  - WebApp:   HMAC( key = HMAC("sha256", "WebAppData", bot_token), data_check_string )
+//  - Login:    HMAC( key = sha256(bot_token), data_check_string )
+function _calcFromDcs(tokenStr, dataCheckString) {
+  const secretWebApp = crypto.createHmac('sha256', 'WebAppData').update(tokenStr).digest();
+  const calcWebApp   = crypto.createHmac('sha256', secretWebApp).update(dataCheckString).digest('hex');
+  const secretLogin  = crypto.createHash('sha256').update(tokenStr).digest();
+  const calcLogin    = crypto.createHmac('sha256', secretLogin).update(dataCheckString).digest('hex');
+  return { calcWebApp, calcLogin };
+}
+function _parseAndCalc(tokenStr, raw) {
+  // decoded way (как в доках)
+  const urlEncoded = new URLSearchParams(raw);
+  let hash = urlEncoded.get('hash') || urlEncoded.get('signature') || '';
+  const pairs = [];
+  for (const [k,v] of urlEncoded.entries()) if (k !== 'hash' && k !== 'signature') pairs.push(`${k}=${v}`);
+  pairs.sort();
+  const dcsDecoded = pairs.join('\n');
+
+  // raw way (без декодирования, устойчиво к кейсам с '+')
+  const rawPairs = splitRawPairs(raw).filter(([k]) => k!=='hash' && k!=='signature');
+  rawPairs.sort((a,b)=>a[0]<b[0]? -1 : a[0]>b[0]? 1 : 0);
+  const dcsRaw = rawPairs.map(([k,v]) => `${k}=${v}`).join('\n');
+
+  const A = _calcFromDcs(tokenStr, dcsDecoded);
+  const B = _calcFromDcs(tokenStr, dcsRaw);
+
+  const ok =
+    (hash && (sigOk(A.calcWebApp, hash) || sigOk(A.calcLogin, hash))) ||
+    (hash && (sigOk(B.calcWebApp, hash) || sigOk(B.calcLogin, hash)));
+
+  return { ok };
+}
+function getBotTokens(){
+  const primary = (process.env.TG_BOT_TOKEN||'').trim();
+  const extra = String(process.env.ALT_TG_BOT_TOKENS||'')
+    .split(',').map(s=>s.trim()).filter(Boolean);
+  return [primary, ...extra].filter(Boolean);
+}
+function verifyTgInitData(rawInitData){
+  const tokens = getBotTokens();
+  if (!tokens.length) throw new Error('TG_BOT_TOKEN not set');
+
+  const rawBase = normalizeInitRaw(rawInitData);
+
+  for (const token of tokens) {
+    // (1) как есть
+    let r = _parseAndCalc(token, rawBase);
+    // (2) пробуем фикс "+ → %20"
+    if (!r.ok) {
+      const fixed = rawBase.replace(/\+/g, '%20');
+      if (fixed !== rawBase) {
+        const r2 = _parseAndCalc(token, fixed);
+        if (r2.ok) r = r2;
+      }
+    }
+    if (r.ok) {
+      const usp = new URLSearchParams(rawBase);
+      let user = null; try { user = JSON.parse(usp.get('user') || ''); } catch {}
+      if (!user || !user.id) throw new Error('initData user missing');
+      return { uid: String(user.id) };
+    }
+  }
+  throw new Error('initData signature invalid');
 }
 
 /* ---------------- Storage (Netlify Blobs v7) ---------------- */
@@ -138,9 +220,9 @@ export async function handler(event){
   const internal = isInternalCall(event);
   const { headers, isAllowed } = buildCors(origin, internal);
 
-  if (event.httpMethod === 'OPTIONS') return { statusCode:204, ...headers };
-  if (!['GET','POST'].includes(event.httpMethod)) return { statusCode:405, body:'Method Not Allowed', ...headers };
-  if (!isAllowed) return { statusCode:403, body:'Forbidden by CORS', ...headers };
+  if (event.httpMethod === 'OPTIONS') return { statusCode:204, headers };
+  if (!['GET','POST'].includes(event.httpMethod)) return { statusCode:405, headers, body:'Method Not Allowed' };
+  if (!isAllowed) return { statusCode:403, headers, body:'Forbidden by CORS' };
 
   try {
     const store = await getStoreSafe();
@@ -153,21 +235,21 @@ export async function handler(event){
 
       let uid = null;
       if (rawInit) {
-        try { ({ uid } = verifyTgInitData(rawInit)); } catch (e) { /* если подпись невалидна — попробуем fallback ниже */ }
+        try { ({ uid } = verifyTgInitData(rawInit)); } catch (e) { /* мягко игнорируем — попробуем fallback */ }
       }
       if (!uid) uid = uidFromQuery; // режим совместимости с фронтом
 
-      if (!uid) return { statusCode:400, ...headers, body: JSON.stringify({ ok:false, error:'uid required' }) };
+      if (!uid) return { statusCode:400, headers, body: JSON.stringify({ ok:false, error:'uid required' }) };
 
       if (op === 'list') {
         const items = await store.list(uid);
-        return { statusCode:200, ...headers, body: JSON.stringify({ ok:true, store:store.kind, items }) };
+        return { statusCode:200, headers, body: JSON.stringify({ ok:true, store:store.kind, items }) };
       }
       if (op === 'health') {
         const items = await store.list(uid);
-        return { statusCode:200, ...headers, body: JSON.stringify({ ok:true, store:store.kind, count:items.length }) };
+        return { statusCode:200, headers, body: JSON.stringify({ ok:true, store:store.kind, count:items.length }) };
       }
-      return { statusCode:400, ...headers, body: JSON.stringify({ ok:false, error:'unknown op' }) };
+      return { statusCode:400, headers, body: JSON.stringify({ ok:false, error:'unknown op' }) };
     }
 
     // POST
@@ -178,21 +260,21 @@ export async function handler(event){
     // --- 1) ДЕЙСТВИЯ ОТ СЕРВЕРА (internal-token) ---
     if (internal) {
       const uid = String(body.uid || '').trim();
-      if (!uid) return { statusCode:400, ...headers, body: JSON.stringify({ ok:false, error:'uid required' }) };
+      if (!uid) return { statusCode:400, headers, body: JSON.stringify({ ok:false, error:'uid required' }) };
       if (op === 'add') {
         const { id, items } = await store.add(uid, body.notif || {});
-        return { statusCode:200, ...headers, body: JSON.stringify({ ok:true, id, items }) };
+        return { statusCode:200, headers, body: JSON.stringify({ ok:true, id, items }) };
       }
       if (op === 'markall') {
         const items = await store.markAll(uid);
-        return { statusCode:200, ...headers, body: JSON.stringify({ ok:true, items }) };
+        return { statusCode:200, headers, body: JSON.stringify({ ok:true, items }) };
       }
       if (op === 'mark') {
         const ids = Array.isArray(body.ids) ? body.ids : [];
         const items = await store.mark(uid, ids);
-        return { statusCode:200, ...headers, body: JSON.stringify({ ok:true, items }) };
+        return { statusCode:200, headers, body: JSON.stringify({ ok:true, items }) };
       }
-      return { statusCode:400, ...headers, body: JSON.stringify({ ok:false, error:'unknown op' }) };
+      return { statusCode:400, headers, body: JSON.stringify({ ok:false, error:'unknown op' }) };
     }
 
     // --- 2) ДЕЙСТВИЯ ОТ ПОЛЬЗОВАТЕЛЯ ---
@@ -203,39 +285,39 @@ export async function handler(event){
         const { uid } = verifyTgInitData(rawInit);
         const targetUidRaw = String(body.uid || '').trim();
         if (targetUidRaw && targetUidRaw !== uid) {
-          return { statusCode:403, ...headers, body: JSON.stringify({ ok:false, error:'forbidden' }) };
+          return { statusCode:403, headers, body: JSON.stringify({ ok:false, error:'forbidden' }) };
         }
         const ids = Array.isArray(body.ids) ? body.ids : null;
         const items = ids?.length ? await store.mark(uid, ids) : await store.markAll(uid);
-        return { statusCode:200, ...headers, body: JSON.stringify({ ok:true, items }) };
+        return { statusCode:200, headers, body: JSON.stringify({ ok:true, items }) };
       } catch {
         // 🔸 мягкий отказ, чтобы фронт мог перейти на публичный путь markAll без 500
-        return { statusCode:401, ...headers, body: JSON.stringify({ ok:false, error:'unauthorized' }) };
+        return { statusCode:401, headers, body: JSON.stringify({ ok:false, error:'unauthorized' }) };
       }
     }
 
     // 2b. Совместимость с фронтендом: { op:'markAll', uid } или { op:'mark', uid, ids }
     if (op === 'markall' || op === 'markAll' || op === 'mark') {
       const uid = String(body.uid || '').trim();
-      if (!uid) return { statusCode:400, ...headers, body: JSON.stringify({ ok:false, error:'uid required' }) };
+      if (!uid) return { statusCode:400, headers, body: JSON.stringify({ ok:false, error:'uid required' }) };
       if (/^markall$/i.test(op)) {
         const items = await store.markAll(uid);
-        return { statusCode:200, ...headers, body: JSON.stringify({ ok:true, items }) };
+        return { statusCode:200, headers, body: JSON.stringify({ ok:true, items }) };
       } else {
         const ids = Array.isArray(body.ids) ? body.ids : [];
         const items = await store.mark(uid, ids);
-        return { statusCode:200, ...headers, body: JSON.stringify({ ok:true, items }) };
+        return { statusCode:200, headers, body: JSON.stringify({ ok:true, items }) };
       }
     }
 
     // Публичного добавления нет (клиент при неудаче кладёт локально)
     if (op === 'add') {
-      return { statusCode:403, ...headers, body: JSON.stringify({ ok:false, error:'forbidden' }) };
+      return { statusCode:403, headers, body: JSON.stringify({ ok:false, error:'forbidden' }) };
     }
 
-    return { statusCode:403, ...headers, body: JSON.stringify({ ok:false, error:'forbidden' }) };
+    return { statusCode:403, headers, body: JSON.stringify({ ok:false, error:'forbidden' }) };
   } catch (e) {
     console.error('[notifs] handler error:', e);
-    return { statusCode:500, ...headers, body: JSON.stringify({ ok:false, error:String(e) }) };
+    return { statusCode:500, headers, body: JSON.stringify({ ok:false, error:String(e?.message||e) }) };
   }
 }
