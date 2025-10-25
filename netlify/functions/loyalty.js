@@ -702,7 +702,7 @@ function makeCore(readAll, writeAll){
         if (rPts > 0 && ref.pending >= rPts){
           ref.pending -= rPts;
           ref.available += rPts;
-          ref.history.push({ ts:Date.now(), kind:'ref_confirm', orderId, pts:+рPts, info:'Реферальные подтверждены' });
+          ref.history.push({ ts:Date.now(), kind:'ref_confirm', orderId, pts:+rPts, info:'Реферальные подтверждены' });
           if (ref.history.length>500) ref.history = ref.history.slice(-500);
           await fireAndForgetAppNotif(ord.accrual.inviter, { icon:'check-circle', title:`Реферальные подтверждены по #${disp}`, sub:`Зачислено: ${rPts} балл(ов)` });
           await fireAndForgetNotify(ord.accrual.inviter, 'cashbackMatured', { text:`✅ Реферальные баллы по заказу #${disp}: ${rPts} подтверждены.`, orderId, shortId: ord.shortId });
@@ -757,19 +757,19 @@ function makeCore(readAll, writeAll){
   };
 }
 
-/* ================== ЧТЕНИЕ initData: body → header (fallback) ================== */
-function readInitData(event, body) {
+/* ================== ЧТЕНИЕ initData: body → header (fallback) + источник ================== */
+function readInitDataSource(event, body) {
   // 1) Приоритет — тело, без «нормализаций»
   if (body && typeof body.initData === 'string' && body.initData) {
-    return body.initData;
+    return { raw: body.initData, src: 'body.initData' };
   }
   if (body && typeof body.initDataB64 === 'string' && body.initDataB64) {
-    try { return Buffer.from(body.initDataB64, 'base64').toString('utf8'); } catch {}
+    try { return { raw: Buffer.from(body.initDataB64, 'base64').toString('utf8'), src: 'body.initDataB64' }; } catch {}
   }
   // 2) Fallback — заголовок как есть, максимум склейка переносов
   const h = event.headers || {};
   const raw = (h['x-tg-init-data'] || h['X-Tg-Init-Data'] || '');
-  return String(raw).replace(/[\r\n]+/g, '&');
+  return { raw: String(raw).replace(/[\r\n]+/g, '&'), src: 'header' };
 }
 
 /* ================= HTTP Handler ================= */
@@ -800,28 +800,30 @@ export async function handler(event){
   }
 
   try{
-    /* ===== ПАТЧ 2 (часть 2): мягкая диагностика bot mismatch ===== */
+    // Диагностика ников бота
     const clientBot = (event.headers?.['x-bot-username'] || event.headers?.['X-Bot-Username'] || '').toString().trim();
     const serverBot = await getBotUsernameSafe();
-    if (DEBUG && clientBot && serverBot && clientBot !== serverBot){
-      logD(`[req:${reqId}] bot mismatch: client=${clientBot} server=${serverBot}`);
+    if (DEBUG){
+      logD(`[req:${reqId}] clientBot=${clientBot||'(none)'} serverBot=${serverBot||'(none)'}`);
     }
-    /* ===== конец диагностической вставки ===== */
 
     const body = JSON.parse(event.body || '{}') || {};
     const op = String(body.op || '').toLowerCase();
     const store = await getStoreSafe();
 
-    // === читаем initData с приоритетом тела ===
+    // === читаем initData с приоритетом тела, логируем источник
     let userUid = null;
     if (!internal) {
-      const rawInit = readInitData(event, body);
+      const { raw: rawInit, src } = readInitDataSource(event, body);
+      if (DEBUG){
+        logD(`[req:${reqId}] initData src=${src} len=${String(rawInit||'').length} sha256=${sha256hex(String(rawInit||''))} first100="${String(rawInit||'').slice(0,100)}"`);
+      }
       try {
         const { user } = verifyTgInitData(rawInit, reqId);
         userUid = String(user.id);
         if (DEBUG) logD(`[req:${reqId}] tg ok, uid=${userUid}`);
       } catch (e) {
-        if (DEBUG) logD(`[req:${reqId}] tg verify failed:`, String(e?.message||e));
+        if (DEBUG) logD(`[req:${reqId}] tg verify failed (src=${src}):`, String(e?.message||e));
         if (op === 'getbalance' || op === 'getreferrals') {
           userUid = String(body.uid || '').trim();
           if (!userUid) throw e;
@@ -912,7 +914,7 @@ export async function handler(event){
   }catch(e){
     logE(`[req:${reqId}] error:`, e);
 
-    /* ===== ПАТЧ 2 (часть 3): человекопонятный ответ, если подпись не прошла и бот «не тот» ===== */
+    // Человекопонятный ответ, если подпись не прошла и бот «не тот»
     const isSig = String(e?.message||'').includes('initData signature invalid');
     try{
       if (isSig){
