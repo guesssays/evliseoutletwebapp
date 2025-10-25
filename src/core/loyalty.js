@@ -45,7 +45,7 @@ export const BOT_USERNAME = 'EvliseOutletBot';
 
 /* ===== заголовки ===== */
 
-// Имя бота для заголовка: сначала берём из TG, потом из константы
+// Имя бота для заголовка: сначала берём из TG, потом из константы (эта функция нужна для ссылок)
 function resolveBotUsername() {
   try {
     const uname = (
@@ -61,15 +61,18 @@ function resolveBotUsername() {
   }
 }
 
-// Заголовки для запросов: добавляем X-Bot-Username всегда.
-// X-Tg-Init-Data кладём только если не слишком длинный (чтобы не уткнуться в лимиты заголовков).
+// Имя бота для заголовка
+function botUnameHeader() {
+  const uname = (typeof BOT_USERNAME === 'string' ? BOT_USERNAME : '').replace(/^@/, '');
+  return uname; // БЕЗ @ в заголовке
+}
+
+// Заголовки для запросов
 function reqHeaders(initData) {
   const h = { 'Content-Type': 'application/json' };
-  h['X-Bot-Username'] = resolveBotUsername();
-  const RAW_HEADER_LIMIT = 4000; // безопасная «софткрышка»
-  if (initData && initData.length <= RAW_HEADER_LIMIT) {
-    h['X-Tg-Init-Data'] = String(initData);
-  }
+  h['X-Tg-Init-Data'] = String(initData || '');
+  const uname = botUnameHeader();
+  if (uname) h['X-Bot-Username'] = uname; // без @
   return h;
 }
 
@@ -207,7 +210,7 @@ async function api(op, body = {}) {
     throw e;
   }
 
-  // Заголовки: X-Bot-Username всегда; X-Tg-Init-Data — если не слишком длинный
+  // Заголовки по новой схеме
   const headers = reqHeaders(initData);
 
   // Админ-операции: добавляем admin header (если есть токен)
@@ -221,6 +224,8 @@ async function api(op, body = {}) {
     payload.initData = initData;
     payload.initData64 = b64u(initData);
   }
+  // Дублируем имя бота в body как fallback для сервера
+  payload.bot = botUnameHeader();
 
   // Диагностика того, что реально отправили
   __lastInitMeta = {
