@@ -1,7 +1,7 @@
 // src/core/loyalty.js
 // Клиентская обвязка к serverless-функции лояльности + локальные хелперы.
-// Отправляем на бэкенд сырое Telegram initData и, для диагностики,
-// имя бота через X-Bot-Username (жёстко из константы).
+// Новое: динамический X-Bot-Username из TG, мягкий режим без initData для readonly,
+// корректная base64 для Unicode и защита от слишком длинных заголовков.
 
 import { getUID, k } from './state.js';
 
@@ -14,6 +14,16 @@ function getTgInitDataRaw() {
       ? window.Telegram.WebApp.initData
       : '';
   } catch { return ''; }
+}
+
+// Безопасная base64 для Unicode-строк
+function b64u(str='') {
+  try {
+    // encodeURIComponent → %XX → unescape → btoa
+    return btoa(unescape(encodeURIComponent(String(str))));
+  } catch { 
+    try { return btoa(String(str)); } catch { return ''; }
+  }
 }
 
 /* =========================== конфиг =========================== */
@@ -30,22 +40,36 @@ export const CASHBACK_CFG = {
   MONTHLY_REF_LIMIT: 10,
 };
 
-// Какой бот используется в ссылке-приглашении
+// Какой бот используется в ссылке-приглашении (fallback, если TG контекст недоступен)
 export const BOT_USERNAME = 'EvliseOutletBot';
 
 /* ===== заголовки ===== */
 
-// Имя бота для заголовка (жёстко из константы)
-function botUnameHeader() {
-  const uname = (typeof BOT_USERNAME === 'string' ? BOT_USERNAME : '').replace(/^@/, '');
-  return uname ? '@' + uname : '';
+// Имя бота для заголовка: сначала берём из TG, потом из константы
+function resolveBotUsername() {
+  try {
+    const uname = (
+      window?.Telegram?.WebApp?.initDataUnsafe?.bot?.username ||
+      window?.Telegram?.WebApp?.Bot?.username ||
+      BOT_USERNAME ||
+      ''
+    ).toString().replace(/^@/, '');
+    return uname ? '@' + uname : '';
+  } catch {
+    const uname = (BOT_USERNAME || '').toString().replace(/^@/, '');
+    return uname ? '@' + uname : '';
+  }
 }
 
-// Заголовки для запросов: всегда добавляем X-Tg-Init-Data и X-Bot-Username.
+// Заголовки для запросов: добавляем X-Bot-Username всегда.
+// X-Tg-Init-Data кладём только если не слишком длинный (чтобы не уткнуться в лимиты заголовков).
 function reqHeaders(initData) {
   const h = { 'Content-Type': 'application/json' };
-  h['X-Tg-Init-Data'] = String(initData || ''); // fallback
-  h['X-Bot-Username'] = botUnameHeader();
+  h['X-Bot-Username'] = resolveBotUsername();
+  const RAW_HEADER_LIMIT = 4000; // безопасная «софткрышка»
+  if (initData && initData.length <= RAW_HEADER_LIMIT) {
+    h['X-Tg-Init-Data'] = String(initData);
+  }
   return h;
 }
 
@@ -110,13 +134,18 @@ function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
   });
 }
 
-// Операции, для которых нужен admin-token (X-Internal-Auth). Они выполняются
-// только в админке/серверных сценариях и не пройдут без токена на бэке.
+// Операции, для которых нужен admin-token (X-Internal-Auth).
 const ADMIN_OPS = new Set([
   'admincalc',
   'voidaccrual',
   'accrue',
   'confirmaccrual',
+]);
+
+// Операции, которые можно вызывать без initData (совпадает с серверным readonly)
+const READONLY_OPS_WITHOUT_INIT = new Set([
+  'getbalance',
+  'getreferrals',
 ]);
 
 function getAdminToken() {
@@ -129,7 +158,7 @@ function getAdminToken() {
   } catch { return ''; }
 }
 
-// Алиасы имён операций → нормализованное имя (которое ждёт бэкенд)
+// Алиасы имён операций → нормализованное имя
 const OP_ALIAS = new Map([
   ['getbalance', 'getbalance'],
   ['getBalance', 'getbalance'],
@@ -158,39 +187,69 @@ function normalizeOp(op) {
   return OP_ALIAS.get(low) || low;
 }
 
+// для быстрой диагностики в UI/консоли
+let __lastInitMeta = { usedHeader: false, sentRawLen: 0, sentB64Len: 0, botUname: '' };
+export function getLastInitMeta() { return { ...__lastInitMeta }; }
+
 async function api(op, body = {}) {
   const norm = normalizeOp(op);
   const initData = getTgInitDataRaw();
 
-  // Блокируем все внешние (не админские) вызовы, если initData пуст.
-  // Исключение: админ-операции — но только если реально передан admin-токен.
   const hasAdminToken = !!getAdminToken();
-  if (!initData && !(ADMIN_OPS.has(norm) && hasAdminToken)) {
-    throw new Error('initData_empty'); // перехватывай по месту вызова и покажи "Откройте приложение через Telegram"
+  const canSkipInit =
+    READONLY_OPS_WITHOUT_INIT.has(norm) ||
+    (ADMIN_OPS.has(norm) && hasAdminToken);
+
+  if (!initData && !canSkipInit) {
+    // перехватывай по месту вызова и покажи «Откройте мини-приложение через Telegram»
+    const e = new Error('initData_empty');
+    e.code = 'initData_empty';
+    throw e;
   }
 
-  // Заголовки каждого запроса: X-Tg-Init-Data + X-Bot-Username (fallback)
+  // Заголовки: X-Bot-Username всегда; X-Tg-Init-Data — если не слишком длинный
   const headers = reqHeaders(initData);
 
-  // Для админ-операций добавляем admin header (если есть токен)
+  // Админ-операции: добавляем admin header (если есть токен)
   if (ADMIN_OPS.has(norm) && hasAdminToken) {
     headers['X-Internal-Auth'] = getAdminToken();
   }
 
-  // Основной источник — тело запроса: initData (сырой) + дублирование base64
-  let initData64 = '';
-  try { if (initData) initData64 = btoa(initData); } catch { initData64 = ''; }
+  // В тело кладём initData (сырой) и корректный base64-вариант
+  const payload = { op: norm, ...body };
+  if (initData) {
+    payload.initData = initData;
+    payload.initData64 = b64u(initData);
+  }
+
+  // Диагностика того, что реально отправили
+  __lastInitMeta = {
+    usedHeader: !!headers['X-Tg-Init-Data'],
+    sentRawLen: (payload.initData || '').length,
+    sentB64Len: (payload.initData64 || '').length,
+    botUname: headers['X-Bot-Username'] || '',
+  };
 
   const res = await withTimeout(fetch(API, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ op: norm, initData, initData64, ...body }),
+    body: JSON.stringify(payload),
   }), FETCH_TIMEOUT_MS);
 
   const data = await res.json().catch(() => ({}));
+
   if (!res.ok || data?.ok === false) {
-    throw new Error(data?.error || data?.reason || `loyalty api error (HTTP ${res.status})`);
+    // разворачиваем дружественные коды
+    const reason = data?.error || data?.reason || `loyalty api error (HTTP ${res.status})`;
+    const err = new Error(reason);
+    if (data?.error === 'bot_mismatch') {
+      err.code = 'bot_mismatch';
+      err.clientBot = data?.clientBot;
+      err.serverBot = data?.serverBot;
+    }
+    throw err;
   }
+
   return data;
 }
 
@@ -203,7 +262,7 @@ function clearPendingInviter()  { try { localStorage.removeItem(k(LKEY_INVITER))
 export function makeReferralLink() {
   const uid = getUID();
   const start = `ref_${uid}`;
-  return `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(start)}`;
+  return `https://t.me/${(resolveBotUsername() || '').replace('@','')}?start=${encodeURIComponent(start)}`;
 }
 
 export function captureInviterFromContext() {
@@ -278,7 +337,7 @@ export async function fetchMyLoyalty() {
   }
 }
 
-/** ВАЖНО: добавили параметр `total` — чтобы сервер мог валидировать правило 30%/MAX_REDEEM,
+/** Добавлен параметр `total` — чтобы сервер валидировал правило 30%/MAX_REDEEM,
  *  если заказ ещё не создан в сторадже.
  */
 export async function reserveRedeem(points, orderId, shortId = null, total = null) {
