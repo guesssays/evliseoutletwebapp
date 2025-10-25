@@ -1,29 +1,11 @@
 // src/core/loyalty.js
 // Клиентская обвязка к serverless-функции лояльности + локальные хелперы.
 // Отправляем на бэкенд сырое Telegram initData и, для диагностики,
-// имя бота через X-Bot-Username (если доступно).
+// имя бота через X-Bot-Username (жёстко из константы).
 
 import { getUID, k } from './state.js';
 
 /* =========================== helpers =========================== */
-
-// Имя бота из окружения Telegram Mini App (для мягкой диагностики «бот не тот»)
-function clientBotUname() {
-  try {
-    const u = window.Telegram?.WebApp?.initDataUnsafe;
-    return u?.receiver?.username || u?.bot?.username || '';
-  } catch { return ''; }
-}
-
-// Заголовки для запросов к функции лояльности.
-// Вкладываем X-Tg-Init-Data (если есть) и X-Bot-Username (если есть).
-function reqHeaders(initData) {
-  const h = { 'Content-Type': 'application/json' };
-  if (initData) h['X-Tg-Init-Data'] = initData;
-  const uname = clientBotUname();
-  if (uname) h['X-Bot-Username'] = '@' + uname;
-  return h;
-}
 
 // Сырая строка initData (не initDataUnsafe!), как рекомендует Telegram.
 function getTgInitDataRaw() {
@@ -50,6 +32,22 @@ export const CASHBACK_CFG = {
 
 // Какой бот используется в ссылке-приглашении
 export const BOT_USERNAME = 'EvliseOutletBot';
+
+/* ===== заголовки ===== */
+
+// Имя бота для заголовка (жёстко из константы)
+function botUnameHeader() {
+  const uname = (typeof BOT_USERNAME === 'string' ? BOT_USERNAME : '').replace(/^@/, '');
+  return uname ? '@' + uname : '';
+}
+
+// Заголовки для запросов: всегда добавляем X-Tg-Init-Data и X-Bot-Username.
+function reqHeaders(initData) {
+  const h = { 'Content-Type': 'application/json' };
+  h['X-Tg-Init-Data'] = String(initData || '');
+  h['X-Bot-Username'] = botUnameHeader();
+  return h;
+}
 
 /* ========================= локальное хранилище ========================= */
 
@@ -162,14 +160,21 @@ function normalizeOp(op) {
 
 async function api(op, body = {}) {
   const norm = normalizeOp(op);
+  const initData = getTgInitDataRaw();
 
-  // формируем заголовки через helper, чтобы добавить X-Tg-Init-Data и X-Bot-Username
-  const headers = reqHeaders(getTgInitDataRaw());
+  // Блокируем все внешние (не админские) вызовы, если initData пуст.
+  // Исключение: админ-операции — но только если реально передан admin-токен.
+  const hasAdminToken = !!getAdminToken();
+  if (!initData && !(ADMIN_OPS.has(norm) && hasAdminToken)) {
+    throw new Error('initData_empty'); // перехватывай по месту вызова и покажи "Откройте приложение через Telegram"
+  }
 
-  // для внутренних операций добавляем admin header
-  if (ADMIN_OPS.has(norm)) {
-    const t = getAdminToken();
-    if (t) headers['X-Internal-Auth'] = t;
+  // Заголовки каждого запроса: X-Tg-Init-Data + X-Bot-Username
+  const headers = reqHeaders(initData);
+
+  // Для админ-операций добавляем admin header (если есть токен)
+  if (ADMIN_OPS.has(norm) && hasAdminToken) {
+    headers['X-Internal-Auth'] = getAdminToken();
   }
 
   const res = await withTimeout(fetch(API, {
