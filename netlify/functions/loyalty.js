@@ -39,6 +39,20 @@ function sigOk(aHex, bHex) {
   } catch { return false; }
 }
 
+/* ===== НОРМАЛИЗАЦИЯ initData (фикс поломанных заголовков) ===== */
+function normalizeInitRaw(raw) {
+  let s = String(raw || '');
+  if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1);
+  // некоторые браузеры/прокси могут переносить строку заголовка — склеиваем как querystring
+  s = s.replace(/\r?\n/g, '&');
+  return s;
+}
+function getParamFromRaw(raw, key) {
+  const re = new RegExp(`(?:^|[&\\n])${key}=([^&\\n]*)`);
+  const m = re.exec(String(raw||''));
+  return m ? m[1] : '';
+}
+
 /* ===== ПАТЧ 2: дружелюбная диагностика «бот не тот» ===== */
 let __BOT_UNAME = null;
 async function getBotUsernameSafe(){
@@ -102,28 +116,32 @@ function buildCorsHeaders(origin, isInternal=false){
 }
 
 /* ====== TG initData verification ====== */
-// 💡 Вспомогательная — посчитать подписи по двум «официальным» схемам и проверить
+// 💡 Считаем подписи по двум «официальным» схемам и проверяем
 function _parseAndCalc(tokenStr, raw, dbgReqId='') {
   const urlEncoded = new URLSearchParams(raw);
-  // >>> ПРАВКА: принимаем и signature, если вдруг пришла вместо hash
-  const hash = urlEncoded.get('hash') || urlEncoded.get('signature');
+
+  // >>> ПРАВКА: если URLSearchParams не увидел hash — достанем вручную из сырой строки
+  let hash = urlEncoded.get('hash') || urlEncoded.get('signature');
+  if (!hash && String(raw).includes('hash=')) {
+    try { hash = decodeURIComponent(getParamFromRaw(raw, 'hash')); }
+    catch { hash = getParamFromRaw(raw, 'hash'); }
+  }
   if (!hash) return { ok:false, reason:'no_hash' };
 
   const pairs = [];
   for (const [k,v] of urlEncoded.entries()) {
-    // игнорируем и hash, и signature (не участвуют в data_check_string)
-    if (k === 'hash' || k === 'signature') continue;
+    if (k === 'hash' || k === 'signature') continue; // не входят в data_check_string
     pairs.push(`${k}=${v}`);
   }
   pairs.sort();
   const dataCheckString = pairs.join('\n');
 
-  // FIX: правильный порядок (key = bot token, data = "WebAppData")
-  const secretWebApp = crypto.createHmac('sha256', 'WebAppData')
-    .update(tokenStr).digest();
-  const calcWebApp   = crypto.createHmac('sha256', secretWebApp)
-    .update(dataCheckString).digest('hex');
+  // Правильная схема WebApp:
+  // secret = HMAC_SHA256(key='WebAppData', data=bot_token)
+  const secretWebApp = crypto.createHmac('sha256', 'WebAppData').update(tokenStr).digest();
+  const calcWebApp   = crypto.createHmac('sha256', secretWebApp).update(dataCheckString).digest('hex');
 
+  // И «логин»-схема (совместимость)
   const secretLogin  = crypto.createHash('sha256').update(tokenStr).digest();
   const calcLogin    = crypto.createHmac('sha256', secretLogin).update(dataCheckString).digest('hex');
 
@@ -140,12 +158,12 @@ function verifyTgInitData(rawInitData, reqId='') {
   const token = rawToken.trim(); // ⚠️ критично: убрать \n/пробелы
   if (!token) throw new Error('TG_BOT_TOKEN not set');
 
-  // 2) некоторые прокси/браузеры могут класть initData в кавычки
-  let raw = String(rawInitData || '');
-  if (raw.startsWith('"') && raw.endsWith('"')) raw = raw.slice(1, -1);
+  // 2) нормализуем initData (снимем кавычки, склеим переносы)
+  let raw = normalizeInitRaw(rawInitData);
 
   if (DEBUG) {
     logD(`[req:${reqId}] rawInit first100="${raw.slice(0,100)}" len=${raw.length} sha256=${sha256hex(raw)}`);
+    logD(`[req:${reqId}] raw has hash? ${raw.includes('hash=')} has signature? ${raw.includes('signature=')}`);
   }
 
   // 3) пробуем как есть
@@ -753,7 +771,8 @@ export async function handler(event){
     let userUid = null;
     if (!internal) {
       const headerRaw = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
-      const rawInit = (()=>{ let s = String(headerRaw||''); if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1,-1); return s; })();
+      // нормализуем: убираем кавычки, склеиваем переносы
+      const rawInit = normalizeInitRaw(headerRaw);
       try {
         const { user } = verifyTgInitData(rawInit, reqId);
         userUid = String(user.id);
