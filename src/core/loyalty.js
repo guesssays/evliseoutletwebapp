@@ -27,7 +27,8 @@ function withTimeout(promise, ms = FETCH_TIMEOUT_MS){
 }
 
 /* ====== Telegram Mini App: имя бота для deeplink ====== */
-export const BOT_USERNAME = 'evliseoutletbot';
+// ⚠️ важна точная капитализация, как в @getMe
+export const BOT_USERNAME = 'EvliseOutletBot';
 
 /* ===== Локальные ключи ===== */
 const LKEY_BALANCE    = 'loyalty_balance';
@@ -145,7 +146,8 @@ async function api(op, body = {}){
   const norm = normalizeOp(op);
   const headers = {
     'Content-Type':'application/json',
-    'X-Tg-Init-Data': getTgInitDataRaw(),
+    'X-Tg-Init-Data': getTgInitDataRaw(),          // сырая строка initData
+    'X-Bot-Username': `@${BOT_USERNAME}`,          // для диагностики "бот не тот"
   };
   // для внутренних операций добавляем admin header
   if (ADMIN_OPS.has(norm)) {
