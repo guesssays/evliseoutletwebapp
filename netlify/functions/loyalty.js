@@ -1,10 +1,10 @@
 // netlify/functions/loyalty.js
 // Бэкенд лояльности + защита: валидация TG initData, строгий CORS, internal-token для сервисных вызовов,
-// запрет memory-fallback в проде, TTL для резервов, дружественная диагностика «бот не тот».
-//
+// запрет memory-fallback в проде, TTL для резерва, дружественная диагностика «бот не тот».
+
 // ENV:
 //   TG_BOT_TOKEN               (обязательно — для валидации initData, первичный токен)
-//   ALT_TG_BOT_TOKENS          (опционально — дополнительные токены через запятую)
+//   ALT_TG_BOT_TOKENS          (опционально — дополнительные токены через запятую/точку с запятой/перенос строки)
 //   ADMIN_API_TOKEN            (секрет для сервер-к-серверу/админских вызовов)
 //   ALLOWED_ORIGINS            (список через запятую, включая тг-домены)
 //   ALLOW_MEMORY_FALLBACK=0/1  (в проде — 0)
@@ -63,7 +63,7 @@ function splitRawPairs(raw) {
     });
 }
 
-/* ===== ПАТЧ 2: дружелюбная диагностика «бот не тот» ===== */
+/* ===== ПАТЧ: дружелюбная диагностика «бот не тот» ===== */
 let __BOT_UNAME = null;
 async function getBotUsernameSafe(){
   if (__BOT_UNAME !== null) return __BOT_UNAME;
@@ -77,7 +77,7 @@ async function getBotUsernameSafe(){
   }catch{ __BOT_UNAME = ''; }
   return __BOT_UNAME;
 }
-/* ===== конец патча 2 (часть 1) ===== */
+/* ===== конец диагностики «бот не тот» ===== */
 
 const CFG = {
   BASE_RATE: 0.05,
@@ -126,7 +126,7 @@ function buildCorsHeaders(origin, isInternal=false){
 }
 
 /* ====== TG initData verification ====== */
-// Считаем подписи: (1) по декодированным значениям (как в доках), (2) по «сырым» значениям (как прилетело)
+// Секреты/подписи в обоих режимах (WebApp/Login), для decoded/raw DCS.
 function _calcFromDcs(tokenStr, dataCheckString) {
   const secretWebApp = crypto.createHmac('sha256', 'WebAppData').update(tokenStr).digest();
   const calcWebApp   = crypto.createHmac('sha256', secretWebApp).update(dataCheckString).digest('hex');
@@ -168,14 +168,18 @@ function _parseAndCalc(tokenStr, raw, dbgReqId='') {
   return { ok, hash, ...A, calcWebAppRaw: B.calcWebApp, calcLoginRaw: B.calcLogin, dcsDecoded, dcsRaw };
 }
 
-// NEW: список токенов (основной + ALT_TG_BOT_TOKENS через запятую)
+// ===== Список токенов (основной + ALT, жёсткая нормализация и лог хвостов) =====
 function getBotTokens(){
-  const primary = (process.env.TG_BOT_TOKEN||'').trim();
+  const primary = String(process.env.TG_BOT_TOKEN||'').replace(/\s+/g,'').trim();
   const extra = String(process.env.ALT_TG_BOT_TOKENS||'')
-    .split(',')
-    .map(s=>s.trim())
+    .split(/[,;\n]/)
+    .map(s => s.replace(/\s+/g,'').trim())
     .filter(Boolean);
-  const all = [primary, ...extra].filter(Boolean);
+  const set = new Set([primary, ...extra]);
+  const all = [...set].filter(Boolean);
+  if (DEBUG){
+    logD('tokens count=', all.length, 'tails=', all.map(t=>tail(t)).join(','));
+  }
   return all;
 }
 
@@ -196,12 +200,21 @@ function verifyTgInitData(rawInitData, reqId='') {
   for (const token of tokens){
     // 1) как есть
     let r = _parseAndCalc(token, rawBase, reqId);
+
+    // подробный лог по токену/режимам
+    if (DEBUG){
+      logD(`[req:${reqId}] try token tail=${tail(token)} got=${redact(r.hash,10)} web/dec=${redact(r.calcWebApp,10)} login/dec=${redact(r.calcLogin,10)} web/raw=${redact(r.calcWebAppRaw,10)} login/raw=${redact(r.calcLoginRaw,10)}`);
+    }
+
     // 2) fix "+ as space"
     let workingRaw = rawBase;
     if (!r.ok) {
       const fixed = rawBase.replace(/\+/g, '%20');
       if (fixed !== rawBase && DEBUG) logD(`[req:${reqId}] trying +→%20 fix (token tail ${tail(token)})`);
       const r2 = _parseAndCalc(token, fixed, reqId);
+      if (DEBUG && !r2.ok){
+        logD(`[req:${reqId}] after +→%20: token tail=${tail(token)} got=${redact(r2.hash,10)} web/dec=${redact(r2.calcWebApp,10)} login/dec=${redact(r2.calcLogin,10)} web/raw=${redact(r2.calcWebAppRaw,10)} login/raw=${redact(r2.calcLoginRaw,10)}`);
+      }
       if (r2.ok) { r = r2; workingRaw = fixed; }
     }
 
