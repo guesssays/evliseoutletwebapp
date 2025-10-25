@@ -39,21 +39,7 @@
   <!-- Fonts / styles -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=2025-10-24-03" />
-
-  <!-- Версия билда (для принудительного обновления HTML в WebView) -->
-  <script>
-    window.__BUILD_VERSION__ = '2025-10-24-03';
-    try {
-      const KEY = 'app_build_version';
-      const prev = localStorage.getItem(KEY);
-      const curr = window.__BUILD_VERSION__;
-      if (prev && prev !== curr) {
-        sessionStorage.clear(); // чистим только UI-кэш
-      }
-      localStorage.setItem(KEY, curr);
-    } catch {}
-  </script>
+  <link rel="stylesheet" href="styles.css" />
 
   <!-- Telegram WebApp -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -173,24 +159,11 @@
   </div>
 
   <!-- Главный модуль: НИКАКИХ бандлов -->
-  <script type="module" src="src/main.js?v=2025-10-24-03"></script>
+  <script type="module" src="src/main.js"></script>
 
   <script>
     // Иконки после монтирования (запасной вызов)
     try { window.lucide?.createIcons?.(); } catch {}
-
-    // Форс-перезагрузка по версии (на случай закэшированного HTML)
-    (function(){
-      try{
-        const qv = new URLSearchParams(location.search).get('v');
-        const need = window.__BUILD_VERSION__;
-        if (need && qv !== need) {
-          const url = new URL(location.href);
-          url.searchParams.set('v', need);
-          location.replace(url.toString()); // без добавления в историю
-        }
-      }catch{}
-    })();
   </script>
 
   <!-- Блок ADMIN TOKEN INJECTION удалён — админ-аутентификация должна быть серверной -->
