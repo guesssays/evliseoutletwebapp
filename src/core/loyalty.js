@@ -16,7 +16,7 @@ export const CASHBACK_CFG = {
   MONTHLY_REF_LIMIT: 10,
 };
 
-/* ===== Внутреннее: таймаут запросов, как в orders.js ===== */
+/* ===== Внутреннее: таймаут запросов ===== */
 const FETCH_TIMEOUT_MS = 10000;
 function withTimeout(promise, ms = FETCH_TIMEOUT_MS){
   return new Promise((resolve, reject) => {
@@ -38,9 +38,11 @@ const LKEY_INVITER    = 'pending_inviter_uid';
 /* ===== Helpers: raw initData из Telegram ===== */
 function getTgInitDataRaw(){
   try {
-    return typeof window?.Telegram?.WebApp?.initData === 'string'
-      ? window.Telegram.WebApp.initData
-      : '';
+    // отдаём именно сырую строку initData
+    if (typeof window?.Telegram?.WebApp?.initData === 'string') {
+      return window.Telegram.WebApp.initData;
+    }
+    return '';
   } catch { return ''; }
 }
 
@@ -243,15 +245,21 @@ export function computeMaxRedeem(total){
   return allowed;
 }
 
-export async function reserveRedeem(points, orderId, shortId = null){
+/** ВАЖНО: добавили параметр `total` — чтобы сервер мог валидировать правило 30%/MAX_REDEEM,
+ *  если заказ ещё не создан в сторадже.
+ */
+export async function reserveRedeem(points, orderId, shortId = null, total = null){
   const uid = getUID();
   if (!points || points < CASHBACK_CFG.MIN_REDEEM) return { ok:false, reason:'min' };
-  const { ok, balance } = await api('reserveRedeem', {
+  const payload = {
     uid,
     pts: Math.floor(points),
     orderId: String(orderId),
     shortId: shortId ? String(shortId) : null,
-  });
+  };
+  if (total != null) payload.total = Number(total) || 0;
+
+  const { ok, balance } = await api('reserveRedeem', payload);
   if (ok){
     setLocalLoyalty(balance || {});
     const res = getLocalReservations();

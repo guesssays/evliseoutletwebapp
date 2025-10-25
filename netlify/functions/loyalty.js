@@ -182,7 +182,7 @@ async function getStoreSafe() {
   }
 }
 
-/* --- merge helpers (как было) --- */
+/* --- merge helpers --- */
 function clone(obj){ return JSON.parse(JSON.stringify(obj||{})); }
 function mergeHist(oldArr=[], newArr=[]){
   const out = [...(oldArr||[])];
@@ -657,7 +657,7 @@ export async function handler(event){
     const op = String(body.op || '').toLowerCase();
     const store = await getStoreSafe();
 
-    // === правка: мягкий фолбэк initData для read-only операций ===
+    // === мягкий фолбэк initData для read-only операций ===
     let userUid = null;
     if (!internal) {
       const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
@@ -667,7 +667,7 @@ export async function handler(event){
         if (DEBUG) logD(`[req:${reqId}] tg ok, uid=${userUid}`);
       } catch (e) {
         if (DEBUG) logD(`[req:${reqId}] tg verify failed:`, String(e?.message||e));
-        // разрешаем без initData ТОЛЬКО безопасные операции чтения
+        // Разрешаем БЕЗ initData только безопасные операции чтения
         if (op === 'getbalance' || op === 'getreferrals') {
           userUid = String(body.uid || '').trim();
           if (!userUid) throw e;
