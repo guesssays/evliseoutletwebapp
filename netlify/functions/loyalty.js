@@ -43,14 +43,23 @@ function sigOk(aHex, bHex) {
 function normalizeInitRaw(raw) {
   let s = String(raw || '');
   if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1);
-  // некоторые браузеры/прокси могут переносить строку заголовка — склеиваем как querystring
-  s = s.replace(/\r?\n/g, '&');
-  return s;
+  s = s.replace(/\r?\n/g, '&'); // склеиваем переносы строк в & (часто бывает в iOS/Safari)
+  return s.trim();
 }
 function getParamFromRaw(raw, key) {
   const re = new RegExp(`(?:^|[&\\n])${key}=([^&\\n]*)`);
   const m = re.exec(String(raw||''));
   return m ? m[1] : '';
+}
+function splitRawPairs(raw) {
+  return String(raw||'')
+    .split(/[&\n]/)
+    .map(x => x.trim())
+    .filter(Boolean)
+    .map(x => {
+      const i = x.indexOf('=');
+      return i === -1 ? [x, ''] : [x.slice(0,i), x.slice(i+1)];
+    });
 }
 
 /* ===== ПАТЧ 2: дружелюбная диагностика «бот не тот» ===== */
@@ -116,49 +125,53 @@ function buildCorsHeaders(origin, isInternal=false){
 }
 
 /* ====== TG initData verification ====== */
-// 💡 Считаем подписи по двум «официальным» схемам и проверяем
+// Считаем подписи: (1) по декодированным значениям (как в доках), (2) по «сырым» значениям (как прилетело)
+function _calcFromDcs(tokenStr, dataCheckString) {
+  const secretWebApp = crypto.createHmac('sha256', 'WebAppData').update(tokenStr).digest();
+  const calcWebApp   = crypto.createHmac('sha256', secretWebApp).update(dataCheckString).digest('hex');
+  const secretLogin  = crypto.createHash('sha256').update(tokenStr).digest();
+  const calcLogin    = crypto.createHmac('sha256', secretLogin).update(dataCheckString).digest('hex');
+  return { calcWebApp, calcLogin };
+}
 function _parseAndCalc(tokenStr, raw, dbgReqId='') {
+  // --- путь 1: decode с URLSearchParams
   const urlEncoded = new URLSearchParams(raw);
-
-  // >>> ПРАВКА: если URLSearchParams не увидел hash — достанем вручную из сырой строки
   let hash = urlEncoded.get('hash') || urlEncoded.get('signature');
   if (!hash && String(raw).includes('hash=')) {
     try { hash = decodeURIComponent(getParamFromRaw(raw, 'hash')); }
     catch { hash = getParamFromRaw(raw, 'hash'); }
   }
-  if (!hash) return { ok:false, reason:'no_hash' };
-
   const pairs = [];
   for (const [k,v] of urlEncoded.entries()) {
-    if (k === 'hash' || k === 'signature') continue; // не входят в data_check_string
+    if (k === 'hash' || k === 'signature') continue;
     pairs.push(`${k}=${v}`);
   }
   pairs.sort();
-  const dataCheckString = pairs.join('\n');
+  const dcsDecoded = pairs.join('\n');
 
-  // Правильная схема WebApp:
-  // secret = HMAC_SHA256(key='WebAppData', data=bot_token)
-  const secretWebApp = crypto.createHmac('sha256', 'WebAppData').update(tokenStr).digest();
-  const calcWebApp   = crypto.createHmac('sha256', secretWebApp).update(dataCheckString).digest('hex');
+  // --- путь 2: «сырые» пары без декодирования
+  const rawPairs = splitRawPairs(raw).filter(([k]) => k !== 'hash' && k !== 'signature');
+  rawPairs.sort((a,b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+  const dcsRaw = rawPairs.map(([k,v]) => `${k}=${v}`).join('\n');
 
-  // И «логин»-схема (совместимость)
-  const secretLogin  = crypto.createHash('sha256').update(tokenStr).digest();
-  const calcLogin    = crypto.createHmac('sha256', secretLogin).update(dataCheckString).digest('hex');
+  const A = _calcFromDcs(tokenStr, dcsDecoded);
+  const B = _calcFromDcs(tokenStr, dcsRaw);
 
-  const ok = sigOk(calcWebApp, hash) || sigOk(calcLogin, hash);
+  const ok =
+    (hash && (sigOk(A.calcWebApp, hash) || sigOk(A.calcLogin, hash))) ||
+    (hash && (sigOk(B.calcWebApp, hash) || sigOk(B.calcLogin, hash)));
+
   if (DEBUG){
-    logD(`[req:${dbgReqId}] dcs sha256=${sha256hex(dataCheckString)} pairs_head=`, pairs.slice(0,6));
+    logD(`[req:${dbgReqId}] dcs(decoded) sha256=${sha256hex(dcsDecoded)} dcs(raw) sha256=${sha256hex(dcsRaw)}`);
   }
-  return { ok, calcWebApp, calcLogin, hash, dataCheckString };
+  return { ok, hash, ...A, calcWebAppRaw: B.calcWebApp, calcLoginRaw: B.calcLogin, dcsDecoded, dcsRaw };
 }
 
 function verifyTgInitData(rawInitData, reqId='') {
-  // 1) аккуратный токен
   const rawToken = String(process.env.TG_BOT_TOKEN || '');
-  const token = rawToken.trim(); // ⚠️ критично: убрать \n/пробелы
+  const token = rawToken.trim();
   if (!token) throw new Error('TG_BOT_TOKEN not set');
 
-  // 2) нормализуем initData (снимем кавычки, склеим переносы)
   let raw = normalizeInitRaw(rawInitData);
 
   if (DEBUG) {
@@ -166,36 +179,32 @@ function verifyTgInitData(rawInitData, reqId='') {
     logD(`[req:${reqId}] raw has hash? ${raw.includes('hash=')} has signature? ${raw.includes('signature=')}`);
   }
 
-  // 3) пробуем как есть
+  // 1) пробуем как есть
   let r = _parseAndCalc(token, raw, reqId);
 
-  // 4) если не ок — лечим возможные «плюсы-как-пробелы» (заменяем '+' на '%20')
+  // 2) если не ок — лечим возможные «плюсы-как-пробелы»
   if (!r.ok) {
     const fixed = raw.replace(/\+/g, '%20');
     if (fixed !== raw && DEBUG) logD(`[req:${reqId}] trying +→%20 fix`);
     const r2 = _parseAndCalc(token, fixed, reqId);
-    if (r2.ok) {
-      if (DEBUG) logD(`[req:${reqId}] initData fixed by +→%20`);
-      r = r2;
-      raw = fixed; // дальше работаем с «вылеченной» строкой
-    }
+    if (r2.ok) { r = r2; raw = fixed; }
   }
 
-  // 5) и если всё ещё не ок — падаем с подробной диагностикой
   if (!r.ok){
     if (DEBUG){
       logD(`[req:${reqId}] initData mismatch`, {
         token_tail: tail(token),
         init_len: String(rawInitData||'').length,
         got_hash: redact(r.hash, 10),
-        calc_webapp: redact(r.calcWebApp, 10),
-        calc_login: redact(r.calcLogin, 10),
+        calc_webapp_dec: redact(r.calcWebApp, 10),
+        calc_login_dec:  redact(r.calcLogin, 10),
+        calc_webapp_raw: redact(r.calcWebAppRaw, 10),
+        calc_login_raw:  redact(r.calcLoginRaw, 10),
       });
     }
     throw new Error('initData signature invalid');
   }
 
-  // 6) парсим user
   const urlEncoded = new URLSearchParams(raw);
   const userJson = urlEncoded.get('user') || '';
   let user = null;
@@ -566,12 +575,11 @@ function makeCore(readAll, writeAll){
 
       const ordExisting = db.orders[orderId];
 
-      // ►► Новый приоритет: если фронт прислал total > 0 — используем его, а не старое значение
+      // ►► приоритет: если фронт прислал total > 0 — используем его, а не старое значение
       const providedTotal = Number(totalArg || 0);
       const existingTotal = Number(ordExisting?.total || 0);
       const baseTotal = providedTotal > 0 ? providedTotal : existingTotal;
 
-      // Если заказ уже есть и пришёл актуальный total — обновим запись, чтобы не ездить со старым total=0
       if (ordExisting && providedTotal > 0 && providedTotal !== existingTotal) {
         ordExisting.total = providedTotal;
       }
@@ -771,7 +779,6 @@ export async function handler(event){
     let userUid = null;
     if (!internal) {
       const headerRaw = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
-      // нормализуем: убираем кавычки, склеиваем переносы
       const rawInit = normalizeInitRaw(headerRaw);
       try {
         const { user } = verifyTgInitData(rawInit, reqId);
@@ -779,7 +786,6 @@ export async function handler(event){
         if (DEBUG) logD(`[req:${reqId}] tg ok, uid=${userUid}`);
       } catch (e) {
         if (DEBUG) logD(`[req:${reqId}] tg verify failed:`, String(e?.message||e));
-        // Разрешаем БЕЗ initData только безопасные операции чтения
         if (op === 'getbalance' || op === 'getreferrals') {
           userUid = String(body.uid || '').trim();
           if (!userUid) throw e;
