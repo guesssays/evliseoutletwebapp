@@ -1,6 +1,6 @@
 // netlify/functions/loyalty.js
 // Бэкенд лояльности + защита: валидация TG initData, строгий CORS, internal-token для сервисных вызовов,
-// запрет memory-fallback в проде, TTL для резервов.
+// запрет memory-fallback в проде, TTL для резервов, дружественная диагностика «бот не тот».
 //
 // ENV:
 //   TG_BOT_TOKEN               (обязательно — для валидации initData)
@@ -9,6 +9,7 @@
 //   ALLOW_MEMORY_FALLBACK=0/1  (в проде — 0)
 //   NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN  (рекомендуется явно)
 //   DEBUG_LOYALTY=1            (включить подробные логи)
+//   └─ Доп.: клиент может присылать заголовок X-Bot-Username для диагностики «бот не тот»
 
 import crypto from 'node:crypto';
 
@@ -36,6 +37,22 @@ function sigOk(aHex, bHex) {
     return crypto.timingSafeEqual(a, b);
   } catch { return false; }
 }
+
+/* ===== ПАТЧ 2: дружелюбная диагностика «бот не тот» ===== */
+let __BOT_UNAME = null;
+async function getBotUsernameSafe(){
+  if (__BOT_UNAME !== null) return __BOT_UNAME;
+  try{
+    const t = (process.env.TG_BOT_TOKEN||'').trim();
+    if (!t) return (__BOT_UNAME = '');
+    const ctl = new AbortController(); setTimeout(()=>ctl.abort(), 800);
+    const r = await fetch(`https://api.telegram.org/bot${encodeURIComponent(t)}/getMe`, { signal: ctl.signal });
+    const j = await r.json();
+    __BOT_UNAME = (j?.ok && j?.result?.username) ? `@${j.result.username}` : '';
+  }catch{ __BOT_UNAME = ''; }
+  return __BOT_UNAME;
+}
+/* ===== конец патча 2 (часть 1) ===== */
 
 const CFG = {
   BASE_RATE: 0.05,
@@ -77,7 +94,7 @@ function buildCorsHeaders(origin, isInternal=false){
   return {
     'Access-Control-Allow-Origin': allow ? (origin || '*') : 'null',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Internal-Auth',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Internal-Auth, X-Bot-Username',
     'Content-Type': 'application/json; charset=utf-8',
     'Vary': 'Origin',
   };
@@ -697,6 +714,14 @@ export async function handler(event){
   }
 
   try{
+    /* ===== ПАТЧ 2 (часть 2): мягкая диагностика bot mismatch ===== */
+    const clientBot = (event.headers?.['x-bot-username'] || event.headers?.['X-Bot-Username'] || '').toString().trim();
+    const serverBot = await getBotUsernameSafe();
+    if (DEBUG && clientBot && serverBot && clientBot !== serverBot){
+      logD(`[req:${reqId}] bot mismatch: client=${clientBot} server=${serverBot}`);
+    }
+    /* ===== конец диагностической вставки ===== */
+
     const body = JSON.parse(event.body || '{}') || {};
     const op = String(body.op || '').toLowerCase();
     const store = await getStoreSafe();
@@ -807,6 +832,24 @@ export async function handler(event){
     return { statusCode:400, headers:cors, body: JSON.stringify({ ok:false, error:'unknown op' }) };
   }catch(e){
     logE(`[req:${reqId}] error:`, e);
+
+    /* ===== ПАТЧ 2 (часть 3): человекопонятный ответ, если подпись не прошла и бот «не тот» ===== */
+    const isSig = String(e?.message||'').includes('initData signature invalid');
+    try{
+      if (isSig){
+        const clientBot = (event.headers?.['x-bot-username'] || event.headers?.['X-Bot-Username'] || '').toString().trim();
+        const serverBot = await getBotUsernameSafe();
+        if (clientBot && serverBot && clientBot !== serverBot){
+          return {
+            statusCode: 403,
+            headers: cors,
+            body: JSON.stringify({ ok:false, error:'bot_mismatch', clientBot, serverBot })
+          };
+        }
+      }
+    }catch{} // если сеть легла — просто вернём обычную 500
+
+    /* ===== стандартный ответ об ошибке ===== */
     return { statusCode:500, headers:cors, body: JSON.stringify({ ok:false, error:String(e?.message||e) }) };
   }
 }

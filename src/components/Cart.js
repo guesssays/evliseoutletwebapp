@@ -614,31 +614,27 @@ function remove(productId,size,color){
  * ВАЖНО: теперь каждая клиентская операция к бэку лояльности 
  * сопровождается подписью Mini App — заголовок X-Tg-Init-Data.
  */
-// вместо твоего callLoyalty
 async function callLoyalty(op, data){
-  const tgInit = (() => {
-    try { return window?.Telegram?.WebApp?.initData || ''; } catch { return ''; }
-  })();
+  const tg = window?.Telegram?.WebApp;
+  const tgInit = tg?.initData || '';
+  const botUname = tg?.botUsername || '';   // ← ИМЯ бота, в котором открыт мини-апп
 
   const resp = await fetch('/.netlify/functions/loyalty', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Tg-Init-Data': tgInit
+      'X-Tg-Init-Data': tgInit,
+      'X-Bot-Username': botUname       // ← НОВОЕ
     },
     body: JSON.stringify({ op, ...data })
   });
 
-  // всегда пытаемся прочитать json
   let j = {};
   try { j = await resp.json(); } catch {}
-
-  // сетевые/HTTP сбои — это действительно ошибка
   if (!resp.ok) throw new Error(j?.error || 'loyalty http error');
-
-  // возвращаем ответ как есть (даже если ok:false → разберём выше по стеку)
   return (typeof j === 'object' && j) ? j : { ok:false, error:'bad response' };
 }
+
 
 
 /* ======================
