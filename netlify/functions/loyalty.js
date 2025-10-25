@@ -3,7 +3,8 @@
 // запрет memory-fallback в проде, TTL для резервов, дружественная диагностика «бот не тот».
 //
 // ENV:
-//   TG_BOT_TOKEN               (обязательно — для валидации initData)
+//   TG_BOT_TOKEN               (обязательно — для валидации initData, первичный токен)
+//   ALT_TG_BOT_TOKENS          (опционально — дополнительные токены через запятую)
 //   ADMIN_API_TOKEN            (секрет для сервер-к-серверу/админских вызовов)
 //   ALLOWED_ORIGINS            (список через запятую, включая тг-домены)
 //   ALLOW_MEMORY_FALLBACK=0/1  (в проде — 0)
@@ -167,50 +168,71 @@ function _parseAndCalc(tokenStr, raw, dbgReqId='') {
   return { ok, hash, ...A, calcWebAppRaw: B.calcWebApp, calcLoginRaw: B.calcLogin, dcsDecoded, dcsRaw };
 }
 
+// NEW: список токенов (основной + ALT_TG_BOT_TOKENS через запятую)
+function getBotTokens(){
+  const primary = (process.env.TG_BOT_TOKEN||'').trim();
+  const extra = String(process.env.ALT_TG_BOT_TOKENS||'')
+    .split(',')
+    .map(s=>s.trim())
+    .filter(Boolean);
+  const all = [primary, ...extra].filter(Boolean);
+  return all;
+}
+
 function verifyTgInitData(rawInitData, reqId='') {
-  const rawToken = String(process.env.TG_BOT_TOKEN || '');
-  const token = rawToken.trim();
-  if (!token) throw new Error('TG_BOT_TOKEN not set');
+  const tokens = getBotTokens();
+  if (!tokens.length) throw new Error('TG_BOT_TOKEN not set');
 
-  let raw = normalizeInitRaw(rawInitData);
+  let lastDebug = null;
 
+  // нормализуем сырьё один раз
+  let rawBase = normalizeInitRaw(rawInitData);
   if (DEBUG) {
-    logD(`[req:${reqId}] rawInit first100="${raw.slice(0,100)}" len=${raw.length} sha256=${sha256hex(raw)}`);
-    logD(`[req:${reqId}] raw has hash? ${raw.includes('hash=')} has signature? ${raw.includes('signature=')}`);
+    logD(`[req:${reqId}] rawInit first100="${rawBase.slice(0,100)}" len=${rawBase.length} sha256=${sha256hex(rawBase)}`);
+    logD(`[req:${reqId}] raw has hash? ${rawBase.includes('hash=')} has signature? ${rawBase.includes('signature=')}`);
   }
 
-  // 1) пробуем как есть
-  let r = _parseAndCalc(token, raw, reqId);
-
-  // 2) если не ок — лечим возможные «плюсы-как-пробелы»
-  if (!r.ok) {
-    const fixed = raw.replace(/\+/g, '%20');
-    if (fixed !== raw && DEBUG) logD(`[req:${reqId}] trying +→%20 fix`);
-    const r2 = _parseAndCalc(token, fixed, reqId);
-    if (r2.ok) { r = r2; raw = fixed; }
-  }
-
-  if (!r.ok){
-    if (DEBUG){
-      logD(`[req:${reqId}] initData mismatch`, {
-        token_tail: tail(token),
-        init_len: String(rawInitData||'').length,
-        got_hash: redact(r.hash, 10),
-        calc_webapp_dec: redact(r.calcWebApp, 10),
-        calc_login_dec:  redact(r.calcLogin, 10),
-        calc_webapp_raw: redact(r.calcWebAppRaw, 10),
-        calc_login_raw:  redact(r.calcLoginRaw, 10),
-      });
+  // пробуем каждый токен по очереди
+  for (const token of tokens){
+    // 1) как есть
+    let r = _parseAndCalc(token, rawBase, reqId);
+    // 2) fix "+ as space"
+    let workingRaw = rawBase;
+    if (!r.ok) {
+      const fixed = rawBase.replace(/\+/g, '%20');
+      if (fixed !== rawBase && DEBUG) logD(`[req:${reqId}] trying +→%20 fix (token tail ${tail(token)})`);
+      const r2 = _parseAndCalc(token, fixed, reqId);
+      if (r2.ok) { r = r2; workingRaw = fixed; }
     }
-    throw new Error('initData signature invalid');
+
+    lastDebug = { tokenTail: tail(token), ...r, raw: workingRaw };
+
+    if (r.ok){
+      if (DEBUG){
+        logD(`[req:${reqId}] tg ok by token tail=${tail(token)}`);
+      }
+      const urlEncoded = new URLSearchParams(workingRaw);
+      const userJson = urlEncoded.get('user') || '';
+      let user = null;
+      try { user = JSON.parse(userJson); } catch {}
+      if (!user || !user.id) throw new Error('initData user missing');
+      return { user, raw: urlEncoded };
+    }
   }
 
-  const urlEncoded = new URLSearchParams(raw);
-  const userJson = urlEncoded.get('user') || '';
-  let user = null;
-  try { user = JSON.parse(userJson); } catch {}
-  if (!user || !user.id) throw new Error('initData user missing');
-  return { user, raw: urlEncoded };
+  // если ни один токен не подошёл — лог и ошибка
+  if (DEBUG && lastDebug){
+    logD(`[req:${reqId}] initData mismatch (all tokens tried)`, {
+      last_token_tail: lastDebug.tokenTail,
+      init_len: String(rawInitData||'').length,
+      got_hash: redact(lastDebug.hash, 10),
+      calc_webapp_dec: redact(lastDebug.calcWebApp, 10),
+      calc_login_dec:  redact(lastDebug.calcLogin, 10),
+      calc_webapp_raw: redact(lastDebug.calcWebAppRaw, 10),
+      calc_login_raw:  redact(lastDebug.calcLoginRaw, 10),
+    });
+  }
+  throw new Error('initData signature invalid');
 }
 
 function getInternalAuth(event){
