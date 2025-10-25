@@ -617,23 +617,31 @@ function remove(productId,size,color){
 async function callLoyalty(op, data){
   const tg = window?.Telegram?.WebApp;
   const tgInit = tg?.initData || '';
-  const botUname = tg?.botUsername || '';   // ← ИМЯ бота, в котором открыт мини-апп
+  const botUname = tg?.botUsername || '';
 
   const resp = await fetch('/.netlify/functions/loyalty', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-Tg-Init-Data': tgInit,
-      'X-Bot-Username': botUname       // ← НОВОЕ
+      'X-Bot-Username': botUname
     },
     body: JSON.stringify({ op, ...data })
   });
 
   let j = {};
   try { j = await resp.json(); } catch {}
-  if (!resp.ok) throw new Error(j?.error || 'loyalty http error');
+
+  // ⬇️ главное изменение: "пропускаем" полезные ошибки как обычный ответ
+  if (!resp.ok) {
+    if (j && (j.error === 'bot_mismatch' || j.error === 'initData signature invalid')) {
+      return { ok:false, ...j };
+    }
+    throw new Error(j?.error || 'loyalty http error');
+  }
   return (typeof j === 'object' && j) ? j : { ok:false, error:'bad response' };
 }
+
 
 
 
@@ -976,35 +984,46 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
 const toSpend = Number(bill?.redeem || 0) | 0;
 let reserved = false;
 
+// перед блоком "РЕЗЕРВ СПИСАНИЯ БАЛЛОВ"
+const tg = window?.Telegram?.WebApp;
+if (toSpend > 0 && !tg?.initData) {
+  toast('Списать баллы можно только внутри Telegram-приложения. Откройте магазин через Telegram и повторите.');
+  setSubmitDisabled(false);
+  __orderSubmitBusy = false;
+  return;
+}
+
+
 // --- РЕЗЕРВ СПИСАНИЯ БАЛЛОВ (loyalty.reserveRedeem) ---
 // На всякий случай подтягиваем свежие лимиты/баланс перед резервом (устраняет гонку)
 try { await fetchMyLoyalty(); } catch { /* молча: если не удалось — попробуем резерв всё равно */ }
 
 try {
   if (toSpend > 0) {
-    const r2 = await callLoyalty('reserveRedeem', {
-      uid: getUID(),
-      pts: toSpend,
-      orderId,
-      total: totalRaw,
-      shortId: publicId
-    });
+const r2 = await callLoyalty('reserveRedeem', {
+  uid: getUID(),
+  pts: toSpend,
+  orderId,
+  total: totalRaw,
+  shortId: publicId
+});
 
-    // Если сервер ответил ok:false — показываем понятную причину и выходим
-    if (!r2?.ok) {
-      const reason = r2?.reason || r2?.error || '';
-      const msg =
-        reason === 'min'     ? `Минимум для списания: ${MIN_REDEEM_POINTS.toLocaleString('ru-RU')} баллов` :
-        reason === 'rule'    ? 'Превышает лимит: не более 30% от суммы и максимум 150 000' :
-        reason === 'balance' ? 'Недостаточно баллов' :
-        reason === 'total'   ? 'Некорректная сумма заказа для списания' :
-                                'Не удалось зарезервировать списание баллов';
+if (!r2?.ok) {
+  const reason = r2?.reason || r2?.error || '';
+  const msg =
+    reason === 'min'       ? `Минимум для списания: ${MIN_REDEEM_POINTS.toLocaleString('ru-RU')} баллов` :
+    reason === 'rule'      ? 'Превышает лимит: не более 30% от суммы и максимум 150 000' :
+    reason === 'balance'   ? 'Недостаточно баллов' :
+    reason === 'total'     ? 'Некорректная сумма заказа для списания' :
+    reason === 'bot_mismatch'
+                            ? `Мини-приложение открыто в ${r2.clientBot || 'другом боте'}, а сервер ждёт ${r2.serverBot || 'другого бота'}. Откройте магазин через ${r2.serverBot || 'нужного бота'} и попробуйте снова.`
+                            : 'Не удалось зарезервировать списание баллов';
+  toast(msg);
+  setSubmitDisabled(false);
+  __orderSubmitBusy = false;
+  return;
+}
 
-      toast(msg);
-      setSubmitDisabled(false);
-      __orderSubmitBusy = false;
-      return; // прерываем оформление
-    }
 
     reserved = true; // резерв прошёл
   }
