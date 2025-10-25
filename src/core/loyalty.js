@@ -146,8 +146,7 @@ async function api(op, body = {}){
   const norm = normalizeOp(op);
   const headers = {
     'Content-Type':'application/json',
-    'X-Tg-Init-Data': getTgInitDataRaw(),          // сырая строка initData
-    'X-Bot-Username': `@${BOT_USERNAME}`,          // для диагностики "бот не тот"
+    'X-Tg-Init-Data': getTgInitDataRaw(),          // сырая строка initData         // для диагностики "бот не тот"
   };
   // для внутренних операций добавляем admin header
   if (ADMIN_OPS.has(norm)) {
