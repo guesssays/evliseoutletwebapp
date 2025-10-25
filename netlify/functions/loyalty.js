@@ -27,6 +27,8 @@ function redact(str='', keep=8){
   return s.length<=keep ? s : `${s.slice(0,2)}…${s.slice(-Math.min(keep-2,6))}`;
 }
 function tail(str='', n=6){ const s=String(str||''); return s.slice(-n); }
+// 🔎 вспомогательная для диагностики (безопасна)
+function sha256hex(s){ return crypto.createHash('sha256').update(String(s),'utf8').digest('hex'); }
 
 // === безопасное сравнение HMAC (константное время)
 function sigOk(aHex, bHex) {
@@ -101,19 +103,11 @@ function buildCorsHeaders(origin, isInternal=false){
 }
 
 /* ====== TG initData verification ====== */
-function verifyTgInitData(rawInitData, reqId='') {
-  // 1) аккуратный токен
-  const rawToken = String(process.env.TG_BOT_TOKEN || '');
-  const token = rawToken.trim(); // ⚠️ критично: убрать \n/пробелы
-  if (!token) throw new Error('TG_BOT_TOKEN not set');
-
-  // 2) некоторые прокси/браузеры могут класть initData в кавычки
-  let raw = String(rawInitData || '');
-  if (raw.startsWith('"') && raw.endsWith('"')) raw = raw.slice(1, -1);
-
+// 💡 Вспомогательная — посчитать подписи по двум «официальным» схемам и проверить
+function _parseAndCalc(tokenStr, raw, dbgReqId='') {
   const urlEncoded = new URLSearchParams(raw);
   const hash = urlEncoded.get('hash');
-  if (!hash) throw new Error('no hash in initData');
+  if (!hash) return { ok:false, reason:'no_hash' };
 
   const pairs = [];
   for (const [k,v] of urlEncoded.entries()) {
@@ -124,38 +118,64 @@ function verifyTgInitData(rawInitData, reqId='') {
   pairs.sort();
   const dataCheckString = pairs.join('\n');
 
-  // 3) считаем обе «официальные» схемы: WebApp и «старую» login-виджета
-  function hmacWebApp(tokenStr, dcs) {
-    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(tokenStr).digest();
-    return crypto.createHmac('sha256', secretKey).update(dcs).digest('hex');
-  }
-  function hmacLogin(tokenStr, dcs) {
-    const secretKey = crypto.createHash('sha256').update(tokenStr).digest();
-    return crypto.createHmac('sha256', secretKey).update(dcs).digest('hex');
-  }
-
-  const calcWebApp = hmacWebApp(token, dataCheckString);
-  const calcLogin  = hmacLogin(token, dataCheckString);
+  const secretWebApp = crypto.createHmac('sha256', 'WebAppData').update(tokenStr).digest();
+  const calcWebApp   = crypto.createHmac('sha256', secretWebApp).update(dataCheckString).digest('hex');
+  const secretLogin  = crypto.createHash('sha256').update(tokenStr).digest();
+  const calcLogin    = crypto.createHmac('sha256', secretLogin).update(dataCheckString).digest('hex');
 
   const ok = sigOk(calcWebApp, hash) || sigOk(calcLogin, hash);
-  if (!ok){
+  if (DEBUG){
+    logD(`[req:${dbgReqId}] dcs sha256=${sha256hex(dataCheckString)} pairs_head=`, pairs.slice(0,6));
+  }
+  return { ok, calcWebApp, calcLogin, hash, dataCheckString };
+}
+
+function verifyTgInitData(rawInitData, reqId='') {
+  // 1) аккуратный токен
+  const rawToken = String(process.env.TG_BOT_TOKEN || '');
+  const token = rawToken.trim(); // ⚠️ критично: убрать \n/пробелы
+  if (!token) throw new Error('TG_BOT_TOKEN not set');
+
+  // 2) некоторые прокси/браузеры могут класть initData в кавычки
+  let raw = String(rawInitData || '');
+  if (raw.startsWith('"') && raw.endsWith('"')) raw = raw.slice(1, -1);
+
+  if (DEBUG) {
+    logD(`[req:${reqId}] rawInit first100="${raw.slice(0,100)}" len=${raw.length} sha256=${sha256hex(raw)}`);
+  }
+
+  // 3) пробуем как есть
+  let r = _parseAndCalc(token, raw, reqId);
+
+  // 4) если не ок — лечим возможные «плюсы-как-пробелы» (заменяем '+' на '%20')
+  if (!r.ok) {
+    const fixed = raw.replace(/\+/g, '%20');
+    if (fixed !== raw && DEBUG) logD(`[req:${reqId}] trying +→%20 fix`);
+    const r2 = _parseAndCalc(token, fixed, reqId);
+    if (r2.ok) {
+      if (DEBUG) logD(`[req:${reqId}] initData fixed by +→%20`);
+      r = r2;
+      raw = fixed; // дальше работаем с «вылеченной» строкой
+    }
+  }
+
+  // 5) и если всё ещё не ок — падаем с подробной диагностикой
+  if (!r.ok){
     if (DEBUG){
-      const u = urlEncoded.get('user') || '';
-      let uidSafe = null;
-      try{ uidSafe = JSON.parse(u)?.id || null; }catch{}
       logD(`[req:${reqId}] initData mismatch`, {
         token_tail: tail(token),
         init_len: String(rawInitData||'').length,
-        user_id: uidSafe ? String(uidSafe) : null,
-        got_hash: redact(hash, 10),
-        calc_webapp: redact(calcWebApp, 10),
-        calc_login: redact(calcLogin, 10),
-        keys: Array.from(urlEncoded.keys()).slice(0,10)
+        got_hash: redact(r.hash, 10),
+        calc_webapp: redact(r.calcWebApp, 10),
+        calc_login: redact(r.calcLogin, 10),
+        // keys покажем на уровне handler-а (там уже есть)
       });
     }
     throw new Error('initData signature invalid');
   }
 
+  // 6) парсим user
+  const urlEncoded = new URLSearchParams(raw);
   const userJson = urlEncoded.get('user') || '';
   let user = null;
   try { user = JSON.parse(userJson); } catch {}
@@ -694,7 +714,6 @@ export async function handler(event){
   const cors = buildCorsHeaders(origin, internal);
   if (DEBUG){
     const h = event.headers||{};
-    // защита от кавычек в initData уже в verifyTgInitData; здесь просто длина
     const tgHeader = (h['x-tg-init-data']||h['X-Tg-Init-Data']||'');
     const tgLen = String(tgHeader).length;
     logD(`[req:${reqId}] incoming`, {
@@ -704,6 +723,8 @@ export async function handler(event){
       tg_init_len: tgLen,
       ua: (h['user-agent']||'').slice(0,64),
     });
+    // лог какого бота видит сервер (для крайних случаев рассинхрона переменных)
+    try { logD(`[req:${reqId}] server bot is`, await getBotUsernameSafe() || '(unknown)'); } catch {}
   }
 
   if (event.httpMethod === 'OPTIONS'){
@@ -729,13 +750,8 @@ export async function handler(event){
     // === мягкий фолбэк initData для read-only операций ===
     let userUid = null;
     if (!internal) {
-      // снимем кавычки, если вдруг попали сюда
       const headerRaw = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
-      const rawInit = (()=>{
-        let s = String(headerRaw||'');
-        if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1,-1);
-        return s;
-      })();
+      const rawInit = (()=>{ let s = String(headerRaw||''); if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1,-1); return s; })();
       try {
         const { user } = verifyTgInitData(rawInit, reqId);
         userUid = String(user.id);
