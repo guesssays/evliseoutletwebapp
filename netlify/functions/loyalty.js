@@ -90,8 +90,14 @@ function verifyTgInitData(rawInitData, reqId='') {
   pairs.sort();
   const dataCheckString = pairs.join('\n');
 
-  const secretKey = crypto.createHash('sha256').update(token).digest();
-  const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+// правильно для Telegram WebApp:
+const secretKey = crypto.createHmac('sha256', 'WebAppData')
+  .update(token)
+  .digest();
+const hmac = crypto.createHmac('sha256', secretKey)
+  .update(dataCheckString)
+  .digest('hex');
+
 
   if (hmac !== hash){
     if (DEBUG){
