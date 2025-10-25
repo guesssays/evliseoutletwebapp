@@ -44,7 +44,7 @@ function botUnameHeader() {
 // Заголовки для запросов: всегда добавляем X-Tg-Init-Data и X-Bot-Username.
 function reqHeaders(initData) {
   const h = { 'Content-Type': 'application/json' };
-  h['X-Tg-Init-Data'] = String(initData || '');
+  h['X-Tg-Init-Data'] = String(initData || ''); // fallback
   h['X-Bot-Username'] = botUnameHeader();
   return h;
 }
@@ -169,7 +169,7 @@ async function api(op, body = {}) {
     throw new Error('initData_empty'); // перехватывай по месту вызова и покажи "Откройте приложение через Telegram"
   }
 
-  // Заголовки каждого запроса: X-Tg-Init-Data + X-Bot-Username
+  // Заголовки каждого запроса: X-Tg-Init-Data + X-Bot-Username (fallback)
   const headers = reqHeaders(initData);
 
   // Для админ-операций добавляем admin header (если есть токен)
@@ -177,10 +177,14 @@ async function api(op, body = {}) {
     headers['X-Internal-Auth'] = getAdminToken();
   }
 
+  // Основной источник — тело запроса: initData (сырой) + дублирование base64
+  let initData64 = '';
+  try { if (initData) initData64 = btoa(initData); } catch { initData64 = ''; }
+
   const res = await withTimeout(fetch(API, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ op: norm, ...body }),
+    body: JSON.stringify({ op: norm, initData, initData64, ...body }),
   }), FETCH_TIMEOUT_MS);
 
   const data = await res.json().catch(() => ({}));

@@ -702,7 +702,7 @@ function makeCore(readAll, writeAll){
         if (rPts > 0 && ref.pending >= rPts){
           ref.pending -= rPts;
           ref.available += rPts;
-          ref.history.push({ ts:Date.now(), kind:'ref_confirm', orderId, pts:+rPts, info:'Реферальные подтверждены' });
+          ref.history.push({ ts:Date.now(), kind:'ref_confirm', orderId, pts:+рPts, info:'Реферальные подтверждены' });
           if (ref.history.length>500) ref.history = ref.history.slice(-500);
           await fireAndForgetAppNotif(ord.accrual.inviter, { icon:'check-circle', title:`Реферальные подтверждены по #${disp}`, sub:`Зачислено: ${rPts} балл(ов)` });
           await fireAndForgetNotify(ord.accrual.inviter, 'cashbackMatured', { text:`✅ Реферальные баллы по заказу #${disp}: ${rPts} подтверждены.`, orderId, shortId: ord.shortId });
@@ -757,6 +757,21 @@ function makeCore(readAll, writeAll){
   };
 }
 
+/* ================== ЧТЕНИЕ initData: body → header (fallback) ================== */
+function readInitData(event, body) {
+  // 1) Приоритет — тело, без «нормализаций»
+  if (body && typeof body.initData === 'string' && body.initData) {
+    return body.initData;
+  }
+  if (body && typeof body.initDataB64 === 'string' && body.initDataB64) {
+    try { return Buffer.from(body.initDataB64, 'base64').toString('utf8'); } catch {}
+  }
+  // 2) Fallback — заголовок как есть, максимум склейка переносов
+  const h = event.headers || {};
+  const raw = (h['x-tg-init-data'] || h['X-Tg-Init-Data'] || '');
+  return String(raw).replace(/[\r\n]+/g, '&');
+}
+
 /* ================= HTTP Handler ================= */
 export async function handler(event){
   const reqId = crypto.randomBytes(4).toString('hex');
@@ -797,11 +812,10 @@ export async function handler(event){
     const op = String(body.op || '').toLowerCase();
     const store = await getStoreSafe();
 
-    // === мягкий фолбэк initData для read-only операций ===
+    // === читаем initData с приоритетом тела ===
     let userUid = null;
     if (!internal) {
-      const headerRaw = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
-      const rawInit = normalizeInitRaw(headerRaw);
+      const rawInit = readInitData(event, body);
       try {
         const { user } = verifyTgInitData(rawInit, reqId);
         userUid = String(user.id);
