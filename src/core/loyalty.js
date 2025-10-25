@@ -1,9 +1,41 @@
 // src/core/loyalty.js
-// Клиентская обвязка к serverless-функции лояльности + локальные хелперы
+// Клиентская обвязка к serverless-функции лояльности + локальные хелперы.
+// Отправляем на бэкенд сырое Telegram initData и, для диагностики,
+// имя бота через X-Bot-Username (если доступно).
 
 import { getUID, k } from './state.js';
 
-/* ===== Конфиг ===== */
+/* =========================== helpers =========================== */
+
+// Имя бота из окружения Telegram Mini App (для мягкой диагностики «бот не тот»)
+function clientBotUname() {
+  try {
+    const u = window.Telegram?.WebApp?.initDataUnsafe;
+    return u?.receiver?.username || u?.bot?.username || '';
+  } catch { return ''; }
+}
+
+// Заголовки для запросов к функции лояльности.
+// Вкладываем X-Tg-Init-Data (если есть) и X-Bot-Username (если есть).
+function reqHeaders(initData) {
+  const h = { 'Content-Type': 'application/json' };
+  if (initData) h['X-Tg-Init-Data'] = initData;
+  const uname = clientBotUname();
+  if (uname) h['X-Bot-Username'] = '@' + uname;
+  return h;
+}
+
+// Сырая строка initData (не initDataUnsafe!), как рекомендует Telegram.
+function getTgInitDataRaw() {
+  try {
+    return typeof window?.Telegram?.WebApp?.initData === 'string'
+      ? window.Telegram.WebApp.initData
+      : '';
+  } catch { return ''; }
+}
+
+/* =========================== конфиг =========================== */
+
 export const CASHBACK_CFG = {
   POINT_IS_SUM: 1,
   BASE_RATE: 0.05,
@@ -16,44 +48,77 @@ export const CASHBACK_CFG = {
   MONTHLY_REF_LIMIT: 10,
 };
 
-/* ===== Внутреннее: таймаут запросов ===== */
-const FETCH_TIMEOUT_MS = 10000;
-function withTimeout(promise, ms = FETCH_TIMEOUT_MS){
-  return new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error('timeout')), ms);
-    promise.then(v => { clearTimeout(t); resolve(v); },
-                 e => { clearTimeout(t); reject(e); });
-  });
-}
-
-/* ====== Telegram Mini App: имя бота для deeplink ====== */
-// ⚠️ важна точная капитализация, как в @getMe
+// Какой бот используется в ссылке-приглашении
 export const BOT_USERNAME = 'EvliseOutletBot';
 
-/* ===== Локальные ключи ===== */
+/* ========================= локальное хранилище ========================= */
+
 const LKEY_BALANCE    = 'loyalty_balance';
 const LKEY_REDEEM_RES = 'loyalty_redeem_reservations';
 const LKEY_REF        = 'loyalty_ref';
 const LKEY_INVITER    = 'pending_inviter_uid';
 
-/* ===== Helpers: raw initData из Telegram ===== */
-function getTgInitDataRaw(){
+export function getLocalLoyalty() {
   try {
-    // отдаём именно сырую строку initData
-    if (typeof window?.Telegram?.WebApp?.initData === 'string') {
-      return window.Telegram.WebApp.initData;
-    }
-    return '';
-  } catch { return ''; }
+    const raw = localStorage.getItem(k(LKEY_BALANCE));
+    const v = raw ? JSON.parse(raw) : {};
+    return {
+      available: Number(v.available || 0),
+      pending:   Number(v.pending   || 0),
+      history:   Array.isArray(v.history) ? v.history : [],
+    };
+  } catch { return { available: 0, pending: 0, history: [] }; }
 }
 
-/* ===== Админ-токен (для внутренних операций) ===== */
-// ВНИМАНИЕ: эти операции принимаются бэком только при наличии X-Internal-Auth
+export function setLocalLoyalty(obj) {
+  localStorage.setItem(
+    k(LKEY_BALANCE),
+    JSON.stringify({
+      available: Number(obj?.available || 0),
+      pending:   Number(obj?.pending   || 0),
+      history:   Array.isArray(obj?.history) ? obj.history : [],
+    })
+  );
+}
+
+export function getLocalReservations() {
+  try { return JSON.parse(localStorage.getItem(k(LKEY_REDEEM_RES)) || '[]'); }
+  catch { return []; }
+}
+export function setLocalReservations(list) {
+  localStorage.setItem(k(LKEY_REDEEM_RES), JSON.stringify(Array.isArray(list) ? list : []));
+}
+
+export function getLocalRef() {
+  try { return JSON.parse(localStorage.getItem(k(LKEY_REF)) || '{}'); }
+  catch { return {}; }
+}
+export function setLocalRef(obj) {
+  localStorage.setItem(k(LKEY_REF), JSON.stringify(obj || {}));
+}
+
+/* =========================== сетевой слой =========================== */
+
+const API = '/.netlify/functions/loyalty';
+const FETCH_TIMEOUT_MS = 10000;
+
+function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout')), Math.max(1, ms));
+    promise.then(
+      v => { clearTimeout(t); resolve(v); },
+      e => { clearTimeout(t); reject(e); }
+    );
+  });
+}
+
+// Операции, для которых нужен admin-token (X-Internal-Auth). Они выполняются
+// только в админке/серверных сценариях и не пройдут без токена на бэке.
 const ADMIN_OPS = new Set([
-  'admincalc',         // админский расчёт по заказу
-  'voidaccrual',       // аннулировать ожидаемое начисление
-  'accrue',            // начислить pending на заказ (вызов из orders.js/админки)
-  'confirmaccrual',    // ручное подтверждение начисления (админ)
+  'admincalc',
+  'voidaccrual',
+  'accrue',
+  'confirmaccrual',
 ]);
 
 function getAdminToken() {
@@ -66,75 +131,28 @@ function getAdminToken() {
   } catch { return ''; }
 }
 
-/* ===== Стейт-кэш (клиент) ===== */
-export function getLocalLoyalty(){
-  try{
-    const raw = localStorage.getItem(k(LKEY_BALANCE));
-    const v = raw ? JSON.parse(raw) : {};
-    return {
-      available: Number(v.available||0),
-      pending:   Number(v.pending||0),
-      history:   Array.isArray(v.history) ? v.history : [],
-    };
-  }catch{ return { available:0, pending:0, history:[] }; }
-}
-export function setLocalLoyalty(obj){
-  localStorage.setItem(
-    k(LKEY_BALANCE),
-    JSON.stringify({
-      available: Number(obj?.available||0),
-      pending:   Number(obj?.pending||0),
-      history:   Array.isArray(obj?.history)?obj.history:[],
-    })
-  );
-}
-export function getLocalReservations(){
-  try{ return JSON.parse(localStorage.getItem(k(LKEY_REDEEM_RES)) || '[]'); }catch{ return []; }
-}
-export function setLocalReservations(list){
-  localStorage.setItem(k(LKEY_REDEEM_RES), JSON.stringify(Array.isArray(list)?list:[]));
-}
-export function getLocalRef(){
-  try{ return JSON.parse(localStorage.getItem(k(LKEY_REF)) || '{}'); }catch{ return {}; }
-}
-export function setLocalRef(obj){
-  localStorage.setItem(k(LKEY_REF), JSON.stringify(obj||{}));
-}
-
-/* ===== Serverless API ===== */
-const API = '/.netlify/functions/loyalty';
-
-// Алисы: принимаем «человеческие» имена, отправляем то, что ждёт бэк
+// Алиасы имён операций → нормализованное имя (которое ждёт бэкенд)
 const OP_ALIAS = new Map([
-  // чтение
   ['getbalance', 'getbalance'],
   ['getBalance', 'getbalance'],
-
-  // рефералы
   ['bindReferral', 'bindreferral'],
   ['bindreferral', 'bindreferral'],
   ['getReferrals', 'getreferrals'],
   ['getreferrals', 'getreferrals'],
-
-  // списание
   ['reserveRedeem', 'reserveredeem'],
   ['reserveredeem', 'reserveredeem'],
   ['finalizeRedeem', 'finalizeredeem'],
   ['finalizeredeem', 'finalizeredeem'],
-
-  // начисления
   ['accrue', 'accrue'],
   ['confirmAccrual', 'confirmaccrual'],
   ['confirmaccrual', 'confirmaccrual'],
   ['voidAccrual', 'voidaccrual'],
   ['voidaccrual', 'voidaccrual'],
-
-  // админский расчёт
   ['adminCalc', 'admincalc'],
   ['admincalc', 'admincalc'],
 ]);
 
-function normalizeOp(op){
+function normalizeOp(op) {
   const raw = String(op || '').trim();
   if (!raw) return '';
   if (OP_ALIAS.has(raw)) return OP_ALIAS.get(raw);
@@ -142,64 +160,53 @@ function normalizeOp(op){
   return OP_ALIAS.get(low) || low;
 }
 
-async function api(op, body = {}){
+async function api(op, body = {}) {
   const norm = normalizeOp(op);
-  const headers = {
-    'Content-Type':'application/json',
-    'X-Tg-Init-Data': getTgInitDataRaw(),          // сырая строка initData         // для диагностики "бот не тот"
-  };
+
+  // формируем заголовки через helper, чтобы добавить X-Tg-Init-Data и X-Bot-Username
+  const headers = reqHeaders(getTgInitDataRaw());
+
   // для внутренних операций добавляем admin header
   if (ADMIN_OPS.has(norm)) {
     const t = getAdminToken();
     if (t) headers['X-Internal-Auth'] = t;
   }
-  const r = await withTimeout(fetch(API, {
-    method:'POST',
+
+  const res = await withTimeout(fetch(API, {
+    method: 'POST',
     headers,
-    body: JSON.stringify({ op: norm, ...body })
+    body: JSON.stringify({ op: norm, ...body }),
   }), FETCH_TIMEOUT_MS);
-  const data = await r.json().catch(()=> ({}));
-  if (!r.ok || data?.ok === false) {
-    throw new Error(data?.error || 'loyalty api error');
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data?.ok === false) {
+    throw new Error(data?.error || data?.reason || `loyalty api error (HTTP ${res.status})`);
   }
   return data;
 }
 
-/* ===== Pending inviter helpers ===== */
-function setPendingInviter(uid){ try{ if (uid) localStorage.setItem(k(LKEY_INVITER), String(uid)); }catch{} }
-function getPendingInviter(){ try{ return localStorage.getItem(k(LKEY_INVITER)); }catch{ return null; } }
-function clearPendingInviter(){ try{ localStorage.removeItem(k(LKEY_INVITER)); }catch{} }
+/* ======================= referrals (приглашения) ======================= */
 
-/* ===== Публичные методы (клиент) ===== */
+function setPendingInviter(uid) { try { if (uid) localStorage.setItem(k(LKEY_INVITER), String(uid)); } catch {} }
+function getPendingInviter()    { try { return localStorage.getItem(k(LKEY_INVITER)); } catch { return null; } }
+function clearPendingInviter()  { try { localStorage.removeItem(k(LKEY_INVITER)); } catch {} }
 
-export async function fetchMyLoyalty(){
-  // Мягкий фолбэк: не роняем вызвавший код, если сеть упала
-  try{
-    const uid = getUID();
-    const { balance } = await api('getBalance', { uid });
-    setLocalLoyalty(balance || {});
-    return balance || getLocalLoyalty();
-  }catch{
-    return getLocalLoyalty();
-  }
-}
-
-export function makeReferralLink(){
+export function makeReferralLink() {
   const uid = getUID();
   const start = `ref_${uid}`;
   return `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(start)}`;
 }
 
-export function captureInviterFromContext(){
-  try{
-    // a) Telegram Mini App
+export function captureInviterFromContext() {
+  try {
+    // a) из Telegram Mini App
     const sp = window?.Telegram?.WebApp?.initDataUnsafe?.start_param || '';
     if (sp && String(sp).startsWith('ref_')) {
       const inviter = String(sp).slice(4);
       if (inviter) setPendingInviter(inviter);
     }
-    // b) Веб-URL
-    const parse = (searchOrHash='')=>{
+    // b) из обычного веб-URL
+    const parse = (searchOrHash = '') => {
       const p = new URLSearchParams(searchOrHash);
       const qpStart = p.get('start') || '';
       const qpRef   = p.get('ref') || '';
@@ -207,51 +214,68 @@ export function captureInviterFromContext(){
       if (qpRef) return qpRef;
       return '';
     };
-    const qInv = parse((location.search||'').slice(1)) || parse((location.hash.split('?')[1]||'')); // hash-part after '?'
+    const qInv = parse((location.search || '').slice(1)) ||
+                 parse((location.hash.split('?')[1] || ''));
     if (qInv) setPendingInviter(qInv);
-  }catch{}
+  } catch {}
 }
 
-export async function tryBindPendingInviter(){
+export async function tryBindPendingInviter() {
   const me = getUID();
   const inviter = getPendingInviter();
-  if (!inviter || !me || String(inviter)===String(me)) return;
-  try{
+  if (!inviter || !me || String(inviter) === String(me)) return;
+  try {
     const { ok, reason } = await ensureReferralBound(inviter);
     if (ok || reason) clearPendingInviter();
-  }catch{}
+  } catch {}
 }
 
-export async function ensureReferralBound(inviterUid){
+export async function ensureReferralBound(inviterUid) {
   const me = getUID();
-  if (!inviterUid || String(inviterUid) === String(me)) return { ok:false, reason:'self' };
+  if (!inviterUid || String(inviterUid) === String(me)) return { ok: false, reason: 'self' };
   const { ok, reason } = await api('bindReferral', { inviter: String(inviterUid), invitee: String(me) });
-  if (ok){ setLocalRef({ inviter: String(inviterUid) }); }
+  if (ok) setLocalRef({ inviter: String(inviterUid) });
   return { ok, reason };
 }
 
-export function previewEarnForPrice(priceUZS, opts = { refDouble:false }){
+/* ===================== вычисления на клиенте ===================== */
+
+export function previewEarnForPrice(priceUZS, opts = { refDouble: false }) {
   const rate = CASHBACK_CFG.BASE_RATE * (opts.refDouble ? CASHBACK_CFG.REF_FIRST_MULTIPLIER : 1);
-  const pts = Math.floor(Number(priceUZS||0) * rate);
+  const pts = Math.floor(Number(priceUZS || 0) * rate);
   return Math.max(0, pts);
 }
 
-export function computeMaxRedeem(total){
+export function computeMaxRedeem(total) {
   const bal = getLocalLoyalty();
-  const maxByFrac = Math.floor(Number(total||0) * CASHBACK_CFG.MAX_CART_DISCOUNT_FRAC);
+  const maxByFrac = Math.floor(Number(total || 0) * CASHBACK_CFG.MAX_CART_DISCOUNT_FRAC);
   const capByMax  = CASHBACK_CFG.MAX_REDEEM;
   const hardCap   = Math.min(maxByFrac, capByMax);
-  const allowed   = Math.min(hardCap, Math.floor(bal.available||0));
+  const allowed   = Math.min(hardCap, Math.floor(bal.available || 0));
   if (allowed < CASHBACK_CFG.MIN_REDEEM) return 0;
   return allowed;
+}
+
+/* =========================== публичные методы =========================== */
+
+export async function fetchMyLoyalty() {
+  try {
+    const uid = getUID();
+    const { balance } = await api('getBalance', { uid });
+    setLocalLoyalty(balance || {});
+    return balance || getLocalLoyalty();
+  } catch {
+    return getLocalLoyalty();
+  }
 }
 
 /** ВАЖНО: добавили параметр `total` — чтобы сервер мог валидировать правило 30%/MAX_REDEEM,
  *  если заказ ещё не создан в сторадже.
  */
-export async function reserveRedeem(points, orderId, shortId = null, total = null){
+export async function reserveRedeem(points, orderId, shortId = null, total = null) {
   const uid = getUID();
-  if (!points || points < CASHBACK_CFG.MIN_REDEEM) return { ok:false, reason:'min' };
+  if (!points || points < CASHBACK_CFG.MIN_REDEEM) return { ok: false, reason: 'min' };
+
   const payload = {
     uid,
     pts: Math.floor(points),
@@ -261,52 +285,50 @@ export async function reserveRedeem(points, orderId, shortId = null, total = nul
   if (total != null) payload.total = Number(total) || 0;
 
   const { ok, balance } = await api('reserveRedeem', payload);
-  if (ok){
+  if (ok) {
     setLocalLoyalty(balance || {});
     const res = getLocalReservations();
-    res.push({ orderId:String(orderId), pts:Math.floor(points), ts:Date.now() });
+    res.push({ orderId: String(orderId), pts: Math.floor(points), ts: Date.now() });
     setLocalReservations(res);
   }
   return { ok };
 }
 
-export async function finalizeRedeem(orderId, action /* 'cancel' | 'commit' */){
+export async function finalizeRedeem(orderId, action /* 'cancel' | 'commit' */) {
   const uid = getUID();
-  const { ok, balance } = await api('finalizeRedeem', { uid, orderId:String(orderId), action:String(action) });
-  if (ok){
+  const { ok, balance } = await api('finalizeRedeem', { uid, orderId: String(orderId), action: String(action) });
+  if (ok) {
     setLocalLoyalty(balance || {});
-    const res = getLocalReservations().filter(r => String(r.orderId)!==String(orderId));
+    const res = getLocalReservations().filter(r => String(r.orderId) !== String(orderId));
     setLocalReservations(res);
   }
   return { ok };
 }
 
-export async function finalizeRedeemFor(uid, orderId, action){
-  const { ok, balance } = await api('finalizeRedeem', { uid:String(uid), orderId:String(orderId), action:String(action) });
+// Админские варианты (когда выполняем за другого пользователя)
+export async function finalizeRedeemFor(uid, orderId, action) {
+  const { ok, balance } = await api('finalizeRedeem', { uid: String(uid), orderId: String(orderId), action: String(action) });
+  if (ok) setLocalLoyalty(balance || {});
+  return { ok };
+}
+export async function confirmAccrualFor(uid, orderId) {
+  const { ok, balance } = await api('confirmAccrual', { uid: String(uid), orderId: String(orderId) });
+  if (ok) setLocalLoyalty(balance || {});
+  return { ok };
+}
+export async function loyaltyVoidAccrualFor(uid, orderId) {
+  const { ok, balance } = await api('voidAccrual', { uid: String(uid), orderId: String(orderId) });
   if (ok) setLocalLoyalty(balance || {});
   return { ok };
 }
 
-// РУЧНОЕ подтверждение админом (внутренняя операция)
-export async function confirmAccrualFor(uid, orderId){
-  const { ok, balance } = await api('confirmAccrual', { uid:String(uid), orderId:String(orderId) });
-  if (ok) setLocalLoyalty(balance || {});
-  return { ok };
-}
-
-export async function loyaltyVoidAccrualFor(uid, orderId){
-  const { ok, balance } = await api('voidAccrual', { uid:String(uid), orderId:String(orderId) });
-  if (ok) setLocalLoyalty(balance || {});
-  return { ok };
-}
-
-// NB: accrue — internal-only; будет работать только внутри админ-панели/бэка с прокинутым ADMIN_API_TOKEN
-export async function accrueOnOrderPlaced(order){
+// Внутренняя операция — инициировать pending-начисление при создании заказа (админ/сервер)
+export async function accrueOnOrderPlaced(order) {
   const uid = String(order.userId || getUID());
   const { ok, balance } = await api('accrue', {
     uid,
     orderId: String(order.id),
-    total: Number(order.total||0),
+    total: Number(order.total || 0),
     currency: String(order.currency || 'UZS'),
     shortId: order?.shortId ? String(order.shortId) : null,
   });
@@ -314,21 +336,21 @@ export async function accrueOnOrderPlaced(order){
   return { ok };
 }
 
-// Подтверждение начисления пользователем (если такое предусмотрено)
-export async function confirmAccrual(orderId){
+// Подтверждение начисления пользователем
+export async function confirmAccrual(orderId) {
   const uid = getUID();
-  const { ok, balance } = await api('confirmAccrual', { uid, orderId:String(orderId) });
+  const { ok, balance } = await api('confirmAccrual', { uid, orderId: String(orderId) });
   if (ok) setLocalLoyalty(balance || {});
   return { ok };
 }
 
-export async function fetchMyReferrals(){
+export async function fetchMyReferrals() {
   const uid = getUID();
   const { data } = await api('getReferrals', { uid });
   return data;
 }
 
-export async function adminCalcForOrder(orderId){
-  const { calc } = await api('adminCalc', { orderId:String(orderId) });
+export async function adminCalcForOrder(orderId) {
+  const { calc } = await api('adminCalc', { orderId: String(orderId) });
   return calc;
 }
