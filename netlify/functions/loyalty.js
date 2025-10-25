@@ -119,8 +119,8 @@ function _parseAndCalc(tokenStr, raw, dbgReqId='') {
   const dataCheckString = pairs.join('\n');
 
 // FIX: правильный порядок (key = bot token, data = "WebAppData")
-const secretWebApp = crypto.createHmac('sha256', tokenStr)
-  .update('WebAppData').digest();
+ const secretWebApp = crypto.createHmac('sha256', 'WebAppData')
+   .update(tokenStr).digest();
 const calcWebApp   = crypto.createHmac('sha256', secretWebApp)
   .update(dataCheckString).digest('hex');
 
