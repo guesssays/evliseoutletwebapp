@@ -763,8 +763,15 @@ function readInitDataSource(event, body) {
   if (body && typeof body.initData === 'string' && body.initData) {
     return { raw: body.initData, src: 'body.initData' };
   }
+  // поддерживаем оба имени base64-поля: initDataB64 (старое) и initData64 (как на фронте)
+  let b64 = '';
   if (body && typeof body.initDataB64 === 'string' && body.initDataB64) {
-    try { return { raw: Buffer.from(body.initDataB64, 'base64').toString('utf8'), src: 'body.initDataB64' }; } catch {}
+    b64 = body.initDataB64;
+  } else if (body && typeof body.initData64 === 'string' && body.initData64) {
+    b64 = body.initData64;
+  }
+  if (b64) {
+    try { return { raw: Buffer.from(b64, 'base64').toString('utf8'), src: 'body.initData(b64)' }; } catch {}
   }
   // 2) Fallback — заголовок как есть, максимум склейка переносов
   const h = event.headers || {};
@@ -816,7 +823,10 @@ export async function handler(event){
     if (!internal) {
       const { raw: rawInit, src } = readInitDataSource(event, body);
       if (DEBUG){
+        // компактный лог: видны оба носителя
+        const hdr = (event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '');
         logD(`[req:${reqId}] initData src=${src} len=${String(rawInit||'').length} sha256=${sha256hex(String(rawInit||''))} first100="${String(rawInit||'').slice(0,100)}"`);
+        logD(`[req:${reqId}] initData(header)_len=${String(hdr||'').length}`);
       }
       try {
         const { user } = verifyTgInitData(rawInit, reqId);
