@@ -3,11 +3,13 @@
 # -----------------------------
 
 /*
+  # Безопасные заголовки (допущены Telegram-iframe)
   X-Content-Type-Options: nosniff
-  X-Frame-Options: SAMEORIGIN
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), fullscreen=*
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), fullscreen=*
+  Content-Security-Policy: frame-ancestors 'self' https://t.me https://web.telegram.org https://*.telegram.org;
+
 
 # -----------------------------
 # КЭШИРОВАНИЕ ДЛЯ SPA

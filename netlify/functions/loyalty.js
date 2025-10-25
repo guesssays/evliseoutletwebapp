@@ -507,8 +507,21 @@ function makeCore(readAll, writeAll){
       if (pts < CFG.MIN_REDEEM){ logD('reserve: reject min', { uid, pts, min: CFG.MIN_REDEEM, orderId }); return { ok:false, reason:'min' }; }
 
       const ordExisting = db.orders[orderId];
-      const baseTotal = Number((ordExisting?.total ?? 0) || totalArg || 0);
-      if (baseTotal <= 0){ logD('reserve: reject total<=0', { uid, pts, orderId, totalArg, existingTotal: ordExisting?.total||0 }); return { ok:false, reason:'total' }; }
+
+      // ►► Новый приоритет: если фронт прислал total > 0 — используем его, а не старое значение
+      const providedTotal = Number(totalArg || 0);
+      const existingTotal = Number(ordExisting?.total || 0);
+      const baseTotal = providedTotal > 0 ? providedTotal : existingTotal;
+
+      // Если заказ уже есть и пришёл актуальный total — обновим запись, чтобы не ездить со старым total=0
+      if (ordExisting && providedTotal > 0 && providedTotal !== existingTotal) {
+        ordExisting.total = providedTotal;
+      }
+
+      if (baseTotal <= 0){
+        logD('reserve: reject total<=0', { uid, pts, orderId, totalArg: providedTotal, existingTotal });
+        return { ok:false, reason:'total' };
+      }
 
       const byShare = Math.floor(baseTotal * CFG.MAX_CART_DISCOUNT_FRAC);
       const maxAllowed = Math.min(byShare, CFG.MAX_REDEEM);

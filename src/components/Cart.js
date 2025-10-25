@@ -614,23 +614,32 @@ function remove(productId,size,color){
  * ВАЖНО: теперь каждая клиентская операция к бэку лояльности 
  * сопровождается подписью Mini App — заголовок X-Tg-Init-Data.
  */
+// вместо твоего callLoyalty
 async function callLoyalty(op, data){
   const tgInit = (() => {
     try { return window?.Telegram?.WebApp?.initData || ''; } catch { return ''; }
   })();
-  const r = await fetch('/.netlify/functions/loyalty', {
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      // ✅ подпись Telegram для валидации на бэке
+
+  const resp = await fetch('/.netlify/functions/loyalty', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
       'X-Tg-Init-Data': tgInit
     },
     body: JSON.stringify({ op, ...data })
   });
-  const j = await r.json().catch(()=> ({}));
-  if (!r.ok || j?.ok === false) throw new Error(j?.error || j?.reason || 'loyalty error');
-  return j;
+
+  // всегда пытаемся прочитать json
+  let j = {};
+  try { j = await resp.json(); } catch {}
+
+  // сетевые/HTTP сбои — это действительно ошибка
+  if (!resp.ok) throw new Error(j?.error || 'loyalty http error');
+
+  // возвращаем ответ как есть (даже если ok:false → разберём выше по стеку)
+  return (typeof j === 'object' && j) ? j : { ok:false, error:'bad response' };
 }
+
 
 /* ======================
    Новый сценарий чекаута
@@ -967,26 +976,51 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
         setSubmitDisabled(false); __orderSubmitBusy = false; return;
       }
 
-      // Сумма к списанию, orderId уже зафиксирован на попытку
-      const toSpend = Number(bill?.redeem||0) | 0;
-      let reserved = false;
+     // Сумма к списанию, orderId уже зафиксирован на попытку
+const toSpend = Number(bill?.redeem || 0) | 0;
+let reserved = false;
 
-      try{
-        if (toSpend > 0){
-          // РЕЗЕРВИРУЕМ списание на сервере лояльности (идемпотентный orderId)
-          await callLoyalty('reserveRedeem', {
-            uid: getUID(),
-            pts: toSpend,
-            orderId,
-            total: totalRaw,
-            shortId: publicId        // ← пробрасываем короткий ID (для логов/уведомлений)
-          });
-          reserved = true;
-        }
-      }catch(e){
-        toast('Не удалось зарезервировать списание баллов');
-        setSubmitDisabled(false); __orderSubmitBusy = false; return;
-      }
+// --- РЕЗЕРВ СПИСАНИЯ БАЛЛОВ (loyalty.reserveRedeem) ---
+// На всякий случай подтягиваем свежие лимиты/баланс перед резервом (устраняет гонку)
+try { await fetchMyLoyalty(); } catch { /* молча: если не удалось — попробуем резерв всё равно */ }
+
+try {
+  if (toSpend > 0) {
+    const r2 = await callLoyalty('reserveRedeem', {
+      uid: getUID(),
+      pts: toSpend,
+      orderId,
+      total: totalRaw,
+      shortId: publicId
+    });
+
+    // Если сервер ответил ok:false — показываем понятную причину и выходим
+    if (!r2?.ok) {
+      const reason = r2?.reason || r2?.error || '';
+      const msg =
+        reason === 'min'     ? `Минимум для списания: ${MIN_REDEEM_POINTS.toLocaleString('ru-RU')} баллов` :
+        reason === 'rule'    ? 'Превышает лимит: не более 30% от суммы и максимум 150 000' :
+        reason === 'balance' ? 'Недостаточно баллов' :
+        reason === 'total'   ? 'Некорректная сумма заказа для списания' :
+                                'Не удалось зарезервировать списание баллов';
+
+      toast(msg);
+      setSubmitDisabled(false);
+      __orderSubmitBusy = false;
+      return; // прерываем оформление
+    }
+
+    reserved = true; // резерв прошёл
+  }
+} catch (e) {
+  toast('Не удалось связаться с сервером лояльности');
+  setSubmitDisabled(false);
+  __orderSubmitBusy = false;
+  return;
+}
+// --- КОНЕЦ БЛОКА РЕЗЕРВА ---
+
+
 
       // Создание заказа (используем наш orderId) — повторный сабмит перезапишет тот же заказ
       let createdId = null;
