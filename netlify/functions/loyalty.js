@@ -151,20 +151,20 @@ function _parseAndCalc(tokenStr, raw, dbgReqId='') {
   return { ok, hash, ...A, calcWebAppRaw: B.calcWebApp, calcLoginRaw: B.calcLogin, dcsDecoded, dcsRaw };
 }
 
-// ===== Список токенов (основной + ALT, жёсткая нормализация и лог хвостов) =====
+// ===== Список токенов (теперь — только основной TG_BOT_TOKEN) =====
 function getBotTokens(){
-  const primary = String(process.env.TG_BOT_TOKEN||'').replace(/\s+/g,'').trim();
-  const extra = String(process.env.ALT_TG_BOT_TOKENS||'')
-    .split(/[,;\n]/)
-    .map(s => s.replace(/\s+/g,'').trim())
-    .filter(Boolean);
-  const set = new Set([primary, ...extra]);
-  const all = [...set].filter(Boolean);
+  const primary = String(process.env.TG_BOT_TOKEN || '')
+    .replace(/\s+/g, '')
+    .trim();
+
+  const all = [primary].filter(Boolean); // всегда ровно один
+
   if (DEBUG){
     logD('tokens count=', all.length, 'tails=', all.map(t=>tail(t)).join(','));
   }
   return all;
 }
+
 
 function verifyTgInitData(rawInitData, reqId='') {
   const tokens = getBotTokens();
@@ -802,6 +802,15 @@ export async function handler(event){
       ua: (h['user-agent']||'').slice(0,64),
     });
   }
+// Кто нас вызывает (для диагностики)
+const clientBot = (getHeaderCaseInsensitive(event, 'X-Bot-Username') || '')
+  .toString()
+  .replace(/^@/, '');
+
+if (DEBUG) {
+  const expectTail = (process.env.TG_BOT_TOKEN || '').slice(-6);
+  logD(`[req:${reqId}] clientBot=${clientBot || '-'} expect TG tail=${expectTail}`);
+}
 
   if (event.httpMethod === 'OPTIONS'){
     return { statusCode:204, headers:cors };
