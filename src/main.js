@@ -39,6 +39,9 @@ import {
   tryBindPendingInviter,
 } from './core/loyalty.js';
 
+// ДОБАВЛЕНО: метаданные последнего вызова loyalty api для баннера
+import { getLastInitMeta } from './core/loyalty.js';
+
 // Экран-мостик для браузера
 import { renderRefBridge } from './views/RefBridge.js';
 
@@ -277,6 +280,52 @@ initTelegramChrome();
 try {
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 } catch {}
+
+/* === ДОБАВЛЕНО: мобильный отладочный баннер (виден внизу экрана) === */
+(function attachDebugBanner(){
+  try {
+    // Создаём баннер
+    const bar = document.createElement('div');
+    bar.id = 'dbgBar';
+    bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#111;color:#0f0;font:12px/1.35 monospace;padding:6px 8px;opacity:.92;letter-spacing:.2px';
+    bar.innerHTML = 'init:- | bot:- | hdr:- | err:idle';
+
+    const mount = () => {
+      if (!document.getElementById('dbgBar')) {
+        document.body.appendChild(bar);
+      }
+      render('idle');
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', mount, { once:true });
+    } else {
+      mount();
+    }
+
+    function render(status){
+      const meta = getLastInitMeta?.() || {};
+      const txt = [
+        `init:${meta.sentRawLen||0}`,
+        `bot:${meta.botUname||'-'}`,
+        `hdr:${meta.usedHeader?'Y':'N'}`,
+        status ? `err:${status}` : null
+      ].filter(Boolean).join(' | ');
+      const el = document.getElementById('dbgBar');
+      if (el) el.textContent = txt;
+    }
+
+    // События из мест вызова списания (рекомендуется кидать их при успехе/ошибке)
+    window.addEventListener('loyalty:error', (e)=> render(e?.detail || 'error'));
+    window.addEventListener('loyalty:ok',    ()=> render('ok'));
+
+    // Обновляем баннер периодически, чтобы подхватывать мету после запросов
+    setInterval(()=>render('idle'), 2000);
+
+    // Навигация — для наглядности
+    window.addEventListener('hashchange', ()=> render('nav'));
+    document.addEventListener('visibilitychange', ()=> { if (!document.hidden) render('idle'); });
+  } catch {}
+})();
 
 /* ---------- ADMIN MODE ---------- */
 function setAdminMode(on){
