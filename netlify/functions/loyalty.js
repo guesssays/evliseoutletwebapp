@@ -346,7 +346,6 @@ function mergeReferrals(oldR={}, newR={}){
   return out;
 }
 function mergeReservations(oldArr = [], newArr = []) {
-  const now = Date.now();
   // Берём максимум по времени для каждого ключа uid|orderId
   const map = new Map();
   for (const r of [...(oldArr || []), ...(newArr || [])]) {
@@ -357,31 +356,43 @@ function mergeReservations(oldArr = [], newArr = []) {
       map.set(key, r);
     }
   }
-  // Храним только активные (не истёкшие) резервы
-  return Array.from(map.values()).filter(
-    r => (now - (r.ts || 0)) <= CFG.RESERVE_TTL_MS
-  );
+  // ⚠️ Не фильтруем по TTL здесь!
+  return Array.from(map.values());
 }
 
+
 function deepMergeDb(oldDb, newDb){
-  const oldSafe = clone(oldDb||{ users:{}, referrals:{}, reservations:[], orders:{} });
-  const newSafe = clone(newDb||{ users:{}, referrals:{}, reservations:[], orders:{} });
+  const oldSafe = clone(oldDb||{ meta:{expiredResProcessed:{}}, users:{}, referrals:{}, reservations:[], orders:{} });
+  const newSafe = clone(newDb||{ meta:{expiredResProcessed:{}}, users:{}, referrals:{}, reservations:[], orders:{} });
+
+  // 👇 добавь это
+  const mergedMeta = {
+    expiredResProcessed: {
+      ...(oldSafe.meta?.expiredResProcessed || {}),
+      ...(newSafe.meta?.expiredResProcessed || {}),
+    }
+  };
+
   return {
-    users:        mergeUsers(oldSafe.users, newSafe.users),
-    referrals:    mergeReferrals(oldSafe.referrals, newSafe.referrals),
+    meta:        mergedMeta,                          // 👈 и верни meta
+    users:       mergeUsers(oldSafe.users, newSafe.users),
+    referrals:   mergeReferrals(oldSafe.referrals, newSafe.referrals),
     reservations: mergeReservations(oldSafe.reservations, newSafe.reservations),
-    orders:       { ...(oldSafe.orders||{}), ...(newSafe.orders||{}) },
+    orders:      { ...(oldSafe.orders||{}), ...(newSafe.orders||{}) },
   };
 }
+
 
 function makeBlobsStore(store){
   const KEY = 'loyalty_all';
   async function readAll(){
     try{
       const data = await store.get(KEY, { type:'json', consistency:'strong' });
-      return data && typeof data==='object' ? data : { users:{}, referrals:{}, reservations:[], orders:{} };
+return data && typeof data==='object'
+  ? { meta:{ expiredResProcessed:{} }, users:{}, referrals:{}, reservations:[], orders:{}, ...data }
+  : { meta:{ expiredResProcessed:{} }, users:{}, referrals:{}, reservations:[], orders:{} };
     }catch{
-      return { users:{}, referrals:{}, reservations:[], orders:{} };
+      return { meta:{ expiredResProcessed:{} }, users:{}, referrals:{}, reservations:[], orders:{} };
     }
   }
   async function writeAll(obj){
@@ -402,7 +413,7 @@ function makeBlobsStore(store){
   core.__kind='blobs';
   return core;
 }
-const __mem = { users:{}, referrals:{}, reservations:[], orders:{} };
+const __mem = { meta:{ expiredResProcessed:{} }, users:{}, referrals:{}, reservations:[], orders:{} };
 function makeMemoryStore(){
   async function readAll(){ return JSON.parse(JSON.stringify(__mem)); }
   async function writeAll(obj){
@@ -434,19 +445,44 @@ function makeCore(readAll, writeAll){
     db.referrals.inviteesFirst[invitee] = true;
   }
 
-  function cleanupExpiredReservations(db){
-    const now = Date.now();
-    const keep = [];
-    for (const r of (db.reservations||[])) {
-      if ((now - (r.ts||0)) <= CFG.RESERVE_TTL_MS) { keep.push(r); continue; }
-      const u = safeUser(db, r.uid);
-      u.available += Math.abs(r.pts|0);
-      addHist(u, { kind:'reserve_expire', orderId:r.orderId, pts:+Math.abs(r.pts|0), info:`Снятие резерва по TTL (${Math.floor(CFG.RESERVE_TTL_MS/60000)}м)` });
-      const o = db.orders[r.orderId];
-      if (o) o.used = Math.max(0, (o.used|0) - Math.abs(r.pts|0));
+function cleanupExpiredReservations(db){
+  if (!db.meta) db.meta = { expiredResProcessed:{} };
+  if (!db.meta.expiredResProcessed) db.meta.expiredResProcessed = {};
+
+  const now = Date.now();
+  const keep = [];
+
+  for (const r of (db.reservations||[])) {
+    const expired = (now - (r.ts||0)) > CFG.RESERVE_TTL_MS;
+    if (!expired) { keep.push(r); continue; }
+
+    const key = `${r.uid}|${r.orderId}|${r.ts||0}`;
+    if (db.meta.expiredResProcessed[key]) {
+      // уже обрабатывали этот конкретный резерв — пропускаем
+      continue;
     }
-    db.reservations = keep;
+
+    // первый раз: возвращаем баллы и помечаем
+    const give = Math.abs(r.pts|0);
+    if (give > 0) {
+      const u = safeUser(db, r.uid);
+      u.available += give;
+      addHist(u, {
+        kind:'reserve_expire',
+        orderId:r.orderId,
+        pts:+give,
+        info:`Снятие резерва по TTL (${Math.floor(CFG.RESERVE_TTL_MS/60000)}м)`
+      });
+      const o = db.orders[r.orderId];
+      if (o) o.used = Math.max(0, (o.used|0) - give);
+    }
+
+    db.meta.expiredResProcessed[key] = true;
   }
+
+  db.reservations = keep;
+}
+
 
   async function readDb(){
     const db = await readAll();
