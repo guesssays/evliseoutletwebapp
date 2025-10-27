@@ -10,6 +10,7 @@
 //   ALLOW_MEMORY_FALLBACK=0/1  (в проде — 0)
 //   NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN  (рекомендуется явно)
 //   DEBUG_LOYALTY=1            (включить подробные логи)
+//   EMERGENCY_ALLOW_WEAK_INIT=1 (временный аварийный пропуск initData ТОЛЬКО для списания)
 
 import crypto from 'node:crypto';
 
@@ -164,7 +165,6 @@ function getBotTokens(){
   }
   return all;
 }
-
 
 function verifyTgInitData(rawInitData, reqId='') {
   const tokens = getBotTokens();
@@ -753,6 +753,72 @@ function makeCore(readAll, writeAll){
   };
 }
 
+/* ================== АВАРИЙНЫЕ ХЕЛПЕРЫ ДЛЯ WEAK INIT ================== */
+const EMERGENCY_ALLOW_WEAK_INIT = String(process.env.EMERGENCY_ALLOW_WEAK_INIT||'').trim()==='1';
+
+// простая проверка, что запрос реально пришёл из Telegram WebApp
+function isFromTelegramHeaders(headers) {
+  const h = headers || {};
+  const origin  = (h.origin || h.Origin || '').toLowerCase();
+  const referer = (h.referer || h.Referer || '').toLowerCase();
+  const okOrigin =
+    origin.startsWith('https://t.me') ||
+    origin.startsWith('https://web.telegram.org') ||
+    origin.startsWith('https://telegram.org');
+  const okReferer =
+    referer.startsWith('https://t.me') ||
+    referer.startsWith('https://web.telegram.org') ||
+    referer.startsWith('https://telegram.org');
+  return okOrigin || okReferer;
+}
+
+// извлекаем user.id из сырого initData без проверки подписи
+function parseUidFromInitDataRaw(rawInit) {
+  try {
+    if (!rawInit) return null;
+    const params = new URLSearchParams(String(rawInit));
+    let userStr = params.get('user');
+    if (!userStr) return null;
+    try { userStr = decodeURIComponent(userStr); } catch {}
+    const user = JSON.parse(userStr);
+    const id = Number(user?.id);
+    return Number.isFinite(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+// примитивный in-memory rate limit на холодном старте лямбды
+const __weakRate = new Map(); // key -> ts
+function weakRateLimit(uid, op) {
+  // окно 5 секунд
+  const BUCKET_SECONDS = 5;
+  const slot = Math.floor(Date.now()/1000/BUCKET_SECONDS);
+  const key = `${op}:${uid}:${slot}`;
+  if (__weakRate.has(key)) return false;
+  __weakRate.set(key, Date.now());
+  return true;
+}
+
+function canProceedWeakInit({ op, headers, rawInit, bodyUid }) {
+  if (!EMERGENCY_ALLOW_WEAK_INIT) return false;
+  const allowed = op === 'reserveredeem' || op === 'finalizeredeem';
+  if (!allowed) return false;
+
+  const rawStr = String(rawInit||'');
+  if (!rawStr || rawStr.length < 80 || !rawStr.includes('hash=')) return false;
+
+  if (!isFromTelegramHeaders(headers)) return false;
+
+  const uidFromInit = parseUidFromInitDataRaw(rawStr);
+  const bodyId = Number(bodyUid);
+  if (!Number.isFinite(bodyId) || !Number.isFinite(uidFromInit) || bodyId !== uidFromInit) return false;
+
+  if (!weakRateLimit(bodyId, op)) return false;
+
+  return true;
+}
+
 /* ================== ЧТЕНИЕ initData: приоритет body, затем header ================== */
 function getHeaderCaseInsensitive(event, name){
   const h = event.headers || {};
@@ -800,17 +866,18 @@ export async function handler(event){
       internal,
       tg_init_len: hdrLen,
       ua: (h['user-agent']||'').slice(0,64),
+      EMERGENCY_ALLOW_WEAK_INIT
     });
   }
-// Кто нас вызывает (для диагностики)
-const clientBot = (getHeaderCaseInsensitive(event, 'X-Bot-Username') || '')
-  .toString()
-  .replace(/^@/, '');
+  // Кто нас вызывает (для диагностики)
+  const clientBot = (getHeaderCaseInsensitive(event, 'X-Bot-Username') || '')
+    .toString()
+    .replace(/^@/, '');
 
-if (DEBUG) {
-  const expectTail = (process.env.TG_BOT_TOKEN || '').slice(-6);
-  logD(`[req:${reqId}] clientBot=${clientBot || '-'} expect TG tail=${expectTail}`);
-}
+  if (DEBUG) {
+    const expectTail = (process.env.TG_BOT_TOKEN || '').slice(-6);
+    logD(`[req:${reqId}] clientBot=${clientBot || '-'} expect TG tail=${expectTail}`);
+  }
 
   if (event.httpMethod === 'OPTIONS'){
     return { statusCode:204, headers:cors };
@@ -826,6 +893,9 @@ if (DEBUG) {
 
     // === читаем initData с приоритетом тела, логируем источник
     let userUid = null;
+    let verified = false;
+    let weakInit = false;
+
     if (!internal) {
       const { raw: rawInit, src } = readInitDataSource(event, body);
       if (DEBUG){
@@ -839,15 +909,30 @@ if (DEBUG) {
       try {
         const { user } = verifyTgInitData(rawInit, reqId);
         userUid = String(user.id);
+        verified = true;
         if (DEBUG) logD(`[req:${reqId}] tg ok, uid=${userUid}`);
       } catch (e) {
         if (DEBUG) logD(`[req:${reqId}] tg verify failed (src=${src}):`, String(e?.message||e));
+        // readonly-поблажка как раньше
         if (op === 'getbalance' || op === 'getreferrals') {
           userUid = String(body.uid || '').trim();
           if (!userUid) throw e;
           if (DEBUG) logD(`[req:${reqId}] readonly op without tg:`, op, 'uid=', userUid);
         } else {
-          throw e;
+          // аварийный режим: только для резерв/финализация, если соблюдены предохранители
+          const allowWeak = canProceedWeakInit({
+            op,
+            headers: event.headers || {},
+            rawInit,
+            bodyUid: body.uid
+          });
+          if (!allowWeak) {
+            throw e;
+          }
+          userUid = String(body.uid || '').trim();
+          weakInit = true;
+          verified = false;
+          logD(`[req:${reqId}] WEAK_INIT: proceeding for op=${op}, uid=${userUid}`);
         }
       }
     }
@@ -880,19 +965,19 @@ if (DEBUG) {
     if (op === 'reserveredeem'){
       const uid = uidFor(body.uid);
       const { pts=0, orderId, total=0, shortId=null } = body;
-      if (DEBUG) logD(`[req:${reqId}] reserveRedeem in`, { uid, pts, orderId, total, shortId });
+      if (DEBUG) logD(`[req:${reqId}] reserveRedeem in`, { uid, pts, orderId, total, shortId, weakInit });
       const r = await store.reserve(String(uid), Number(pts||0), String(orderId), Number(total||0), shortId ? String(shortId) : null);
       if (DEBUG) logD(`[req:${reqId}] reserveRedeem out`, r);
-      return { statusCode:200, headers:cors, body: JSON.stringify(r) };
+      return { statusCode:200, headers:cors, body: JSON.stringify({ ...r, weakInit }) };
     }
 
     if (op === 'finalizeredeem'){
       const uid = uidFor(body.uid);
       const { orderId, action } = body;
-      if (DEBUG) logD(`[req:${reqId}] finalizeRedeem in`, { uid, orderId, action });
+      if (DEBUG) logD(`[req:${reqId}] finalizeRedeem in`, { uid, orderId, action, weakInit });
       const r = await store.finalize(String(uid), String(orderId), String(action));
       if (DEBUG) logD(`[req:${reqId}] finalizeRedeem out`, r);
-      return { statusCode:200, headers:cors, body: JSON.stringify(r) };
+      return { statusCode:200, headers:cors, body: JSON.stringify({ ...r, weakInit }) };
     }
 
     if (op === 'confirmaccrual'){
