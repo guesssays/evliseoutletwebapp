@@ -3,19 +3,17 @@
 # -----------------------------
 
 /*
-  # Безопасные заголовки (допущены Telegram-iframe)
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), fullscreen=*
-  Content-Security-Policy: frame-ancestors 'self' https://t.me https://web.telegram.org https://*.telegram.org;
-
+  Content-Security-Policy: frame-ancestors 'self' https://t.me https://web.telegram.org https://*.telegram.org
 
 # -----------------------------
 # КЭШИРОВАНИЕ ДЛЯ SPA
 # -----------------------------
 
-# HTML — не кэшируем, чтобы SPA всегда подтягивала свежую версию
+# HTML — не кэшируем, чтобы SPA всегда тянула свежую версию
 /
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
@@ -29,16 +27,20 @@
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
 
-# Статические ассеты (css/js/fonts/images) — агрессивное кэширование.
-# В продакшене обычно у вас хеши в именах файлов, поэтому можно ставить «immutable».
+# ВАЖНО: исходники приложения в /src/* — без кэша (чтобы правки JS подтягивались сразу)
+/src/*
+  Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 
+# Статические ассеты (css/js/fonts/images) — агрессивное кэширование (считаем, что имена с хэшами)
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
 /*.css
   Cache-Control: public, max-age=31536000, immutable
 
-/*.js
+# Только JS из ассетов кэшируем «на год» — исходники в /src/* уже отключили выше
+/assets/*.js
   Cache-Control: public, max-age=31536000, immutable
 
 /fonts/*
@@ -47,7 +49,7 @@
 /images/*
   Cache-Control: public, max-age=31536000, immutable
 
-# Данные каталога (если не хешированы). Можно ослабить до часа-двух.
+# Данные каталога (если не хешированы) — кэш на 5 минут
 /data/*
   Cache-Control: public, max-age=300
 
@@ -58,20 +60,16 @@
 /assets/favicon.png
   Cache-Control: public, max-age=604800
 
-/assets/images/* 
+/assets/images/*
   Cache-Control: public, max-age=31536000, immutable
 
 # -----------------------------
 # ФОЛЛБЭКИ/РОУТИНГ ДЛЯ SPA (если нужен)
 # -----------------------------
-# Если у вас включён file-based SPA routing через перезапись, этот блок не обязателен.
-# Он нужен только если вы делаете редиректы через _redirects. В _headers сам роутинг не настраивается.
-#
-# Пример для справки (в _redirects):
+# Сам роутинг делается в _redirects (пример):
 # /*   /index.html   200
-#
+
 # -----------------------------
-# ФУНКЦИИ (настраиваются в коде)
+# ФУНКЦИИ
 # -----------------------------
-# Для /.netlify/functions/* лучше выставлять CORS/Cache-Control из самих функций.
-# Здесь ничего не задаём, чтобы не конфликтовать с заголовками функций.
+# Для /.netlify/functions/* — заголовки (CORS/Cache-Control) выставляйте в самих функциях.
