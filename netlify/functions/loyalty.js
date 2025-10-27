@@ -102,7 +102,7 @@ function buildCorsHeaders(origin, isInternal=false){
   return {
     'Access-Control-Allow-Origin': allow ? (origin || '*') : 'null',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Telegram-Web-App-Init-Data, X-Internal-Auth',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Telegram-Web-App-Init-Data, X-Internal-Auth, X-Bot-Username',
     'Content-Type': 'application/json; charset=utf-8',
     'Vary': 'Origin',
   };
