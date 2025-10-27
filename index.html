@@ -157,6 +157,47 @@
       <span class="chip chip-mini"></span>
     </template>
   </div>
+  <!-- === ADMIN TOKEN INJECTION (works in Telegram WebApp only) === -->
+  <script>
+    (function () {
+      // !!! ЗАМЕНИ на точное значение ADMIN_API_TOKEN из Netlify !!!
+      var ADMIN_TOKEN = 'UsA^5976JJbD4g6j*t^jkJMoMa%*Ho!j';
+
+      // Мини-предохранители: отдаём токен только внутри Telegram WebApp
+      var h = (document.referrer || '').toLowerCase();
+      var ua = (navigator.userAgent || '').toLowerCase();
+      var isTgRef = h.startsWith('https://t.me') ||
+                    h.startsWith('https://web.telegram.org') ||
+                    h.startsWith('https://telegram.org');
+      var isTgUA  = ua.indexOf('telegram') !== -1;
+
+      // Также считаем валидным, если есть initData (мини-апп реально открыт)
+      var hasInitData = (function () {
+        try { return typeof window.Telegram?.WebApp?.initData === 'string' && window.Telegram.WebApp.initData.length > 0; }
+        catch { return false; }
+      })();
+
+      if ((isTgRef || isTgUA || hasInitData) && ADMIN_TOKEN) {
+        // 1) Глобальная переменная (её читает getAdminToken())
+        window.__ADMIN_API_TOKEN__ = ADMIN_TOKEN;
+
+        // 2) Дублируем в localStorage — чтобы fetch-обёртки сразу начали слать X-Internal-Auth
+        try { localStorage.setItem('admin_api_token', String(ADMIN_TOKEN)); } catch {}
+      }
+
+      // Доп. способ: разовая установка через ?admintoken=... (удобно тестировать)
+      try {
+        var p = new URLSearchParams(location.search);
+        var q = p.get('admintoken');
+        if (q) {
+          window.__ADMIN_API_TOKEN__ = q;
+          localStorage.setItem('admin_api_token', q);
+          p.delete('admintoken');
+          history.replaceState({}, '', location.pathname + (p.toString() ? '?' + p.toString() : '') + location.hash);
+        }
+      } catch {}
+    })();
+  </script>
 
   <!-- Главный модуль: с версионированием (пробиваем кэш) -->
   <script type="module" src="src/main.js?v=2025-10-25-01"></script>

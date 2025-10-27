@@ -2,18 +2,12 @@
 import { canAccessAdmin, isAdminByTelegram, unlockAdminWithPasscode, logoutAdmin } from '../core/auth.js';
 import { setAdminToken, getAdminToken } from '../core/orders.js';
 
-// ❗ Встроенный админ-токен API (по вашей задаче)
-const DEFAULT_ADMIN_API_TOKEN = 'UsA^5976JJbD4g6j*t^jkJMoMa%*Ho!j';
+
 
 export function renderAdminLogin(){
   const v = document.getElementById('view');
 
-  // Если токен ещё не задан — проставим дефолтный
-  try {
-    if (!getAdminToken()) {
-      setAdminToken(DEFAULT_ADMIN_API_TOKEN);
-    }
-  } catch {}
+
 
   const tgOk = isAdminByTelegram();
   const hint = tgOk
