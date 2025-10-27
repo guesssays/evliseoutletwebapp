@@ -15,7 +15,7 @@ function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
   });
 }
 
-// Берём сырой initData из Telegram Mini App, чтобы сервер смог верифицировать владельца.
+// Сырой initData из Telegram Mini App (для серверной верификации)
 function getTgInitDataRaw(){
   try {
     return typeof window?.Telegram?.WebApp?.initData === 'string'
@@ -30,59 +30,62 @@ function getTgInitDataRaw(){
 function unreadCount(list){ return (list||[]).reduce((a,n)=> a + (!n.read ? 1 : 0), 0); }
 function updateUnreadBadge(n){
   const v = Math.max(0, n|0);
-  // общий локальный счётчик (если где-то читается напрямую)
   localStorage.setItem(k('notifs_unread'), String(v));
-  // событие для шапки/иконок (перехватывается в main.js → updateNotifBadge)
   try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: v })); } catch {}
 }
 
+/* ===== основной рендер ===== */
 export async function renderNotifications(onAfterMarkRead){
   const v = document.getElementById('view');
   if (!v) return;
 
-  // 1) грузим с сервера (fall back на локальное)
+  // 1) получаем список (сервер → локаль)
   let list = await fetchServerListSafe().catch(()=>null);
   if (!Array.isArray(list)) list = getList();
 
-  // сортировка на всякий случай
   list = list.slice().sort((a,b)=> (b.ts||0) - (a.ts||0));
 
+  // первичный рендер
   if (!list.length){
     v.innerHTML = `
       <div class="section-title">Уведомления</div>
       <div class="notes-empty">Пока нет уведомлений. Мы сообщим, когда появятся новости или акции.</div>
     `;
-  }else{
+  } else {
     v.innerHTML = `
       <div class="section-title">Уведомления</div>
-      <section class="notes">
+      <section class="notes" id="notesList">
         ${list.map(n=> noteTpl(n)).join('')}
       </section>
     `;
   }
 
-  // 2) отмечаем прочитанными: сперва сервер, затем локальный кэш
+  // 2) помечаем прочитанными: сначала сервер, затем локальный кэш и DOM
   const serverItems = await markAllServerSafe().catch(()=>null);
-  if (Array.isArray(serverItems)) {
-    // сервер – источник истины, даже если вернул []
-    const norm = serverItems.map(n => normalize(n));
-    setList(norm.sort((a,b)=> (b.ts||0)-(a.ts||0)));
-  } else {
-    // оффлайн-фолбэк
-    const updated = list.map(n => ({ ...n, read: true }));
-    setList(updated);
-  }
-  updateUnreadBadge(0);
-  onAfterMarkRead && onAfterMarkRead();
 
-  // иконки
+  if (Array.isArray(serverItems)) {
+    // сервер — источник истины
+    const norm = serverItems.map(n => normalize({ ...n, read: true }));
+    const sorted = norm.sort((a,b)=> (b.ts||0)-(a.ts||0));
+    setList(sorted);
+    applyDomReadState(sorted);         // ← МГНОВЕННО ПОМЕНЯТЬ КЛАССЫ В DOM
+    updateUnreadBadge(unreadCount(sorted));
+  } else {
+    // оффлайн-фолбэк: локально всё отметить
+    const updated = list.map(n => normalize({ ...n, read: true }));
+    setList(updated);
+    applyDomReadState(updated);        // ← ТАК ЖЕ МЕНЯЕМ DOM
+    updateUnreadBadge(0);
+  }
+
+  onAfterMarkRead && onAfterMarkRead();
   window.lucide?.createIcons && lucide.createIcons();
 }
 
+/* ===== шаблон карточки ===== */
 function noteTpl(n){
   const icon = n.icon || 'bell';
   const d = new Date(n.ts || Date.now());
-  // Показ локального времени пользователя; fallback на HH:MM
   const time = d.toLocaleTimeString?.([], { hour:'2-digit', minute:'2-digit' }) ||
                `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   return `
@@ -97,6 +100,7 @@ function noteTpl(n){
   `;
 }
 
+/* ===== нормализация ===== */
 function normalize(n){
   return {
     id: String(n.id || Date.now()),
@@ -119,10 +123,11 @@ async function fetchServerListSafe(){
     }));
     const j = await r.json().catch(()=> ({}));
     if (!r.ok || j?.ok === false) return null;
-    const items = Array.isArray(j.items) ? j.items : [];
-    const norm = items.map(normalize);
-    setList(norm);
 
+    const items = Array.isArray(j.items) ? j.items : [];
+    const norm = items.map(normalize).sort((a,b)=> (b.ts||0)-(a.ts||0));
+    setList(norm);
+    // не трогаем read здесь — пометим централизованно в renderNotifications
     return norm;
   }catch{
     return null;
@@ -141,9 +146,11 @@ async function markAllServerSafe(){
       'Content-Type':'application/json',
       ...(hasInit ? { 'X-Tg-Init-Data': initData } : {}),
     };
+
+    // Пытаемся по «приватному» пути (initData), затем — по публичному с uid
     const attempts = hasInit
-      ? [ { op:'markmine' }, { op:'markseen' } ]   // ← без uid при initData
-      : [ { op:'markAll', uid } ];                 // ← uid только в публичном пути
+      ? [ { op:'markmine' }, { op:'markseen' } ]   // без uid, сервер возьмёт его из initData
+      : [ { op:'markAll', uid } ];                 // публичный путь требует uid
 
     for (const body of attempts){
       const r = await withTimeout(fetch(ENDPOINT, {
@@ -153,13 +160,26 @@ async function markAllServerSafe(){
       }));
       const j = await r.json().catch(()=> ({}));
       if (r.ok && j?.ok !== false){
-        return Array.isArray(j.items) ? j.items : null;
+        // если сервер вернул актуальные items — используем их; если нет — просто вернём []
+        return Array.isArray(j.items) ? j.items : [];
       }
     }
     return null;
   }catch{
     return null;
   }
+}
+
+/* ===== моментальное обновление DOM после read ===== */
+function applyDomReadState(list){
+  try{
+    const idsRead = new Set((list||[]).filter(n => n.read).map(n => String(n.id)));
+    const root = document.getElementById('notesList') || document;
+    root.querySelectorAll('.note').forEach(el => {
+      const id = el.getAttribute('data-id') || '';
+      if (idsRead.has(id)) el.classList.add('is-read');
+    });
+  }catch{}
 }
 
 /* ===== helpers ===== */
