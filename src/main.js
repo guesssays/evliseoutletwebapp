@@ -149,18 +149,30 @@ async function notifApiMarkAll(uid){
   const headers = { 'Content-Type':'application/json' };
   if (hasInit) headers['X-Tg-Init-Data'] = initData;
 
-  const body = hasInit
-    ? { op:'markmine', uid:String(uid) }
-    : { op:'markAll', uid:String(uid) };
+  // пробуем по очереди: markmine → markseen → markAll
+  const attempts = hasInit
+    ? [
+        { op:'markmine', uid:String(uid) },
+        { op:'markseen', uid:String(uid) },
+      ]
+    : [
+        { op:'markAll', uid:String(uid) },
+      ];
 
-  const res = await fetch(NOTIF_API, {
-    method:'POST',
-    headers,
-    body: JSON.stringify(body)
-  });
-  const data = await res.json().catch(()=>({}));
-  if (!res.ok || data?.ok === false) throw new Error('notif mark error');
-  return Array.isArray(data.items) ? data.items : null;
+  for (const body of attempts){
+    const res = await fetch(NOTIF_API, {
+      method:'POST',
+      headers,
+      body: JSON.stringify(body)
+    });
+    let data = {};
+    try { data = await res.json(); } catch {}
+    if (res.ok && data?.ok !== false){
+      return Array.isArray(data.items) ? data.items : null;
+    }
+  }
+
+throw new Error('notif mark error');
 }
 
 function mergeNotifsToLocal(serverItems){
@@ -676,7 +688,7 @@ async function router(){
   if (match('account/referrals'))  return renderReferrals();
 
   if (match('notifications')){
-    await syncMyNotifications();
+   
     renderNotifications(updateNotifBadge);
 
     const uid = getUID();
@@ -688,9 +700,12 @@ async function router(){
         const loc = getNotifications().map(n => ({ ...n, read: true }));
         setNotifications(loc);
       }
-    } catch {}
-    // Принудительно обнуляем бейдж после захода на экран уведомлений
-    updateNotifBadge(0);
+    // сразу же подтягиваем с сервера уже помеченный список
+   await syncMyNotifications();
+    updateNotifBadge(); // без аргумента — посчитает из локального стейта
+  } catch {
+    updateNotifBadge(); // на всякий случай, но здесь локалка уже «прочитана»
+  }
     return;
   }
 

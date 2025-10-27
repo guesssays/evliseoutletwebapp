@@ -138,18 +138,26 @@ async function markAllServerSafe(){
   const hasInit = !!(initData && initData.length);
 
   try{
-    const r = await withTimeout(fetch(ENDPOINT, {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        ...(hasInit ? { 'X-Tg-Init-Data': initData } : {}),
-      },
-      // синхронизировано с main.js: при наличии initData используем op:'markmine'
-      body: JSON.stringify(hasInit ? { op:'markmine', uid } : { op:'markAll', uid })
-    }));
-    const j = await r.json().catch(()=> ({}));
-    if (!r.ok || j?.ok === false) return null;
-    return Array.isArray(j.items) ? j.items : null;
+    const headers = {
+      'Content-Type':'application/json',
+      ...(hasInit ? { 'X-Tg-Init-Data': initData } : {}),
+    };
+    const attempts = hasInit
+      ? [ { op:'markmine', uid }, { op:'markseen', uid } ]
+      : [ { op:'markAll', uid } ];
+
+    for (const body of attempts){
+      const r = await withTimeout(fetch(ENDPOINT, {
+        method:'POST',
+        headers,
+        body: JSON.stringify(body),
+      }));
+      const j = await r.json().catch(()=> ({}));
+      if (r.ok && j?.ok !== false){
+        return Array.isArray(j.items) ? j.items : null;
+      }
+    }
+    return null;
   }catch{
     return null;
   }
