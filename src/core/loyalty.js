@@ -4,9 +4,19 @@
 // корректная base64 для Unicode и защита от слишком длинных заголовков.
 // Добавлено: сбор и экспорт "меты" последнего вызова (getLastInitMeta).
 
-import { getUID, k } from './state.js';
+import { getUID } from './state.js';
 
 /* =========================== helpers =========================== */
+
+// Локальный key-неймспейс на UID (как в main.js)
+function k(base){
+  try{
+    const uid = getUID?.() || 'guest';
+    return `${base}__${uid}`;
+  }catch{
+    return `${base}__guest`;
+  }
+}
 
 // Сырая строка initData (не initDataUnsafe!), как рекомендует Telegram.
 function getTgInitDataRaw() {
@@ -20,7 +30,6 @@ function getTgInitDataRaw() {
 // Безопасная base64 для Unicode-строк
 function b64u(str='') {
   try {
-    // encodeURIComponent → %XX → unescape → btoa
     return btoa(unescape(encodeURIComponent(String(str))));
   } catch {
     try { return btoa(String(str)); } catch { return ''; }
@@ -46,7 +55,7 @@ export const BOT_USERNAME = 'EvliseOutletBot';
 
 /* ============================ заголовки ============================ */
 
-// Имя бота для ссылок / отображения: пробуем взять из TG-контекста, иначе из константы
+// Имя бота для ссылок / отображения
 function resolveBotUsername() {
   try {
     const uname = (
@@ -193,13 +202,12 @@ function normalizeOp(op) {
 
 /* ===== метаданные последнего вызова (для баннера/диагностики) ===== */
 let __lastInitMeta = {
-  usedHeader: false,  // true, если X-Tg-Init-Data реально отправлялся
-  sentRawLen: 0,      // длина сырого initData
-  sentB64Len: 0,      // длина base64-версии initData
-  botUname: '',       // что положили в X-Bot-Username
+  usedHeader: false,
+  sentRawLen: 0,
+  sentB64Len: 0,
+  botUname: '',
 };
 export function getLastInitMeta() {
-  // возвращаем копию, чтобы нельзя было мутировать извне
   return { ...__lastInitMeta };
 }
 
@@ -218,24 +226,19 @@ async function api(op, body = {}) {
     throw e;
   }
 
-  // Заголовки по новой схеме
   const headers = reqHeaders(initData);
 
-  // Админ-операции: добавляем admin header (если есть токен)
   if (ADMIN_OPS.has(norm) && hasAdminToken) {
     headers['X-Internal-Auth'] = getAdminToken();
   }
 
-  // В тело кладём initData (сырой) и корректный base64-вариант
   const payload = { op: norm, ...body };
   if (initData) {
     payload.initData   = initData;
     payload.initData64 = b64u(initData);
   }
-  // Дублируем имя бота в body как fallback для сервера
   payload.bot = botUnameHeader();
 
-  // Диагностика того, что реально отправили — обновляем мету
   __lastInitMeta = {
     usedHeader: !!headers['X-Tg-Init-Data'],
     sentRawLen: (payload.initData || '').length,
@@ -252,7 +255,6 @@ async function api(op, body = {}) {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok || data?.ok === false) {
-    // разворачиваем дружественные коды
     const reason = data?.error || data?.reason || `loyalty api error (HTTP ${res.status})`;
     const err = new Error(reason);
     if (data?.error === 'bot_mismatch') {
@@ -280,13 +282,11 @@ export function makeReferralLink() {
 
 export function captureInviterFromContext() {
   try {
-    // a) из Telegram Mini App
     const sp = window?.Telegram?.WebApp?.initDataUnsafe?.start_param || '';
     if (sp && String(sp).startsWith('ref_')) {
       const inviter = String(sp).slice(4);
       if (inviter) setPendingInviter(inviter);
     }
-    // b) из обычного веб-URL
     const parse = (searchOrHash = '') => {
       const p = new URLSearchParams(searchOrHash);
       const qpStart = p.get('start') || '';
@@ -350,9 +350,6 @@ export async function fetchMyLoyalty() {
   }
 }
 
-/** Добавлен параметр `total` — чтобы сервер валидировал правило 30%/MAX_REDEEM,
- *  если заказ ещё не создан в сторадже.
- */
 export async function reserveRedeem(points, orderId, shortId = null, total = null) {
   const uid = getUID();
   if (!points || points < CASHBACK_CFG.MIN_REDEEM) return { ok: false, reason: 'min' };
