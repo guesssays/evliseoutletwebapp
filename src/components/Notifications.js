@@ -1,5 +1,5 @@
 // src/components/Notifications.js
-import { k, getUID } from '../core/state.js';
+import { getUID, getNotifications as getList, setNotifications as setList } from '../core/state.js';
 
 const ENDPOINT = '/.netlify/functions/notifs';
 const FETCH_TIMEOUT_MS = 10000;
@@ -156,14 +156,7 @@ async function markAllServerSafe(){
   }
 }
 
-/* ===== local cache ===== */
-function key(){ return k('notifs_list'); }
-function getList(){
-  try{ return JSON.parse(localStorage.getItem(key()) || '[]'); }catch{ return []; }
-}
-function setList(list){
-  localStorage.setItem(key(), JSON.stringify(Array.isArray(list) ? list : []));
-}
+
 
 /* ===== helpers ===== */
 function escapeHtml(s=''){
