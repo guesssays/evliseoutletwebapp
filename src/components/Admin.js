@@ -8,6 +8,7 @@ import {
   seedOrdersOnce,
   getStatusLabel as _getStatusLabel,
 } from '../core/orders.js';
+import { getAdminToken } from '../core/orders.js'; // <-- ДОБАВИТЬ
 import { state } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 
@@ -50,6 +51,30 @@ export async function renderAdmin(){
   const v = document.getElementById('view');
   if (!v) return;
   seedOrdersOnce();
+
+  // Жёсткий гейт: без admin_api_token админка не работает
+  if (!getAdminToken()) {
+    v.innerHTML = `
+      <section class="section admin-shell">
+        <div class="admin-head">
+          <div class="admin-title"><i data-lucide="shield-check"></i><span>Админ-панель</span></div>
+        </div>
+        <div class="admin-empty">
+          <i data-lucide="lock"></i>
+          <div>Доступ ограничен. Нужен внутренний админ-токен.</div>
+          <div class="muted mini" style="margin-top:6px">
+            Откройте приложение <b>внутри Telegram</b> тем же админ-аккаунтом<br/>
+            или задайте токен на экране входа.
+          </div>
+          <div style="margin-top:12px">
+            <a class="btn btn--primary" href="#/admin-login">Перейти к входу</a>
+          </div>
+        </div>
+      </section>
+    `;
+    window.lucide?.createIcons && lucide.createIcons?.();
+    return; // <-- ВЫХОД, дальше не идём
+  }
 
   document.body.classList.add('admin-mode');
 
@@ -278,8 +303,33 @@ export async function renderAdmin(){
     `;
   }
 
-  // ▼ НОВОЕ: блок "реальные данные" из loyalty-функции
-  function realLoyaltyBlock(o, calc, balance){
+  function realLoyaltyBlock(o, calc, balance, err){
+    // 0) Мягкий гейт: если нет админ-токена — показываем хинт и не рендерим кнопки
+    let hasToken = false;
+    try { hasToken = !!getAdminToken(); } catch {}
+    if (!hasToken) {
+      return `
+        <div class="subsection-title" style="margin-top:14px">Реальные данные лояльности</div>
+        <div class="muted">
+          Недоступно: отсутствует админ-токен. Откройте приложение <b>внутри Telegram</b> админ-аккаунтом
+          или задайте токен на экране входа.
+          <div style="margin-top:6px"><a class="btn btn--sm" href="#/admin-login">Задать токен</a></div>
+        </div>
+      `;
+    }
+
+    // 1) Если бэкенд вернул «нет доступа» — объясняем причину
+    const emsg = String(err?.message || '').toLowerCase();
+    if (emsg.includes('unauthorized') || emsg.includes('forbidden') || emsg.includes('token')) {
+      return `
+        <div class="subsection-title" style="margin-top:14px">Реальные данные лояльности</div>
+        <div class="muted">
+          Недоступно: недействительный или отсутствующий внутренний токен (401/403).
+          Проверьте совпадение токена с Netlify и повторите.
+        </div>
+      `;
+    }
+
     if (!calc) {
       return `
         <div class="subsection-title" style="margin-top:14px">Реальные данные лояльности</div>
@@ -343,14 +393,15 @@ export async function renderAdmin(){
     const isDone = ['выдан','отменён'].includes(o?.status);
 
     // ▼ НОВОЕ: реальные данные лояльности
-    let loyaltyCalc = null;
-    let buyerBal = null;
+  let loyaltyCalc = null;
+  let buyerBal = null;
+  let loyaltyErr = null;
     try {
       loyaltyCalc = await adminCalc(o.id);
       buyerBal = await getBalance(loyaltyCalc?.uid || o?.userId);
-    } catch {
-      // игнорируем — покажем пустой блок
-    }
+  } catch (e) {
+    loyaltyErr = e; // пробросим в UI, чтобы показать понятную причину (401/403/нет токена и т.п.)
+  }
 
     shell(`
       <div class="order-detail">
@@ -414,7 +465,7 @@ export async function renderAdmin(){
           </dl>
 
           ${calcBlock(o)}
-          ${realLoyaltyBlock(o, loyaltyCalc, buyerBal)}
+          ${realLoyaltyBlock(o, loyaltyCalc, buyerBal, loyaltyErr)}
           ${itemsBlock(o)}
 
           <div class="order-detail__actions">
