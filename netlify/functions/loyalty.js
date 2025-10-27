@@ -345,10 +345,24 @@ function mergeReferrals(oldR={}, newR={}){
   out.inviteesFirst = ifirst;
   return out;
 }
-function mergeReservations(oldArr=[], newArr=[]){
-  const combined = [...(oldArr||[]), ...(newArr||[])];
-  return uniqBy(combined, r => `${r.uid}|${r.orderId}`);
+function mergeReservations(oldArr = [], newArr = []) {
+  const now = Date.now();
+  // Берём максимум по времени для каждого ключа uid|orderId
+  const map = new Map();
+  for (const r of [...(oldArr || []), ...(newArr || [])]) {
+    if (!r) continue;
+    const key = `${r.uid}|${r.orderId}`;
+    const prev = map.get(key);
+    if (!prev || (r.ts || 0) > (prev.ts || 0)) {
+      map.set(key, r);
+    }
+  }
+  // Храним только активные (не истёкшие) резервы
+  return Array.from(map.values()).filter(
+    r => (now - (r.ts || 0)) <= CFG.RESERVE_TTL_MS
+  );
 }
+
 function deepMergeDb(oldDb, newDb){
   const oldSafe = clone(oldDb||{ users:{}, referrals:{}, reservations:[], orders:{} });
   const newSafe = clone(newDb||{ users:{}, referrals:{}, reservations:[], orders:{} });
