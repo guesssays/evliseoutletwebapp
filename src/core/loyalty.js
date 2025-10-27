@@ -1,7 +1,8 @@
 // src/core/loyalty.js
 // Клиентская обвязка к serverless-функции лояльности + локальные хелперы.
-// ЕДИНЫЙ заголовок X-Tg-Init-Data (только если есть), динамический X-Bot-Username,
-// и метаданные последнего запроса для отладочного баннера через getLastInitMeta().
+// План B: допускаем weakInit для reserveRedeem/finalizeRedeem, если включён флаг на клиенте.
+// ЕДИНЫЕ заголовки: X-Tg-Init-Data (только если есть), X-Bot-Username (без @).
+// Обновляем мету последнего вызова для дебаг-баннера через getLastInitMeta().
 
 import { getUID, k } from './state.js';
 
@@ -32,6 +33,17 @@ function resolveBotUsername() {
 function b64u(str = '') {
   try { return btoa(unescape(encodeURIComponent(String(str)))); }
   catch { try { return btoa(String(str)); } catch { return ''; } }
+}
+
+// Чтение клиентских флагов среды (инжектим из index.html через window.ENV.*)
+function getEnvFlag(name, def = false) {
+  try {
+    const v = window?.ENV?.[name];
+    if (typeof v === 'string') return v === '1' || v.toLowerCase() === 'true';
+    if (typeof v === 'number') return v === 1;
+    if (typeof v === 'boolean') return v;
+    return def;
+  } catch { return def; }
 }
 
 /* =========================== конфиг =========================== */
@@ -111,7 +123,7 @@ export function setLocalLoyalty(obj) {
 }
 
 export function getLocalReservations() {
-  try { return JSON.parse(localStorage.getItem(k(LKEY_REDEEM_RES)) || '[]'); }
+  try { return JSON.parse(localStorage.getItem(k(LKEY_REDEEM_RES) ) || '[]'); }
   catch { return []; }
 }
 export function setLocalReservations(list) {
@@ -145,6 +157,8 @@ function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
 const ADMIN_OPS = new Set(['admincalc','voidaccrual','accrue','confirmaccrual']);
 // readonly операции, разрешённые без initData
 const READONLY_OPS_WITHOUT_INIT = new Set(['getbalance','getreferrals']);
+// weakInit операции, которые можно запускать без initData при включённом флаге
+const WEAK_INIT_OPS = new Set(['reserveredeem','finalizeredeem']);
 
 function getAdminToken() {
   try {
@@ -184,9 +198,12 @@ async function api(op, body = {}) {
   const raw = getTgInitDataRaw();
 
   const hasAdminToken = !!getAdminToken();
+  const weakInitEnabled = getEnvFlag('EMERGENCY_ALLOW_WEAK_INIT', false);
+
   const canSkipInit =
     READONLY_OPS_WITHOUT_INIT.has(norm) ||
-    (ADMIN_OPS.has(norm) && hasAdminToken);
+    (ADMIN_OPS.has(norm) && hasAdminToken) ||
+    (weakInitEnabled && WEAK_INIT_OPS.has(norm)); // <-- план B: разрешаем без initData
 
   if (!raw && !canSkipInit) {
     const e = new Error('initData_empty');
