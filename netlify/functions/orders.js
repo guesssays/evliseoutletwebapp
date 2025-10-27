@@ -39,10 +39,10 @@ function originMatches(origin, rule) {
   }
   return origin === rule;
 }
-function buildCorsHeaders(origin) {
+function buildCorsHeaders(origin, isInternal = false) {
   const allowed = parseAllowed();
-  // ✅ Разрешаем и пустой Origin (например, прямой вызов функции)
   const isAllowed =
+    isInternal ||                       // ⬅ внутренние вызовы всегда разрешаем
     !allowed.length ||
     !origin ||
     isTelegramOrigin(origin) ||
@@ -216,7 +216,8 @@ function makeDisplayId(orderId, shortId){
 /* ---------------- Netlify Function ---------------- */
 export async function handler(event) {
   const origin = event.headers?.origin || event.headers?.Origin || '';
-  const { headers, isAllowed } = buildCorsHeaders(origin);
+  const isInternal = (event.headers?.['x-internal-auth'] || event.headers?.['X-Internal-Auth'] || '') === (process.env.ADMIN_API_TOKEN || '');
+  const { headers, isAllowed } = buildCorsHeaders(origin, isInternal);
 
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers };
@@ -228,7 +229,6 @@ export async function handler(event) {
     return { statusCode: 403, headers, body: 'Forbidden by CORS' };
   }
 
-  const isInternal = (event.headers?.['x-internal-auth'] || event.headers?.['X-Internal-Auth'] || '') === (process.env.ADMIN_API_TOKEN || '');
 
   let store;
   let storeKind = 'blobs';
