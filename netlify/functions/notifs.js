@@ -2,7 +2,7 @@
 // Хранилище уведомлений per-user.
 // Чтение списка — владелец (валидный initData) ИЛИ, для совместимости с веб-клиентом, по явному uid из запроса.
 // Запись/mark — либо сервер (internal-token), либо владелец (initData) и, для совместимости, markAll/mark по явному uid.
-// ENV: TG_BOT_TOKEN, TG_BOT_USERNAME, ALT_TG_BOT_TOKENS, ADMIN_API_TOKEN,
+// ENV: TG_BOT_TOKEN, ALT_TG_BOT_TOKENS, ADMIN_API_TOKEN,
 //      ALLOWED_ORIGINS, ALLOW_MEMORY_FALLBACK, NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN
 
 import crypto from 'node:crypto';
@@ -29,8 +29,8 @@ function buildCors(origin, isInternal=false){
     headers:{
       'Access-Control-Allow-Origin': allow ? (origin||'*') : 'null',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      // допускаем X-Bot-Username
-      'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Internal-Auth, X-Bot-Username',
+      // добавили X-Telegram-Web-App-Init-Data
+      'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Telegram-Web-App-Init-Data, X-Internal-Auth',
       'Access-Control-Max-Age': '86400',
       'Content-Type': 'application/json; charset=utf-8',
       'Vary':'Origin',
@@ -50,7 +50,7 @@ function isInternalCall(event){
 }
 
 /* ====== Надёжная проверка Telegram initData (WebApp + Login) ====== */
-// Нормализация "сырой" строки initData: убираем кавычки, склейка переносов в &, трим.
+// Нормализация initData: убираем кавычки, склейка переносов в &, трим.
 function normalizeInitRaw(raw) {
   let s = String(raw || '');
   if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1);
@@ -75,9 +75,6 @@ function sigOk(aHex, bHex) {
     return crypto.timingSafeEqual(a, b);
   } catch { return false; }
 }
-// Считаем подписи двумя способами:
-//  - WebApp:   HMAC( key = HMAC("sha256", "WebAppData", bot_token), data_check_string )
-//  - Login:    HMAC( key = sha256(bot_token), data_check_string )
 function _calcFromDcs(tokenStr, dataCheckString) {
   const secretWebApp = crypto.createHmac('sha256', 'WebAppData').update(tokenStr).digest();
   const calcWebApp   = crypto.createHmac('sha256', secretWebApp).update(dataCheckString).digest('hex');
@@ -109,58 +106,28 @@ function _parseAndCalc(tokenStr, raw) {
   return { ok };
 }
 
-/**
- * Возвращает список токенов в порядке предпочтения.
- * Поддерживает:
- *   TG_BOT_TOKEN                 — основной токен
- *   TG_BOT_USERNAME              — логин основного бота (без @)
- *   ALT_TG_BOT_TOKENS            — CSV вида:
- *                                  "botname=TOKEN, other:OTHERTOKEN, JUSTTOKENTOO"
- * Если передан preferredUname (из X-Bot-Username), сначала пробуем совпадающие пары.
+/** Список токенов для проверки подписи. Поддерживает:
+ *   TG_BOT_TOKEN — основной токен
+ *   ALT_TG_BOT_TOKENS — CSV/разделители , ; \n
  */
-function getBotTokens(preferredUnameRaw=''){
-  const preferred = String(preferredUnameRaw||'').replace(/^@/,'').toLowerCase();
-
-  const primaryToken = (process.env.TG_BOT_TOKEN||'').trim();
-  const primaryUname = String(process.env.TG_BOT_USERNAME||'').replace(/^@/,'').toLowerCase();
-
-  const altRaw = String(process.env.ALT_TG_BOT_TOKENS||'').split(',').map(s=>s.trim()).filter(Boolean);
-  const entries = [];
-
-  if (primaryToken) entries.push({ uname: primaryUname || null, token: primaryToken });
-
-  for (const item of altRaw){
-    const mEq = item.match(/^([^=:]+)=(.+)$/);
-    const mCol = item.match(/^([^=:]+):(.+)$/);
-    if (mEq) entries.push({ uname: mEq[1].replace(/^@/,'').toLowerCase(), token: mEq[2] });
-    else if (mCol) entries.push({ uname: mCol[1].replace(/^@/,'').toLowerCase(), token: mCol[2] });
-    else entries.push({ uname: null, token: item });
-  }
-
-  // Дедуп токенов и упорядочивание: сначала те, что совпали по имени бота
-  const seen = new Set();
-  const exact = [];
-  const rest  = [];
-  for (const e of entries){
-    const t = (e.token||'').trim();
-    if (!t || seen.has(t)) continue;
-    seen.add(t);
-    if (preferred && e.uname && e.uname === preferred) exact.push(t);
-    else rest.push(t);
-  }
-  const list = exact.concat(rest);
+function getBotTokens(){
+  const primary = String(process.env.TG_BOT_TOKEN||'').trim();
+  const extra = String(process.env.ALT_TG_BOT_TOKENS||'')
+    .split(/[,;\n]/).map(s=>s.trim()).filter(Boolean);
+  const set = new Set([primary, ...extra]);
+  const list = [...set].filter(Boolean);
   if (!list.length) throw new Error('TG_BOT_TOKEN not set');
   return list;
 }
 
-function verifyTgInitData(rawInitData, preferredUname=''){
-  const tokens = getBotTokens(preferredUname);
+function verifyTgInitData(rawInitData){
+  const tokens = getBotTokens();
   const rawBase = normalizeInitRaw(rawInitData);
 
   for (const token of tokens) {
     // (1) как есть
     let r = _parseAndCalc(token, rawBase);
-    // (2) пробуем фикс "+ → %20"
+    // (2) fix "+ → %20"
     if (!r.ok) {
       const fixed = rawBase.replace(/\+/g, '%20');
       if (fixed !== rawBase) {
@@ -176,6 +143,32 @@ function verifyTgInitData(rawInitData, preferredUname=''){
     }
   }
   throw new Error('initData signature invalid');
+}
+
+/* ===== Чтение initData из тела/заголовков (как в loyalty.js) ===== */
+function getHeaderCaseInsensitive(event, name){
+  const h = event.headers || {};
+  const k = Object.keys(h).find(x => x.toLowerCase() === name.toLowerCase());
+  return k ? h[k] : '';
+}
+function readInitDataSource(event, body){
+  // 1) приоритет — тело (raw)
+  if (body && typeof body.initData === 'string' && body.initData) {
+    return { raw: body.initData, src: 'body.initData' };
+  }
+  // поддержка base64: initDataB64 / initData64
+  let b64 = '';
+  if (body && typeof body.initDataB64 === 'string' && body.initDataB64) b64 = body.initDataB64;
+  else if (body && typeof body.initData64 === 'string' && body.initData64) b64 = body.initData64;
+  if (b64) {
+    try { return { raw: Buffer.from(b64, 'base64').toString('utf8'), src: 'body.initData(b64)' }; } catch {}
+  }
+  // 2) заголовки: X-Tg-Init-Data или X-Telegram-Web-App-Init-Data
+  const hdr =
+    getHeaderCaseInsensitive(event,'X-Tg-Init-Data') ||
+    getHeaderCaseInsensitive(event,'X-Telegram-Web-App-Init-Data') ||
+    '';
+  return { raw: String(hdr).replace(/[\r\n]+/g,'&'), src:'header' };
 }
 
 /* ---------------- Storage (Netlify Blobs v7) ---------------- */
@@ -264,14 +257,16 @@ export async function handler(event){
 
     if (event.httpMethod === 'GET') {
       // ① Владелец (initData), либо ② совместимость: явный uid в query
-      const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
-      const botUnameHdr = (event.headers?.['x-bot-username'] || event.headers?.['X-Bot-Username'] || '').toString();
+      const hdrRaw =
+        getHeaderCaseInsensitive(event,'X-Tg-Init-Data') ||
+        getHeaderCaseInsensitive(event,'X-Telegram-Web-App-Init-Data') ||
+        '';
       const op  = String(event.queryStringParameters?.op || 'list').toLowerCase();
       const uidFromQuery = String(event.queryStringParameters?.uid || '').trim();
 
       let uid = null;
-      if (rawInit) {
-        try { ({ uid } = verifyTgInitData(rawInit, botUnameHdr)); } catch (e) { /* мягко игнорируем — попробуем fallback */ }
+      if (hdrRaw) {
+        try { ({ uid } = verifyTgInitData(hdrRaw)); } catch (e) { /* мягко игнорируем — попробуем fallback */ }
       }
       if (!uid) uid = uidFromQuery; // режим совместимости с фронтом
 
@@ -314,12 +309,12 @@ export async function handler(event){
     }
 
     // --- 2) ДЕЙСТВИЯ ОТ ПОЛЬЗОВАТЕЛЯ ---
+
     // 2a. Владелец через initData: markMine/markSeen (исторический контракт)
     if (op === 'markseen' || op === 'markmine') {
-      const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
-      const botUnameHdr = (event.headers?.['x-bot-username'] || event.headers?.['X-Bot-Username'] || '').toString();
+      const { raw } = readInitDataSource(event, body);
       try {
-        const { uid } = verifyTgInitData(rawInit, botUnameHdr);
+        const { uid } = verifyTgInitData(raw);
         const targetUidRaw = String(body.uid || '').trim();
         if (targetUidRaw && targetUidRaw !== uid) {
           return { statusCode:403, headers, body: JSON.stringify({ ok:false, error:'forbidden' }) };
@@ -334,9 +329,17 @@ export async function handler(event){
     }
 
     // 2b. Совместимость с фронтендом: { op:'markAll', uid } или { op:'mark', uid, ids }
+    // + безопасное поведение: если пришёл валидный initData — игнорируем переданный uid и помечаем только «свои»
     if (op === 'markall' || op === 'markAll' || op === 'mark') {
-      const uid = String(body.uid || '').trim();
+      let verifiedUid = null;
+      try {
+        const { raw } = readInitDataSource(event, body);
+        if (raw) { const r = verifyTgInitData(raw); verifiedUid = r.uid; }
+      } catch {}
+
+      const uid = String(verifiedUid || body.uid || '').trim();
       if (!uid) return { statusCode:400, headers, body: JSON.stringify({ ok:false, error:'uid required' }) };
+
       if (/^markall$/i.test(op)) {
         const items = await store.markAll(uid);
         return { statusCode:200, headers, body: JSON.stringify({ ok:true, items }) };

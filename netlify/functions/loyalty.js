@@ -1,16 +1,15 @@
 // netlify/functions/loyalty.js
 // Бэкенд лояльности + защита: валидация TG initData, строгий CORS, internal-token для сервисных вызовов,
-// запрет memory-fallback в проде, TTL для резерва, дружественная диагностика «бот не тот».
+// запрет memory-fallback в проде, TTL для резерва.
 
 // ENV:
-//   TG_BOT_TOKEN               (обязательно — для валидации initData, первичный токен)
+//   TG_BOT_TOKEN               (обязательно — основной токен для валидации initData)
 //   ALT_TG_BOT_TOKENS          (опционально — дополнительные токены через запятую/точку с запятой/перенос строки)
 //   ADMIN_API_TOKEN            (секрет для сервер-к-серверу/админских вызовов)
 //   ALLOWED_ORIGINS            (список через запятую, включая тг-домены)
 //   ALLOW_MEMORY_FALLBACK=0/1  (в проде — 0)
 //   NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN  (рекомендуется явно)
 //   DEBUG_LOYALTY=1            (включить подробные логи)
-//   └─ Доп.: клиент может присылать заголовок X-Bot-Username для диагностики «бот не тот»
 
 import crypto from 'node:crypto';
 
@@ -63,22 +62,6 @@ function splitRawPairs(raw) {
     });
 }
 
-/* ===== ПАТЧ: дружелюбная диагностика «бот не тот» ===== */
-let __BOT_UNAME = null;
-async function getBotUsernameSafe(){
-  if (__BOT_UNAME !== null) return __BOT_UNAME;
-  try{
-    const t = (process.env.TG_BOT_TOKEN||'').trim();
-    if (!t) return (__BOT_UNAME = '');
-    const ctl = new AbortController(); setTimeout(()=>ctl.abort(), 800);
-    const r = await fetch(`https://api.telegram.org/bot${encodeURIComponent(t)}/getMe`, { signal: ctl.signal });
-    const j = await r.json();
-    __BOT_UNAME = (j?.ok && j?.result?.username) ? `@${j.result.username}` : '';
-  }catch{ __BOT_UNAME = ''; }
-  return __BOT_UNAME;
-}
-/* ===== конец диагностики «бот не тот» ===== */
-
 const CFG = {
   BASE_RATE: 0.05,
   REF_FIRST_MULTIPLIER: 2,
@@ -119,7 +102,7 @@ function buildCorsHeaders(origin, isInternal=false){
   return {
     'Access-Control-Allow-Origin': allow ? (origin || '*') : 'null',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Internal-Auth, X-Bot-Username',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Telegram-Web-App-Init-Data, X-Internal-Auth',
     'Content-Type': 'application/json; charset=utf-8',
     'Vary': 'Origin',
   };
@@ -770,25 +753,31 @@ function makeCore(readAll, writeAll){
   };
 }
 
-/* ================== ЧТЕНИЕ initData: body → header (fallback) + источник ================== */
+/* ================== ЧТЕНИЕ initData: приоритет body, затем header ================== */
+function getHeaderCaseInsensitive(event, name){
+  const h = event.headers || {};
+  const keys = Object.keys(h);
+  const want = name.toLowerCase();
+  const match = keys.find(k => k.toLowerCase() === want);
+  return match ? h[match] : '';
+}
 function readInitDataSource(event, body) {
-  // 1) Приоритет — тело, без «нормализаций»
+  // 1) Приоритет — тело (raw строка)
   if (body && typeof body.initData === 'string' && body.initData) {
     return { raw: body.initData, src: 'body.initData' };
   }
-  // поддерживаем оба имени base64-поля: initDataB64 (старое) и initData64 (как на фронте)
+  // поддерживаем base64-поля: initDataB64 / initData64
   let b64 = '';
-  if (body && typeof body.initDataB64 === 'string' && body.initDataB64) {
-    b64 = body.initDataB64;
-  } else if (body && typeof body.initData64 === 'string' && body.initData64) {
-    b64 = body.initData64;
-  }
+  if (body && typeof body.initDataB64 === 'string' && body.initDataB64) b64 = body.initDataB64;
+  else if (body && typeof body.initData64 === 'string' && body.initData64) b64 = body.initData64;
   if (b64) {
     try { return { raw: Buffer.from(b64, 'base64').toString('utf8'), src: 'body.initData(b64)' }; } catch {}
   }
-  // 2) Fallback — заголовок как есть, максимум склейка переносов
-  const h = event.headers || {};
-  const raw = (h['x-tg-init-data'] || h['X-Tg-Init-Data'] || '');
+  // 2) Fallback — один из заголовков: X-Tg-Init-Data ИЛИ X-Telegram-Web-App-Init-Data
+  const raw =
+    getHeaderCaseInsensitive(event, 'X-Tg-Init-Data') ||
+    getHeaderCaseInsensitive(event, 'X-Telegram-Web-App-Init-Data') ||
+    '';
   return { raw: String(raw).replace(/[\r\n]+/g, '&'), src: 'header' };
 }
 
@@ -800,16 +789,18 @@ export async function handler(event){
   const cors = buildCorsHeaders(origin, internal);
   if (DEBUG){
     const h = event.headers||{};
-    const tgHeader = (h['x-tg-init-data']||h['X-Tg-Init-Data']||'');
-    const tgLen = String(tgHeader).length;
+    const hdrLen = String(
+      getHeaderCaseInsensitive(event,'X-Tg-Init-Data') ||
+      getHeaderCaseInsensitive(event,'X-Telegram-Web-App-Init-Data') ||
+      ''
+    ).length;
     logD(`[req:${reqId}] incoming`, {
       method: event.httpMethod,
       origin,
       internal,
-      tg_init_len: tgLen,
+      tg_init_len: hdrLen,
       ua: (h['user-agent']||'').slice(0,64),
     });
-    try { logD(`[req:${reqId}] server bot is`, await getBotUsernameSafe() || '(unknown)'); } catch {}
   }
 
   if (event.httpMethod === 'OPTIONS'){
@@ -820,13 +811,6 @@ export async function handler(event){
   }
 
   try{
-    // Диагностика ников бота
-    const clientBot = (event.headers?.['x-bot-username'] || event.headers?.['X-Bot-Username'] || '').toString().trim();
-    const serverBot = await getBotUsernameSafe();
-    if (DEBUG){
-      logD(`[req:${reqId}] clientBot=${clientBot||'(none)'} serverBot=${serverBot||'(none)'}`);
-    }
-
     const body = JSON.parse(event.body || '{}') || {};
     const op = String(body.op || '').toLowerCase();
     const store = await getStoreSafe();
@@ -836,8 +820,10 @@ export async function handler(event){
     if (!internal) {
       const { raw: rawInit, src } = readInitDataSource(event, body);
       if (DEBUG){
-        // компактный лог: видны оба носителя
-        const hdr = (event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '');
+        const hdr =
+          getHeaderCaseInsensitive(event,'X-Tg-Init-Data') ||
+          getHeaderCaseInsensitive(event,'X-Telegram-Web-App-Init-Data') ||
+          '';
         logD(`[req:${reqId}] initData src=${src} len=${String(rawInit||'').length} sha256=${sha256hex(String(rawInit||''))} first100="${String(rawInit||'').slice(0,100)}"`);
         logD(`[req:${reqId}] initData(header)_len=${String(hdr||'').length}`);
       }
@@ -936,23 +922,6 @@ export async function handler(event){
     return { statusCode:400, headers:cors, body: JSON.stringify({ ok:false, error:'unknown op' }) };
   }catch(e){
     logE(`[req:${reqId}] error:`, e);
-
-    // Человекопонятный ответ, если подпись не прошла и бот «не тот»
-    const isSig = String(e?.message||'').includes('initData signature invalid');
-    try{
-      if (isSig){
-        const clientBot = (event.headers?.['x-bot-username'] || event.headers?.['X-Bot-Username'] || '').toString().trim();
-        const serverBot = await getBotUsernameSafe();
-        if (clientBot && serverBot && clientBot !== serverBot){
-          return {
-            statusCode: 403,
-            headers: cors,
-            body: JSON.stringify({ ok:false, error:'bot_mismatch', clientBot, serverBot })
-          };
-        }
-      }
-    }catch{}
-
     return { statusCode:500, headers:cors, body: JSON.stringify({ ok:false, error:String(e?.message||e) }) };
   }
 }

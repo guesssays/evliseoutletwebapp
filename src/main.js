@@ -575,9 +575,19 @@ function hideProductHeader(){
   }
 }
 
+
+// >>> прокрутка к верху (явная, т.к. history.scrollRestoration='manual')
+function scrollTopNow() {
+  try {
+    const el = document.scrollingElement || document.documentElement || document.body;
+    el.scrollTop = 0;
+  } catch {}
+}
+
+
 /* ---------- РОУТЕР ---------- */
 async function router(){
-  const path=(location.hash||'#/').slice(1);
+  const path = (location.hash || '#/').slice(1);
   const clean = path.replace(/#.*/,'');
 
   const inAdmin = document.body.classList.contains('admin-mode');
@@ -588,18 +598,21 @@ async function router(){
     '/admin':'admin'
   };
 
-  const match = (pattern)=>{
-    const p=pattern.split('/').filter(Boolean); if(p.length!==parts.length) return null;
-    const params={};
-    for(let i=0;i<p.length;i++){
-      if(p[i].startsWith(':')) params[p[i].slice(1)] = decodeURIComponent(parts[i]);
-      else if(p[i]!==parts[i]) return null;
+  const match = (pattern) => {
+    const p = pattern.split('/').filter(Boolean); if (p.length !== parts.length) return null;
+    const params = {};
+    for (let i = 0; i < p.length; i++) {
+      if (p[i].startsWith(':')) params[p[i].slice(1)] = decodeURIComponent(parts[i]);
+      else if (p[i] !== parts[i]) return null;
     }
     return params;
   };
 
   setTabbarMenu(map[clean] || (inAdmin ? 'admin' : 'home'));
   hideProductHeader();
+  scrollTopNow(); // ← вот здесь, один раз
+
+
 
   // Админ-режим
   if (inAdmin){
@@ -768,6 +781,11 @@ async function init(){
   await tryBindPendingInviter();
 
   window.addEventListener('hashchange', router);
+window.addEventListener('hashchange', () => {
+  // даём рендеру закончиться, затем поднимаем скролл
+  setTimeout(scrollTopNow, 0);
+});
+
 
   window.addEventListener('orders:updated', ()=>{
     const inAdmin = document.body.classList.contains('admin-mode');

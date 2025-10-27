@@ -1,13 +1,13 @@
 // src/core/loyalty.js
 // Клиентская обвязка к serverless-функции лояльности + локальные хелперы.
-// Важно: динамический X-Bot-Username из Telegram-контекста и отправка X-Tg-Init-Data только если он есть.
-// Также экспортируется getLastInitMeta() для отладочного баннера.
+// ЕДИНЫЙ заголовок X-Tg-Init-Data (только если есть), динамический X-Bot-Username,
+// и метаданные последнего запроса для отладочного баннера через getLastInitMeta().
 
 import { getUID, k } from './state.js';
 
 /* =========================== helpers =========================== */
 
-// Сырая строка initData (не initDataUnsafe!), как рекомендует Telegram.
+// Сырая строка initData (именно initData, а не initDataUnsafe)
 function getTgInitDataRaw() {
   try {
     return typeof window?.Telegram?.WebApp?.initData === 'string'
@@ -16,8 +16,20 @@ function getTgInitDataRaw() {
   } catch { return ''; }
 }
 
-// Безопасная base64 для Unicode-строк
-function b64u(str='') {
+// Достаём @username бота из Telegram-контекста; фолбэк — константа ниже
+function resolveBotUsername() {
+  try {
+    const uname =
+      window?.Telegram?.WebApp?.initDataUnsafe?.bot?.username ||
+      window?.Telegram?.WebApp?.Bot?.username ||
+      BOT_USERNAME ||
+      '';
+    return String(uname || '').replace(/^@/, '');
+  } catch { return String(BOT_USERNAME || '').replace(/^@/, ''); }
+}
+
+// Безопасная base64 (для телеметрии и возможного тела запроса)
+function b64u(str = '') {
   try { return btoa(unescape(encodeURIComponent(String(str)))); }
   catch { try { return btoa(String(str)); } catch { return ''; } }
 }
@@ -36,39 +48,35 @@ export const CASHBACK_CFG = {
   MONTHLY_REF_LIMIT: 10,
 };
 
-// Фолбэк, если в контексте TG нет имени бота
+// Фолбэк-имя бота, если в Telegram-контексте нет username
 export const BOT_USERNAME = 'EvliseOutletBot';
 
-/* ============================ заголовки ============================ */
+/* ============== единая фабрика заголовков + мета для баннера ============== */
 
-// Достаём @username бота из Telegram-контекста (или из константы)
-function resolveBotUsername() {
-  try {
-    const uname = (
-      window?.Telegram?.WebApp?.initDataUnsafe?.bot?.username ||
-      window?.Telegram?.WebApp?.Bot?.username ||
-      BOT_USERNAME ||
-      ''
-    ).toString().replace(/^@/, '');
-    return uname ? '@' + uname : '';
-  } catch {
-    const uname = (BOT_USERNAME || '').toString().replace(/^@/, '');
-    return uname ? '@' + uname : '';
-  }
-}
+let __lastInitMeta = { usedHeader: false, sentRawLen: 0, sentB64Len: 0, botUname: '' };
+export function getLastInitMeta() { return { ...__lastInitMeta }; }
 
-// Имя бота для заголовка (без @), ПОЛУЧАЕНО ДИНАМИЧЕСКИ
-function botUnameHeader() {
-  const withAt = resolveBotUsername(); // '@name' или ''
-  return withAt.replace(/^@/, '');
-}
+/**
+ * Единый способ собрать заголовки для всех вызовов к /loyalty:
+ * - кладём X-Tg-Init-Data только если initData непустой
+ * - X-Bot-Username без @
+ * - обновляем __lastInitMeta для дебаг-баннера
+ */
+export function initHeaders() {
+  const raw = getTgInitDataRaw();
+  const bot = resolveBotUsername();
 
-// Заголовки для запросов — кладём X-Tg-Init-Data ТОЛЬКО если он есть
-function reqHeaders(initData) {
   const h = { 'Content-Type': 'application/json' };
-  const uname = botUnameHeader();
-  if (uname) h['X-Bot-Username'] = uname;      // без @
-  if (initData) h['X-Tg-Init-Data'] = initData; // только если непустой
+  if (bot) h['X-Bot-Username'] = bot;        // без @
+  if (raw) h['X-Tg-Init-Data'] = raw;        // только если есть
+
+  __lastInitMeta = {
+    usedHeader: Boolean(raw),
+    sentRawLen: raw.length,
+    sentB64Len: raw ? b64u(raw).length : 0,
+    botUname: bot || '',
+  };
+
   return h;
 }
 
@@ -167,44 +175,38 @@ function normalizeOp(op) {
   return OP_ALIAS.get(low) || low;
 }
 
-/* ===== метаданные последнего вызова (для баннера/диагностики) ===== */
-let __lastInitMeta = { usedHeader:false, sentRawLen:0, sentB64Len:0, botUname:'' };
-export function getLastInitMeta() { return { ...__lastInitMeta }; }
-
+/**
+ * Универсальная обёртка вызова API с централизованными заголовками.
+ * ВСЕ запросы к /loyalty идут через initHeaders().
+ */
 async function api(op, body = {}) {
   const norm = normalizeOp(op);
-  const initData = getTgInitDataRaw();
+  const raw = getTgInitDataRaw();
 
   const hasAdminToken = !!getAdminToken();
   const canSkipInit =
     READONLY_OPS_WITHOUT_INIT.has(norm) ||
     (ADMIN_OPS.has(norm) && hasAdminToken);
 
-  if (!initData && !canSkipInit) {
+  if (!raw && !canSkipInit) {
     const e = new Error('initData_empty');
     e.code = 'initData_empty';
     throw e;
   }
 
-  const headers = reqHeaders(initData);
+  const headers = initHeaders(); // <— ЕДИНАЯ точка формирования заголовков
+
   if (ADMIN_OPS.has(norm) && hasAdminToken) {
     headers['X-Internal-Auth'] = getAdminToken();
   }
 
+  // initData кладём в body как совместимость + для серверного fallback
   const payload = { op: norm, ...body };
-  if (initData) {
-    payload.initData   = initData;
-    payload.initData64 = b64u(initData);
+  if (raw) {
+    payload.initData   = raw;
+    payload.initData64 = b64u(raw);
   }
-  // Дублируем имя бота в теле как fallback
-  payload.bot = botUnameHeader();
-
-  __lastInitMeta = {
-    usedHeader: !!headers['X-Tg-Init-Data'],
-    sentRawLen: (payload.initData || '').length,
-    sentB64Len: (payload.initData64 || '').length,
-    botUname: headers['X-Bot-Username'] || '',
-  };
+  payload.bot = resolveBotUsername();
 
   const res = await withTimeout(fetch(API, {
     method: 'POST',
@@ -235,7 +237,8 @@ function clearPendingInviter()  { try { localStorage.removeItem(k(LKEY_INVITER))
 export function makeReferralLink() {
   const uid = getUID();
   const start = `ref_${uid}`;
-  return `https://t.me/${(resolveBotUsername() || '').replace('@','')}?start=${encodeURIComponent(start)}`;
+  const bot = resolveBotUsername();
+  return `https://t.me/${bot}?start=${encodeURIComponent(start)}`;
 }
 
 export function captureInviterFromContext() {
