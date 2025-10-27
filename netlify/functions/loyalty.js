@@ -759,18 +759,33 @@ const EMERGENCY_ALLOW_WEAK_INIT = String(process.env.EMERGENCY_ALLOW_WEAK_INIT||
 // простая проверка, что запрос реально пришёл из Telegram WebApp
 function isFromTelegramHeaders(headers) {
   const h = headers || {};
-  const origin  = (h.origin || h.Origin || '').toLowerCase();
+  const origin  = (h.origin  || h.Origin  || '').toLowerCase();
   const referer = (h.referer || h.Referer || '').toLowerCase();
+  const ua      = (h['user-agent'] || h['User-Agent'] || '').toLowerCase();
+
+  // хоть какой-то initData-хедер (их кладём на клиенте в initHeaders())
+  const hasInitHdr =
+    !!(h['x-tg-init-data'] ||
+       h['X-Tg-Init-Data'] ||
+       h['x-telegram-web-app-init-data'] ||
+       h['X-Telegram-Web-App-Init-Data']);
+
   const okOrigin =
     origin.startsWith('https://t.me') ||
     origin.startsWith('https://web.telegram.org') ||
     origin.startsWith('https://telegram.org');
+
   const okReferer =
     referer.startsWith('https://t.me') ||
     referer.startsWith('https://web.telegram.org') ||
     referer.startsWith('https://telegram.org');
-  return okOrigin || okReferer;
+
+  // во многих WebView User-Agent содержит 'Telegram'
+  const okUA = ua.includes('telegram');
+
+  return hasInitHdr || okOrigin || okReferer || okUA;
 }
+
 
 // извлекаем user.id из сырого initData без проверки подписи
 function parseUidFromInitDataRaw(rawInit) {
