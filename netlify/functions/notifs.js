@@ -2,7 +2,8 @@
 // Хранилище уведомлений per-user.
 // Чтение списка — владелец (валидный initData) ИЛИ, для совместимости с веб-клиентом, по явному uid из запроса.
 // Запись/mark — либо сервер (internal-token), либо владелец (initData) и, для совместимости, markAll/mark по явному uid.
-// ENV: TG_BOT_TOKEN, ALT_TG_BOT_TOKENS, ADMIN_API_TOKEN, ALLOWED_ORIGINS, ALLOW_MEMORY_FALLBACK, NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN
+// ENV: TG_BOT_TOKEN, TG_BOT_USERNAME, ALT_TG_BOT_TOKENS, ADMIN_API_TOKEN,
+//      ALLOWED_ORIGINS, ALLOW_MEMORY_FALLBACK, NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN
 
 import crypto from 'node:crypto';
 
@@ -28,7 +29,7 @@ function buildCors(origin, isInternal=false){
     headers:{
       'Access-Control-Allow-Origin': allow ? (origin||'*') : 'null',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      // 🔽 добавили X-Bot-Username
+      // допускаем X-Bot-Username
       'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Internal-Auth, X-Bot-Username',
       'Access-Control-Max-Age': '86400',
       'Content-Type': 'application/json; charset=utf-8',
@@ -107,16 +108,53 @@ function _parseAndCalc(tokenStr, raw) {
 
   return { ok };
 }
-function getBotTokens(){
-  const primary = (process.env.TG_BOT_TOKEN||'').trim();
-  const extra = String(process.env.ALT_TG_BOT_TOKENS||'')
-    .split(',').map(s=>s.trim()).filter(Boolean);
-  return [primary, ...extra].filter(Boolean);
-}
-function verifyTgInitData(rawInitData){
-  const tokens = getBotTokens();
-  if (!tokens.length) throw new Error('TG_BOT_TOKEN not set');
 
+/**
+ * Возвращает список токенов в порядке предпочтения.
+ * Поддерживает:
+ *   TG_BOT_TOKEN                 — основной токен
+ *   TG_BOT_USERNAME              — логин основного бота (без @)
+ *   ALT_TG_BOT_TOKENS            — CSV вида:
+ *                                  "botname=TOKEN, other:OTHERTOKEN, JUSTTOKENTOO"
+ * Если передан preferredUname (из X-Bot-Username), сначала пробуем совпадающие пары.
+ */
+function getBotTokens(preferredUnameRaw=''){
+  const preferred = String(preferredUnameRaw||'').replace(/^@/,'').toLowerCase();
+
+  const primaryToken = (process.env.TG_BOT_TOKEN||'').trim();
+  const primaryUname = String(process.env.TG_BOT_USERNAME||'').replace(/^@/,'').toLowerCase();
+
+  const altRaw = String(process.env.ALT_TG_BOT_TOKENS||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const entries = [];
+
+  if (primaryToken) entries.push({ uname: primaryUname || null, token: primaryToken });
+
+  for (const item of altRaw){
+    const mEq = item.match(/^([^=:]+)=(.+)$/);
+    const mCol = item.match(/^([^=:]+):(.+)$/);
+    if (mEq) entries.push({ uname: mEq[1].replace(/^@/,'').toLowerCase(), token: mEq[2] });
+    else if (mCol) entries.push({ uname: mCol[1].replace(/^@/,'').toLowerCase(), token: mCol[2] });
+    else entries.push({ uname: null, token: item });
+  }
+
+  // Дедуп токенов и упорядочивание: сначала те, что совпали по имени бота
+  const seen = new Set();
+  const exact = [];
+  const rest  = [];
+  for (const e of entries){
+    const t = (e.token||'').trim();
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    if (preferred && e.uname && e.uname === preferred) exact.push(t);
+    else rest.push(t);
+  }
+  const list = exact.concat(rest);
+  if (!list.length) throw new Error('TG_BOT_TOKEN not set');
+  return list;
+}
+
+function verifyTgInitData(rawInitData, preferredUname=''){
+  const tokens = getBotTokens(preferredUname);
   const rawBase = normalizeInitRaw(rawInitData);
 
   for (const token of tokens) {
@@ -147,7 +185,6 @@ async function getStoreSafe(){
     const { getStore } = await import('@netlify/blobs');
     const SITE_ID = process.env.NETLIFY_BLOBS_SITE_ID || '';
     const TOKEN   = process.env.NETLIFY_BLOBS_TOKEN   || '';
-    // Явно используем siteID/token, если заданы — чтобы избежать "environment not configured"
     const store = (SITE_ID && TOKEN)
       ? getStore({ name: 'notifs', siteID: SITE_ID, token: TOKEN })
       : getStore('notifs');
@@ -157,9 +194,7 @@ async function getStoreSafe(){
     return makeBlobsStore(store);
   } catch (e) {
     console.warn('[notifs] blobs unavailable:', e?.message||e);
-    if (!allowFallback) {
-      throw new Error('blobs unavailable and memory fallback disabled');
-    }
+    if (!allowFallback) throw new Error('blobs unavailable and memory fallback disabled');
     console.warn('[notifs] fallback to memory store (ALLOW_MEMORY_FALLBACK!=0)');
     return makeMemoryStore();
   }
@@ -230,12 +265,13 @@ export async function handler(event){
     if (event.httpMethod === 'GET') {
       // ① Владелец (initData), либо ② совместимость: явный uid в query
       const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
+      const botUnameHdr = (event.headers?.['x-bot-username'] || event.headers?.['X-Bot-Username'] || '').toString();
       const op  = String(event.queryStringParameters?.op || 'list').toLowerCase();
       const uidFromQuery = String(event.queryStringParameters?.uid || '').trim();
 
       let uid = null;
       if (rawInit) {
-        try { ({ uid } = verifyTgInitData(rawInit)); } catch (e) { /* мягко игнорируем — попробуем fallback */ }
+        try { ({ uid } = verifyTgInitData(rawInit, botUnameHdr)); } catch (e) { /* мягко игнорируем — попробуем fallback */ }
       }
       if (!uid) uid = uidFromQuery; // режим совместимости с фронтом
 
@@ -281,8 +317,9 @@ export async function handler(event){
     // 2a. Владелец через initData: markMine/markSeen (исторический контракт)
     if (op === 'markseen' || op === 'markmine') {
       const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
+      const botUnameHdr = (event.headers?.['x-bot-username'] || event.headers?.['X-Bot-Username'] || '').toString();
       try {
-        const { uid } = verifyTgInitData(rawInit);
+        const { uid } = verifyTgInitData(rawInit, botUnameHdr);
         const targetUidRaw = String(body.uid || '').trim();
         if (targetUidRaw && targetUidRaw !== uid) {
           return { statusCode:403, headers, body: JSON.stringify({ ok:false, error:'forbidden' }) };
@@ -291,7 +328,7 @@ export async function handler(event){
         const items = ids?.length ? await store.mark(uid, ids) : await store.markAll(uid);
         return { statusCode:200, headers, body: JSON.stringify({ ok:true, items }) };
       } catch {
-        // 🔸 мягкий отказ, чтобы фронт мог перейти на публичный путь markAll без 500
+        // мягкий отказ, чтобы фронт мог перейти на публичный путь markAll без 500
         return { statusCode:401, headers, body: JSON.stringify({ ok:false, error:'unauthorized' }) };
       }
     }

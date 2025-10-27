@@ -1,22 +1,11 @@
 // src/core/loyalty.js
 // Клиентская обвязка к serverless-функции лояльности + локальные хелперы.
-// Динамический X-Bot-Username из TG, мягкий режим без initData для readonly,
-// корректная base64 для Unicode и защита от слишком длинных заголовков.
-// Добавлено: сбор и экспорт "меты" последнего вызова (getLastInitMeta).
+// Важно: динамический X-Bot-Username из Telegram-контекста и отправка X-Tg-Init-Data только если он есть.
+// Также экспортируется getLastInitMeta() для отладочного баннера.
 
-import { getUID } from './state.js';
+import { getUID, k } from './state.js';
 
 /* =========================== helpers =========================== */
-
-// Локальный key-неймспейс на UID (как в main.js)
-function k(base){
-  try{
-    const uid = getUID?.() || 'guest';
-    return `${base}__${uid}`;
-  }catch{
-    return `${base}__guest`;
-  }
-}
 
 // Сырая строка initData (не initDataUnsafe!), как рекомендует Telegram.
 function getTgInitDataRaw() {
@@ -29,11 +18,8 @@ function getTgInitDataRaw() {
 
 // Безопасная base64 для Unicode-строк
 function b64u(str='') {
-  try {
-    return btoa(unescape(encodeURIComponent(String(str))));
-  } catch {
-    try { return btoa(String(str)); } catch { return ''; }
-  }
+  try { return btoa(unescape(encodeURIComponent(String(str)))); }
+  catch { try { return btoa(String(str)); } catch { return ''; } }
 }
 
 /* =========================== конфиг =========================== */
@@ -50,12 +36,12 @@ export const CASHBACK_CFG = {
   MONTHLY_REF_LIMIT: 10,
 };
 
-// Какой бот используется в ссылке-приглашении (fallback, если TG контекст недоступен)
+// Фолбэк, если в контексте TG нет имени бота
 export const BOT_USERNAME = 'EvliseOutletBot';
 
 /* ============================ заголовки ============================ */
 
-// Имя бота для ссылок / отображения
+// Достаём @username бота из Telegram-контекста (или из константы)
 function resolveBotUsername() {
   try {
     const uname = (
@@ -71,18 +57,18 @@ function resolveBotUsername() {
   }
 }
 
-// Имя бота для заголовка (без @)
+// Имя бота для заголовка (без @), ПОЛУЧАЕНО ДИНАМИЧЕСКИ
 function botUnameHeader() {
-  const uname = (typeof BOT_USERNAME === 'string' ? BOT_USERNAME : '').replace(/^@/, '');
-  return uname;
+  const withAt = resolveBotUsername(); // '@name' или ''
+  return withAt.replace(/^@/, '');
 }
 
-// Заголовки для запросов
+// Заголовки для запросов — кладём X-Tg-Init-Data ТОЛЬКО если он есть
 function reqHeaders(initData) {
   const h = { 'Content-Type': 'application/json' };
-  h['X-Tg-Init-Data'] = String(initData || '');
   const uname = botUnameHeader();
-  if (uname) h['X-Bot-Username'] = uname; // без @
+  if (uname) h['X-Bot-Username'] = uname;      // без @
+  if (initData) h['X-Tg-Init-Data'] = initData; // только если непустой
   return h;
 }
 
@@ -147,19 +133,10 @@ function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
   });
 }
 
-// Операции, для которых нужен admin-token (X-Internal-Auth).
-const ADMIN_OPS = new Set([
-  'admincalc',
-  'voidaccrual',
-  'accrue',
-  'confirmaccrual',
-]);
-
-// Операции, которые можно вызывать без initData (совпадает с серверным readonly)
-const READONLY_OPS_WITHOUT_INIT = new Set([
-  'getbalance',
-  'getreferrals',
-]);
+// admin-only операции
+const ADMIN_OPS = new Set(['admincalc','voidaccrual','accrue','confirmaccrual']);
+// readonly операции, разрешённые без initData
+const READONLY_OPS_WITHOUT_INIT = new Set(['getbalance','getreferrals']);
 
 function getAdminToken() {
   try {
@@ -171,27 +148,17 @@ function getAdminToken() {
   } catch { return ''; }
 }
 
-// Алиасы имён операций → нормализованное имя
 const OP_ALIAS = new Map([
-  ['getbalance', 'getbalance'],
-  ['getBalance', 'getbalance'],
-  ['bindReferral', 'bindreferral'],
-  ['bindreferral', 'bindreferral'],
-  ['getReferrals', 'getreferrals'],
-  ['getreferrals', 'getreferrals'],
-  ['reserveRedeem', 'reserveredeem'],
-  ['reserveredeem', 'reserveredeem'],
-  ['finalizeRedeem', 'finalizeredeem'],
-  ['finalizeredeem', 'finalizeredeem'],
-  ['accrue', 'accrue'],
-  ['confirmAccrual', 'confirmaccrual'],
-  ['confirmaccrual', 'confirmaccrual'],
-  ['voidAccrual', 'voidaccrual'],
-  ['voidaccrual', 'voidaccrual'],
-  ['adminCalc', 'admincalc'],
-  ['admincalc', 'admincalc'],
+  ['getbalance','getbalance'],['getBalance','getbalance'],
+  ['bindReferral','bindreferral'],['bindreferral','bindreferral'],
+  ['getReferrals','getreferrals'],['getreferrals','getreferrals'],
+  ['reserveRedeem','reserveredeem'],['reserveredeem','reserveredeem'],
+  ['finalizeRedeem','finalizeredeem'],['finalizeredeem','finalizeredeem'],
+  ['accrue','accrue'],
+  ['confirmAccrual','confirmaccrual'],['confirmaccrual','confirmaccrual'],
+  ['voidAccrual','voidaccrual'],['voidaccrual','voidaccrual'],
+  ['adminCalc','admincalc'],['admincalc','admincalc'],
 ]);
-
 function normalizeOp(op) {
   const raw = String(op || '').trim();
   if (!raw) return '';
@@ -201,15 +168,8 @@ function normalizeOp(op) {
 }
 
 /* ===== метаданные последнего вызова (для баннера/диагностики) ===== */
-let __lastInitMeta = {
-  usedHeader: false,
-  sentRawLen: 0,
-  sentB64Len: 0,
-  botUname: '',
-};
-export function getLastInitMeta() {
-  return { ...__lastInitMeta };
-}
+let __lastInitMeta = { usedHeader:false, sentRawLen:0, sentB64Len:0, botUname:'' };
+export function getLastInitMeta() { return { ...__lastInitMeta }; }
 
 async function api(op, body = {}) {
   const norm = normalizeOp(op);
@@ -227,7 +187,6 @@ async function api(op, body = {}) {
   }
 
   const headers = reqHeaders(initData);
-
   if (ADMIN_OPS.has(norm) && hasAdminToken) {
     headers['X-Internal-Auth'] = getAdminToken();
   }
@@ -237,6 +196,7 @@ async function api(op, body = {}) {
     payload.initData   = initData;
     payload.initData64 = b64u(initData);
   }
+  // Дублируем имя бота в теле как fallback
   payload.bot = botUnameHeader();
 
   __lastInitMeta = {
@@ -253,7 +213,6 @@ async function api(op, body = {}) {
   }), FETCH_TIMEOUT_MS);
 
   const data = await res.json().catch(() => ({}));
-
   if (!res.ok || data?.ok === false) {
     const reason = data?.error || data?.reason || `loyalty api error (HTTP ${res.status})`;
     const err = new Error(reason);
@@ -264,7 +223,6 @@ async function api(op, body = {}) {
     }
     throw err;
   }
-
   return data;
 }
 
@@ -383,7 +341,7 @@ export async function finalizeRedeem(orderId, action /* 'cancel' | 'commit' */) 
   return { ok };
 }
 
-// Админские варианты (когда выполняем за другого пользователя)
+// Админские варианты
 export async function finalizeRedeemFor(uid, orderId, action) {
   const { ok, balance } = await api('finalizeRedeem', { uid: String(uid), orderId: String(orderId), action: String(action) });
   if (ok) setLocalLoyalty(balance || {});
@@ -400,7 +358,6 @@ export async function loyaltyVoidAccrualFor(uid, orderId) {
   return { ok };
 }
 
-// Внутренняя операция — инициировать pending-начисление при создании заказа (админ/сервер)
 export async function accrueOnOrderPlaced(order) {
   const uid = String(order.userId || getUID());
   const { ok, balance } = await api('accrue', {
@@ -414,7 +371,6 @@ export async function accrueOnOrderPlaced(order) {
   return { ok };
 }
 
-// Подтверждение начисления пользователем
 export async function confirmAccrual(orderId) {
   const uid = getUID();
   const { ok, balance } = await api('confirmAccrual', { uid, orderId: String(orderId) });

@@ -104,8 +104,6 @@ async function notifApiList(uid){
   return Array.isArray(data.items) ? data.items : [];
 }
 async function notifApiAdd(uid, notif){
-  // На сервере op:add доступен только internal — этот вызов, скорее всего, вернёт 403,
-  // а мы зарезервировали локальный фолбэк ниже.
   const res = await fetch(NOTIF_API, {
     method:'POST',
     headers:{ 'Content-Type':'application/json', 'X-Tg-Init-Data': getTgInitDataRaw() },
@@ -115,9 +113,7 @@ async function notifApiAdd(uid, notif){
   if (!res.ok || data?.ok === false) throw new Error('notif add error');
   return data.id || notif.id || Date.now();
 }
-/* === ПРАВКА ЗДЕСЬ ===
-   если есть валидный initData — используем защищённый op: 'markmine'
-   иначе — совместимый путь op: 'markAll' (для веб-запуска без Telegram) */
+/* === ПРАВКА ЗДЕСЬ === */
 async function notifApiMarkAll(uid){
   const initData = getTgInitDataRaw();
   const hasInit  = !!(initData && initData.length);
@@ -126,8 +122,8 @@ async function notifApiMarkAll(uid){
   if (hasInit) headers['X-Tg-Init-Data'] = initData;
 
   const body = hasInit
-    ? { op:'markmine', uid:String(uid) }   // владелец по проверенному initData
-    : { op:'markAll', uid:String(uid) };   // совместимость для веба/без initData
+    ? { op:'markmine', uid:String(uid) }
+    : { op:'markAll', uid:String(uid) };
 
   const res = await fetch(NOTIF_API, {
     method:'POST',
@@ -136,7 +132,6 @@ async function notifApiMarkAll(uid){
   });
   const data = await res.json().catch(()=>({}));
   if (!res.ok || data?.ok === false) throw new Error('notif mark error');
-  // сервер отдаёт актуальный список после отметки
   return Array.isArray(data.items) ? data.items : null;
 }
 
@@ -175,7 +170,7 @@ async function serverPushFor(uid, notif){
     sub: String(notif.sub || '')
   };
   try{
-    await notifApiAdd(uid, safe); // может свалиться (403) — ниже фолбэк
+    await notifApiAdd(uid, safe);
   }catch{
     if (String(uid) === String(getUID?.())){
       const cache = getNotifications();
@@ -203,7 +198,6 @@ async function ensureOnboardingNotifsOnce(){
   const FLAG = `onb_seeded__${uid}`;
   if (localStorage.getItem(FLAG) === '1') return;
 
-  // если уже есть уведомления — ничего не делаем
   if ((getNotifications()?.length || 0) > 0) {
     localStorage.setItem(FLAG, '1');
     return;
@@ -248,7 +242,6 @@ async function ensureOnboardingNotifsOnce(){
 (function initUserIdentityEarly(){
   const tg = window.Telegram?.WebApp;
 
-  // Telegram-пользователь → фиксируем его id как UID
   if (tg?.initDataUnsafe?.user) {
     const u = tg.initDataUnsafe.user;
     state.user = u;
@@ -256,7 +249,6 @@ async function ensureOnboardingNotifsOnce(){
     return;
   }
 
-  // Гость → ВСЕГДА общий UID 'guest'
   try{
     const stored = localStorage.getItem('nas_uid');
     if (!stored) localStorage.setItem('nas_uid', 'guest');
@@ -277,6 +269,100 @@ initTelegramChrome();
 try {
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 } catch {}
+
+/* === Безопасный отладочный баннер (низ экрана) === */
+(function attachSafeDebugBanner(){
+  try {
+    // не показываем, если пользователь сам скрыл
+    const HIDE_FLAG = 'dbg_banner_hidden';
+    if (localStorage.getItem(HIDE_FLAG) === '1') return;
+
+    // создаём DOM только один раз
+    if (document.getElementById('dbgBar')) return;
+
+    const bar = document.createElement('div');
+    bar.id = 'dbgBar';
+    bar.setAttribute('role','status');
+    bar.style.cssText = [
+      'position:fixed','left:8px','right:8px','bottom:8px',
+      'z-index:99999','background:#0f172a','color:#a7f3d0',
+      'font:12px/1.35 system-ui, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+      'padding:6px 8px','opacity:.92','letter-spacing:.2px',
+      'border-radius:8px','box-shadow:0 6px 20px rgba(0,0,0,.25)','pointer-events:auto'
+    ].join(';');
+
+    const label = document.createElement('div');
+    label.id = 'dbgBarTxt';
+    label.textContent = 'EVLISE · init:– · bot:– · hdr:– · idle';
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.setAttribute('aria-label','Скрыть баннер');
+    close.textContent = '×';
+    close.style.cssText = [
+      'position:absolute','top:0','right:6px','height:100%','border:0',
+      'background:transparent','color:#94a3b8','font:16px/1 monospace','cursor:pointer'
+    ].join(';');
+    close.addEventListener('click', () => {
+      try { localStorage.setItem(HIDE_FLAG, '1'); } catch {}
+      try { clearInterval(window.__dbgBarTimer); } catch {}
+      bar.remove();
+    }, { passive: true });
+
+    bar.appendChild(label);
+    bar.appendChild(close);
+
+    const mount = () => {
+      if (!document.getElementById('dbgBar')) {
+        document.body.appendChild(bar);
+      }
+      render('idle');
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', mount, { once:true });
+    } else {
+      mount();
+    }
+
+    // ленивый импорт меты из loyalty.js (если модуль есть)
+    let getLastInitMeta = null;
+    import('./core/loyalty.js')
+      .then(mod => { getLastInitMeta = mod?.getLastInitMeta || null; })
+      .catch(() => { /* молча игнорируем — баннер будет жить без меты */ });
+
+    function render(status){
+      try {
+        const meta = typeof getLastInitMeta === 'function' ? (getLastInitMeta() || {}) : {};
+        const txt = [
+          `init:${meta.sentRawLen||0}`,
+          `bot:${meta.botUname||'-'}`,
+          `hdr:${meta.usedHeader?'Y':'N'}`,
+          status ? status : 'idle'
+        ].join(' · ');
+        const el = document.getElementById('dbgBarTxt');
+        if (el) el.textContent = `EVLISE · ${txt}`;
+      } catch {}
+    }
+
+    // события из мест вызова (кастомные — по желанию)
+    window.addEventListener('loyalty:error', (e)=> render(e?.detail || 'error'));
+    window.addEventListener('loyalty:ok',    ()=> render('ok'));
+
+    // периодическое автообновление
+    window.__dbgBarTimer = setInterval(()=>render('idle'), 2000);
+
+    // чистим таймеры
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { try { clearInterval(window.__dbgBarTimer); } catch {} }
+      else { try { clearInterval(window.__dbgBarTimer); } catch {} finally { window.__dbgBarTimer = setInterval(()=>render('idle'), 2000); } }
+    });
+    window.addEventListener('beforeunload', () => { try { clearInterval(window.__dbgBarTimer); } catch {} });
+
+    // лёгкая реакция на навигацию
+    window.addEventListener('hashchange', ()=> render('nav'));
+  } catch {}
+})();
 
 /* ---------- ADMIN MODE ---------- */
 function setAdminMode(on){
@@ -419,7 +505,6 @@ window.setTabbarCTAs = setTabbarCTAs;
 
     const sp = String(tg.initDataUnsafe.start_param || '').trim().toLowerCase();
 
-    // ДОБАВЛЕНО: микротрекинг открытия Mini App с меткой Direct Link
     if (sp) {
       try {
         fetch('/.netlify/functions/track', {
@@ -728,7 +813,6 @@ async function init(){
     try{
       const id = e.detail?.id;
 
-      // подтянем заказ (нужен shortId для единого отображения)
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
       const dispId = makeDisplayOrderId(order);
 
@@ -746,7 +830,6 @@ async function init(){
 
       await serverPushFor(getUID(), notif);
 
-      // Дальше уведомления (в бота/приложение) шлёт серверная функция orders -> notify/notifs
       window.dispatchEvent(new CustomEvent('orders:updated'));
     }catch{}
   });
@@ -765,8 +848,6 @@ async function init(){
 
       await serverPushFor(userId, notif);
       instantLocalIfSelf(userId, notif);
-
-      // Отправка бот-уведомлений теперь централизована на сервере (orders.js)
     }catch{}
   });
 
@@ -784,8 +865,6 @@ async function init(){
 
       await serverPushFor(userId, notif);
       instantLocalIfSelf(userId, notif);
-
-      // Бот-уведомления — со стороны сервера
     }catch{}
   });
 
@@ -804,8 +883,6 @@ async function init(){
 
       await serverPushFor(userId, notif);
       instantLocalIfSelf(userId, notif);
-
-      // Бот-уведомления — со стороны сервера
     }catch{}
   });
 
