@@ -46,6 +46,34 @@ import { renderRefBridge } from './views/RefBridge.js';
 const POINTS_MATURITY_MS  = 24*60*60*1000;
 function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
 
+/* ---------- ОДНОРАЗОВАЯ МИГРАЦИЯ КОШЕЛЬКА guest -> реальный UID ---------- */
+/**
+ * Если старые пользователи копили баллы под ключом points_wallet__guest,
+ * переносим содержимое в points_wallet__<uid>. Запускается один раз на UID.
+ */
+function migrateGuestWalletOnce() {
+  try {
+    const realUid = getUID?.();
+    if (!realUid) return;
+
+    const FLAG = `points_wallet_migrated__${realUid}`;
+    if (localStorage.getItem(FLAG) === '1') return;
+
+    const guestKey = `points_wallet__guest`;
+    const realKey  = `points_wallet__${realUid}`;
+
+    const guestRaw = localStorage.getItem(guestKey);
+    const realRaw  = localStorage.getItem(realKey);
+
+    if (guestRaw && !realRaw) {
+      localStorage.setItem(realKey, guestRaw);
+      // при желании можно очистить старый ключ:
+      // localStorage.removeItem(guestKey);
+    }
+    localStorage.setItem(FLAG, '1');
+  } catch {}
+}
+
 /* Кошелёк (для «дозревания» при старте) */
 function readWallet(){
   try{
@@ -257,6 +285,9 @@ async function ensureOnboardingNotifsOnce(){
   }
 })();
 
+/* ВАЖНО: однократно перенесём кошелёк guest -> <uid> до любых чтений */
+migrateGuestWalletOnce();
+
 /* ---------- персональные данные ---------- */
 loadCart();
 loadAddresses();
@@ -273,11 +304,8 @@ try {
 /* === Безопасный отладочный баннер (низ экрана) === */
 (function attachSafeDebugBanner(){
   try {
-    // не показываем, если пользователь сам скрыл
     const HIDE_FLAG = 'dbg_banner_hidden';
     if (localStorage.getItem(HIDE_FLAG) === '1') return;
-
-    // создаём DOM только один раз
     if (document.getElementById('dbgBar')) return;
 
     const bar = document.createElement('div');
@@ -325,11 +353,10 @@ try {
       mount();
     }
 
-    // ленивый импорт меты из loyalty.js (если модуль есть)
     let getLastInitMeta = null;
     import('./core/loyalty.js')
       .then(mod => { getLastInitMeta = mod?.getLastInitMeta || null; })
-      .catch(() => { /* молча игнорируем — баннер будет жить без меты */ });
+      .catch(() => {});
 
     function render(status){
       try {
@@ -345,21 +372,17 @@ try {
       } catch {}
     }
 
-    // события из мест вызова (кастомные — по желанию)
     window.addEventListener('loyalty:error', (e)=> render(e?.detail || 'error'));
     window.addEventListener('loyalty:ok',    ()=> render('ok'));
 
-    // периодическое автообновление
     window.__dbgBarTimer = setInterval(()=>render('idle'), 2000);
 
-    // чистим таймеры
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) { try { clearInterval(window.__dbgBarTimer); } catch {} }
       else { try { clearInterval(window.__dbgBarTimer); } catch {} finally { window.__dbgBarTimer = setInterval(()=>render('idle'), 2000); } }
     });
     window.addEventListener('beforeunload', () => { try { clearInterval(window.__dbgBarTimer); } catch {} });
 
-    // лёгкая реакция на навигацию
     window.addEventListener('hashchange', ()=> render('nav'));
   } catch {}
 })();
@@ -612,8 +635,6 @@ async function router(){
   hideProductHeader();
   scrollTopNow(); // ← вот здесь, один раз
 
-
-
   // Админ-режим
   if (inAdmin){
     if (parts.length===0 || parts[0] !== 'admin'){
@@ -621,6 +642,7 @@ async function router(){
       return renderAdmin();
     }
     if (!canAccessAdmin()){
+
       setAdminMode(false);
       toast('Доступ в админ-панель ограничен');
       location.hash = '#/admin-login';
