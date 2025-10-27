@@ -26,6 +26,16 @@ function getTgInitDataRaw(){
   }
 }
 
+/* ===== badge helpers ===== */
+function unreadCount(list){ return (list||[]).reduce((a,n)=> a + (!n.read ? 1 : 0), 0); }
+function updateUnreadBadge(n){
+  const v = Math.max(0, n|0);
+  // общий локальный счётчик (если где-то читается напрямую)
+  localStorage.setItem(k('notifs_unread'), String(v));
+  // событие для шапки/иконок
+  try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: v })); } catch {}
+}
+
 export async function renderNotifications(onAfterMarkRead){
   const v = document.getElementById('view');
   if (!v) return;
@@ -52,19 +62,18 @@ export async function renderNotifications(onAfterMarkRead){
   }
 
   // 2) отмечаем прочитанными: сперва сервер, затем локальный кэш
-  if (list.some(n=>!n.read)){
-    const serverItems = await markAllServerSafe().catch(()=>null);
-    if (Array.isArray(serverItems) && serverItems.length){
-      // сервер вернул актуальный список — синхронизируем локальное состояние с ним
-      const norm = serverItems.map(n => normalize(n));
-      setList(norm.sort((a,b)=> (b.ts||0)-(a.ts||0)));
-    } else {
-      // если сервер недоступен — помечаем локально
-      const updated = list.map(n=> ({ ...n, read:true }));
-      setList(updated);
-    }
-    onAfterMarkRead && onAfterMarkRead();
+  const serverItems = await markAllServerSafe().catch(()=>null);
+  if (Array.isArray(serverItems)) {
+    // сервер – источник истины, даже если вернул []
+    const norm = serverItems.map(n => normalize(n));
+    setList(norm.sort((a,b)=> (b.ts||0)-(a.ts||0)));
+  } else {
+    // оффлайн-фолбэк
+    const updated = list.map(n => ({ ...n, read: true }));
+    setList(updated);
   }
+  updateUnreadBadge(0);
+  onAfterMarkRead && onAfterMarkRead();
 
   // иконки
   window.lucide?.createIcons && lucide.createIcons();
@@ -113,6 +122,8 @@ async function fetchServerListSafe(){
     const items = Array.isArray(j.items) ? j.items : [];
     const norm = items.map(normalize);
     setList(norm);
+    // обновим бейдж на фактическое количество непрочитанных
+    updateUnreadBadge(unreadCount(norm));
     return norm;
   }catch{
     return null;
@@ -135,7 +146,7 @@ async function markAllServerSafe(){
       },
       // если есть initData — используем защищённый путь markseen/markmine,
       // иначе — совместимый публичный путь markAll по uid
-      body: JSON.stringify(hasInit ? { op:'markseen', uid } : { op:'markAll', uid })
+      body: JSON.stringify(hasInit ? { op:'markseen' } : { op:'markAll', uid })
     }));
     const j = await r.json().catch(()=> ({}));
     if (!r.ok || j?.ok === false) return null;
