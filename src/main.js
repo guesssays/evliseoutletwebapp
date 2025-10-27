@@ -152,8 +152,8 @@ async function notifApiMarkAll(uid){
   // пробуем по очереди: markmine → markseen → markAll
   const attempts = hasInit
     ? [
-        { op:'markmine', uid:String(uid) },
-        { op:'markseen', uid:String(uid) },
+        { op:'markmine' },   // ← без uid при initData
+        { op:'markseen' },
       ]
     : [
         { op:'markAll', uid:String(uid) },
@@ -689,23 +689,9 @@ async function router(){
 
   if (match('notifications')){
    
-    renderNotifications(updateNotifBadge);
-
-    const uid = getUID();
-    try {
-      const items = await notifApiMarkAll(uid);
-      if (items) {
-        mergeNotifsToLocal(items);
-      } else {
-        const loc = getNotifications().map(n => ({ ...n, read: true }));
-        setNotifications(loc);
-      }
-    // сразу же подтягиваем с сервера уже помеченный список
-   await syncMyNotifications();
-    updateNotifBadge(); // без аргумента — посчитает из локального стейта
-  } catch {
-    updateNotifBadge(); // на всякий случай, но здесь локалка уже «прочитана»
-  }
+    await renderNotifications(updateNotifBadge); // здесь уже есть markAll + обнуление бейджа
+    await syncMyNotifications();                 // подтянем финальный список
+    updateNotifBadge();                          // пересчёт по локальному стейту
     return;
   }
 

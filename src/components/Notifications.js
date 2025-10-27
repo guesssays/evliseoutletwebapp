@@ -143,8 +143,8 @@ async function markAllServerSafe(){
       ...(hasInit ? { 'X-Tg-Init-Data': initData } : {}),
     };
     const attempts = hasInit
-      ? [ { op:'markmine', uid }, { op:'markseen', uid } ]
-      : [ { op:'markAll', uid } ];
+      ? [ { op:'markmine' }, { op:'markseen' } ]   // ← без uid при initData
+      : [ { op:'markAll', uid } ];                 // ← uid только в публичном пути
 
     for (const body of attempts){
       const r = await withTimeout(fetch(ENDPOINT, {
