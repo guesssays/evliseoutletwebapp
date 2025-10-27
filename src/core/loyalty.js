@@ -1,7 +1,8 @@
 // src/core/loyalty.js
 // Клиентская обвязка к serverless-функции лояльности + локальные хелперы.
-// Новое: динамический X-Bot-Username из TG, мягкий режим без initData для readonly,
+// Динамический X-Bot-Username из TG, мягкий режим без initData для readonly,
 // корректная base64 для Unicode и защита от слишком длинных заголовков.
+// Добавлено: сбор и экспорт "меты" последнего вызова (getLastInitMeta).
 
 import { getUID, k } from './state.js';
 
@@ -21,7 +22,7 @@ function b64u(str='') {
   try {
     // encodeURIComponent → %XX → unescape → btoa
     return btoa(unescape(encodeURIComponent(String(str))));
-  } catch { 
+  } catch {
     try { return btoa(String(str)); } catch { return ''; }
   }
 }
@@ -43,9 +44,9 @@ export const CASHBACK_CFG = {
 // Какой бот используется в ссылке-приглашении (fallback, если TG контекст недоступен)
 export const BOT_USERNAME = 'EvliseOutletBot';
 
-/* ===== заголовки ===== */
+/* ============================ заголовки ============================ */
 
-// Имя бота для заголовка: сначала берём из TG, потом из константы (эта функция нужна для ссылок)
+// Имя бота для ссылок / отображения: пробуем взять из TG-контекста, иначе из константы
 function resolveBotUsername() {
   try {
     const uname = (
@@ -61,10 +62,10 @@ function resolveBotUsername() {
   }
 }
 
-// Имя бота для заголовка
+// Имя бота для заголовка (без @)
 function botUnameHeader() {
   const uname = (typeof BOT_USERNAME === 'string' ? BOT_USERNAME : '').replace(/^@/, '');
-  return uname; // БЕЗ @ в заголовке
+  return uname;
 }
 
 // Заголовки для запросов
@@ -190,9 +191,17 @@ function normalizeOp(op) {
   return OP_ALIAS.get(low) || low;
 }
 
-// для быстрой диагностики в UI/консоли
-let __lastInitMeta = { usedHeader: false, sentRawLen: 0, sentB64Len: 0, botUname: '' };
-export function getLastInitMeta() { return { ...__lastInitMeta }; }
+/* ===== метаданные последнего вызова (для баннера/диагностики) ===== */
+let __lastInitMeta = {
+  usedHeader: false,  // true, если X-Tg-Init-Data реально отправлялся
+  sentRawLen: 0,      // длина сырого initData
+  sentB64Len: 0,      // длина base64-версии initData
+  botUname: '',       // что положили в X-Bot-Username
+};
+export function getLastInitMeta() {
+  // возвращаем копию, чтобы нельзя было мутировать извне
+  return { ...__lastInitMeta };
+}
 
 async function api(op, body = {}) {
   const norm = normalizeOp(op);
@@ -204,7 +213,6 @@ async function api(op, body = {}) {
     (ADMIN_OPS.has(norm) && hasAdminToken);
 
   if (!initData && !canSkipInit) {
-    // перехватывай по месту вызова и покажи «Откройте мини-приложение через Telegram»
     const e = new Error('initData_empty');
     e.code = 'initData_empty';
     throw e;
@@ -221,13 +229,13 @@ async function api(op, body = {}) {
   // В тело кладём initData (сырой) и корректный base64-вариант
   const payload = { op: norm, ...body };
   if (initData) {
-    payload.initData = initData;
+    payload.initData   = initData;
     payload.initData64 = b64u(initData);
   }
   // Дублируем имя бота в body как fallback для сервера
   payload.bot = botUnameHeader();
 
-  // Диагностика того, что реально отправили
+  // Диагностика того, что реально отправили — обновляем мету
   __lastInitMeta = {
     usedHeader: !!headers['X-Tg-Init-Data'],
     sentRawLen: (payload.initData || '').length,
