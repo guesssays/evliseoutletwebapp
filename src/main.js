@@ -557,10 +557,13 @@ el('#searchInput')?.addEventListener('input', (e)=>{
 });
 
 /* ---------- Уведомления (per-user) ---------- */
-function updateNotifBadge(){
-  const unread = getNotifications().filter(n=>!n.read).length;
+// Обновлённая функция: можно вызвать с числом для принудительной установки.
+function updateNotifBadge(explicitCount){
   const b = document.getElementById('notifBadge');
   if (!b) return;
+  const unread = (typeof explicitCount === 'number')
+    ? Math.max(0, explicitCount|0)
+    : getNotifications().reduce((a,n)=> a + (!n.read ? 1 : 0), 0);
   if (unread>0){
     b.textContent = String(unread);
     b.hidden = false;
@@ -572,6 +575,12 @@ function updateNotifBadge(){
   }
 }
 window.updateNotifBadge = updateNotifBadge;
+
+// Слушаем событие от Notifications.js для моментального обнуления
+window.addEventListener('notifs:unread', (e)=>{
+  const n = Number(e?.detail ?? 0) || 0;
+  updateNotifBadge(n);
+});
 
 document.addEventListener('click', (e)=>{
   const btn = e.target.closest('#openNotifications');
@@ -642,7 +651,6 @@ async function router(){
       return renderAdmin();
     }
     if (!canAccessAdmin()){
-
       setAdminMode(false);
       toast('Доступ в админ-панель ограничен');
       location.hash = '#/admin-login';
@@ -681,7 +689,8 @@ async function router(){
         setNotifications(loc);
       }
     } catch {}
-    updateNotifBadge?.();
+    // Принудительно обнуляем бейдж после захода на экран уведомлений
+    updateNotifBadge(0);
     return;
   }
 
@@ -803,11 +812,10 @@ async function init(){
   await tryBindPendingInviter();
 
   window.addEventListener('hashchange', router);
-window.addEventListener('hashchange', () => {
-  // даём рендеру закончиться, затем поднимаем скролл
-  setTimeout(scrollTopNow, 0);
-});
-
+  window.addEventListener('hashchange', () => {
+    // даём рендеру закончиться, затем поднимаем скролл
+    setTimeout(scrollTopNow, 0);
+  });
 
   window.addEventListener('orders:updated', ()=>{
     const inAdmin = document.body.classList.contains('admin-mode');

@@ -1,5 +1,5 @@
 // src/components/Notifications.js
-import { getUID, getNotifications as getList, setNotifications as setList } from '../core/state.js';
+import { k, getUID, getNotifications as getList, setNotifications as setList } from '../core/state.js';
 
 const ENDPOINT = '/.netlify/functions/notifs';
 const FETCH_TIMEOUT_MS = 10000;
@@ -32,7 +32,7 @@ function updateUnreadBadge(n){
   const v = Math.max(0, n|0);
   // общий локальный счётчик (если где-то читается напрямую)
   localStorage.setItem(k('notifs_unread'), String(v));
-  // событие для шапки/иконок
+  // событие для шапки/иконок (перехватывается в main.js → updateNotifBadge)
   try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: v })); } catch {}
 }
 
@@ -144,9 +144,8 @@ async function markAllServerSafe(){
         'Content-Type':'application/json',
         ...(hasInit ? { 'X-Tg-Init-Data': initData } : {}),
       },
-      // если есть initData — используем защищённый путь markseen/markmine,
-      // иначе — совместимый публичный путь markAll по uid
-      body: JSON.stringify(hasInit ? { op:'markseen' } : { op:'markAll', uid })
+      // синхронизировано с main.js: при наличии initData используем op:'markmine'
+      body: JSON.stringify(hasInit ? { op:'markmine', uid } : { op:'markAll', uid })
     }));
     const j = await r.json().catch(()=> ({}));
     if (!r.ok || j?.ok === false) return null;
@@ -155,8 +154,6 @@ async function markAllServerSafe(){
     return null;
   }
 }
-
-
 
 /* ===== helpers ===== */
 function escapeHtml(s=''){
