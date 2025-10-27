@@ -689,9 +689,9 @@ async function router(){
 
   if (match('notifications')){
    
-    await renderNotifications(updateNotifBadge); // здесь уже есть markAll + обнуление бейджа
-    await syncMyNotifications();                 // подтянем финальный список
-    updateNotifBadge();                          // пересчёт по локальному стейту
+   await renderNotifications(updateNotifBadge); // внутри: markAll + updateUnreadBadge(0)
+   await syncMyNotifications();                 // просто обновим локальный список
+   // бейдж не трогаем: он уже 0 и остаётся 0                        // пересчёт по локальному стейту
     return;
   }
 

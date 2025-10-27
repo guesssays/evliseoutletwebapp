@@ -122,8 +122,7 @@ async function fetchServerListSafe(){
     const items = Array.isArray(j.items) ? j.items : [];
     const norm = items.map(normalize);
     setList(norm);
-    // обновим бейдж на фактическое количество непрочитанных
-    updateUnreadBadge(unreadCount(norm));
+
     return norm;
   }catch{
     return null;
