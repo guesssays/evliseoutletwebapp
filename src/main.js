@@ -15,6 +15,7 @@ import {
 
 import { toast } from './core/toast.js';
 import { el, initTelegramChrome } from './core/utils.js';
+import { mountScrollTop } from './components/ScrollTop.js';
 
 import { renderHome, drawCategoriesChips } from './components/Home.js';
 import { renderProduct } from './components/Product.js';
@@ -26,6 +27,9 @@ import { openFilterModal, renderActiveFilterChips } from './components/Filters.j
 import { renderAccount, renderAddresses, renderSettings, renderCashback, renderReferrals } from './components/Account.js';
 import { renderFAQ } from './components/FAQ.js';
 import { renderNotifications } from './components/Notifications.js';
+
+// Вынесенный фикс-хедер товара
+import { deactivateProductFixHeader } from './components/ProductFixHeader.js';
 
 // Админка
 import { renderAdmin } from './components/Admin.js';
@@ -172,7 +176,7 @@ async function notifApiMarkAll(uid){
     }
   }
 
-throw new Error('notif mark error');
+  throw new Error('notif mark error');
 }
 
 function mergeNotifsToLocal(serverItems){
@@ -307,6 +311,8 @@ loadProfile();
 loadFavorites();
 updateCartBadge();
 initTelegramChrome();
+// Кнопка "Наверх" — инициализация единый раз
+mountScrollTop();
 
 /* === Новое: полностью отключаем автопамять скролла браузера === */
 try {
@@ -517,21 +523,11 @@ document.addEventListener('click', (e)=>{
 
 /* ---------- фикс-хедер товара: скрытие вне карточки ---------- */
 function hideProductHeader(){
+  // делегируем логику компоненту фикс-хедера
+  try { deactivateProductFixHeader(); } catch {}
+  // и возвращаем видимость статичного хедера
   const stat = document.querySelector('.app-header');
-  const fix  = document.getElementById('productFixHdr');
-
-  if (window._productHdrAbort){
-    try{ window._productHdrAbort.abort(); }catch{}
-    window._productHdrAbort = null;
-  }
-
-  if (fix){
-    fix.classList.remove('show');
-    fix.setAttribute('aria-hidden','true');
-  }
-  if (stat){
-    stat.classList.remove('hidden');
-  }
+  if (stat) stat.classList.remove('hidden');
 }
 
 
@@ -603,10 +599,8 @@ async function router(){
   if (match('account/referrals'))  return renderReferrals();
 
   if (match('notifications')){
-   
-   await renderNotifications(updateNotifBadge); // внутри: markAll + updateUnreadBadge(0)
-   await syncMyNotifications();                 // просто обновим локальный список
-   // бейдж не трогаем: он уже 0 и остаётся 0                        // пересчёт по локальному стейту
+    await renderNotifications(updateNotifBadge); // внутри: markAll + updateUnreadBadge(0)
+    await syncMyNotifications();                 // обновим локальный список (на будущее)
     return;
   }
 
@@ -675,7 +669,7 @@ function startUserSnapshotSync(){
   // первый пуш при старте
   sendSnapshot();
 
-  // Пуш при событиях (если у вас генерируются — используем, иначе таймер ниже всё прикроет)
+  // Пуш при событиях
   window.addEventListener('cart:updated', sendSnapshot);
   window.addEventListener('favorites:updated', sendSnapshot);
 

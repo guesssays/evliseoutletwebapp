@@ -58,7 +58,7 @@
       transition: transform .18s ease, opacity .18s ease;
     }
 
-    /* --------- ФИКС-ХЕДЕР ТОВАРА (самодостаточно) --------- */
+    /* --------- ФИКС-ХЕДЕР ТОВАРА (визуал) --------- */
     .product-fixhdr{
       position: fixed;
       left: 0; right: 0;
@@ -101,7 +101,7 @@
     #btnFixFav{ margin-right: 8px; }
     #btnFixFav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none; }
 
-    /* --------- КНОПКА «НАВЕРХ» (самодостаточно) --------- */
+    /* --------- КНОПКА «НАВЕРХ» (визуал) --------- */
     #scrollTopBtn{
       position: fixed;
       right: 16px;
@@ -151,7 +151,7 @@
       </div>
     </header>
 
-    <!-- Фикс-хедер товара -->
+    <!-- Фикс-хедер товара (разметка; поведение в ProductFixHeader.js) -->
     <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
       <button id="btnFixBack" class="fixbtn" aria-label="Назад">
         <i data-lucide="arrow-left"></i>
@@ -216,7 +216,7 @@
       </div>
     </nav>
 
-    <!-- Кнопка «вверх» -->
+    <!-- Кнопка «вверх» (разметка; поведение в ScrollTop.js) -->
     <button id="scrollTopBtn" class="icon-btn" aria-label="Наверх" hidden>
       <i data-lucide="chevrons-up"></i>
     </button>
@@ -287,22 +287,6 @@
   <!-- Иконки после монтирования (запасной вызов) -->
   <script> try { window.lucide?.createIcons?.(); } catch {} </script>
 
-  <!-- Локальный JS: кнопка «вверх» (автономно) -->
-  <script>
-    (function(){
-      const btn = document.getElementById('scrollTopBtn');
-      if(!btn) return;
-
-      function onScroll(){
-        const sc = Math.max(document.documentElement.scrollTop || 0, window.scrollY || 0);
-        btn.hidden = sc < 300;
-      }
-      window.addEventListener('scroll', onScroll, {passive:true});
-      onScroll();
-
-      btn.addEventListener('click', ()=> window.scrollTo({ top:0, behavior:'smooth' }));
-      try{ window.lucide?.createIcons?.(); }catch{}
-    })();
-  </script>
+  <!-- (удалён) Локальный JS для кнопки «вверх» — теперь в src/components/ScrollTop.js -->
 </body>
 </html>

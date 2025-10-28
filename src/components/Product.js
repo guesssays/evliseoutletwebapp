@@ -2,6 +2,11 @@
 import { state, isFav, toggleFav, getUID } from '../core/state.js';
 import { priceFmt, colorToHex } from '../core/utils.js';
 import { addToCart, removeLineFromCart, isInCart } from './cartActions.js';
+import {
+  activateProductFixHeader,
+  deactivateProductFixHeader,
+  setFavActive as setFixFavActive,
+} from './ProductFixHeader.js';
 
 /* ====== КОНСТАНТЫ КЭШБЕКА/РЕФЕРАЛОВ (должны совпадать с корзиной/аккаунтом) ====== */
 const CASHBACK_RATE_BASE  = 0.05; // 5%
@@ -36,7 +41,7 @@ function categoryNameBySlug(slug){
   return findCategoryBySlug(slug)?.name || '';
 }
 
-/* ========= МАЛЕНЬКАЯ ДИАГНОСТИКА ДЛЯ 2-ХЕДЕРА ========= */
+/* ========= МАЛЕНЬКАЯ ДИАГНОСТИКА ДЛЯ ФИКС-ХЕДЕРА (опционально) ========= */
 const PHDBG = {
   enabled: false,
   panel: null,
@@ -62,7 +67,6 @@ const PHDBG = {
       <b style="font-weight:800">PH-Diag</b>
       <div id="ph-state" style="max-width:280px; word-break:break-word"></div>
       <div style="display:flex; gap:6px; flex-wrap:wrap">
-        <button id="ph-toggle" style="padding:6px 10px; border:1px solid #bbb; border-radius:8px; cursor:pointer; background:#f6f6f6">Force Toggle</button>
         <button id="ph-dump"   style="padding:6px 10px; border:1px solid #bbb; border-radius:8px; cursor:pointer; background:#f6f6f6">Dump</button>
         <button id="ph-clear"  style="padding:6px 10px; border:1px solid #bbb; border-radius:8px; cursor:pointer; background:#f6f6f6">Clear logs</button>
       </div>
@@ -70,29 +74,9 @@ const PHDBG = {
     document.body.appendChild(wrap);
     this.panel = wrap;
 
-    // Слушатели
-    wrap.querySelector('#ph-toggle')?.addEventListener('click', ()=>{
-      const fix = document.getElementById('productFixHdr');
-      const stat = document.querySelector('.app-header');
-      if (!fix || !stat){ console.warn('[PH] toggle: missing nodes', {fix:!!fix, stat:!!stat}); return; }
-      const newShow = !fix.classList.contains('show');
-      fix.classList.toggle('show', newShow);
-      fix.setAttribute('aria-hidden', String(!newShow));
-      stat.classList.toggle('hidden', newShow);
-      this.note('ForceToggle', { newShow, classList:[...fix.classList], statHidden: stat.classList.contains('hidden') });
-      this.renderState();
-    });
+    wrap.querySelector('#ph-dump')?.addEventListener('click', ()=> this.dumpNow());
+    wrap.querySelector('#ph-clear')?.addEventListener('click', ()=>{ console.clear(); this.note('Console cleared'); });
 
-    wrap.querySelector('#ph-dump')?.addEventListener('click', ()=>{
-      this.dumpNow();
-    });
-
-    wrap.querySelector('#ph-clear')?.addEventListener('click', ()=>{
-      console.clear();
-      this.note('Console cleared');
-    });
-
-    // Первичный status
     this.renderState();
     this.note('PH-Diag initialized');
   },
@@ -138,7 +122,6 @@ const PHDBG = {
   note(msg, extra){
     try{
       console.log(`[PH] ${msg}`, extra||'');
-      // лёгкая вибрация по клику — помогает замечать действия
       navigator.vibrate?.(10);
     }catch{}
   }
@@ -151,7 +134,26 @@ export function renderProduct({id}){
 
   const favActive = isFav(p.id);
 
-  const images = Array.isArray(p.images) && p.images.length ? p.images : [p.images?.[0] || ''];
+  // Активируем фикс-хедер товара и связываем обработчики
+  activateProductFixHeader({
+    isFav: () => isFav(p.id),
+    onBack: () => history.back(),
+    onFavToggle: () => {
+      const now = toggleFav(p.id);
+      const heroFav = document.getElementById('favBtn');
+      if (heroFav) {
+        heroFav.classList.toggle('active', now);
+        heroFav.setAttribute('aria-pressed', now ? 'true' : 'false');
+      }
+      setFixFavActive(now);
+    },
+    showThreshold: 140,
+  });
+
+  // ✅ Нормализация источников изображений
+  const images = Array.isArray(p.images)
+    ? p.images
+    : (p.images ? [p.images] : []);
   const realPhotos = Array.isArray(p.realPhotos) ? p.realPhotos : [];
 
   // ОБЪЕДИНЁННАЯ ГАЛЕРЕЯ: сначала офф. фото, затем реальные
@@ -329,7 +331,7 @@ export function renderProduct({id}){
             ${gallery.map((it, i)=>`
               <button class="thumb ${i===0?'active':''}" role="tab" aria-selected="${i===0?'true':'false'}" data-index="${i}" aria-controls="mainImg" style="position:relative">
                 ${it.isReal ? `<span class="real-dot">LIVE</span>` : ``}
-                <img loading="lazy" src="${it.src}" alt="Фото ${i+1}${it.isReal?' (реальное)':''}">
+                <img loading="lazy" src="${it.src}" alt="${escapeHtml(`Фото ${i+1}${it.isReal?' (реальное)':''}`)}">
               </button>
             `).join('')}
           </div>` : '' }
@@ -462,7 +464,7 @@ export function renderProduct({id}){
     const active = isFav(p.id);
     favBtn.classList.toggle('active', active);
     favBtn.setAttribute('aria-pressed', String(active));
-    setFixFavActive(active);
+    setFixFavActive(active); // синк с фикс-хедером
   };
 
   // Галерея
@@ -535,23 +537,21 @@ export function renderProduct({id}){
   });
   function resetZoom(){ if (!mainImg) return; mainImg.style.transform=''; mainImg.dataset.zoom='1'; }
 
-  /* -------- Два хедера + ДИАГНОСТИКА -------- */
-  setupTwoHeaders({ isFav: favActive });
-
+  /* -------- Диагностика (опционально) -------- */
   if (PHDBG.enabled) PHDBG.init();
+
+  /* -------- Авто-деактивация фикс-хедера при уходе со страницы товара -------- */
+  const _onHashChange = () => {
+    const h = String(location.hash || '');
+    if (!h.startsWith('#/product/') && !h.startsWith('#/p/')) {
+      deactivateProductFixHeader();
+      window.removeEventListener('hashchange', _onHashChange);
+    }
+  };
+  window.addEventListener('hashchange', _onHashChange);
 }
 
-/* ===== функции вне renderProduct, доступные модулю ===== */
-
-/* Синхронизация состояния «сердца» в фикс-хедере */
-function setFixFavActive(active){
-  const btnFav  = document.getElementById('btnFixFav');
-  if (!btnFav) return;
-  btnFav.classList.toggle('active', !!active);
-  btnFav.setAttribute('aria-pressed', String(!!active));
-}
-
-/* карточки «Похожие» — используем шаблон #product-card (как в каталоге) */
+/* ===== карточки «Похожие» — используем шаблон #product-card (как в каталоге) ===== */
 function drawRelatedCards(list){
   const grid = document.getElementById('relatedGrid');
   if (!grid) return;
@@ -580,7 +580,7 @@ function drawRelatedCards(list){
       const priceEl = node.querySelector('.price');
       if (priceEl) priceEl.textContent = priceFmt(p.price);
 
-      const favBtn = node.querySelector('.fav');
+      const favBtn = node.querySelector('button.fav, .fav');
       if (favBtn){
         const active = isFav(p.id);
         favBtn.classList.toggle('active', active);
@@ -1082,102 +1082,4 @@ function closestOfCell(cell, target){
   if (target < lo) return lo;
   if (target > hi) return hi;
   return target;
-}
-
-/* ========== ЛОГИКА 2-ХЕДЕРА С ВСТРОЕННЫМ ЛОГОМ ========== */
-function setupTwoHeaders({ isFav: favAtStart }){
-  const stat = document.querySelector('.app-header');
-  const fix  = document.getElementById('productFixHdr');
-  const btnBack = document.getElementById('btnFixBack');
-  const btnFav  = document.getElementById('btnFixFav');
-
-  if (!stat || !fix || !btnBack || !btnFav) {
-    console.warn('[ProductHdr] missing nodes -> no two-headers behavior', {
-      stat: !!stat, fix: !!fix, btnBack: !!btnBack, btnFav: !!btnFav
-    });
-    return;
-  }
-
-  // Завершаем предыдущую сессию
-  if (window._productHdrAbort){
-    try{ window._productHdrAbort.abort(); }catch{}
-  }
-  const ctrl = new AbortController();
-  window._productHdrAbort = ctrl;
-
-  // Стартовое состояние
-  stat.classList.remove('hidden');
-  fix.classList.remove('show');
-  fix.setAttribute('aria-hidden','true');
-
-  if (PHDBG.enabled) PHDBG.note('setupTwoHeaders: init state', {
-    statHidden: stat.classList.contains('hidden'),
-    fixShow: fix.classList.contains('show'),
-    zFix: getComputedStyle(fix).zIndex,
-  });
-
-  // Кнопки
-  btnBack.addEventListener('click', ()=> history.back(), { signal: ctrl.signal });
-  setFixFavActive(favAtStart);
-  btnFav.addEventListener('click', ()=>{
-    toggleFav(pSafeId());
-    const active = isFav(pSafeId());
-    setFixFavActive(active);
-    const hero = document.getElementById('favBtn');
-    if (hero) {
-      hero.classList.toggle('active', active);
-      hero.setAttribute('aria-pressed', String(active));
-    }
-  }, { signal: ctrl.signal });
-
-  // Показываем фикс-хедер после скролла
-  const THRESHOLD = 24;
-  const onScroll = ()=>{
-    const scDoc = document.documentElement.scrollTop || 0;
-    const scWin = window.scrollY || 0;
-    const sc = Math.max(scDoc, scWin);
-    const showFix = sc > THRESHOLD;
-    stat.classList.toggle('hidden', showFix);
-    fix.classList.toggle('show', showFix);
-    fix.setAttribute('aria-hidden', String(!showFix));
-
-    if (PHDBG.enabled){
-      // не засоряем консоль — лог раз в ~80px
-      if (!onScroll._last || Math.abs(sc - onScroll._last) > 80){
-        onScroll._last = sc;
-        console.log('[PH scroll]', { sc, showFix,
-          statHidden: stat.classList.contains('hidden'),
-          fixShow: fix.classList.contains('show'),
-          zFix: getComputedStyle(fix).zIndex
-        });
-        PHDBG.renderState();
-      }
-    }
-  };
-
-  window.addEventListener('scroll', onScroll, { passive:true, signal: ctrl.signal });
-  document.addEventListener('scroll', onScroll, { passive:true, signal: ctrl.signal });
-  onScroll();
-
-  // Очистка при уходе со страницы товара
-  const cleanup = ()=>{
-    fix.classList.remove('show');
-    fix.setAttribute('aria-hidden','true');
-    stat.classList.remove('hidden');
-    try{ ctrl.abort(); }catch{}
-    if (window._productHdrAbort === ctrl) window._productHdrAbort = null;
-    if (PHDBG.enabled) PHDBG.note('setupTwoHeaders: cleanup');
-  };
-  window.addEventListener('hashchange', cleanup, { signal: ctrl.signal });
-  window.addEventListener('popstate',  cleanup, { signal: ctrl.signal });
-  window.addEventListener('beforeunload', cleanup, { signal: ctrl.signal });
-
-  // Вспомогалка, чтобы замкнуть id товара внутри замыкания
-  function pSafeId(){
-    try{
-      const hash = location.hash || '';
-      const m = hash.match(/#\/product\/([^/?#]+)/);
-      return m ? m[1] : null;
-    }catch{ return null; }
-  }
 }
