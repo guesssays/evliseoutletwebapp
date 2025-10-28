@@ -15,6 +15,7 @@ let _state = {
   scrollTargets: [],
   _unbindDetectors: [],
   _onFavChanged: null,
+  _handlers: { backClick:null, backPtr:null, favClick:null, favPtr:null },
 };
 
 function qs(id){ return document.getElementById(id); }
@@ -142,18 +143,35 @@ function bindListeners(){
   if (_state.listenersBound) return;
   _state.listenersBound = true;
 
-  // События клика делаем через pointerup — надёжнее в webview
-  const onBackClick = (e)=>{ e.preventDefault(); e.stopPropagation(); (_state.onBack || safeBack)(); };
-  const onFavClick  = (e)=>{ 
+  // Именованные обработчики, чтобы снимать их корректно
+  const backHandler = (e)=>{ e.preventDefault(); e.stopPropagation(); (_state.onBack || safeBack)(); };
+  const backPtr     = (e)=>{ e.preventDefault(); e.stopPropagation(); (_state.onBack || safeBack)(); };
+
+  const favHandler  = (e)=>{ 
+    e.preventDefault(); e.stopPropagation();
+    _state.onFavToggle && _state.onFavToggle();
+    try { setFavActive(!!_state.isFav?.()); } catch {}
+  };
+  const favPtr      = (e)=>{ 
     e.preventDefault(); e.stopPropagation();
     _state.onFavToggle && _state.onFavToggle();
     try { setFavActive(!!_state.isFav?.()); } catch {}
   };
 
-  _state.back?.addEventListener('pointerup', onBackClick);
-  _state.fav?.addEventListener('pointerup', onFavClick);
+  // Сохраним ссылки — пригодятся при removeEventListener
+  _state._handlers.backClick = backHandler;
+  _state._handlers.backPtr   = backPtr;
+  _state._handlers.favClick  = favHandler;
+  _state._handlers.favPtr    = favPtr;
 
-  // Подписываемся на скролл-контейнеры
+  // Надёжные клики + дублируем pointerup для некоторых webview
+  _state.back?.addEventListener('click',     backHandler, { passive:false });
+  _state.back?.addEventListener('pointerup', backPtr,     { passive:false });
+
+  _state.fav?.addEventListener('click',      favHandler,  { passive:false });
+  _state.fav?.addEventListener('pointerup',  favPtr,      { passive:false });
+
+  // Подписки на скролл-контейнеры
   _state.scrollTargets = getScrollTargets();
   _state._unbindDetectors = [];
   for (const t of _state.scrollTargets){
@@ -168,25 +186,31 @@ function bindListeners(){
     }
   }
 
-  // Глобальная синхронизация фаворита (герой <-> фикс-хедер)
-  _state._onFavChanged = (ev)=>{
-    const id = ev?.detail?.id;
-    // если на странице этого товара — обновим
+  // Глобальная синхронизация фаворита
+  _state._onFavChanged = ()=> {
     try { setFavActive(!!_state.isFav?.()); } catch {}
   };
   window.addEventListener('fav:changed', _state._onFavChanged);
 }
 
+
 function unbindListeners(){
   if (!_state.listenersBound) return;
   _state.listenersBound = false;
 
+  // Снимаем обработчики БЕЗ клонирования DOM
   try{
-    // Снимем обработчики с кнопок
-    const rep = (el)=>{ if(!el||!el.parentNode) return el; const clone=el.cloneNode(true); el.parentNode.replaceChild(clone, el); return clone; };
-    _state.back = rep(_state.back);
-    _state.fav  = rep(_state.fav);
+    if (_state.back){
+      _state.back.removeEventListener('click',     _state._handlers.backClick);
+      _state.back.removeEventListener('pointerup', _state._handlers.backPtr);
+    }
+    if (_state.fav){
+      _state.fav.removeEventListener('click',      _state._handlers.favClick);
+      _state.fav.removeEventListener('pointerup',  _state._handlers.favPtr);
+    }
   }catch{}
+
+  _state._handlers = { backClick:null, backPtr:null, favClick:null, favPtr:null };
 
   for (const t of _state.scrollTargets){
     if (t === window){
@@ -208,6 +232,7 @@ function unbindListeners(){
     _state._onFavChanged = null;
   }
 }
+
 
 /** Публично: синхронизация состояния «избранного» */
 export function setFavActive(on){

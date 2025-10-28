@@ -980,3 +980,31 @@ body.has-cta .tabbar-inner .btn span{ color:#fff !important; }
   fill:currentColor;    /* заливка сердца */
   stroke:none;
 }
+/* === FIX: Product Fix Header buttons must match hero buttons exactly === */
+.product-fixhdr{ background:transparent !important; filter:none !important; }
+.product-fixhdr .fixbtn{
+  width:48px; height:48px;
+  border-radius:999px;
+  display:grid; place-items:center;
+  background:#fff !important;                 /* как hero */
+  border:1px solid var(--stroke) !important;  /* как hero */
+  box-shadow:var(--shadow) !important;        /* как hero */
+  color:var(--text) !important;               /* как hero */
+  mix-blend-mode:normal !important;
+}
+.product-fixhdr .fixbtn svg,
+.product-fixhdr .fixbtn i{ width:22px; height:22px; stroke:currentColor !important; fill:none; }
+
+/* активное сердце — тот же вид, что у hero */
+#btnFixFav.active .lucide-heart{
+  color:#ff4d5a !important;
+  fill:currentColor !important;
+  stroke:none !important;
+}
+
+/* на всякий — глушим любые диагностические/декоративные эффекты */
+.product-fixhdr, .product-fixhdr::before, .product-fixhdr::after,
+.product-fixhdr .fixbtn::before, .product-fixhdr .fixbtn::after{
+  outline:none !important; border:none !important; box-shadow:inherit; background:transparent;
+  content:none !important;
+}
