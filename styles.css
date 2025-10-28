@@ -830,3 +830,10 @@ html, body, .view, .section, .checkout{ overflow-x:hidden; }
 /* кнопки остаются как есть: слева #btnFixBack, справа #btnFixFav */
 /* слой фикс-хедера товара */
 .product-fixhdr{ z-index:100; }
+#scrollTopBtn{
+  position: fixed;
+  right: 14px;
+  bottom: calc(var(--tabbar-h) + var(--safe) + 14px);
+  z-index: 120;
+  box-shadow: var(--shadow);
+}

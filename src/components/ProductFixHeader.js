@@ -38,7 +38,7 @@ let current = {
   onBack: null,
   onFavToggle: null,
   isFav: () => false,
-  showThreshold: 140, // px — когда показать хедер при скролле
+  showThreshold: 20,// px — когда показать хедер при скролле
 };
 
 function syncVisibility() {

@@ -147,7 +147,7 @@ export function renderProduct({id}){
       }
       setFixFavActive(now);
     },
-    showThreshold: 140,
+    showThreshold: 20,
   });
 
   // ✅ Нормализация источников изображений
@@ -414,7 +414,8 @@ export function renderProduct({id}){
     </div>`;
 
   window.lucide?.createIcons && lucide.createIcons();
-
+ // отрисовать «Похожие»
+ drawRelatedCards(related);
   // help modal
   document.getElementById('cbHelpBtn')?.addEventListener('click', showCashbackHelpModal);
 
