@@ -1,5 +1,5 @@
 // src/core/scroll-reset.js
-// Жёсткий, многокадровый сброс скролла + учёт загрузки изображений.
+// Жёсткий, многокадровый сброс скролла + учёт загрузки изображений и bfcache.
 
 function _targets() {
   const list = [];
@@ -70,6 +70,29 @@ export const ScrollReset = {
   /** Немедленно сбросить вверх и сделать несколько попыток. */
   forceNow() {
     _scheduleFrames();
+  },
+
+  /**
+   * Инициализация: отключает авто-восстановление скролла браузером
+   * и чинит возврат из bfcache (pageshow.persisted === true).
+   */
+  mount() {
+    try {
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    } catch {}
+
+    // При возврате из истории (bfcache) некоторые WebView восстанавливают середину страницы.
+    // В таком случае принудительно отправляемся наверх.
+    const onPageShow = (e) => {
+      if (e && e.persisted) {
+        // кадр на перерисовку + наши мультикадровые попытки
+        requestAnimationFrame(() => this.request(document.getElementById('view')));
+      }
+    };
+    window.addEventListener('pageshow', onPageShow);
+
+    // Страховка при первой загрузке
+    requestAnimationFrame(() => this.request(document.getElementById('view')));
   }
 };
 

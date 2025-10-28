@@ -314,13 +314,11 @@ loadFavorites();
 updateCartBadge();
 initTelegramChrome();
 // Кнопка "Наверх" — инициализация единый раз
+// Кнопка "Наверх" — инициализация
 mountScrollTop();
+// Глобальный анти-скролл — включает manual + хэндлер pageshow
 ScrollReset.mount();
 
-/* === Новое: полностью отключаем автопамять скролла браузера === */
-try {
-  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-} catch {}
 
 
 /* ---------- ADMIN MODE ---------- */
