@@ -828,3 +828,5 @@ html, body, .view, .section, .checkout{ overflow-x:hidden; }
   display:none !important;        /* скрываем блок с названием/ценой */
 }
 /* кнопки остаются как есть: слева #btnFixBack, справа #btnFixFav */
+/* слой фикс-хедера товара */
+.product-fixhdr{ z-index:100; }

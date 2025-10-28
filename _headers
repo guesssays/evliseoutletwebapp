@@ -22,24 +22,25 @@
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
 
-# Все HTML внутри подпапок — тоже без кэша
+# Любые *.html — тоже без кэша
 /*.html
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
 
-# ВАЖНО: исходники приложения в /src/* — без кэша (чтобы правки JS подтягивались сразу)
+# Исходники приложения (ESM) — без кэша
 /src/*
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
 
-# Статические ассеты (css/js/fonts/images) — агрессивное кэширование (считаем, что имена с хэшами)
+# CSS — без кэша (правки подтягиваются сразу)
+ /styles.css
+  Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
+
+# Статические ассеты (хэшируемые) — можно агрессивно кэшировать
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
-/*.css
-  Cache-Control: public, max-age=31536000, immutable
-
-# Только JS из ассетов кэшируем «на год» — исходники в /src/* уже отключили выше
 /assets/*.js
   Cache-Control: public, max-age=31536000, immutable
 
@@ -49,11 +50,11 @@
 /images/*
   Cache-Control: public, max-age=31536000, immutable
 
-# Данные каталога (если не хешированы) — кэш на 5 минут
+# Данные каталога (если без хэша) — кэш на 5 минут
 /data/*
   Cache-Control: public, max-age=300
 
-# Картинки-иконки/манифесты
+# Иконки/манифесты
 /manifest.webmanifest
   Cache-Control: public, max-age=604800
 
@@ -64,12 +65,6 @@
   Cache-Control: public, max-age=31536000, immutable
 
 # -----------------------------
-# ФОЛЛБЭКИ/РОУТИНГ ДЛЯ SPA (если нужен)
-# -----------------------------
-# Сам роутинг делается в _redirects (пример):
-# /*   /index.html   200
-
-# -----------------------------
 # ФУНКЦИИ
 # -----------------------------
-# Для /.netlify/functions/* — заголовки (CORS/Cache-Control) выставляйте в самих функциях.
+# Для /.netlify/functions/* — CORS/Cache-Control выставляйте в коде функций.

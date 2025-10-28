@@ -6,7 +6,6 @@
 
   <title>EVLISE OUTLET — интернет-магазин одежды</title>
   <meta name="description" content="EVLISE OUTLET — стильная женская и мужская одежда со скидками. Новинки, акции и быстрый заказ прямо в Telegram WebApp." />
-  <!-- meta keywords удалён как бесполезный для SEO -->
   <meta name="theme-color" content="#121111" />
   <meta name="application-name" content="EVLISE OUTLET" />
   <meta name="apple-mobile-web-app-title" content="EVLISE OUTLET" />
@@ -40,28 +39,33 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
-<style>
-  /* Fix-Header: только две иконки, без фона/рамок/тени */
-  .product-fixhdr{
-    background:transparent !important;
-    border:none !important;
-    box-shadow:none !important;
-    padding:0 !important;
-    height:auto !important;
-  }
-  .product-fixhdr .fixbtn{
-    background:transparent !important;
-    border:none !important;
-    box-shadow:none !important;
-    color:inherit !important;
-    width:48px; height:48px; border-radius:999px; /* размеры оставим прежние */
-    position:absolute; top:0;
-  }
-  #btnFixBack{ left:12px; }
-  #btnFixFav{ right:12px; }
-  /* активное сердце — заливка, как в остальном UI */
-  #btnFixFav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none; }
-</style>
+
+  <style>
+    /* 🌟 Упрощённый вид фикс-хедера товара (только визуал, без поведенческих свойств) */
+    .product-fixhdr{
+      background:transparent !important;
+      border:none !important;
+      box-shadow:none !important;
+      padding:0 !important;
+      height:auto !important;
+    }
+    .product-fixhdr .fixbtn{
+      background:transparent !important;
+      border:none !important;
+      box-shadow:none !important;
+      color:inherit !important;
+      /* размеры задаёт styles.css; поведенческие свойства не трогаем */
+    }
+    #btnFixFav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none; }
+
+    /* ⬆️ Scroll-to-Top (кнопка «наверх») */
+    #scrollTopBtn{
+      position:fixed; right:16px; bottom:calc(var(--tabbar-h) + var(--safe) + 16px);
+      z-index:120; width:48px; height:48px; border-radius:14px;
+      border:1px solid var(--stroke); background:#fff; box-shadow:var(--shadow);
+    }
+    #scrollTopBtn[hidden]{ display:none !important; }
+  </style>
 
   <!-- Telegram WebApp -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -95,16 +99,15 @@
       </div>
     </header>
 
-<!-- Фикс-хедер товара -->
-<div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
-  <button id="btnFixBack" class="fixbtn" aria-label="Назад">
-    <i data-lucide="arrow-left"></i>
-  </button>
-  <button id="btnFixFav" class="fixbtn" aria-label="В избранное" aria-pressed="false">
-    <i data-lucide="heart"></i>
-  </button>
-</div>
-
+    <!-- Фикс-хедер товара -->
+    <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
+      <button id="btnFixBack" class="fixbtn" aria-label="Назад">
+        <i data-lucide="arrow-left"></i>
+      </button>
+      <button id="btnFixFav" class="fixbtn" aria-label="В избранное" aria-pressed="false">
+        <i data-lucide="heart"></i>
+      </button>
+    </div>
 
     <!-- Поиск + фильтры -->
     <section class="section section-search">
@@ -161,6 +164,11 @@
       </div>
     </nav>
 
+    <!-- Кнопка «вверх» -->
+    <button id="scrollTopBtn" class="icon-btn" aria-label="Наверх" hidden>
+      <i data-lucide="chevrons-up"></i>
+    </button>
+
     <!-- Шаблоны -->
     <template id="product-card">
       <a class="card" href="#">
@@ -184,6 +192,7 @@
       <span class="chip chip-mini"></span>
     </template>
   </div>
+
   <!-- === ADMIN TOKEN INJECTION (works in Telegram WebApp only) === -->
   <script>
     (function () {
@@ -205,14 +214,11 @@
       })();
 
       if ((isTgRef || isTgUA || hasInitData) && ADMIN_TOKEN) {
-        // 1) Глобальная переменная (её читает getAdminToken())
         window.__ADMIN_API_TOKEN__ = ADMIN_TOKEN;
-
-        // 2) Дублируем в localStorage — чтобы fetch-обёртки сразу начали слать X-Internal-Auth
         try { localStorage.setItem('admin_api_token', String(ADMIN_TOKEN)); } catch {}
       }
 
-      // Доп. способ: разовая установка через ?admintoken=... (удобно тестировать)
+      // Разовая установка через ?admintoken=...
       try {
         var p = new URLSearchParams(location.search);
         var q = p.get('admintoken');
@@ -226,14 +232,28 @@
     })();
   </script>
 
-  <!-- Главный модуль: с версионированием (пробиваем кэш) -->
-  <script type="module" src="src/main.js?v=2025-10-25-02"></script>
+  <!-- Главный модуль (без ?v — кэш отключён _headers’ом) -->
+  <script type="module" src="src/main.js"></script>
 
+  <!-- Иконки после монтирования (запасной вызов) -->
   <script>
-    // Иконки после монтирования (запасной вызов)
     try { window.lucide?.createIcons?.(); } catch {}
   </script>
 
-  <!-- Блок ADMIN TOKEN INJECTION удалён — админ-аутентификация должна быть серверной -->
+  <!-- Локальный JS для кнопки «вверх» (не зависит от модулей) -->
+  <script>
+    (function(){
+      const btn = document.getElementById('scrollTopBtn');
+      if(!btn) return;
+      function onScroll(){
+        const sc = Math.max(document.documentElement.scrollTop || 0, window.scrollY || 0);
+        btn.hidden = sc < 280;
+      }
+      window.addEventListener('scroll', onScroll, {passive:true});
+      onScroll();
+      btn.addEventListener('click', ()=> window.scrollTo({ top:0, behavior:'smooth' }));
+      try{ window.lucide?.createIcons?.(); }catch{}
+    })();
+  </script>
 </body>
 </html>
