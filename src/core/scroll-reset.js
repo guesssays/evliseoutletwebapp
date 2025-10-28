@@ -8,12 +8,15 @@ export const ScrollReset = (() => {
     const view = document.getElementById('view');
     // Стреляем и в контейнер, и в окно — перекрываем любые кейсы WebView
     if (view && view.scrollHeight > view.clientHeight) {
-      view.scrollTo({ top: 0, behavior: 'auto' });
+      try { view.scrollTo({ top: 0, behavior: 'auto' }); } catch {}
+      try { view.scrollTop = 0; } catch {}
     }
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch {}
     // двойной выстрел против "упругости"
-    const se = document.scrollingElement || document.documentElement;
-    se.scrollTop = 0;
+    try {
+      const se = document.scrollingElement || document.documentElement;
+      se.scrollTop = 0;
+    } catch {}
   }
 
   function flush() {
@@ -36,5 +39,10 @@ export const ScrollReset = (() => {
 
   function now() { pending = false; flush(); }
 
-  return { request, now, flush };
+  // Нужен, чтобы вызов в main.js не падал. Пока — no-op.
+  function mount() {
+    // Можно оставить пустым. Если понадобится — тут можно вешать глобальные слушатели.
+  }
+
+  return { request, now, flush, mount };
 })();

@@ -6,7 +6,18 @@ import { addOrder } from '../core/orders.js';
 import { getPayRequisites } from '../core/payments.js';
 import { persistProfile } from '../core/state.js';
 import { getUID } from '../core/state.js';
-import { notifyReferralJoined, notifyReferralOrderCashback, notifyCashbackMatured } from '../core/botNotify.js'; // ✅ бот-уведомления
+// ⚠️ Убрали импорт ../core/botNotify.js, чтобы не ломать запуск при отсутствии модуля.
+// Делаем безопасные заглушки (если в проекте есть окно BotNotify — используем его).
+const notifyReferralJoined = (uid, payload) => {
+  try { window.BotNotify?.notifyReferralJoined?.(uid, payload); } catch {}
+};
+const notifyReferralOrderCashback = (uid, payload) => {
+  try { window.BotNotify?.notifyReferralOrderCashback?.(uid, payload); } catch {}
+};
+const notifyCashbackMatured = (uid, payload) => {
+  try { window.BotNotify?.notifyCashbackMatured?.(uid, payload); } catch {}
+};
+
 // 🔄 новее: показываем серверный баланс лояльности
 import { fetchMyLoyalty, getLocalLoyalty } from '../core/loyalty.js';
 import { ScrollReset } from '../core/scroll-reset.js';
@@ -241,12 +252,10 @@ function keepCartOnTopWhileLoading(root){
   setTimeout(()=>{ if (stillCart()) forceTop(); }, 250);
 }
 
-
 export async function renderCart(){
   // Сразу поднимаем страницу вверх перед тяжёлым DOM
- // Просим менеджер поднять после того, как #view дорисуется
-ScrollReset.request();
-
+  // Просим менеджер поднять после того, как #view дорисуется
+  ScrollReset.request();
 
   // Всегда тянем свежий серверный баланс перед рендером
   try { await fetchMyLoyalty(); } catch {}
@@ -257,7 +266,7 @@ ScrollReset.request();
     .map(it => ({ ...it, product: state.products.find(p => String(p.id) === String(it.productId)) }))
     .filter(x => x.product);
 
-    // актуализируем таббар
+  // актуализируем таббар
   window.setTabbarMenu?.('cart');
 
   // ПУСТАЯ КОРЗИНА
@@ -307,9 +316,9 @@ ScrollReset.request();
         <div>
           <div class="cart-title">${escapeHtml(x.product.title)}</div>
           <div class="cart-sub">
-            ${x.size ? `Размер ${escapeHtml(x.size)}` : ''}
-            ${x.size && x.color ? ' • ' : ''}
-            ${x.color ? `${escapeHtml(colorName(x.color))}` : ''}
+            ${x.size ? `Размер ${escapeHtml(x.size)}` : '' }
+            ${x.size && x.color ? ' • ' : '' }
+            ${x.color ? `${escapeHtml(colorName(x.color))}` : '' }
           </div>
           <div class="cart-price">${priceFmt(x.product.price)}</div>
         </div>
@@ -417,8 +426,6 @@ ScrollReset.request();
   </section>`;
 
   window.lucide?.createIcons && lucide.createIcons();
-
-
 
   // и не даём подгрузке картинок сдвинуть страницу
   keepCartOnTopWhileLoading(v);
@@ -591,9 +598,6 @@ async function callLoyalty(op, data){
   return (typeof j === 'object' && j) ? j : { ok:false, error:'bad response' };
 }
 
-
-
-
 /* ======================
    Новый сценарий чекаута
    ====================== */
@@ -656,8 +660,8 @@ function checkoutFlow(items, addr, totalRaw, bill){
         <ul style="margin:6px 0 0; padding-left:18px; color:#444">
           ${items.map(x=>`<li>
             ${escapeHtml(x.product.title)}
-            ${x.size ? ` · размер ${escapeHtml(x.size)}` : ''}
-            ${x.color ? ` · ${escapeHtml(colorName(x.color))}` : ''}
+            ${x.size ? ` · размер ${escapeHtml(x.size)}` : '' }
+            ${x.color ? ` · ${escapeHtml(colorName(x.color))}` : '' }
             ×${x.qty}
           </li>`).join('')}
         </ul>
@@ -929,62 +933,58 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
         setSubmitDisabled(false); __orderSubmitBusy = false; return;
       }
 
-     // Сумма к списанию, orderId уже зафиксирован на попытку
-const toSpend = Number(bill?.redeem || 0) | 0;
-let reserved = false;
+      // Сумма к списанию, orderId уже зафиксирован на попытку
+      const toSpend = Number(bill?.redeem || 0) | 0;
+      let reserved = false;
 
-// перед блоком "РЕЗЕРВ СПИСАНИЯ БАЛЛОВ"
-const tg = window?.Telegram?.WebApp;
-if (toSpend > 0 && !tg?.initData) {
-  toast('Списать баллы можно только внутри Telegram-приложения. Откройте магазин через Telegram и повторите.');
-  setSubmitDisabled(false);
-  __orderSubmitBusy = false;
-  return;
-}
+      // перед блоком "РЕЗЕРВ СПИСАНИЯ БАЛЛОВ"
+      const tg = window?.Telegram?.WebApp;
+      if (toSpend > 0 && !tg?.initData) {
+        toast('Списать баллы можно только внутри Telegram-приложения. Откройте магазин через Telegram и повторите.');
+        setSubmitDisabled(false);
+        __orderSubmitBusy = false;
+        return;
+      }
 
+      // --- РЕЗЕРВ СПИСАНИЯ БАЛЛОВ (loyalty.reserveRedeem) ---
+      // На всякий случай подтягиваем свежие лимиты/баланс перед резервом (устраняет гонку)
+      try { await fetchMyLoyalty(); } catch { /* молча: если не удалось — попробуем резерв всё равно */ }
 
-// --- РЕЗЕРВ СПИСАНИЯ БАЛЛОВ (loyalty.reserveRedeem) ---
-// На всякий случай подтягиваем свежие лимиты/баланс перед резервом (устраняет гонку)
-try { await fetchMyLoyalty(); } catch { /* молча: если не удалось — попробуем резерв всё равно */ }
+      try {
+        if (toSpend > 0) {
+          const r2 = await callLoyalty('reserveRedeem', {
+            uid: getUID(),
+            pts: toSpend,
+            orderId,
+            total: totalRaw,
+            shortId: publicId
+          });
 
-try {
-  if (toSpend > 0) {
-const r2 = await callLoyalty('reserveRedeem', {
-  uid: getUID(),
-  pts: toSpend,
-  orderId,
-  total: totalRaw,
-  shortId: publicId
-});
+          if (!r2?.ok) {
+            const reason = r2?.reason || r2?.error || '';
+            const msg =
+              reason === 'min'       ? `Минимум для списания: ${MIN_REDEEM_POINTS.toLocaleString('ру-RU')} баллов` :
+              reason === 'rule'      ? 'Превышает лимит: не более 30% от суммы и максимум 150 000' :
+              reason === 'balance'   ? 'Недостаточно баллов' :
+              reason === 'total'     ? 'Некорректная сумма заказа для списания' :
+              reason === 'bot_mismatch'
+                                      ? `Мини-приложение открыто в ${r2.clientBot || 'другом боте'}, а сервер ждёт ${r2.serverBot || 'другого бота'}. Откройте магазин через ${r2.serverBot || 'нужного бота'} и попробуйте снова.`
+                                      : 'Не удалось зарезервировать списание баллов';
+            toast(msg);
+            setSubmitDisabled(false);
+            __orderSubmitBusy = false;
+            return;
+          }
 
-if (!r2?.ok) {
-  const reason = r2?.reason || r2?.error || '';
-  const msg =
-    reason === 'min'       ? `Минимум для списания: ${MIN_REDEEM_POINTS.toLocaleString('ru-RU')} баллов` :
-    reason === 'rule'      ? 'Превышает лимит: не более 30% от суммы и максимум 150 000' :
-    reason === 'balance'   ? 'Недостаточно баллов' :
-    reason === 'total'     ? 'Некорректная сумма заказа для списания' :
-    reason === 'bot_mismatch'
-                            ? `Мини-приложение открыто в ${r2.clientBot || 'другом боте'}, а сервер ждёт ${r2.serverBot || 'другого бота'}. Откройте магазин через ${r2.serverBot || 'нужного бота'} и попробуйте снова.`
-                            : 'Не удалось зарезервировать списание баллов';
-  toast(msg);
-  setSubmitDisabled(false);
-  __orderSubmitBusy = false;
-  return;
-}
-
-
-    reserved = true; // резерв прошёл
-  }
-} catch (e) {
-  toast('Не удалось связаться с сервером лояльности');
-  setSubmitDisabled(false);
-  __orderSubmitBusy = false;
-  return;
-}
-// --- КОНЕЦ БЛОКА РЕЗЕРВА ---
-
-
+          reserved = true; // резерв прошёл
+        }
+      } catch (e) {
+        toast('Не удалось связаться с сервером лояльности');
+        setSubmitDisabled(false);
+        __orderSubmitBusy = false;
+        return;
+      }
+      // --- КОНЕЦ БЛОКА РЕЗЕРВА ---
 
       // Создание заказа (используем наш orderId) — повторный сабмит перезапишет тот же заказ
       let createdId = null;
