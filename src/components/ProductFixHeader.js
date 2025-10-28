@@ -5,14 +5,12 @@
 let S = {
   // DOM
   root: null,
-  back: null,
-  fav:  null,
   statHeader: null,
 
   // API от Product.js
   onBack: null,          // () => void
   onFavToggle: null,     // () => void
-  isFav: null,           // () => boolean
+  isFav: null,           // () => boolean (для текущего товара)
 
   // состояние
   shown: false,
@@ -24,17 +22,21 @@ let S = {
   _unbindDetectors: [],
   _onFavChanged: null,
 
-  // стабильные ссылки на обработчики (чтобы снимать корректно)
+  // стабильные ссылки на обработчики
   _handlers: {
     onScroll: null,
-    onBackClick: null,
-    onFavClick: null,
+    onPointerUp: null,
+    onClick: null, // fallback на случай отсутствия pointer-событий
   },
 
-  // лёгкая защита от дребезга
+  // защита от дребезга/дублирования (между pointerup и click)
   _tsBack: 0,
   _tsFav: 0,
   _cooldownMs: 180,
+  _lastActionStamp: 0,
+
+  // наблюдатель за DOM внутри фикс-хедера (если фреймворк перерисовывает)
+  _observer: null,
 };
 
 function $(id){ return document.getElementById(id); }
@@ -83,7 +85,6 @@ function getScrollY(){
   if (__activeScrollTarget && __activeScrollTarget !== window){
     return __activeScrollTarget.scrollTop || 0;
   }
-  // иначе берём первое ненулевое
   for (const c of getScrollTargets()){
     if (c === window){
       const y = window.scrollY || document.documentElement.scrollTop || 0;
@@ -141,13 +142,11 @@ function onScrollCheck(){
 
 /* ---------------- безопасный «Назад» ---------------- */
 function safeBack(){
-  // лёгкий антидребезг
   const now = Date.now();
   if (now - S._tsBack < S._cooldownMs) return;
   S._tsBack = now;
 
   try{
-    // если история короткая или ссылка пришла «напрямую» — отправим на главную
     if (history.length <= 1){
       const h = String(location.hash||'');
       if (!h || h.startsWith('#/product/')) {
@@ -168,17 +167,35 @@ function doFavToggle(){
   S._tsFav = now;
 
   try { S.onFavToggle && S.onFavToggle(); } catch {}
-  // визуал освежим после колбэка
   try {
     const on = !!(S.isFav && S.isFav());
     setFavActive(on);
   } catch {}
 }
 
+/* ---------------- делегирование событий ---------------- */
+// Единая точка входа, чтобы DOM-замены кнопок не ломали обработчики.
+function handleActionFromTarget(target){
+  const backBtn = target.closest?.('#btnFixBack');
+  const favBtn  = target.closest?.('#btnFixFav');
+
+  if (!backBtn && !favBtn) return false;
+
+  const stamp = performance.now();
+  // защита от двойного срабатывания (pointerup + click)
+  if (stamp - S._lastActionStamp < 60) return true;
+  S._lastActionStamp = stamp;
+
+  if (backBtn) { safeBack(); return true; }
+  if (favBtn)  { doFavToggle(); return true; }
+
+  return false;
+}
+
 function bindListeners(){
   if (S.listenersBound) return;
 
-  // скролл-лисенеры (один раз)
+  // скролл-лисенеры
   S._handlers.onScroll = onScrollCheck;
   S._scrollTargets = getScrollTargets();
   for (const t of S._scrollTargets){
@@ -188,26 +205,52 @@ function bindListeners(){
   // трекер активного скролл-контейнера
   S._unbindDetectors = S._scrollTargets.map(bindActiveTargetDetector);
 
-  // клики по кнопкам (без once, стабильные ссылки)
-  S._handlers.onBackClick = (e)=>{ e.preventDefault(); (S.onBack ? S.onBack() : safeBack()); };
-  S._handlers.onFavClick  = (e)=>{ e.preventDefault(); doFavToggle(); };
+  // делегированные обработчики внутри фикс-хедера
+  S._handlers.onPointerUp = (e)=> {
+    // перехватываем как можно раньше
+    if (!S.root) return;
+    if (!S.root.contains(e.target)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    handleActionFromTarget(e.target);
+  };
+  S._handlers.onClick = (e)=> {
+    // запасной канал (некоторые WebView странно ведут pointer-события)
+    if (!S.root) return;
+    if (!S.root.contains(e.target)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    handleActionFromTarget(e.target);
+  };
 
-  S.back.addEventListener('click', S._handlers.onBackClick, { passive:false });
-  S.fav .addEventListener('click', S._handlers.onFavClick,  { passive:false });
+  // слушаем на самом корневом узле фикс-хедера в capture-режиме,
+  // чтобы нас не "перекрыли" внутренние ребилды/листенеры
+  S.root.addEventListener('pointerup', S._handlers.onPointerUp, { capture:true, passive:false });
+  S.root.addEventListener('click',     S._handlers.onClick,     { capture:true, passive:false });
 
-  // глобальный синк избранного — если кто-то вне этого файла поменял
-  S._onFavChanged = (ev)=>{
-    try{
-      // если пришёл id — можно было бы фильтровать, но здесь дёшево и достаточно
+  // глобальный синк избранного
+  S._onFavChanged = ()=> {
+    try {
       const on = !!(S.isFav && S.isFav());
       setFavActive(on);
-    }catch{}
+    } catch {}
   };
   window.addEventListener('fav:changed', S._onFavChanged);
 
+  // подстраховка: если фреймворк заменяет внутреннюю разметку,
+  // просто следим и актуализируем ARIA/active у свежих узлов
+  try {
+    S._observer = new MutationObserver(() => {
+      // при любом изменении — обновим подсветку сердца
+      const on = !!(S.isFav && S.isFav());
+      setFavActive(on);
+    });
+    S._observer.observe(S.root, { childList: true, subtree: true });
+  } catch {}
+
   S.listenersBound = true;
 
-  // первый расчёт видимости
+  // мгновенный расчёт видимости
   queueMicrotask(onScrollCheck);
 }
 
@@ -228,14 +271,18 @@ function unbindListeners(){
   for (const unb of S._unbindDetectors){ try{ unb(); }catch{} }
   S._unbindDetectors = [];
 
-  // клики
-  try{ S.back.removeEventListener('click', S._handlers.onBackClick); }catch{}
-  try{ S.fav .removeEventListener('click', S._handlers.onFavClick ); }catch{}
+  // делегированные обработчики
+  try{ S.root?.removeEventListener('pointerup', S._handlers.onPointerUp, { capture:true }); }catch{}
+  try{ S.root?.removeEventListener('click',     S._handlers.onClick,     { capture:true }); }catch{}
 
   // глобальное событие избранного
   try{ window.removeEventListener('fav:changed', S._onFavChanged); }catch{}
 
-  S._handlers.onScroll = S._handlers.onBackClick = S._handlers.onFavClick = null;
+  // наблюдатель
+  try{ S._observer?.disconnect(); }catch{}
+  S._observer = null;
+
+  S._handlers.onScroll = S._handlers.onPointerUp = S._handlers.onClick = null;
   S._onFavChanged = null;
 
   S.listenersBound = false;
@@ -245,11 +292,9 @@ function unbindListeners(){
 export function activateProductFixHeader(opts = {}){
   // DOM
   S.root = $('productFixHdr');
-  S.back = $('btnFixBack');
-  S.fav  = $('btnFixFav');
   S.statHeader = document.querySelector('.app-header');
 
-  if (!S.root || !S.back || !S.fav) return;
+  if (!S.root) return;
 
   // API
   S.onBack      = typeof opts.onBack === 'function' ? opts.onBack : null;
@@ -258,13 +303,13 @@ export function activateProductFixHeader(opts = {}){
 
   S.threshold   = Number(opts.showThreshold || opts.threshold || 24) || 24;
 
-  // визуальная инициализация fav
+  // начальная подсветка сердца
   try {
     const on = !!(S.isFav && S.isFav());
     setFavActive(on);
   } catch {}
 
-  // убедиться, что контейнер кликабелен (если где-то переопределяли)
+  // убедиться, что слой кликабелен
   S.root.style.pointerEvents = 'auto';
 
   bindListeners();
@@ -277,20 +322,23 @@ export function deactivateProductFixHeader(){
   // Снимаем слушатели
   unbindListeners();
 
-  // Сброс DOM-ссылок и коллбеков
-  S.root = S.back = S.fav = S.statHeader = null;
+  // Сброс API
   S.onBack = S.onFavToggle = S.isFav = null;
 
   // Сброс антидребезга
   S._tsBack = 0;
   S._tsFav  = 0;
+
+  // DOM
+  S.root = S.statHeader = null;
 }
 
 export function setFavActive(on){
   try{
-    if (!S.fav) return;
+    const favEl = document.getElementById('btnFixFav'); // всегда «живая» ссылка
+    if (!favEl) return;
     const active = !!on;
-    S.fav.classList.toggle('active', active);
-    S.fav.setAttribute('aria-pressed', active ? 'true' : 'false');
+    favEl.classList.toggle('active', active);
+    favEl.setAttribute('aria-pressed', active ? 'true' : 'false');
   }catch{}
 }
