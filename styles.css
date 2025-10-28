@@ -1,4 +1,4 @@
-/* === styles.css (полная версия, единый канонический блок для фикс-хедера и кнопки «вверх») === */
+/* === styles.css (полная версия) === */
 :root{
   --c-01:#292526; --c-02:#787676; --c-03:#A3A1A2; --c-04:#F2F2F2; --c-05:#121111;
   --bg:#ffffff; --text:#121111; --muted:#787676; --paper:#ffffff; --stroke:#ececec;
@@ -51,70 +51,26 @@ body{
   border-radius:999px; padding:3px 6px; box-shadow:0 2px 10px rgba(0,0,0,.18);
 }
 
-/* ===== КАНОНИЧЕСКИЙ БЛОК: ФИКС-ХЕДЕР ТОВАРА ===== */
+/* ===== ФИКС-ХЕДЕР ДЛЯ ТОВАРА ===== */
 .product-fixhdr{
-  position: fixed;
-  left: 0; right: 0;
-  top: calc(var(--safe-top) + 8px);
-  height: 56px;
-  display: none;                 /* скрыт по умолчанию */
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 8px;
-  z-index: 1001;                 /* поверх всего UI */
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-
-  /* контейнер сам не ловит клики, кликабельны только кнопки */
-  pointer-events: none;
+  position:fixed; left:0; right:0; top:calc(6px + var(--safe-top));
+  padding:0 12px; z-index:40; display:none;
+  pointer-events:none;
 }
-.product-fixhdr.show{
-  display: flex;                 /* именно flex, не block */
-}
+.product-fixhdr.show{ display:block; }
 .product-fixhdr .fixbtn{
-  pointer-events: auto;          /* клики разрешены */
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px; height: 44px;
-  border-radius: 999px;
-  border: 1px solid var(--stroke);
-  background: rgba(255,255,255,.85);
-  backdrop-filter: saturate(1.3) blur(8px);
-  -webkit-backdrop-filter: saturate(1.3) blur(8px);
-  box-shadow: var(--shadow);
+  pointer-events:auto;
+  width:48px; height:48px; border-radius:999px;
+  display:grid; place-items:center;
+  background:#fff; border:1px solid var(--stroke);
+  box-shadow:var(--shadow);
   color: var(--text);
+  position:absolute; top:0;
 }
-@media (prefers-color-scheme:dark){
-  .product-fixhdr .fixbtn{
-    background: rgba(11,18,32,.72);
-    color: #fff;
-  }
-}
-#btnFixBack{ margin-left: 8px; }
-#btnFixFav{ margin-right: 8px; }
-#btnFixFav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none; }
 
-/* ===== КНОПКА «НАВЕРХ» ===== */
-#scrollTopBtn{
-  position: fixed;
-  right: 16px;
-  bottom: calc(var(--tabbar-h) + var(--safe) + 16px);
-  z-index: 1002;
-  width: 48px; height: 48px;
-  border-radius: 14px;
-  border: 1px solid var(--stroke);
-  background: #fff;
-  box-shadow: var(--shadow);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-#scrollTopBtn[hidden]{ display: none !important; }
-@media (prefers-color-scheme:dark){
-  #scrollTopBtn{ background:#0b1220; color:#fff; }
-}
+#btnFixBack{ left:12px; } #btnFixFav{ right:12px; }
+.product-fixhdr .fixbtn i{ width:22px; height:22px }
+#btnFixFav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none }
 
 /* ===== ПОИСК/ФИЛЬТРЫ/ЧИПЫ ===== */
 .section{ padding:0 18px; margin:10px 0 }
@@ -163,7 +119,7 @@ body{
 .gallery-main{ position:relative; border-radius:24px; overflow:hidden; background:#f6f6f6; }
 .gallery-main img{ width:100%; height:auto; display:block; }
 
-.p-hero{ position:relative; margin:0 18px; border-top-left-radius:24px; border-top-right-radius:24px; border-bottom-left-radius:0; border-bottom-right-radius:0; overflow:visible; }
+.p-hero{ position:relative; margin:0 18px; border-radius:24px; overflow:hidden }
 .hero-btn{
   position:absolute; top:12px; width:48px; height:48px;
   border-radius:999px; display:grid; place-items:center;
@@ -174,7 +130,7 @@ body{
 .hero-back{ left:12px } .hero-fav{ right:12px }
 .hero-fav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none }
 
-.thumbs{ display:flex; gap:10px; overflow:auto; -webkit-overflow-scrolling:touch; padding-bottom:2px; border-radius:0 !important; }
+.thumbs{ display:flex; gap:10px; overflow:auto; -webkit-overflow-scrolling:touch; padding-bottom:2px; }
 .thumb{ flex:0 0 auto; width:72px; height:72px; border-radius:12px; padding:0; border:2px solid transparent; overflow:hidden; background:#fff; cursor:pointer; }
 .thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
 .thumb.active{ border-color:#121111; }
@@ -205,8 +161,8 @@ body{
 
 .table-wrap{ overflow:auto; -webkit-overflow-scrolling:touch; margin-top:10px; border:1px solid var(--stroke); border-radius:16px }
 .size-table{ width:100%; border-collapse:separate; border-spacing:0 }
-.size-table th,.size-table td{ padding:10px 12px; white-space:nowrap; font-size:14px; text-align:left }
-.size-table thead th{ background:#f8f8f8; font-weight:800 }
+.size-table th,.size-table td{ padding:10px 12px; white-space:nowrap; font-size:14px }
+.size-table thead th{ background:#f8f8f8; text-align:left; font-weight:800 }
 .size-table tbody tr:not(:last-child) td{ border-bottom:1px solid var(--stroke) }
 
 /* ===== КНОПКИ ===== */
@@ -251,9 +207,10 @@ body{
 .section-title{ font-size:24px; font-weight:800; margin:10px 18px }
 .checkout{ padding:0 18px calc(var(--tabbar-h) + var(--safe) + 24px); display:grid; gap:14px }
 
+/* КАРТОЧКА ТОВАРА В КОРЗИНЕ */
 .cart-row{
   display:grid;
-  grid-template-columns:72px minmax(0,1fr) auto;
+  grid-template-columns:72px minmax(0,1fr) max-content;
   gap:14px; align-items:center;
   padding:12px 0; border-bottom:1px solid var(--stroke);
 }
@@ -264,20 +221,23 @@ body{
 .cart-price{ font-weight:800; }
 .cart-title{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
+/* СТРОКА ЗАКАЗА (клиентский список) — ФИКС ДЛЯ КНОПКИ «ОТСЛЕДИТЬ» */
 .order-row{
   display:grid;
-  grid-template-columns:72px minmax(0,1fr) max-content;
+  grid-template-columns:72px minmax(0,1fr) max-content; /* кнопка всегда справа */
   gap:14px; align-items:center;
   padding:12px 0; border-bottom:1px solid var(--stroke);
 }
 .order-row .pill{ justify-self:end; }
 
+/* счётчик количества — всегда в одну строку */
 .qty-mini{
   display:flex; align-items:center; gap:10px;
   white-space:nowrap;
 }
 .qty-mini .ctrl{ width:36px; height:36px; border-radius:12px }
 
+/* Итого/адрес */
 .address-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
 .address-left{ min-width:0; flex:1; }
 .address-left .cart-title{ margin-bottom:2px }
@@ -302,6 +262,7 @@ body{
   color: var(--muted);
 }
 
+
 /* ===== ТАББАР ===== */
 .tabbar{ position:fixed; left:0; right:0; bottom:0; z-index:50; padding-bottom:max(8px, var(--safe)); background:transparent; pointer-events:none; }
 .tabbar-inner{ pointer-events:auto; margin:0 18px; height:76px; border-radius:28px; background:#1f1e1e; box-shadow:0 10px 40px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:space-around; gap:6px; padding:0 8px; }
@@ -323,10 +284,11 @@ body{
 .tabbar .btn { height:64px; }
 .tabbar-inner.is-cta{ justify-content:stretch; gap:10px; padding:8px; }
 
+/* ===== МОДАЛКИ / ТОСТЫ ===== */
 .modal{
   position:fixed; inset:0; display:none; place-items:center;
   background:rgba(0,0,0,.35); padding:12px;
-  z-index: 80;
+  z-index: 80; /* выше таббара (50) и не конфликтует с zoom-overlay (1000) */
 }
 .modal.show{ display:grid }
 .modal-dialog{ width:min(92vw,560px); background:#fff; border-radius:18px; overflow:hidden; box-shadow:var(--shadow) }
@@ -435,6 +397,7 @@ body.admin-mode .tabbar{ display:none !important; }
 .admin-title{ display:flex; gap:8px; align-items:center; font-weight:800; font-size:18px; }
 .admin-title i{ width:22px; height:22px; }
 
+/* Вкладки */
 .admin-tabs{
   display:flex; gap:8px; padding:10px 18px 6px; overflow-x:auto; -webkit-overflow-scrolling:touch;
   scrollbar-width:none;
@@ -446,12 +409,14 @@ body.admin-mode .tabbar{ display:none !important; }
 }
 .admin-tab.is-active{ background:#121111; color:#fff; border-color:#121111; }
 
+/* Пустое состояние */
 .admin-empty{
   margin:12px 18px 0; padding:18px; display:flex; flex-direction:column; gap:8px; align-items:center;
   border:1px dashed var(--stroke); border-radius:14px; background:#fff; color:muted;
 }
 .admin-empty i{ width:24px; height:24px; }
 
+/* Список: мини-карточки */
 .admin-list-mini{ display:grid; gap:10px; margin:10px 18px 18px; }
 .order-mini{
   display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center;
@@ -470,6 +435,7 @@ body.admin-mode .tabbar{ display:none !important; }
   width:18px; height:18px; border-right:2px solid #bbb; border-bottom:2px solid #bbb; transform:rotate(-45deg); margin-left:2px;
 }
 
+/* Детальная карточка */
 .order-detail{ padding:10px 18px 0; display:grid; gap:14px; }
 .order-detail__top{
   display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:center;
@@ -487,6 +453,7 @@ body.admin-mode .tabbar{ display:none !important; }
 .kv__row dt{ color:var(--muted); font-size:13px; line-height:1.4; }
 .kv__row dd{ margin:0; font-size:14px; line-height:1.45; overflow-wrap:anywhere; }
 
+/* Панель действий и выбор этапов */
 .order-detail__actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 
 .stage-list{
@@ -504,27 +471,13 @@ body.admin-mode .tabbar{ display:none !important; }
 }
 .mini{ font-size:12px; }
 
+/* Предпросмотр чека */
 .receipt-view{ display:grid; gap:10px; }
 .receipt-img-wrap{
   max-height:70vh; overflow:auto; -webkit-overflow-scrolling:touch;
   border:1px solid var(--stroke); border-radius:12px; background:#f8f8f8;
 }
 .receipt-img{ display:block; width:100%; height:auto; }
-
-/* ==== CTA внутри таббара — единый фон и без двойного слоя кнопок ==== */
-.tabbar-inner.is-cta{ background:#1f1e1e !important; box-shadow:0 10px 40px rgba(0,0,0,.18); }
-.tabbar-inner.is-cta .btn,
-.tabbar-inner.is-cta .btn.primary,
-.tabbar-inner.is-cta .btn.outline{
-  background:transparent !important;
-  border:1px solid rgba(255,255,255,.22) !important;
-  box-shadow:none !important;
-  color:#fff !important;
-}
-.tabbar-inner.is-cta .btn i{ color:#fff !important; }
-.tabbar-inner.is-cta .btn span{ color:#fff !important; }
-.tabbar-inner.is-cta .btn::before,
-.tabbar-inner.is-cta .btn::after{ display:none !important; content:none !important; }
 
 /* ===== АДАПТИВ ===== */
 @media (max-width: 920px){
@@ -553,62 +506,229 @@ body.admin-mode .tabbar{ display:none !important; }
   .tab{ height:50px; }
 }
 
-/* ===== ГОР. СКРОЛЛ-СТРАХОВКИ И КОРЗИНА ===== */
+/* === Admin buttons fixes (receipt actions) === */
+.receipt-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.btn--sm{
+  height:36px;
+  font-size:14px;
+  font-weight:800;
+  padding:0 12px;
+  border-radius:12px;
+  width:auto;
+  box-shadow:none;
+}
+.btn--sm i{ width:18px; height:18px }
+.btn--outline{
+  background:#fff;
+  color:#121111;
+  border:1px solid var(--stroke);
+}
+.btn--primary{
+  background:#121111;
+  color:#fff;
+  border:1px solid #121111;
+}
+@media (max-width: 380px){
+  .receipt-actions .btn--sm{ flex:1 0 auto; }
+}
+/* совместимость */
+.btn.outline{ background:#fff; color:#121111; border:1px solid var(--stroke); box-shadow:0 0 0 0 transparent; }
+.btn.primary{ background:#121111; color:#fff; border:1px solid #121111; }
+.addr-list{ display:grid; gap:10px; margin:0 18px 12px; }
+.addr{
+  display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:center;
+  padding:12px; border:1px solid var(--stroke); border-radius:14px; background:#fff;
+}
+.addr input[type="radio"]{
+  width:18px; height:18px; accent-color:#121111;
+  align-self: center;          /* ⬅ фикс: центр по гриду */
+  margin: 0;                   /* ⬅ убираем возможный сдвиг */
+  vertical-align: middle;      /* ⬅ страховка для разных UA */
+}
+/* SINGLE-FOOTER: кнопка без собственного фона, чтобы не было «двойного» слоя */
+.tabbar-inner.is-cta .btn.primary{
+  background:transparent !important;
+  color:#fff !important;
+  border:1px solid rgba(255,255,255,.22) !important;
+  box-shadow:none !important;
+}
+/* ==== CTA: убираем второй фон кнопки внутри таббара ==== */
+body.has-cta .tabbar-inner{
+  background:#1f1e1e !important;     /* единый угольный фон контейнера */
+  box-shadow:0 10px 40px rgba(0,0,0,.18);
+}
+
+body.has-cta .tabbar-inner .btn,
+body.has-cta .tabbar-inner .btn.primary,
+body.has-cta .tabbar-inner .btn.outline{
+  background:transparent !important;  /* убрали чёрный фон кнопки */
+  background-color:transparent !important;
+  border:1px solid rgba(255,255,255,.22) !important;
+  box-shadow:none !important;
+  color:#fff !important;
+}
+
+body.has-cta .tabbar-inner .btn i{ color:#fff !important; }
+body.has-cta .tabbar-inner .btn span{ color:#fff !important; }
+
+/* на всякий случай отключим декоративные псевдоэлементы, если где-то использовались */
+body.has-cta .tabbar-inner .btn::before,
+body.has-cta .tabbar-inner .btn::after{
+  display:none !important;
+  content:none !important;
+}
+/* было: .p-hero { border-radius:24px; overflow:hidden } */
+.p-hero{
+  border-top-left-radius:24px;
+  border-top-right-radius:24px;
+  border-bottom-left-radius:0;   /* ⬅ убрали низ */
+  border-bottom-right-radius:0;  /* ⬅ убрали низ */
+  overflow:visible;              /* ⬅ не обрезаем миниатюры */
+}
+
+/* главное фото по-прежнему со скруглением и обрезкой */
+.gallery-main{
+  border-radius:24px;
+  overflow:hidden;
+}
+
+/* на всякий случай — контейнер миниатюр без радиусов */
+.thumbs{
+  border-radius:0 !important;
+}
+/* 1) Глобальная страховка от горизонтального скролла */
 html, body { max-width: 100%; overflow-x: hidden; }
 .view, .section, .checkout { max-width: 100vw; overflow-x: hidden; }
 img, video { max-width: 100%; height: auto; display:block; }
 
-.cart-row > div:nth-child(2) { min-width: 0; }
+/* 2) Строка товара в корзине: центральная колонка может сжиматься */
+.cart-row { grid-template-columns: 72px minmax(0,1fr) auto; } /* было max-content */
+.cart-row > div:nth-child(2) { min-width: 0; }                /* НЕ распираем сетку */
 .cart-title, .cart-sub { overflow-wrap:anywhere; word-break:break-word; }
 
+/* 3) Блок списания баллов: строка с инпутом и кнопками — без переполнения */
 .cashback-box input.input { width: 100%; }
 .cashback-box .btns { display:flex; gap:6px; flex-wrap:wrap; }
 .cashback-box .row { display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center; }
 .cashback-box .row > * { min-width:0; }
 
+/* 4) Очень узкие экраны — уводим счётчик количества на новую строку */
 @media (max-width: 380px){
   .cart-row{ grid-template-columns: 64px 1fr; }
   .qty-mini{ grid-column: 1 / -1; justify-content:flex-end; }
   .cart-img{ width:64px; height:64px; }
 }
+/* ===== Cart overflow hotfix ===== */
+html, body, .view, .section, .checkout { max-width:100vw; overflow-x:hidden; }
 
-/* Ещё немного страхующих правил */
-.payrow span, .payrow b{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
-html, body, .view, .section, .checkout{ overflow-x:hidden; }
+/* строка товара: центральная колонка может сжиматься */
+.cart-row{ grid-template-columns:72px minmax(0,1fr) auto !important; }
+.cart-row > div:nth-child(2){ min-width:0 !important; }
+.cart-title, .cart-sub{ overflow-wrap:anywhere; word-break:break-word; }
 
-/* Колонка для qty на очень узких экранах — сохраняем три колонки */
-@media (max-width:360px){
-  .checkout .cart-row{
-    grid-template-columns: 64px minmax(0,1fr) max-content !important;
-  }
-  .checkout .cart-img{ width:64px; height:64px; }
+/* блок списания (cashback): инпут + кнопки не распирают сетку */
+.cashback-box .row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto; /* инпут сжимается, кнопки занимают остаток */
+  gap:8px; align-items:center;
 }
-/* === PATCH: вернуть критичные утилиты и стабильность верстки === */
+.cashback-box .btns{ display:flex; gap:6px; flex-wrap:wrap; }
+.cashback-box input.input{ width:100%; min-width:0; }
 
-/* 1) Если в разметке есть .fix-title у фикс-хедера — скрыть, как раньше */
-.product-fixhdr .fix-title{ display:none; }
+/* строки «итого»: текстовые столбцы не распирают */
+.payrow span{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
 
-/* 2) Корзина: счётчик всегда справа, в одну строку */
+/* очень узкие экраны — счётчик вниз, чтобы ничего не распирал */
+@media (max-width:380px){
+  .cart-row{ grid-template-columns:64px 1fr !important; }
+  .qty-mini{ grid-column:1 / -1; justify-content:flex-end; }
+  .cart-img{ width:64px; height:64px; }
+  .cashback-box .row{ grid-template-columns:1fr; } /* кнопки под инпут */
+}
+/* ===== Cart hard-fix: no horizontal overflow, incl. cashback ===== */
+
+/* 0) Никто в корзине не может требовать min-content > контейнера */
+.checkout, .checkout * { min-width: 0 !important; }
+
+/* 1) Строка товара: третий столбец не «max-content», а авто и сжимается */
+.cart-row{
+  grid-template-columns: 72px minmax(0,1fr) auto !important;
+}
+.cart-row > div:nth-child(2){ min-width:0 !important; } /* центр сжимается */
+.cart-row .qty-mini{ min-width:0 !important; white-space:normal !important; } /* счётчик не распирает */
+
+/* 2) Блок списания баллов: сетка, где кнопки НЕ расширяют родителя */
+.cashback-box .row{
+  display:grid !important;
+  grid-template-columns: minmax(0,1fr) auto !important;  /* инпут тянется, колонка кнопок авто */
+  gap:8px !important;
+  align-items:center !important;
+}
+.cashback-box .btns{
+  display:flex !important;
+  gap:6px !important;
+  flex-wrap:wrap !important;          /* если не влазит — переносятся */
+  max-width:100% !important;
+}
+.cashback-box .btns .pill{ white-space:normal !important; } /* текст кнопок можно переносить */
+.cashback-box input.input{ width:100% !important; }
+
+/* 3) Любые длинные подписи/числа не распирают строки итогов */
+.payrow span, .payrow b{
+  min-width:0 !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+
+/* 4) На узких экранах (iPhone 12/13 mini, SE и т.п.) — кнопки под инпутом */
+@media (max-width: 480px){
+  .cashback-box .row{ grid-template-columns: 1fr !important; }
+  .cashback-box .btns{ justify-content:flex-end !important; }
+  .cart-row{ grid-template-columns: 64px 1fr !important; }
+  .qty-mini{ grid-column: 1 / -1; justify-content:flex-end; }
+}
+
+/* 5) Страховка от любого «левого» переполнения */
+html, body, .view, .section, .checkout{ max-width:100vw !important; overflow-x:hidden !important; }
+/* === Cart/UI targeted fix (override) === */
+
+/* 1) Строка товара: нормальные колонки + центр сжимается, счётчик не прыгает */
 .checkout .cart-row{
-  grid-template-columns:72px minmax(0,1fr) max-content;
-  align-items:center;
+  grid-template-columns:72px minmax(0,1fr) max-content; /* как было по дизайну */
+  gap:14px;
 }
-.checkout .cart-row > div:nth-child(2){ min-width:0; }
-.checkout .cart-row .qty-mini{
-  justify-self:end;
-  align-self:center;
-  white-space:nowrap;
-  display:inline-flex;
-  gap:10px;
+.checkout .cart-row > div:nth-child(2){ min-width:0; }  /* центр не распирает */
+.checkout .qty-mini{
+  white-space:nowrap;            /* всегда в одну строку */
+  align-self:center;             /* выравнивание по центру строки */
 }
-@media (max-width:360px){
-  .checkout .cart-row{
-    grid-template-columns:64px minmax(0,1fr) max-content;
-  }
+
+/* маленькие экраны: переносим счётчик ВНИЗ только на очень узких ширинах */
+@media (max-width:380px){
+  .checkout .cart-row{ grid-template-columns:64px 1fr; }
+  .checkout .qty-mini{ grid-column:1 / -1; justify-content:flex-end; }
   .checkout .cart-img{ width:64px; height:64px; }
 }
 
-/* 3) Cashback: сетка без расползаний + переносы на узких */
+/* 2) Заголовок блока кэшбэка: не даём тексту сливаться, выставляем отступы */
+.cashback-box .cart-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  overflow:visible;          /* убираем глобальный ellipsis */
+  white-space:normal;        /* разрешаем переносы */
+  text-overflow:unset;
+}
+.cashback-box .cart-title .muted{
+  margin-left:auto;          /* «Доступно: …» уезжает вправо */
+}
+
+/* 3) Поле + кнопки кэшбэка — без переполнений и без сплющивания */
 .cashback-box .row{
   display:grid;
   grid-template-columns:minmax(0,1fr) auto;
@@ -617,60 +737,96 @@ html, body, .view, .section, .checkout{ overflow-x:hidden; }
 }
 .cashback-box input.input{ width:100%; min-width:0; }
 .cashback-box .btns{ display:flex; gap:6px; flex-wrap:wrap; }
-.cashback-box .btns .pill{ white-space:normal; } /* позволяем перенос */
 @media (max-width:400px){
-  .cashback-box .row{ grid-template-columns:1fr; }
+  .cashback-box .row{ grid-template-columns:1fr; }      /* кнопки под инпут */
   .cashback-box .btns{ justify-content:flex-end; }
 }
 
-/* 4) Адреса: радио ровно по центру */
-.addr input[type="radio"]{
-  align-self:center;
-  margin:0;
-  vertical-align:middle;
+/* 4) Эллипсисы оставляем ТОЛЬКО в строках товаров/заказов,
+      а в остальных заголовках — не трогаем текст */
+.cart-row .cart-title,
+.order-row .cart-title{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 
-/* 5) CTA внутри таббара: убрать «двойной фон» и лишние тени в режиме has-cta */
-.has-cta .cta{ display:none; }
-body.has-cta{ padding-bottom:calc(var(--safe) + 16px); }
-.tabbar-inner.is-cta{
-  justify-content:stretch;
-  gap:8px;
-  height:72px;
-  border-radius:24px;
-  padding:10px;
-  background:#1f1e1e;
-  box-shadow:0 10px 40px rgba(0,0,0,.18);
-}
-.tabbar-inner.is-cta .btn{
-  height:48px;
-  font-size:15px;
-  font-weight:800;
-  border-radius:999px;
-  padding:0 14px;
-  background:transparent;
-  border:1px solid rgba(255,255,255,.22);
-  box-shadow:none;
-  color:#fff;
-}
-.tabbar-inner.is-cta .btn i,
-.tabbar-inner.is-cta .btn span{ color:#fff; }
-.tabbar-inner.is-cta .btn::before,
-.tabbar-inner.is-cta .btn::after{ display:none; content:''; }
-@media (max-width:380px){
-  .tabbar-inner.is-cta{ height:68px; padding:8px; }
-  .tabbar-inner.is-cta .btn{ height:44px; font-size:14px; }
+/* 5) Итого/строки оплаты — не распирают контейнер длинными значениями */
+.payline .payrow span,
+.payline .payrow b{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
-/* 6) Админ: утилиты для кнопок в карточке чека */
-.receipt-actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.btn--sm{
-  height:36px; font-size:14px; font-weight:800; padding:0 12px;
-  border-radius:12px; width:auto; box-shadow:none;
+/* 6) Мягкая страховка от горизонтального скролла */
+html, body, .view, .section, .checkout{ overflow-x:hidden; }
+/* === Cart: фикс расположения счётчика количества === */
+
+/* 1) Третья колонка — под счётчик; центр сжимается, ничего не переносим */
+.cart-row{
+  grid-template-columns:72px minmax(0,1fr) auto !important;
+  align-items:center !important;
 }
-.btn--sm i{ width:18px; height:18px; }
-.btn--outline{ background:#fff; color:#121111; border:1px solid var(--stroke); }
-.btn--primary{ background:#121111; color:#fff; border:1px solid #121111; }
+
+/* 2) Сам счётчик — всегда в правой колонке, без переносов */
+.cart-row .qty-mini{
+  justify-self:end !important;   /* прижать вправо в своей колонке */
+  align-self:center !important;  /* вертикально по центру строки */
+  display:inline-flex !important;
+  gap:10px;
+  white-space:nowrap !important; /* не переносить "– 1 +" на новую строку */
+  min-width:auto !important;
+}
+
+/* размеры кнопок счётчика (как были) */
+.cart-row .qty-mini .ctrl{ width:36px; height:36px; border-radius:12px; }
+
+/* 3) Отмена прежнего поведения "переносить счётчик вниз" на узких экранах */
 @media (max-width:380px){
-  .receipt-actions .btn--sm{ flex:1 0 auto; }
+  .cart-row{ grid-template-columns:64px minmax(0,1fr) auto !important; }
+  .cart-row .qty-mini{
+    grid-column:auto !important;     /* НЕ растягиваем на всю ширину */
+    justify-content:initial !important;
+  }
 }
+
+/* 4) Страховка — центр не распирает строку */
+.cart-row > div:nth-child(2){ min-width:0 !important; }
+/* === FINAL: счётчик количества всегда справа в одной строке === */
+.checkout .cart-row{
+  grid-template-columns: 72px minmax(0,1fr) max-content !important;
+  align-items: center !important;
+}
+.checkout .cart-row > div:nth-child(2){ min-width:0 !important; }
+
+.checkout .cart-row .qty-mini{
+  grid-column: auto !important;
+  justify-self: end !important;
+  align-self: center !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  gap: 10px;
+}
+
+/* Очень узкие экраны — просто уменьшаем первый столбец, но 3 колонки сохраняем */
+@media (max-width:360px){
+  .checkout .cart-row{
+    grid-template-columns: 64px minmax(0,1fr) max-content !important;
+  }
+  .checkout .cart-img{ width:64px; height:64px; }
+}
+/* === Product Fix-Header: только две кнопки, фон прозрачный === */
+.product-fixhdr{
+  background:transparent !important;
+  border:none !important;
+  box-shadow:none !important;
+  padding:0 !important;           /* контейнер как «пустой слой» */
+  height:auto !important;
+}
+.product-fixhdr .fix-title{
+  display:none !important;        /* скрываем блок с названием/ценой */
+}
+/* кнопки остаются как есть: слева #btnFixBack, справа #btnFixFav */
+/* слой фикс-хедера товара */
+.product-fixhdr{ z-index:100; }

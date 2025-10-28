@@ -20,7 +20,7 @@ import { renderHome, drawCategoriesChips } from './components/Home.js';
 import { renderProduct } from './components/Product.js';
 import { renderCart } from './components/Cart.js';
 import { renderFavorites } from './components/Favorites.js';
-import { renderCategory } from './components/Category.js';
+import { renderCategory } from './components/Category.js'; // ВАЖНО: заглавная буква
 import { renderOrders, renderTrack } from './components/Orders.js';
 import { openFilterModal, renderActiveFilterChips } from './components/Filters.js';
 import { renderAccount, renderAddresses, renderSettings, renderCashback, renderReferrals } from './components/Account.js';
@@ -47,6 +47,10 @@ const POINTS_MATURITY_MS  = 24*60*60*1000;
 function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
 
 /* ---------- ОДНОРАЗОВАЯ МИГРАЦИЯ КОШЕЛЬКА guest -> реальный UID ---------- */
+/**
+ * Если старые пользователи копили баллы под ключом points_wallet__guest,
+ * переносим содержимое в points_wallet__<uid>. Запускается один раз на UID.
+ */
 function migrateGuestWalletOnce() {
   try {
     const realUid = getUID?.();
@@ -63,7 +67,8 @@ function migrateGuestWalletOnce() {
 
     if (guestRaw && !realRaw) {
       localStorage.setItem(realKey, guestRaw);
-      // localStorage.removeItem(guestKey); // опционально
+      // при желании можно очистить старый ключ:
+      // localStorage.removeItem(guestKey);
     }
     localStorage.setItem(FLAG, '1');
   } catch {}
@@ -136,7 +141,7 @@ async function notifApiAdd(uid, notif){
   if (!res.ok || data?.ok === false) throw new Error('notif add error');
   return data.id || notif.id || Date.now();
 }
-/* === обновлённая markAll: безопасные попытки === */
+/* === ПРАВКА ЗДЕСЬ === */
 async function notifApiMarkAll(uid){
   const initData = getTgInitDataRaw();
   const hasInit  = !!(initData && initData.length);
@@ -144,19 +149,30 @@ async function notifApiMarkAll(uid){
   const headers = { 'Content-Type':'application/json' };
   if (hasInit) headers['X-Tg-Init-Data'] = initData;
 
+  // пробуем по очереди: markmine → markseen → markAll
   const attempts = hasInit
-    ? [{ op:'markmine' }, { op:'markseen' }]
-    : [{ op:'markAll', uid:String(uid) }];
+    ? [
+        { op:'markmine' },   // ← без uid при initData
+        { op:'markseen' },
+      ]
+    : [
+        { op:'markAll', uid:String(uid) },
+      ];
 
   for (const body of attempts){
-    const res = await fetch(NOTIF_API, { method:'POST', headers, body: JSON.stringify(body) });
+    const res = await fetch(NOTIF_API, {
+      method:'POST',
+      headers,
+      body: JSON.stringify(body)
+    });
     let data = {};
     try { data = await res.json(); } catch {}
     if (res.ok && data?.ok !== false){
       return Array.isArray(data.items) ? data.items : null;
     }
   }
-  throw new Error('notif mark error');
+
+throw new Error('notif mark error');
 }
 
 function mergeNotifsToLocal(serverItems){
@@ -292,7 +308,7 @@ loadFavorites();
 updateCartBadge();
 initTelegramChrome();
 
-/* === полностью отключаем автопамять скролла браузера === */
+/* === Новое: полностью отключаем автопамять скролла браузера === */
 try {
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 } catch {}
@@ -425,6 +441,7 @@ function setTabbarCTAs(
   if (right.onClick) document.getElementById(right.id||'ctaRight').onclick = right.onClick;
 }
 
+/* делаем доступными глобально (нужно для Cart/Product и т.д.) */
 window.setTabbarMenu = setTabbarMenu;
 window.setTabbarCTA  = setTabbarCTA;
 window.setTabbarCTAs = setTabbarCTAs;
@@ -467,6 +484,7 @@ el('#searchInput')?.addEventListener('input', (e)=>{
 });
 
 /* ---------- Уведомления (per-user) ---------- */
+// Обновлённая функция: можно вызвать с числом для принудительной установки.
 function updateNotifBadge(explicitCount){
   const b = document.getElementById('notifBadge');
   if (!b) return;
@@ -485,6 +503,7 @@ function updateNotifBadge(explicitCount){
 }
 window.updateNotifBadge = updateNotifBadge;
 
+// Слушаем событие от Notifications.js для моментального обнуления
 window.addEventListener('notifs:unread', (e)=>{
   const n = Number(e?.detail ?? 0) || 0;
   updateNotifBadge(n);
@@ -509,19 +528,21 @@ function hideProductHeader(){
   if (fix){
     fix.classList.remove('show');
     fix.setAttribute('aria-hidden','true');
-    try { if (fix.contains(document.activeElement)) document.activeElement.blur(); } catch {}
   }
   if (stat){
     stat.classList.remove('hidden');
   }
 }
 
+
+// >>> прокрутка к верху (явная, т.к. history.scrollRestoration='manual')
 function scrollTopNow() {
   try {
     const el = document.scrollingElement || document.documentElement || document.body;
     el.scrollTop = 0;
   } catch {}
 }
+
 
 /* ---------- РОУТЕР ---------- */
 async function router(){
@@ -548,8 +569,9 @@ async function router(){
 
   setTabbarMenu(map[clean] || (inAdmin ? 'admin' : 'home'));
   hideProductHeader();
-  scrollTopNow();
+  scrollTopNow(); // ← вот здесь, один раз
 
+  // Админ-режим
   if (inAdmin){
     if (parts.length===0 || parts[0] !== 'admin'){
       location.hash = '#/admin';
@@ -564,6 +586,7 @@ async function router(){
     return renderAdmin();
   }
 
+  // Клиентский роутинг
   if (parts.length===0) return renderHome(router);
   const m1=match('category/:slug'); if (m1) return renderCategory(m1);
   const m2=match('product/:id');   if (m2) return renderProduct(m2);
@@ -580,11 +603,14 @@ async function router(){
   if (match('account/referrals'))  return renderReferrals();
 
   if (match('notifications')){
-    await renderNotifications(updateNotifBadge);
-    await syncMyNotifications();
+   
+   await renderNotifications(updateNotifBadge); // внутри: markAll + updateUnreadBadge(0)
+   await syncMyNotifications();                 // просто обновим локальный список
+   // бейдж не трогаем: он уже 0 и остаётся 0                        // пересчёт по локальному стейту
     return;
   }
 
+  // Новый мостик: #/ref[?ref=...|&start=ref_<uid>]
   if (match('ref')){
     renderRefBridge();
     return;
@@ -636,7 +662,7 @@ function collectSnapshot(){
 async function sendSnapshot(){
   try{
     const snap = collectSnapshot();
-    if (!snap.uid || !snap.chatId) return;
+    if (!snap.uid || !snap.chatId) return; // только Telegram-пользователи
     await fetch('/.netlify/functions/user-sync', {
       method:'POST',
       headers:{ 'Content-Type':'application/json' },
@@ -646,16 +672,23 @@ async function sendSnapshot(){
 }
 
 function startUserSnapshotSync(){
+  // первый пуш при старте
   sendSnapshot();
+
+  // Пуш при событиях (если у вас генерируются — используем, иначе таймер ниже всё прикроет)
   window.addEventListener('cart:updated', sendSnapshot);
   window.addEventListener('favorites:updated', sendSnapshot);
+
+  // Страховка: раз в 10 минут
   setInterval(sendSnapshot, 10*60*1000);
 }
 
 /* ---------- ИНИЦИАЛИЗАЦИЯ ---------- */
 async function init(){
+  // 0) Сразу захватываем возможного инвайтера из контекста (MiniApp/Web)
   captureInviterFromContext();
 
+  // загрузка каталога
   try{
     const res = await fetch('data/products.json');
     const data = await res.json();
@@ -673,6 +706,7 @@ async function init(){
   drawCategoriesChips(router);
   renderActiveFilterChips();
 
+  // запоминаем стартовый роут
   let startRoute = null;
   try{
     const tg = window.Telegram?.WebApp;
@@ -682,16 +716,22 @@ async function init(){
   }catch{}
   if (startRoute){ location.hash = startRoute; }
 
+  // одноразовый пинг о новом пользователе (только для Telegram-пользователя)
   await ensureUserJoinReported();
 
+  // кэшбек: «дозреть» pending → available при старте
   settleMatured();
 
   await router();
 
+  // 1) После старта UI — пробуем привязать pending-инвайтера (когда уже есть наш UID)
   await tryBindPendingInviter();
 
   window.addEventListener('hashchange', router);
-  window.addEventListener('hashchange', () => { setTimeout(scrollTopNow, 0); });
+  window.addEventListener('hashchange', () => {
+    // даём рендеру закончиться, затем поднимаем скролл
+    setTimeout(scrollTopNow, 0);
+  });
 
   window.addEventListener('orders:updated', ()=>{
     const inAdmin = document.body.classList.contains('admin-mode');
@@ -711,10 +751,11 @@ async function init(){
       location.hash = '#/admin-login';
     }
     router();
+    // 2) Если авторизация произошла после старта — повторим попытку бинда
     tryBindPendingInviter();
   });
 
-  function makeDisplayOrderId(order) {
+  function buildOrderShortTitle(order) {
     const firstTitle =
       order?.cart?.[0]?.title ||
       order?.cart?.[0]?.name ||
@@ -731,12 +772,13 @@ async function init(){
     }
   }
 
+  // === УВЕДОМЛЕНИЯ (клиент): только локальный пуш и серверный notifs через orders-функции ===
   window.addEventListener('client:orderPlaced', async (e)=>{
     try{
       const id = e.detail?.id;
 
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
-      const dispId = (order?.shortId ? String(order.shortId).toUpperCase() : (String(order?.id||'').slice(-6).toUpperCase()));
+      const dispId = makeDisplayOrderId(order);
 
       const notif = {
         id: `order-placed-${id}`,
@@ -760,7 +802,7 @@ async function init(){
     try{
       const { id, userId } = e.detail || {};
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
-      const dispId = (order?.shortId ? String(order.shortId).toUpperCase() : (String(order?.id||'').slice(-6).toUpperCase()));
+      const dispId = makeDisplayOrderId(order);
 
       const notif = {
         icon: 'shield-check',
@@ -777,7 +819,7 @@ async function init(){
     try{
       const { id, status, userId } = e.detail || {};
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
-      const dispId = (order?.shortId ? String(order.shortId).toUpperCase() : (String(order?.id||'').slice(-6).toUpperCase()));
+      const dispId = makeDisplayOrderId(order);
 
       const notif = {
         icon: 'refresh-ccw',
@@ -794,7 +836,7 @@ async function init(){
     try{
       const { id, reason, userId } = e.detail || {};
       const order = (await getOrders() || []).find(o => String(o.id) === String(id));
-      const dispId = (order?.shortId ? String(order.shortId).toUpperCase() : (String(order?.id||'').slice(-6).toUpperCase()));
+      const dispId = makeDisplayOrderId(order);
       const subSuffix = reason ? ` — ${reason}` : '';
 
       const notif = {
@@ -810,20 +852,25 @@ async function init(){
 
   window.lucide && lucide.createIcons?.();
 
+  // онбординг-уведомления только для новых пользователей
   await ensureOnboardingNotifsOnce();
 
+  // подтянуть (в т.ч. только что добавленные) и обновить бейдж
   await syncMyNotifications();
   updateNotifBadge();
 
+  // синк уведомлений по интервалу + дозревание кешбэка
   const NOTIF_POLL_MS = 30000;
   setInterval(()=>{ syncMyNotifications(); settleMatured(); }, NOTIF_POLL_MS);
 
   document.addEventListener('visibilitychange', ()=>{ if (!document.hidden){ syncMyNotifications(); settleMatured(); } });
 
+  // === ВМЕСТО scheduleMarketingBotPings(): серверная синхронизация снапшота ===
   startUserSnapshotSync();
 
+  // === Лёгкий поллер заказов, чтобы статусы «оживали» даже без событий ===
   setInterval(async () => {
-    try { await getOrders(); } catch {}
+    try { await getOrders(); /* saveOrders внутри дернётся, события улетят */ } catch {}
   }, 45000);
 }
 init();
@@ -837,7 +884,7 @@ export { updateNotifBadge, getNotifications, setNotifications, setTabbarMenu, se
 async function ensureUserJoinReported(){
   try{
     const tgUser = window?.Telegram?.WebApp?.initDataUnsafe?.user;
-    if (!tgUser) return;
+    if (!tgUser) return; // только для Telegram-пользователей
 
     const uid = String(tgUser.id);
     const FLAG = `user_join_sent__${uid}`;

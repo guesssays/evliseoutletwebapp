@@ -138,6 +138,7 @@ const PHDBG = {
   note(msg, extra){
     try{
       console.log(`[PH] ${msg}`, extra||'');
+      // лёгкая вибрация по клику — помогает замечать действия
       navigator.vibrate?.(10);
     }catch{}
   }
@@ -153,12 +154,14 @@ export function renderProduct({id}){
   const images = Array.isArray(p.images) && p.images.length ? p.images : [p.images?.[0] || ''];
   const realPhotos = Array.isArray(p.realPhotos) ? p.realPhotos : [];
 
+  // ОБЪЕДИНЁННАЯ ГАЛЕРЕЯ: сначала офф. фото, затем реальные
   const gallery = [
     ...images.map(src => ({ src, isReal:false })),
     ...realPhotos.map(src => ({ src, isReal:true })),
   ];
   const first = gallery[0] || { src:'', isReal:false };
 
+  // Подбор «Похожие» по той же подкатегории
   const related = state.products
     .filter(x => x.categoryId === p.categoryId && String(x.id) !== String(p.id))
     .slice(0, 12);
@@ -210,6 +213,7 @@ export function renderProduct({id}){
           box-shadow:0 8px 24px rgba(0,0,0,.35);
         }
       }
+      /* Мини-бейдж на миниатюрах */
       .thumb .real-dot{
         position:absolute; left:6px; top:6px; z-index:1;
         font-size:10px; font-weight:900; letter-spacing:.3px;
@@ -229,6 +233,7 @@ export function renderProduct({id}){
       }
       .grid.related-grid{margin-top:6px;}
 
+      /* Контейнер миниатюр: убрать скругление нижних углов */
       .p-hero .thumbs{
         border-bottom-left-radius: 0 !important;
         border-bottom-right-radius: 0 !important;
@@ -245,6 +250,7 @@ export function renderProduct({id}){
       .opt-title{ font-weight:800; margin:6px 0 8px; }
       .sizes,.colors{ display:flex; flex-wrap:wrap; gap:10px; }
 
+      /* — Цвета — */
       .sw{
         position:relative;
         width:38px; height:38px;
@@ -263,6 +269,7 @@ export function renderProduct({id}){
       .sw:focus-visible{ outline:3px solid #0ea5e9; outline-offset:2px; }
       .sw:hover{ transform:translateY(-1px); }
 
+      /* Активный цвет — только усиленная обводка + лёгкая анимация */
       @keyframes swPulse { from{ transform:scale(1.04); } to{ transform:scale(1); } }
       .sw.active{
         border-color:#0ea5e9 !important;
@@ -272,6 +279,7 @@ export function renderProduct({id}){
         animation: swPulse .25s ease;
       }
 
+      /* — Размеры — */
       .size{
         padding:10px 14px;
         border:1px solid var(--stroke);
@@ -287,6 +295,7 @@ export function renderProduct({id}){
         border-color:#121111;
       }
 
+      /* ===== Размерная сетка (центрирование значений) ===== */
       .table-wrap{
         overflow:auto;
         -webkit-overflow-scrolling:touch;
@@ -1075,7 +1084,7 @@ function closestOfCell(cell, target){
   return target;
 }
 
-/* ========== ЛОГИКА 2-ХЕДЕРА ========== */
+/* ========== ЛОГИКА 2-ХЕДЕРА С ВСТРОЕННЫМ ЛОГОМ ========== */
 function setupTwoHeaders({ isFav: favAtStart }){
   const stat = document.querySelector('.app-header');
   const fix  = document.getElementById('productFixHdr');
@@ -1133,6 +1142,7 @@ function setupTwoHeaders({ isFav: favAtStart }){
     fix.setAttribute('aria-hidden', String(!showFix));
 
     if (PHDBG.enabled){
+      // не засоряем консоль — лог раз в ~80px
       if (!onScroll._last || Math.abs(sc - onScroll._last) > 80){
         onScroll._last = sc;
         console.log('[PH scroll]', { sc, showFix,
@@ -1162,6 +1172,7 @@ function setupTwoHeaders({ isFav: favAtStart }){
   window.addEventListener('popstate',  cleanup, { signal: ctrl.signal });
   window.addEventListener('beforeunload', cleanup, { signal: ctrl.signal });
 
+  // Вспомогалка, чтобы замкнуть id товара внутри замыкания
   function pSafeId(){
     try{
       const hash = location.hash || '';
