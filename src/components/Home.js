@@ -11,14 +11,12 @@ function findCategoryBySlug(slug){
   }
   return null;
 }
-
 function expandSlugs(slug){
   const c = findCategoryBySlug(slug);
   if (!c) return [slug];
   if (c.children && c.children.length) return c.children.map(x=>x.slug);
   return [c.slug];
 }
-
 function categoryNameBySlug(slug){
   return findCategoryBySlug(slug)?.name || '';
 }
@@ -28,14 +26,11 @@ export function renderHome(router){
   v.innerHTML = `<div class="grid home-bottom-pad" id="productGrid"></div>`;
   drawCategoriesChips(router);
   drawProducts(state.products);
-
-  // Кнопка «вверх»
-  ensureBackToTop();
+  // ⛔ Больше НЕ создаём локальную кнопку «вверх».
+  // За неё отвечает единый компонент src/components/ScrollTop.js (mountScrollTop уже вызывается в main.js).
 }
 
-/**
- * Рендер чипов категорий (только верхние группы + «Все», «Новинки»).
- */
+/** Рендер чипов категорий (верхние группы + «Все», «Новинки»). */
 export function drawCategoriesChips(router){
   const wrap = document.getElementById('catChips');
   if (!wrap) return;
@@ -46,7 +41,6 @@ export function drawCategoriesChips(router){
   wrap.insertAdjacentHTML('beforeend', mk('all','Все товары', state.filters.category==='all'));
   wrap.insertAdjacentHTML('beforeend', mk('new','Новинки', state.filters.category==='new'));
 
-  // верхний уровень (Верх, Низ, Обувь, Сумки, Разное)
   state.categories.forEach(c=>{
     if (c.slug === 'new') return;
     wrap.insertAdjacentHTML('beforeend', mk(c.slug, c.name, state.filters.category===c.slug));
@@ -75,6 +69,8 @@ export function drawCategoriesChips(router){
       }
 
       drawProducts(list);
+      // прокрутим к началу списка для UX
+      try { (document.scrollingElement || document.documentElement).scrollTo({top:0, behavior:'smooth'}); } catch {}
     });
     wrap.dataset.bound = '1';
   }
@@ -120,10 +116,7 @@ export function drawProducts(list){
       const active = isFav(p.id);
       favBtn.classList.toggle('active', active);
       favBtn.setAttribute('aria-pressed', String(active));
-      favBtn.onclick = (ev)=>{
-        ev.preventDefault();
-        toggleFav(p.id);
-      };
+      favBtn.onclick = (ev)=>{ ev.preventDefault(); toggleFav(p.id); };
     }
 
     frag.appendChild(node);
@@ -131,122 +124,4 @@ export function drawProducts(list){
 
   grid.appendChild(frag);
   window.lucide?.createIcons && lucide.createIcons();
-}
-
-/* ===== ВСПОМОГАТЕЛЬНОЕ: кнопка «Вверх» ===== */
-const BTN_ID = 'backToTopBtn';
-
-function ensureBackToTop(){
-  let btn = document.getElementById(BTN_ID);
-
-  if (!btn){
-    btn = document.createElement('button');
-    btn.id = BTN_ID;
-    btn.type = 'button';
-    btn.setAttribute('aria-label','Вернуться к началу');
-    btn.innerHTML = `<i data-lucide="arrow-up"></i>`;
-    Object.assign(btn.style, {
-      position: 'fixed',
-      right: '16px',
-      bottom: '16px', // пересчитывается ниже
-      width: '44px',
-      height: '44px',
-      borderRadius: '999px',
-      border: '1px solid var(--border, rgba(0,0,0,.12))',
-      background: 'var(--card, rgba(0,0,0,.04))',
-      backdropFilter: 'saturate(180%) blur(8px)',
-      boxShadow: '0 6px 18px rgba(0,0,0,.12)',
-      display: 'none',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      cursor: 'pointer',
-      touchAction: 'manipulation'
-    });
-    document.body.appendChild(btn);
-    window.lucide?.createIcons && lucide.createIcons();
-
-    btn.addEventListener('click', ()=>{
-      try{ document.activeElement?.blur?.(); }catch{}
-      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
-    });
-  }
-
-  // --- утилиты ---
-  const TABBAR_SELECTORS = ['#tabbar','.tabbar','[data-tabbar]','[role="tablist"]'];
-
-  function findTabbar(){
-    for (const sel of TABBAR_SELECTORS){
-      const el = document.querySelector(sel);
-      if (el) return el;
-    }
-    return null;
-  }
-
-  function getSafeInsetBottom(){
-    // пробуем считать safe-area через CSS env
-    // создаём временный элемент с padding-bottom: env(safe-area-inset-bottom)
-    const tmp = document.createElement('div');
-    tmp.style.cssText = 'position:fixed;bottom:0;visibility:hidden;padding-bottom:env(safe-area-inset-bottom);';
-    document.body.appendChild(tmp);
-    const cs = getComputedStyle(tmp);
-    const pb = parseFloat(cs.paddingBottom) || 0;
-    document.body.removeChild(tmp);
-    return pb;
-  }
-
-  // Позиционирование с учётом реального перекрытия
-  function positionBackToTop(){
-    const tab = findTabbar();
-    const safe = getSafeInsetBottom();
-    let bottom = 16 + safe; // базовый отступ
-
-    if (tab){
-      const r = tab.getBoundingClientRect();
-      const vh = window.innerHeight || document.documentElement.clientHeight || 0;
-      // если таббар у нижней кромки и может перекрывать кнопку
-      if (r.height > 0 && r.top < vh){
-        // насколько зона таббара наезжает снизу (обычно r.bottom ~ vh)
-        const overlap = Math.max(0, vh - r.top);
-        // 12px буфер над таббаром + safe-area
-        bottom = Math.max(16 + safe, overlap + 12 + safe);
-      }
-    }
-
-    btn.style.bottom = `${Math.round(bottom)}px`;
-  }
-
-  function toggleVisibility(){
-    const y = window.scrollY || document.documentElement.scrollTop || 0;
-    btn.style.display = y > 400 ? 'inline-flex' : 'none';
-  }
-
-  // первичный расчёт
-  requestAnimationFrame(()=>{
-    positionBackToTop();
-    toggleVisibility();
-  });
-
-  // обработчики
-  window.addEventListener('scroll', toggleVisibility, { passive: true });
-  window.addEventListener('resize', positionBackToTop);
-  window.addEventListener('hashchange', ()=>{ setTimeout(positionBackToTop, 0); });
-
-  // если таббар меняет размер — наблюдаем его
-  const tabForObserver = findTabbar();
-  if (window.ResizeObserver && tabForObserver){
-    const ro = new ResizeObserver(()=> positionBackToTop());
-    ro.observe(tabForObserver);
-  }
-
-  // поддержка iOS клавиатуры/безрамочных экранов
-  if (window.visualViewport){
-    window.visualViewport.addEventListener('resize', positionBackToTop);
-  }
-
-  // поддержка вашего пользовательского события
-  window.addEventListener('tabbar:resize', positionBackToTop);
-
-  // небольшой «пост-тик» после анимаций/иконок
-  setTimeout(positionBackToTop, 300);
 }
