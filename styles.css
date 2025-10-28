@@ -1092,3 +1092,35 @@ body.has-cta .tabbar-inner .btn span{ color:#fff !important; }
     color:#121111 !important; /* финально: как в hero */
   }
 }
+/* === FINAL OVERRIDES (EOF) === */
+.product-fixhdr,
+.product-fixhdr::before,
+.product-fixhdr::after{
+  background:transparent !important;
+  border:none !important;
+  outline:none !important;
+  box-shadow:none !important;
+  pointer-events:none !important; /* контейнер пропускает клики */
+  z-index: 100 !important;
+}
+.product-fixhdr.show{ display:flex !important; }
+
+/* сами кнопки — белые как hero и КЛИКАБЕЛЬНЫЕ */
+.product-fixhdr .fixbtn{
+  pointer-events:auto !important;
+  width:48px !important; height:48px !important;
+  border-radius:999px !important;
+  display:grid !important; place-items:center !important;
+  background:#fff !important;
+  border:1px solid var(--stroke) !important;
+  box-shadow:var(--shadow) !important;
+  color:var(--text) !important;
+}
+.product-fixhdr .fixbtn i,
+.product-fixhdr .fixbtn svg{
+  width:22px !important; height:22px !important;
+  stroke:currentColor !important; fill:none !important;
+}
+#btnFixBack{ position:absolute !important; left:12px !important; top:calc(6px + var(--safe-top)) !important; }
+#btnFixFav { position:absolute !important; right:12px !important; top:calc(6px + var(--safe-top)) !important; }
+#btnFixFav.active .lucide-heart{ color:#ff4d5a !important; fill:currentColor !important; stroke:none !important; }
