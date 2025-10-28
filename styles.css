@@ -1175,3 +1175,75 @@ body.has-cta .tabbar-inner .btn span{ color:#fff !important; }
 }
 #productFixHdr .btn{ pointer-events: auto; } /* на всякий случай */
 .app-header.hidden{ opacity:0; visibility:hidden; }
+/* === ScrollTop — белая круглая кнопка над таббаром (EOF) === */
+:root{
+  /* слой выше таббара и фикс-хедера */
+  --z-scrolltop: 120;
+}
+
+/* базовый вид */
+#scrollTopBtn{
+  position: fixed;
+  right: 14px;
+  bottom: calc(var(--tabbar-h) + var(--safe) + 14px);
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  border: 1px solid var(--stroke);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  z-index: var(--z-scrolltop);
+
+  /* приятное появление/скрытие (JS ставит hidden/aria-hidden/inert) */
+  transition: transform .18s ease, opacity .18s ease, box-shadow .18s ease;
+  will-change: transform, opacity;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+/* иконка */
+#scrollTopBtn i,
+#scrollTopBtn svg{
+  width: 22px; height: 22px;
+  stroke: currentColor; fill: none;
+}
+
+/* скрытое состояние через [hidden] — мягкий слайд вниз и отключение кликов */
+#scrollTopBtn[hidden]{
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+}
+
+/* hover/active/focus */
+@media (hover:hover){
+  #scrollTopBtn:hover{ box-shadow: 0 12px 28px rgba(0,0,0,.14); }
+}
+#scrollTopBtn:active{ transform: translateY(1px); }
+#scrollTopBtn:focus-visible{
+  outline: 2px solid #121111;
+  outline-offset: 3px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.16);
+}
+
+/* когда внутри таббара работает CTA-режим — отступ остаётся корректным
+   (используем уже заданный var(--tabbar-h) + safe-area) */
+/* ничего доп. не нужно — формула в bottom уже учитывает высоту таббара */
+
+/* супер-узкие экраны: чуть компактнее и ближе к краю */
+@media (max-width: 380px){
+  #scrollTopBtn{
+    right: 10px;
+    width: 52px; height: 52px;
+  }
+}
+
+/* админ-режим — убираем кнопку целиком */
+body.admin-mode #scrollTopBtn{ display: none !important; }
+
+/* на всякий — поверх любых локальных перекрытий */
+#scrollTopBtn::before, #scrollTopBtn::after{ content: none !important; display: none !important; }

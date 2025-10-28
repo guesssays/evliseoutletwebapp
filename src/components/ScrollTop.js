@@ -1,5 +1,6 @@
-// Кнопка «Наверх»: корректная доступность и синхронизация hidden/aria-hidden/inert
-// + поддержка скролла не только у window, но и у внутренних контейнеров
+// src/components/ScrollTop.js
+// Кнопка «Наверх»: показывается ТОЛЬКО на главной (#/), корректная доступность,
+// живые обработчики без одноразовости, поддержка внутренних скролл-контейнеров.
 
 /* ===================== UNIVERSAL SCROLL ROOT DETECT ===================== */
 function classicCandidates(){
@@ -66,6 +67,15 @@ function bindActiveTargetDetector(node){
 }
 /* ====================================================================== */
 
+/** Главная страница? Разрешаем пустой хеш, '#', '#/' и вариации с query. */
+function isHome(){
+  const h = String(location.hash || '');
+  if (h === '' || h === '#' || h === '#/') return true;
+  // допустим '#/?utm=...' — тоже главная
+  if (h.startsWith('#/?')) return true;
+  return false;
+}
+
 function scrollToTop(){
   const cands = getScrollTargets();
   let did = false;
@@ -101,46 +111,73 @@ export function mountScrollTop(threshold = 400) {
   };
 
   const update = () => {
+    // Появляется ТОЛЬКО на главной
+    if (!isHome()) { hide(); return; }
     const y = getScrollY();
     if (y > threshold) show(); else hide();
   };
 
+  // Клик — всегда живой (без одноразовости)
   btn.addEventListener('click', () => {
     try { document.activeElement?.blur?.(); } catch {}
     scrollToTop();
   });
 
-  // слушаем все возможные скролл-контейнеры + фиксируем активный
-  const targets = getScrollTargets();
-  const unbinds = [];
-  for (const t of targets){
-    unbinds.push(bindActiveTargetDetector(t));
-    if (t === window){
-      window.addEventListener('scroll', update, { passive: true });
-      window.addEventListener('resize', update);
-    } else {
-      t.addEventListener('scroll', update, { passive: true });
-      t.addEventListener('resize', update);
-    }
-  }
+  // --- Биндинг скролл-источников с возможной перебиндовкой при смене маршрута ---
+  let targets = [];
+  let unbinds = [];
+  const onScroll = () => update();
+  const onResize = () => update();
 
-  window.addEventListener('hashchange', () => setTimeout(update, 0));
-
-  // старт
-  hide();
-  setTimeout(update, 0);
-
-  // (опционально) вернуть функцию для отписки, если когда-нибудь понадобится размонтировать
-  return () => {
+  function unbindAll(){
     for (const t of targets){
       if (t === window){
-        window.removeEventListener('scroll', update);
-        window.removeEventListener('resize', update);
+        window.removeEventListener('scroll', onScroll);
+        window.removeEventListener('resize', onResize);
       } else {
-        t.removeEventListener('scroll', update);
-        t.removeEventListener('resize', update);
+        t.removeEventListener('scroll', onScroll);
+        t.removeEventListener('resize', onResize);
       }
     }
+    targets = [];
     unbinds.forEach(fn=>{ try{ fn(); }catch{} });
+    unbinds = [];
+  }
+
+  function bindAll(){
+    targets = getScrollTargets();
+    for (const t of targets){
+      unbinds.push(bindActiveTargetDetector(t));
+      if (t === window){
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onResize);
+      } else {
+        t.addEventListener('scroll', onScroll, { passive: true });
+        // не все элементы бросают resize, но безвредно
+        t.addEventListener('resize', onResize);
+      }
+    }
+    // сразу пересчитать
+    update();
+  }
+
+  // первая инициализация
+  hide();
+  bindAll();
+
+  // При смене маршрута — перебиндить слушатели (контейнер мог смениться)
+  const onHash = () => {
+    // Сначала спрятать (если ушли с главной), потом перебиндить и пересчитать
+    hide();
+    unbindAll();
+    // небольшой next-tick, чтобы DOM успел перерисоваться
+    setTimeout(() => { bindAll(); }, 0);
+  };
+  window.addEventListener('hashchange', onHash);
+
+  // Вернуть функцию для полного размонтажа (если понадобится)
+  return () => {
+    window.removeEventListener('hashchange', onHash);
+    unbindAll();
   };
 }
