@@ -40,6 +40,28 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+<style>
+  /* Fix-Header: только две иконки, без фона/рамок/тени */
+  .product-fixhdr{
+    background:transparent !important;
+    border:none !important;
+    box-shadow:none !important;
+    padding:0 !important;
+    height:auto !important;
+  }
+  .product-fixhdr .fixbtn{
+    background:transparent !important;
+    border:none !important;
+    box-shadow:none !important;
+    color:inherit !important;
+    width:48px; height:48px; border-radius:999px; /* размеры оставим прежние */
+    position:absolute; top:0;
+  }
+  #btnFixBack{ left:12px; }
+  #btnFixFav{ right:12px; }
+  /* активное сердце — заливка, как в остальном UI */
+  #btnFixFav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none; }
+</style>
 
   <!-- Telegram WebApp -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -73,11 +95,16 @@
       </div>
     </header>
 
-    <!-- Фикс-хедер товара -->
-    <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
-      <button id="btnFixBack" class="fixbtn" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
-      <button id="btnFixFav" class="fixbtn" aria-label="В избранное" aria-pressed="false"><i data-lucide="heart"></i></button>
-    </div>
+<!-- Фикс-хедер товара -->
+<div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
+  <button id="btnFixBack" class="fixbtn" aria-label="Назад">
+    <i data-lucide="arrow-left"></i>
+  </button>
+  <button id="btnFixFav" class="fixbtn" aria-label="В избранное" aria-pressed="false">
+    <i data-lucide="heart"></i>
+  </button>
+</div>
+
 
     <!-- Поиск + фильтры -->
     <section class="section section-search">

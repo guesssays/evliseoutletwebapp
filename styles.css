@@ -816,3 +816,15 @@ html, body, .view, .section, .checkout{ overflow-x:hidden; }
   }
   .checkout .cart-img{ width:64px; height:64px; }
 }
+/* === Product Fix-Header: только две кнопки, фон прозрачный === */
+.product-fixhdr{
+  background:transparent !important;
+  border:none !important;
+  box-shadow:none !important;
+  padding:0 !important;           /* контейнер как «пустой слой» */
+  height:auto !important;
+}
+.product-fixhdr .fix-title{
+  display:none !important;        /* скрываем блок с названием/ценой */
+}
+/* кнопки остаются как есть: слева #btnFixBack, справа #btnFixFav */
