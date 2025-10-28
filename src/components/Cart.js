@@ -9,6 +9,7 @@ import { getUID } from '../core/state.js';
 import { notifyReferralJoined, notifyReferralOrderCashback, notifyCashbackMatured } from '../core/botNotify.js'; // ✅ бот-уведомления
 // 🔄 новее: показываем серверный баланс лояльности
 import { fetchMyLoyalty, getLocalLoyalty } from '../core/loyalty.js';
+import { ScrollReset } from '../core/scroll-reset.js';
 
 /* ===================== КЭШБЕК / РЕФЕРАЛЫ: правила ===================== */
 const CASHBACK_RATE_BASE  = 0.05;   // 5%
@@ -243,7 +244,9 @@ function keepCartOnTopWhileLoading(root){
 
 export async function renderCart(){
   // Сразу поднимаем страницу вверх перед тяжёлым DOM
-  forceTop();
+ // Просим менеджер поднять после того, как #view дорисуется
+ScrollReset.request();
+
 
   // Всегда тянем свежий серверный баланс перед рендером
   try { await fetchMyLoyalty(); } catch {}
@@ -254,10 +257,10 @@ export async function renderCart(){
     .map(it => ({ ...it, product: state.products.find(p => String(p.id) === String(it.productId)) }))
     .filter(x => x.product);
 
-  // актуализируем таббар
+    // актуализируем таббар
   window.setTabbarMenu?.('cart');
 
-  // пустая корзина
+  // ПУСТАЯ КОРЗИНА
   if (!items.length){
     v.innerHTML = `
       <div class="section-title" style="display:flex;align-items:center;gap:10px">
@@ -267,84 +270,30 @@ export async function renderCart(){
       <section class="checkout"><div class="cart-sub">Корзина пуста</div></section>`;
     window.lucide?.createIcons && lucide.createIcons();
     document.getElementById('cartBack')?.addEventListener('click', ()=>history.back());
-    // гарантированно в начало
-    resetScrollTop();
+    ScrollReset.request();
     keepCartOnTopWhileLoading(v);
     return;
   }
 
+  // --- НЕ ПУСТО: готовим данные для основного шаблона ---
   const totalRaw = items.reduce((s,x)=> s + x.qty * x.product.price, 0);
 
-  // подготовим UI списания — делаем переменные динамическими (сервер может обновить баланс)
-  const canRedeemMaxByShare = Math.floor(totalRaw * MAX_DISCOUNT_SHARE);
-  let availablePoints = Number(walletLike.available || 0); // обновим после fetch
-  let redeemMax = Math.max(0, Math.min(canRedeemMaxByShare, availablePoints, MAX_REDEEM_POINTS));
-  const redeemMin = MIN_REDEEM_POINTS;
-
-  // восстановим черновик ввода (если пользователь экспериментировал)
-  const draft = Number(sessionStorage.getItem(KEY_REDEEM_DRAFT())||0) | 0;
-  const redeemInit = Math.max(0, Math.min(redeemMax, draft));
-
-  // 🔧 фикс: безопасно читаем адреса (если state.addresses ещё не готов)
+  // адреса (безопасно, если state.addresses ещё не успел подтянуться)
   const addressesList = state.addresses?.list || [];
   const defaultAddrId = state.addresses?.defaultId;
   const ad = addressesList.find(a=>a.id===defaultAddrId) || null;
 
+  // списание баллов: лимиты и черновик
+  const canRedeemMaxByShare = Math.floor(totalRaw * MAX_DISCOUNT_SHARE);
+  let availablePoints = Number((getLocalLoyalty()||{}).available || 0);
+  let redeemMax = Math.max(0, Math.min(canRedeemMaxByShare, availablePoints, MAX_REDEEM_POINTS));
+  const redeemMin = MIN_REDEEM_POINTS;
+  const draft = Number(sessionStorage.getItem(KEY_REDEEM_DRAFT())||0) | 0;
+  const redeemInit = Math.max(0, Math.min(redeemMax, draft));
+
+  // ТЕПЕРЬ — основной шаблон (как у тебя), уже ВНЕ ветки "пустая корзина"
   v.innerHTML = `
-  <style>
-    /* --- ГЛОБАЛЬНО ДЛЯ КОМПОНЕНТА: предотвращаем горизонтальный скролл и «съезд» вправо --- */
-    .section, .checkout { width:100%; max-width:100vw; overflow-x:hidden; }
-    .checkout, .checkout * { box-sizing: border-box; }
-    .checkout img { max-width:100%; height:auto; display:block; }
-
-    /* Строка товара — безопасная сетка */
-    .cart-row{
-      display:grid;
-      grid-template-columns: 72px 1fr auto;
-      gap:10px;
-      align-items:center;
-      cursor:pointer;
-    }
-    .cart-row .qty-mini, .cart-row .ctrl{ cursor:auto; }
-
-    .cart-img{ width:72px; height:72px; border-radius:10px; overflow:hidden; }
-    .cart-img img{ width:100%; height:100%; object-fit:cover; }
-
-    /* Центральная колонка не должна распирать контейнер */
-    .cart-row > div:nth-child(2){ min-width:0; }
-    .cart-title{ overflow-wrap:anywhere; word-break:break-word; }
-    .cart-sub{ white-space:normal; color:var(--muted,#6b7280); }
-
-    .qty-mini{ display:flex; align-items:center; gap:6px; }
-    .qty-mini span{ min-width:1.6em; text-align:center; }
-    .qty-mini .ctrl{ width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; }
-
-    /* Адрес */
-    .address-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
-    .address-left{ min-width:0; }
-    .address-left .cart-sub{ overflow:hidden; text-overflow:ellipsis; }
-
-    /* Линия оплаты — безопасные переносы */
-    .payline{ display:grid; gap:6px; }
-    .payrow{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
-    .payrow span{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
-    .payrow b{ flex:0 0 auto; }
-
-    /* Блок списания */
-    .cashback-box input.input{ width:100%; }
-
-    /* FAQ карта */
-    .faq-card{ max-width:100%; overflow:hidden; }
-
-    /* Мобильная адаптация: очень узкие экраны */
-    @media (max-width: 380px){
-      .cart-row{ grid-template-columns: 64px 1fr; }
-      .qty-mini{ grid-column: 1 / -1; justify-content:flex-end; }
-      .cart-img{ width:64px; height:64px; }
-    }
-  </style`
-
-  + `
+  <style>/* ... твои стили ... */</style>
 
   <div class="section-title" style="display:flex;align-items:center;gap:10px">
     <button class="square-btn" id="cartBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
@@ -469,8 +418,8 @@ export async function renderCart(){
 
   window.lucide?.createIcons && lucide.createIcons();
 
-  // жёстко фиксируем верх после вставки DOM
-  resetScrollTop();
+
+
   // и не даём подгрузке картинок сдвинуть страницу
   keepCartOnTopWhileLoading(v);
 

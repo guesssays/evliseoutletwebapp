@@ -27,6 +27,7 @@ import { openFilterModal, renderActiveFilterChips } from './components/Filters.j
 import { renderAccount, renderAddresses, renderSettings, renderCashback, renderReferrals } from './components/Account.js';
 import { renderFAQ } from './components/FAQ.js';
 import { renderNotifications } from './components/Notifications.js';
+import { ScrollReset } from './core/scroll-reset.js';
 
 // Вынесенный фикс-хедер товара
 import { deactivateProductFixHeader } from './components/ProductFixHeader.js';
@@ -45,6 +46,7 @@ import {
 
 // Экран-мостик для браузера
 import { renderRefBridge } from './views/RefBridge.js';
+
 
 /* ===== Кэшбек/Рефералы: локальные утилиты (дозревание локальных pending) ===== */
 const POINTS_MATURITY_MS  = 24*60*60*1000;
@@ -313,6 +315,7 @@ updateCartBadge();
 initTelegramChrome();
 // Кнопка "Наверх" — инициализация единый раз
 mountScrollTop();
+ScrollReset.mount();
 
 /* === Новое: полностью отключаем автопамять скролла браузера === */
 try {
@@ -531,33 +534,10 @@ function hideProductHeader(){
 }
 
 
-// >>> прокрутка к верху (универсально для любых контейнеров)
-function scrollTopNow() {
-  try {
-    const cands = [];
-    if (document.scrollingElement) cands.push(document.scrollingElement);
-    const view = document.getElementById('view');
-    if (view) cands.push(view);
-    const app  = document.getElementById('app');
-    if (app) cands.push(app);
-    cands.push(window);
-
-    let did = false;
-    for (const c of Array.from(new Set(cands))) {
-      if (c === window) {
-        window.scrollTo({ top: 0, behavior: 'auto' });
-        did = true;
-      } else if (c.scrollHeight > c.clientHeight) {
-        c.scrollTo({ top: 0, behavior: 'auto' });
-        did = true;
-      }
-    }
-    if (!did) {
-      // крайний случай
-      (document.documentElement || document.body).scrollTop = 0;
-    }
-  } catch {}
+function scrollTopNow(){
+ ScrollReset.request();
 }
+
 
 
 
@@ -745,7 +725,8 @@ async function init(){
   window.addEventListener('hashchange', router);
   window.addEventListener('hashchange', () => {
     // даём рендеру закончиться, затем поднимаем скролл
-    setTimeout(scrollTopNow, 0);
+  setTimeout(() => ScrollReset.request(), 0);
+
   });
 
   window.addEventListener('orders:updated', ()=>{

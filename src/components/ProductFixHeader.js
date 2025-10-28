@@ -252,6 +252,9 @@ function bindListeners(){
 
   // мгновенный расчёт видимости
   queueMicrotask(onScrollCheck);
+  requestAnimationFrame(onScrollCheck);
+setTimeout(onScrollCheck, 60);
+
 }
 
 function unbindListeners(){
