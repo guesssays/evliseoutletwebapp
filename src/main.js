@@ -531,13 +531,34 @@ function hideProductHeader(){
 }
 
 
-// >>> прокрутка к верху (явная, т.к. history.scrollRestoration='manual')
+// >>> прокрутка к верху (универсально для любых контейнеров)
 function scrollTopNow() {
   try {
-    const el = document.scrollingElement || document.documentElement || document.body;
-    el.scrollTop = 0;
+    const cands = [];
+    if (document.scrollingElement) cands.push(document.scrollingElement);
+    const view = document.getElementById('view');
+    if (view) cands.push(view);
+    const app  = document.getElementById('app');
+    if (app) cands.push(app);
+    cands.push(window);
+
+    let did = false;
+    for (const c of Array.from(new Set(cands))) {
+      if (c === window) {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+        did = true;
+      } else if (c.scrollHeight > c.clientHeight) {
+        c.scrollTo({ top: 0, behavior: 'auto' });
+        did = true;
+      }
+    }
+    if (!did) {
+      // крайний случай
+      (document.documentElement || document.body).scrollTop = 0;
+    }
   } catch {}
 }
+
 
 
 /* ---------- РОУТЕР ---------- */

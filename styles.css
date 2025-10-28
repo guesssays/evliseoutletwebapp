@@ -898,3 +898,34 @@ body.has-cta .tabbar-inner .btn span{ color:#fff !important; }
   z-index:120;
   box-shadow:var(--shadow);
 }
+/* === Z-LAYERS & FIXES (append at end) === */
+:root{
+  --z-tabbar: 30;
+  --z-app-header: 40;
+  --z-fixhdr: 60;
+  --z-scrolltop: 65;
+  --z-toast: 80;
+  --z-modal: 100;
+}
+
+/* базовый хедер */
+.app-header{
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px));
+  z-index: var(--z-app-header);
+}
+
+/* фикс-хедер товара */
+.product-fixhdr{
+  z-index: var(--z-fixhdr) !important;
+}
+
+/* кнопка «вверх» */
+#scrollTopBtn{
+  z-index: var(--z-scrolltop) !important;
+}
+
+/* таббар и прочее (на всякий) */
+.tabbar{ z-index: var(--z-tabbar); }
+.toast-wrap{ z-index: var(--z-toast); }
+.modal{ z-index: var(--z-modal); }

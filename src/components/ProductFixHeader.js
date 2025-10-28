@@ -13,9 +13,43 @@ let _state = {
   threshold: 0,
   shown: false,
   listenersBound: false,
+  scrollTargets: [], // << добавили: на каких элементах слушаем scroll/resize
 };
 
 function qs(id){ return document.getElementById(id); }
+
+/* ==== универсальный скролл ==== */
+function getScrollContainerCandidates(){
+  const list = [];
+  // 1) приоритет — документ
+  if (document.scrollingElement) list.push(document.scrollingElement);
+  // 2) основной контент
+  const view = document.getElementById('view');
+  if (view) list.push(view);
+  const app = document.getElementById('app');
+  if (app) list.push(app);
+  // 3) окно — в самом конце
+  list.push(window);
+  // Убираем дубли
+  return Array.from(new Set(list));
+}
+function getScrollY(){
+  // Берём первый контейнер, у которого реально есть прокрутка
+  const cands = getScrollContainerCandidates();
+  for (const c of cands){
+    if (c === window) {
+      const y = window.scrollY || document.documentElement.scrollTop || 0;
+      if (y) return y;
+    } else {
+      // элемент
+      const y = c.scrollTop || 0;
+      // если контейнер реально скроллится, берём его
+      if (c.scrollHeight > c.clientHeight) return y;
+    }
+  }
+  // по умолчанию
+  return window.scrollY || document.documentElement.scrollTop || 0;
+}
 
 function a11yShow(el){
   if (!el) return;
@@ -57,7 +91,7 @@ function hideFixHeader(){
 }
 
 function onScrollCheck(){
-  const y = window.scrollY || document.documentElement.scrollTop || 0;
+  const y = getScrollY();
   if (y > _state.threshold) showFixHeader();
   else hideFixHeader();
 }
@@ -74,16 +108,24 @@ function bindListeners(){
   _state.fav?.addEventListener('click', (e)=>{
     e.preventDefault();
     _state.onFavToggle && _state.onFavToggle();
-    // локальная подсветка по текущему значению isFav()
     try {
       const on = !!_state.isFav?.();
       setFavActive(on);
     } catch {}
   });
 
-  // Показ по скроллу (если threshold > 0)
-  window.addEventListener('scroll', onScrollCheck, { passive:true });
-  window.addEventListener('resize', onScrollCheck);
+  // Подписываемся на несколько возможных скролл-контейнеров
+  _state.scrollTargets = getScrollContainerCandidates();
+  for (const t of _state.scrollTargets){
+    // разные API у window/элемента
+    if (t === window) {
+      window.addEventListener('scroll', onScrollCheck, { passive:true });
+      window.addEventListener('resize', onScrollCheck);
+    } else {
+      t.addEventListener('scroll', onScrollCheck, { passive:true });
+      t.addEventListener('resize', onScrollCheck);
+    }
+  }
 }
 
 function unbindListeners(){
@@ -104,8 +146,17 @@ function unbindListeners(){
     }
   } catch {}
 
-  window.removeEventListener('scroll', onScrollCheck);
-  window.removeEventListener('resize', onScrollCheck);
+  // Снимаем со всех скролл-таргетов
+  for (const t of _state.scrollTargets){
+    if (t === window) {
+      window.removeEventListener('scroll', onScrollCheck);
+      window.removeEventListener('resize', onScrollCheck);
+    } else {
+      t.removeEventListener('scroll', onScrollCheck);
+      t.removeEventListener('resize', onScrollCheck);
+    }
+  }
+  _state.scrollTargets = [];
 }
 
 /** Публично: синхронизация состояния «избранного» */
@@ -135,7 +186,6 @@ export function activateProductFixHeader({
   _state.threshold = Number(showThreshold)||0;
 
   if (!_state.root){
-    // на всякий случай не падать
     _state = { ..._state, shown:false };
     return;
   }
@@ -174,5 +224,6 @@ export function deactivateProductFixHeader(){
     threshold: 0,
     shown: false,
     listenersBound: false,
+    scrollTargets: [],
   };
 }
