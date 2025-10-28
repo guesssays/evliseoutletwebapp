@@ -564,17 +564,23 @@ async function router(){
   // при уходе С главной — сохраняем текущую позицию и сбрасываем скролл для новых экранов.
 const goingHome = (parts.length === 0);
 if (goingHome) {
-  __NEED_HOME_SCROLL_RESTORE__ = true; // ← ЭТОГО НЕ ХВАТАЛО
+  const savedY = (sessionStorage.getItem('home:scrollY')|0);
+  const hasSaved = savedY > 0;
+  __NEED_HOME_SCROLL_RESTORE__ = hasSaved;
   try {
-    window.__HOME_WILL_RESTORE__ = true;
-    if ((sessionStorage.getItem('home:scrollY')|0) > 0) {
+    // Флаг и подавление — только если реально будем восстанавливать позицию
+    if (hasSaved) {
+      window.__HOME_WILL_RESTORE__ = true;
       ScrollReset.quiet(1500);
       ScrollReset.suppress(1500);
+    } else {
+      // Без сохранённой позиции — ничего не подавляем, дадим ScrollReset отработать
+      try { window.__HOME_WILL_RESTORE__ = false; } catch {}
     }
   } catch {}
 } else {
   HomeScrollMemory.saveIfHome();
-  scrollTopNow();
+   //scrollTopNow();
 }
 
 
@@ -599,9 +605,12 @@ if (goingHome) {
     if (__NEED_HOME_SCROLL_RESTORE__) {
       __NEED_HOME_SCROLL_RESTORE__ = false;
       try { await HomeScrollMemory.restoreIfHome(); } catch {}
-    }
-    // ⬇️ снять флаг, чтобы ScrollReset снова работал
-    try { window.__HOME_WILL_RESTORE__ = false; } catch {}
+  } else {
+    // Памяти нет — открываем главную с верха, чтобы не наследовать дно с прошлой страницы
+    try { ScrollReset.request(document.getElementById('view')); } catch {}
+  }
+  // ⬇️ на всякий случай снимаем флаг
+  try { window.__HOME_WILL_RESTORE__ = false; } catch {}
     return res;
   }
 
