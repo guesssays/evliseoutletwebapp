@@ -1124,3 +1124,23 @@ body.has-cta .tabbar-inner .btn span{ color:#fff !important; }
 #btnFixBack{ position:absolute !important; left:12px !important; top:calc(6px + var(--safe-top)) !important; }
 #btnFixFav { position:absolute !important; right:12px !important; top:calc(6px + var(--safe-top)) !important; }
 #btnFixFav.active .lucide-heart{ color:#ff4d5a !important; fill:currentColor !important; stroke:none !important; }
+/* === FIX: Product Fix Header clickability (EOF) === */
+/* Контейнер должен принимать события; не глушим клики дочерних кнопок */
+.product-fixhdr{
+  pointer-events: auto !important;
+  z-index: 120 !important; /* выше контента и hero-кнопок */
+}
+
+/* Кнопки — «мобильный дружественный» тап без ghost-click */
+.product-fixhdr .fixbtn{
+  pointer-events: auto !important;
+  touch-action: manipulation;                 /* убирает задержку и двойные клики на iOS */
+  -webkit-tap-highlight-color: transparent;  /* без вспышки выделения */
+}
+
+/* На всякий — ничего не перекрываем псевдоэлементами */
+.product-fixhdr::before,
+.product-fixhdr::after{
+  content: none !important;
+  display: none !important;
+}
