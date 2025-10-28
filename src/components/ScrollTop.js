@@ -1,6 +1,7 @@
 // src/components/ScrollTop.js
-// Самостоятельный модуль для кнопки "Наверх".
-// Работает поверх разметки #scrollTopBtn, а при её отсутствии — создаёт узел сам.
+// Кнопка "Наверх": сам создаёт узел при отсутствии, вешает поведение, управляет hidden.
+
+let cleanup = null;
 
 function ensureNode() {
   let btn = document.getElementById('scrollTopBtn');
@@ -10,35 +11,41 @@ function ensureNode() {
     btn.className = 'icon-btn';
     btn.setAttribute('aria-label', 'Наверх');
     btn.setAttribute('hidden', '');
-    btn.innerHTML = `<i data-lucide="arrow-up"></i>`;
+    btn.innerHTML = `<i data-lucide="chevrons-up"></i>`;
     document.body.appendChild(btn);
   }
   return btn;
 }
 
 function bindBehavior(btn) {
-  const threshold = 300; // px
+  const THRESHOLD = 320; // пикселей прокрутки до показа
+
   const onScroll = () => {
-    const y = Math.max(window.scrollY || 0, document.documentElement.scrollTop || 0);
-    if (y > threshold) {
-      btn.removeAttribute('hidden');
+    const y = Math.max(document.documentElement.scrollTop || 0, window.scrollY || 0);
+    const shouldShow = y > THRESHOLD;
+    if (shouldShow) {
+      btn.hidden = false;
+      btn.setAttribute('aria-hidden', 'false');
     } else {
-      btn.setAttribute('hidden', '');
+      btn.hidden = true;
+      btn.setAttribute('aria-hidden', 'true');
     }
   };
 
   const onClick = () => {
     try {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const el = document.scrollingElement || document.documentElement || document.body;
+      el.scrollTo({ top: 0, behavior: 'smooth' });
     } catch {
       window.scrollTo(0, 0);
     }
   };
 
   window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('hashchange', () => setTimeout(onScroll, 0));
   btn.addEventListener('click', onClick);
 
-  // Инициализация
+  // первичный расчёт
   onScroll();
 
   return () => {
@@ -47,14 +54,12 @@ function bindBehavior(btn) {
   };
 }
 
-let cleanup = null;
-
 export function mountScrollTop() {
   try {
     const btn = ensureNode();
     cleanup?.();
     cleanup = bindBehavior(btn);
-    // Иконки Lucide
+    // перерисуем иконку на случай динамической вставки
     try { window.lucide?.createIcons?.(); } catch {}
   } catch (e) {
     console.warn('[ScrollTop] init failed', e);
