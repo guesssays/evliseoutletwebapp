@@ -215,8 +215,24 @@ function bindListeners(){
   _state._handlers.backPointer = (e)=>{ if (e.button === 0 || e.button === undefined){ withPointerSafeguards(e, backDo); } };
   _state._handlers.favPointer  = (e)=>{ if (e.button === 0 || e.button === undefined){ withPointerSafeguards(e, favDo); } };
 
-  _state.back?.addEventListener('pointerup', _state._handlers.backPointer, { passive:false });
-  _state.fav?.addEventListener('pointerup',  _state._handlers.favPointer,  { passive:false });
+  _state.back?.addEventListener('pointerdown', _state._handlers.backPointer, { passive:false });
+  _state.fav?.addEventListener('pointerdown',  _state._handlers.favPointer,  { passive:false });
+
+  // страховка от «залипания» pointer-capture
+  const releaseAll = (e)=>{
+    try{ e.target?.releasePointerCapture?.(e.pointerId); }catch{}
+    // на всякий — включаем кликабельность слоёв
+    try{ _state.root && (_state.root.style.pointerEvents = 'auto'); }catch{}
+    try{ _state.back && (_state.back.style.pointerEvents = 'auto'); }catch{}
+    try{ _state.fav  && (_state.fav.style.pointerEvents  = 'auto'); }catch{}
+    // снимаем логическую блокировку, если вдруг осталась
+    _state._lock.back = false; _state._lock.fav = false;
+  };
+  _state.back?.addEventListener('lostpointercapture', releaseAll, { passive:true });
+  _state.fav?.addEventListener('lostpointercapture',  releaseAll, { passive:true });
+  _state.back?.addEventListener('pointercancel',      releaseAll, { passive:true });
+  _state.fav?.addEventListener('pointercancel',       releaseAll, { passive:true });
+
 
   // Подписки на скролл-контейнеры
   _state.scrollTargets = getScrollTargets();
@@ -252,14 +268,20 @@ function unbindListeners(){
   if (!_state.listenersBound) return;
   _state.listenersBound = false;
 
-  try{
-    if (_state.back){
-      _state.back.removeEventListener('pointerup', _state._handlers.backPointer);
-    }
-    if (_state.fav){
-      _state.fav.removeEventListener('pointerup', _state._handlers.favPointer);
-    }
-  }catch{}
+// стало: снимаем pointerdown, потому что именно его вешаем
+try{
+  if (_state.back){
+    _state.back.removeEventListener('pointerdown', _state._handlers.backPointer);
+    _state.back.removeEventListener('lostpointercapture', ()=>{});
+    _state.back.removeEventListener('pointercancel', ()=>{});
+  }
+  if (_state.fav){
+    _state.fav.removeEventListener('pointerdown', _state._handlers.favPointer);
+    _state.fav.removeEventListener('lostpointercapture', ()=>{});
+    _state.fav.removeEventListener('pointercancel', ()=>{});
+  }
+}catch{}
+
 
   _state._handlers = { backPointer:null, favPointer:null };
   _state._lock = { back:false, fav:false };

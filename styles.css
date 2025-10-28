@@ -1146,3 +1146,12 @@ body.has-cta .tabbar-inner .btn span{ color:#fff !important; }
 }
 /* fix-header click safety */
 #productFixHdr, #productFixHdr * { pointer-events: auto !important; }
+/* Fix-Header buttons: mobile-tap friendly, no highlight, never lose clickability */
+.product-fixhdr .fixbtn{
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  pointer-events: auto !important;
+}
+#productFixHdr{ pointer-events:auto !important; }
