@@ -1,110 +1,76 @@
 // src/components/ProductFixHeader.js
-// Фикс-хедер карточки товара: клики без автоскролла, живучие обработчики, синк сердца.
-// Экспорт: activateProductFixHeader, deactivateProductFixHeader, setFavActive
+// Фикс-хедер карточки товара: стабильные клики, без двойных срабатываний,
+// чистая активация/деактивация, синк избранного.
 
 import { ScrollReset } from '../core/scroll-reset.js';
 
 const S = {
-  // DOM
   root: null,
   statHeader: null,
   btnBack: null,
   btnFav: null,
 
-  // API из Product.js
-  onBack: null,          // () => void
-  onFavToggle: null,     // () => void
-  isFav: null,           // () => boolean
+  onBack: null,
+  onFavToggle: null,
+  isFav: null,
 
-  // состояние
   shown: false,
   threshold: 24,
-  listenersBound: false,
 
-  // вспомогательное
+  // текущее подвешенное состояние
   _scrollTargets: [],
   _unbindDetectors: [],
   _observer: null,
+  _bound: false,
 
   // антидребезг
-  _cooldownMs: 180,
+  _cooldownMs: 200,
   _tsBack: 0,
   _tsFav: 0,
 };
 
 const $ = (id) => document.getElementById(id);
 
-/* ---------------- определение источника скролла ---------------- */
-const classicCandidates = () => {
-  const arr = [];
-  if (document.scrollingElement) arr.push(document.scrollingElement);
-  const view = $('view'); if (view) arr.push(view);
-  const app  = $('app');  if (app) arr.push(app);
-  arr.push(window);
-  return arr;
-};
-let __activeScrollTarget = null;
-function findAnyScrollable(){
-  const all = Array.from(document.querySelectorAll('body, body *'));
-  for (const el of all){
-    try{
-      const cs = getComputedStyle(el);
-      if (cs.visibility === 'hidden' || cs.display === 'none') continue;
-      const oy = cs.overflowY;
-      if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) return el;
-    }catch{}
-  }
-  return null;
+/* ------------ прокрутка ------------ */
+function getScrollY() {
+  return window.scrollY || document.documentElement.scrollTop || 0;
 }
-function getScrollTargets(){
-  const out = new Set();
-  if (__activeScrollTarget) out.add(__activeScrollTarget);
-  for (const c of classicCandidates()) out.add(c);
-  const auto = findAnyScrollable();
-  if (auto) out.add(auto);
-  return Array.from(out);
-}
-function bindActiveTargetDetector(node){
-  const onWheel = (e)=>{ __activeScrollTarget = e.currentTarget; };
-  const onTouch = (e)=>{ __activeScrollTarget = e.currentTarget; };
-  node.addEventListener('wheel', onWheel, { passive:true });
-  node.addEventListener('touchmove', onTouch, { passive:true });
-  return ()=> {
-    node.removeEventListener('wheel', onWheel);
-    node.removeEventListener('touchmove', onTouch);
-  };
-}
-function getScrollY(){
-  if (__activeScrollTarget && __activeScrollTarget !== window){
-    return __activeScrollTarget.scrollTop || 0;
-  }
-  for (const c of getScrollTargets()){
-    if (c === window){
-      const y = window.scrollY || document.documentElement.scrollTop || 0;
-      if (y) return y;
-    } else if (c && c.scrollHeight > c.clientHeight){
-      const y = c.scrollTop || 0;
-      if (y) return y;
-    }
-  }
-  return 0;
-}
-/* ---------------------------------------------------------------- */
 
+function onScrollCheck() {
+  const y = getScrollY();
+  if (y > S.threshold) showFixHeader();
+  else hideFixHeader();
+}
+
+function bindScroll() {
+  window.addEventListener('scroll', onScrollCheck, { passive: true });
+  S._scrollTargets = [window];
+}
+function unbindScroll() {
+  for (const t of S._scrollTargets) {
+    try { t.removeEventListener('scroll', onScrollCheck); } catch {}
+  }
+  S._scrollTargets = [];
+}
+
+/* ------------ показы/скрытия ------------ */
 function a11yShow(el){
   if (!el) return;
   el.classList.add('show');
   el.removeAttribute('aria-hidden');
   el.removeAttribute('inert');
+  // гарантируем кликабельность контейнера и его детей
+  el.style.pointerEvents = 'auto';
 }
 function a11yHide(el){
   if (!el) return;
   try{ if (el.contains(document.activeElement)) document.activeElement.blur(); }catch{}
   el.classList.remove('show');
-  requestAnimationFrame(()=>{ requestAnimationFrame(()=>{
-    el.setAttribute('aria-hidden','true');
-    el.setAttribute('inert','');
-  });});
+  // прячем для ассистивок и отключаем фокус
+  el.setAttribute('aria-hidden','true');
+  el.setAttribute('inert','');
+  // и клики не нужны, когда скрыт
+  el.style.pointerEvents = 'none';
 }
 
 function showFixHeader(){
@@ -127,17 +93,11 @@ function hideFixHeader(){
     S.statHeader.removeAttribute('inert');
   }
 }
-function onScrollCheck(){
-  const y = getScrollY();
-  if (y > S.threshold) showFixHeader();
-  else hideFixHeader();
-}
 
-/* ---------------- обработчики кнопок ---------------- */
+/* ------------ клики ------------ */
 function safeBack(ev){
-  // на всякий случай тушим любые скролл-ресеты вокруг клика
-  try { ScrollReset.quiet(900); ScrollReset.suppress(900); } catch {}
-  if (ev){ ev.preventDefault?.(); ev.stopPropagation?.(); }
+  ev?.preventDefault?.();
+  try { ScrollReset.suppress(900); ScrollReset.quiet(900); } catch {}
 
   const now = Date.now();
   if (now - S._tsBack < S._cooldownMs) return;
@@ -146,9 +106,7 @@ function safeBack(ev){
   try{
     if (history.length <= 1){
       const h = String(location.hash||'');
-      if (!h || h.startsWith('#/product/')) {
-        location.hash = '#/'; return;
-      }
+      if (!h || h.startsWith('#/product/')) { location.hash = '#/'; return; }
     }
     history.back();
   }catch{
@@ -157,9 +115,8 @@ function safeBack(ev){
 }
 
 function doFavToggle(ev){
-  // Глушим любые возможные внешние ресеты скролла, чтобы не «прыгало вверх»
+  ev?.preventDefault?.();
   try { ScrollReset.quiet(900); } catch {}
-  if (ev){ ev.preventDefault?.(); ev.stopPropagation?.(); }
 
   const now = Date.now();
   if (now - S._tsFav < S._cooldownMs) return;
@@ -167,141 +124,106 @@ function doFavToggle(ev){
 
   try { S.onFavToggle && S.onFavToggle(); } catch {}
 
-  // Обновить видимость сердца в фикс-хедере
-  try {
-    const on = !!(S.isFav && S.isFav());
-    setFavActive(on);
-  } catch {}
+  // локально подсветим по факту
+  const on = !!(S.isFav && S.isFav());
+  setFavActive(on);
 
-  // Глобальный синк (на случай если Product.js не разошлёт)
+  // широковещательный синк (без id — твой слушатель в Product.js пропустит)
   try {
-    const active = !!(S.isFav && S.isFav());
-    window.dispatchEvent(new CustomEvent('fav:changed', { detail:{ active } }));
+    window.dispatchEvent(new CustomEvent('fav:changed', { detail:{ active:on } }));
   } catch {}
 }
 
-/** Навесить клики на конкретные кнопки. Пере-бинд при замене DOM. */
-function bindButtonHandlers(){
+function bindButtons() {
   const back = $('btnFixBack');
   const fav  = $('btnFixFav');
 
-  // уже навешаны?
-  if (S.btnBack === back && S.btnFav === fav) return;
-
-  // снять старые, если были
-  try{ S.btnBack?.removeEventListener('pointerup', safeBack, true); }catch{}
-  try{ S.btnBack?.removeEventListener('click',     safeBack, true); }catch{}
-  try{ S.btnFav?.removeEventListener('pointerup',  doFavToggle, true); }catch{}
-  try{ S.btnFav?.removeEventListener('click',      doFavToggle, true); }catch{}
+  // Снимем старые обработчики, если были
+  if (S.btnBack && S.btnBack !== back) {
+    try { S.btnBack.removeEventListener('click', safeBack); } catch {}
+  }
+  if (S.btnFav && S.btnFav !== fav) {
+    try { S.btnFav.removeEventListener('click', doFavToggle); } catch {}
+  }
 
   S.btnBack = back;
   S.btnFav  = fav;
 
-  // Вешаем СРАЗУ два слушателя (pointerup и click) в capture, чтобы нас ничего не «перекрыло».
-  // Внутри обработчиков мы делаем preventDefault/stopPropagation и anti-bounce.
-  if (back){
+  if (back) {
     back.style.pointerEvents = 'auto';
-    back.addEventListener('pointerup', safeBack, { capture:true, passive:false });
-    back.addEventListener('click',     safeBack, { capture:true, passive:false });
+    back.addEventListener('click', safeBack, { passive:false });
   }
-  if (fav){
+  if (fav) {
     fav.style.pointerEvents = 'auto';
-    fav.addEventListener('pointerup',  doFavToggle, { capture:true, passive:false });
-    fav.addEventListener('click',      doFavToggle, { capture:true, passive:false });
+    fav.addEventListener('click', doFavToggle, { passive:false });
   }
 }
 
-/* ---------------- lifecycle ---------------- */
-function bindListeners(){
-  if (S.listenersBound) return;
-
-  // скролл
-  S._scrollTargets = getScrollTargets();
-  for (const t of S._scrollTargets){
-    if (t === window) window.addEventListener('scroll', onScrollCheck, { passive:true });
-    else t.addEventListener('scroll', onScrollCheck, { passive:true });
-  }
-  S._unbindDetectors = S._scrollTargets.map(bindActiveTargetDetector);
-
-  // кнопки
-  bindButtonHandlers();
-
-  // следим за заменой внутренней разметки (иконки/перерисовка) и ребиндим
-  try{
-    S._observer = new MutationObserver(bindButtonHandlers);
+/* ------------ мютейшны (на случай перерисовки иконок) ------------ */
+function watchMutations() {
+  if (!S.root) return;
+  try {
+    S._observer = new MutationObserver(() => bindButtons());
     S._observer.observe(S.root, { childList: true, subtree: true });
-  }catch{}
-
-  S.listenersBound = true;
-
-  // начальный расчёт
-  queueMicrotask(onScrollCheck);
-  requestAnimationFrame(onScrollCheck);
-  setTimeout(onScrollCheck, 60);
+  } catch {}
 }
-
-function unbindListeners(){
-  if (!S.listenersBound) return;
-
-  for (const t of S._scrollTargets){
-    try{
-      if (t === window) window.removeEventListener('scroll', onScrollCheck);
-      else t.removeEventListener('scroll', onScrollCheck);
-    }catch{}
-  }
-  S._scrollTargets = [];
-  for (const unb of S._unbindDetectors){ try{ unb(); }catch{} }
-  S._unbindDetectors = [];
-
-  try{ S.btnBack?.removeEventListener('pointerup', safeBack, true); }catch{}
-  try{ S.btnBack?.removeEventListener('click',     safeBack, true); }catch{}
-  try{ S.btnFav?.removeEventListener('pointerup',  doFavToggle, true); }catch{}
-  try{ S.btnFav?.removeEventListener('click',      doFavToggle, true); }catch{}
-  S.btnBack = S.btnFav = null;
-
-  try{ S._observer?.disconnect(); }catch{}
+function unwatchMutations() {
+  try { S._observer?.disconnect(); } catch {}
   S._observer = null;
-
-  S.listenersBound = false;
 }
 
-/* ---------------- PUBLIC API ---------------- */
+/* ------------ публичное API ------------ */
 export function activateProductFixHeader(opts = {}){
   S.root = $('productFixHdr');
   S.statHeader = document.querySelector('.app-header');
   if (!S.root) return;
 
-  S.onBack      = typeof opts.onBack === 'function' ? opts.onBack : null;
+  S.onBack      = typeof opts.onBack === 'function' ? opts.onBack : safeBack;
   S.onFavToggle = typeof opts.onFavToggle === 'function' ? opts.onFavToggle : null;
   S.isFav       = typeof opts.isFav === 'function' ? opts.isFav : null;
-
   S.threshold   = Number(opts.showThreshold || opts.threshold || 24) || 24;
 
-  // первичная подсветка сердца
+  // первичное состояние сердца
   try { setFavActive(!!(S.isFav && S.isFav())); } catch {}
 
-  // Корневой слой НЕ перехватывает клики, только кнопки активны
-  S.root.style.pointerEvents = 'none';
+  // делаем контейнер кликабельным (НЕ ставим pointer-events:none!)
+  S.root.style.pointerEvents = 'auto';
 
-  bindListeners();
+  // биндим
+  bindScroll();
+  bindButtons();
+  watchMutations();
+
+  // начальный прогон
   onScrollCheck();
+  S._bound = true;
 }
 
 export function deactivateProductFixHeader(){
-  try{ hideFixHeader(); }catch{}
-  unbindListeners();
+  if (!S._bound) return;
 
+  hideFixHeader();
+
+  // снять скролл и мютейшны
+  unbindScroll();
+  unwatchMutations();
+
+  // снять клики
+  try { S.btnBack?.removeEventListener('click', safeBack); } catch {}
+  try { S.btnFav?.removeEventListener('click', doFavToggle); } catch {}
+  S.btnBack = S.btnFav = null;
+
+  // сброс
   S.onBack = S.onFavToggle = S.isFav = null;
   S._tsBack = 0; S._tsFav = 0;
-  S.root = S.statHeader = null;
+
+  S._bound = false;
 }
 
 export function setFavActive(on){
-  try{
-    const favEl = $('btnFixFav');
-    if (!favEl) return;
-    const active = !!on;
-    favEl.classList.toggle('active', active);
-    favEl.setAttribute('aria-pressed', active ? 'true' : 'false');
-  }catch{}
+  const favEl = $('btnFixFav');
+  if (!favEl) return;
+  const active = !!on;
+  favEl.classList.toggle('active', active);
+  favEl.setAttribute('aria-pressed', active ? 'true' : 'false');
 }
