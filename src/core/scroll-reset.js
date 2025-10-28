@@ -1,6 +1,5 @@
 // src/core/scroll-reset.js
-// Жёсткий, многокадровый сброс скролла + учёт загрузки изображений и bfcache.
-// Добавлено: подавление ScrollReset на короткое окно (suppress), чтобы клики fixed-header не дёргали вверх.
+// Жёсткий, многокадровый сброс скролла + подавление и «тихое окно» для интра-кликов.
 
 function _targets() {
   const list = [];
@@ -50,23 +49,34 @@ function _afterImagesIn(el) {
   ]);
 }
 
-/* ===== Подавление ScrollReset на короткое окно ===== */
-function _remainMs() {
-  const until = Number(window.__suppressScrollResetUntil || 0);
+/* ===== Окна подавления / тишины ===== */
+function _remainMs(untilVar) {
+  const until = Number(window[untilVar] || 0);
   return Math.max(0, until - Date.now());
 }
+let _pendingTimer = null;
 
 export const ScrollReset = {
   /**
-   * Просим сброс скролла на следующий цикл перерисовки.
-   * Если включено подавление — переносим вызов на конец окна подавления.
+   * Просим сброс скролла.
+   * Если включено подавление (suppress) — переносим на конец окна.
+   * Если включено «тихое окно» (quiet) — просто игнорируем запрос.
    */
   request(containerEl) {
-    const wait = _remainMs();
+    // «тихое окно»: полностью игнорируем без переназначений
+    if (_remainMs('__dropScrollResetUntil') > 0) return;
+
+    const wait = _remainMs('__suppressScrollResetUntil');
     if (wait > 0) {
-      setTimeout(() => this.request(containerEl), wait + 10);
+      if (_pendingTimer) clearTimeout(_pendingTimer);
+      _pendingTimer = setTimeout(() => {
+        _pendingTimer = null;
+        this.request(containerEl);
+      }, wait + 12);
       return;
     }
+
+    // обычная работа
     queueMicrotask(() => {
       _scheduleFrames();
       _afterImagesIn(containerEl || document.getElementById('view'))
@@ -75,40 +85,41 @@ export const ScrollReset = {
     });
   },
 
-  /** Немедленно сбросить вверх (игнорируя подавление не вызываем). */
+  /** Немедленно вверх (уважая подавление и «тишину»). */
   forceNow() {
-    const wait = _remainMs();
-    if (wait > 0) return; // уважаем подавление
+    if (_remainMs('__dropScrollResetUntil') > 0) return;
+    if (_remainMs('__suppressScrollResetUntil') > 0) return;
     _scheduleFrames();
   },
 
-  /**
-   * Включить подавление ScrollReset на ms миллисекунд.
-   * Используем при кликах «Назад»/сердце во fixed-header.
-   */
+  /** Перенести любые ближайшие сбросы на ms миллисекунд (для навигации/back). */
   suppress(ms = 400) {
     const until = Date.now() + Math.max(0, ms|0);
     window.__suppressScrollResetUntil = until;
+    if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
   },
 
   /**
-   * Инициализация: manual scrollRestoration + фикса bfcache.
+   * Полностью «заглушить» любые запросы на ms миллисекунд (без переотложений).
+   * Используем для интра-кликов (например, сердце), чтобы не сработали чужие request().
    */
-  mount() {
-    try {
-      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-    } catch {}
+  quiet(ms = 600) {
+    const until = Date.now() + Math.max(0, ms|0);
+    window.__dropScrollResetUntil = until;
+    if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
+  },
 
+  mount() {
+    try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch {}
     const onPageShow = (e) => {
       if (e && e.persisted) {
         requestAnimationFrame(() => this.request(document.getElementById('view')));
       }
     };
     window.addEventListener('pageshow', onPageShow);
-
     requestAnimationFrame(() => this.request(document.getElementById('view')));
   }
 };
 
-// Глобальный канал: window.dispatchEvent(new Event('client:scroll:top'))
+// Глобальный канал
 window.addEventListener('client:scroll:top', () => ScrollReset.request(document.getElementById('view')));

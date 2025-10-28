@@ -146,15 +146,14 @@ function safeBack(){
   if (now - S._tsBack < S._cooldownMs) return;
   S._tsBack = now;
 
-  // ⛔️ не даём глобальному ScrollReset дёргать страницу вверх после back/hashchange
+  // переносим любые чужие ресеты (роутер/хеш) на ~0.9s
   try { ScrollReset.suppress(900); } catch {}
 
   try{
     if (history.length <= 1){
       const h = String(location.hash||'');
       if (!h || h.startsWith('#/product/')) {
-        location.hash = '#/';
-        return;
+        location.hash = '#/'; return;
       }
     }
     history.back();
@@ -168,8 +167,8 @@ function doFavToggle(){
   if (now - S._tsFav < S._cooldownMs) return;
   S._tsFav = now;
 
-  // ⛔️ на всякий случай скрываем автосброс при клике по сердцу
-  try { ScrollReset.suppress(600); } catch {}
+  // глушим любые ScrollReset.request() от перерисовок после клика
+  try { ScrollReset.quiet(800); } catch {}
 
   try { S.onFavToggle && S.onFavToggle(); } catch {}
   try {
@@ -177,6 +176,7 @@ function doFavToggle(){
     setFavActive(on);
   } catch {}
 }
+
 
 
 /* ---------------- делегирование событий ---------------- */
