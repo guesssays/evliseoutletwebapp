@@ -26,6 +26,8 @@ export function renderHome(router){
   v.innerHTML = `<div class="grid home-bottom-pad" id="productGrid"></div>`;
   drawCategoriesChips(router);
   drawProducts(state.products);
+  try { window.dispatchEvent(new CustomEvent('view:home-mounted')); } catch {}
+
   // ⛔ Больше НЕ создаём локальную кнопку «вверх».
   // За неё отвечает единый компонент src/components/ScrollTop.js (mountScrollTop уже вызывается в main.js).
 }

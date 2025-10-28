@@ -147,7 +147,7 @@ async function notifApiAdd(uid, notif){
   if (!res.ok || data?.ok === false) throw new Error('notif add error');
   return data.id || notif.id || Date.now();
 }
-/* === ПРАВКА ЗДЕСЬ === */
+/* === ПРАВКА ЗДЕСЬ (осталась без изменений в этом файле) === */
 async function notifApiMarkAll(uid){
   const initData = getTgInitDataRaw();
   const hasInit  = !!(initData && initData.length);
@@ -532,6 +532,9 @@ function scrollTopNow(){
   ScrollReset.request();
 }
 
+/* ====== ОТЛОЖЕННОЕ ВОССТАНОВЛЕНИЕ СКРОЛЛА ГЛАВНОЙ ====== */
+let __NEED_HOME_SCROLL_RESTORE__ = false;
+
 /* ---------- РОУТЕР ---------- */
 async function router(){
   const path = (location.hash || '#/').slice(1);
@@ -557,17 +560,16 @@ async function router(){
   setTabbarMenu(map[clean] || (inAdmin ? 'admin' : 'home'));
   hideProductHeader();
 
-// 🔧 Новая логика: при переходе НА главную — восстанавливаем позицию;
-// при уходе С главной — сохраняем текущую позицию и сбрасываем скролл для новых экранов.
-const goingHome = (parts.length === 0);
-if (goingHome) {
-  try { ScrollReset.suppress(900); ScrollReset.quiet(900); } catch {}
-  await HomeScrollMemory.restoreIfHome();
-} else {
-  HomeScrollMemory.saveIfHome();
-  scrollTopNow();
-}
-
+  // 🔧 Новая логика (обновлено): при переходе НА главную — только помечаем восстановление ПОСЛЕ её рендера;
+  // при уходе С главной — сохраняем текущую позицию и сбрасываем скролл для новых экранов.
+  const goingHome = (parts.length === 0);
+  if (goingHome) {
+    __NEED_HOME_SCROLL_RESTORE__ = true;
+    try { ScrollReset.suppress(1200); ScrollReset.quiet(1200); } catch {}
+  } else {
+    HomeScrollMemory.saveIfHome();
+    scrollTopNow();
+  }
 
   // Админ-режим
   if (inAdmin){
@@ -585,7 +587,14 @@ if (goingHome) {
   }
 
   // Клиентский роутинг
-  if (parts.length===0) return renderHome(router);
+  if (parts.length===0) {
+    const res = renderHome(router);
+    if (__NEED_HOME_SCROLL_RESTORE__) {
+      __NEED_HOME_SCROLL_RESTORE__ = false;
+      try { await HomeScrollMemory.restoreIfHome(); } catch {}
+    }
+    return res;
+  }
   const m1=match('category/:slug'); if (m1) return renderCategory(m1);
   const m2=match('product/:id');   if (m2) return renderProduct(m2);
   const m3=match('track/:id');     if (m3) return renderTrack(m3);
@@ -629,7 +638,15 @@ if (goingHome) {
 
   if (match('faq')) return renderFAQ();
 
-  renderHome(router);
+  // Фоллбек на главную
+  {
+    const res = renderHome(router);
+    if (__NEED_HOME_SCROLL_RESTORE__) {
+      __NEED_HOME_SCROLL_RESTORE__ = false;
+      try { await HomeScrollMemory.restoreIfHome(); } catch {}
+    }
+    return res;
+  }
 }
 
 /* ===== серверная синхронизация снапшота корзины/избранного ===== */
