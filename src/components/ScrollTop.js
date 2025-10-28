@@ -1,73 +1,38 @@
 // src/components/ScrollTop.js
-// Кнопка "Наверх": сам создаёт узел при отсутствии, вешает поведение, управляет hidden.
+// Кнопка «Наверх»: корректная доступность и синхронизация hidden/aria-hidden/inert
+export function mountScrollTop(threshold = 400) {
+  const btn = document.getElementById('scrollTopBtn');
+  if (!btn) return;
 
-let cleanup = null;
-
-function ensureNode() {
-  let btn = document.getElementById('scrollTopBtn');
-  if (!btn) {
-    btn = document.createElement('button');
-    btn.id = 'scrollTopBtn';
-    btn.className = 'icon-btn';
-    btn.setAttribute('aria-label', 'Наверх');
+  const hide = () => {
+    try { if (document.activeElement === btn) document.activeElement.blur(); } catch {}
     btn.setAttribute('hidden', '');
-    btn.innerHTML = `<i data-lucide="chevrons-up"></i>`;
-    document.body.appendChild(btn);
-  }
-  return btn;
-}
-
-function bindBehavior(btn) {
-  const THRESHOLD = 320; // пикселей прокрутки до показа
-
-  const onScroll = () => {
-    const y = Math.max(document.documentElement.scrollTop || 0, window.scrollY || 0);
-    const shouldShow = y > THRESHOLD;
-    if (shouldShow) {
-      btn.hidden = false;
-      btn.setAttribute('aria-hidden', 'false');
-    } else {
-      btn.hidden = true;
-      btn.setAttribute('aria-hidden', 'true');
-    }
+    btn.setAttribute('aria-hidden', 'true');
+    btn.setAttribute('inert', '');
   };
 
-  const onClick = () => {
-    try {
-      const el = document.scrollingElement || document.documentElement || document.body;
-      el.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch {
-      window.scrollTo(0, 0);
-    }
+  const show = () => {
+    btn.removeAttribute('hidden');
+    // важно: aria-hidden полностью убираем (не "false")
+    btn.removeAttribute('aria-hidden');
+    btn.removeAttribute('inert');
   };
 
-  window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('hashchange', () => setTimeout(onScroll, 0));
-  btn.addEventListener('click', onClick);
-
-  // первичный расчёт
-  onScroll();
-
-  return () => {
-    window.removeEventListener('scroll', onScroll);
-    btn.removeEventListener('click', onClick);
+  const update = () => {
+    const y = window.scrollY || document.documentElement.scrollTop || 0;
+    if (y > threshold) show(); else hide();
   };
-}
 
-export function mountScrollTop() {
-  try {
-    const btn = ensureNode();
-    cleanup?.();
-    cleanup = bindBehavior(btn);
-    // перерисуем иконку на случай динамической вставки
-    try { window.lucide?.createIcons?.(); } catch {}
-  } catch (e) {
-    console.warn('[ScrollTop] init failed', e);
-  }
-}
+  btn.addEventListener('click', () => {
+    try { document.activeElement?.blur?.(); } catch {}
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+  });
 
-export function destroyScrollTop() {
-  try { cleanup?.(); cleanup = null; } catch {}
-}
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update);
+  window.addEventListener('hashchange', () => setTimeout(update, 0));
 
-export default { mountScrollTop, destroyScrollTop };
+  // Инициализация ARIA-сост. (пусть изначально скрыта)
+  hide();
+  setTimeout(update, 0);
+}

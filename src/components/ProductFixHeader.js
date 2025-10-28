@@ -1,100 +1,178 @@
 // src/components/ProductFixHeader.js
-// Лёгкий фикс-хедер товара: две кнопки (назад и избранное), автопоказ после прокрутки.
+// Фикс-хедер карточки товара: доступность, синхронизация с фаворитом, управление показом
+// Экспорт: activateProductFixHeader, deactivateProductFixHeader, setFavActive
 
-let unsub = null;
+let _state = {
+  root: null,
+  back: null,
+  fav: null,
+  statHeader: null,
+  onBack: null,
+  onFavToggle: null,
+  isFav: null,
+  threshold: 0,
+  shown: false,
+  listenersBound: false,
+};
 
-function qs(id) { return document.getElementById(id); }
-function staticHeader() { return document.querySelector('.app-header'); }
-function fixHdr() { return qs('productFixHdr'); }
-function btnBack() { return qs('btnFixBack'); }
-function btnFav() { return qs('btnFixFav'); }
+function qs(id){ return document.getElementById(id); }
 
-function toggleFixHeader(show) {
-  const wrap = fixHdr();
-  if (!wrap) return;
-  wrap.classList.toggle('show', !!show);
-  wrap.setAttribute('aria-hidden', show ? 'false' : 'true');
+function a11yShow(el){
+  if (!el) return;
+  el.classList.add('show');
+  el.removeAttribute('aria-hidden');
+  el.removeAttribute('inert');
+}
+function a11yHide(el){
+  if (!el) return;
+  try { if (el.contains(document.activeElement)) document.activeElement.blur(); } catch {}
+  el.classList.remove('show');
+  el.setAttribute('aria-hidden', 'true');
+  el.setAttribute('inert', '');
 }
 
-export function setFavActive(on) {
-  const b = btnFav();
-  if (!b) return;
-  b.classList.toggle('active', !!on);
-  b.setAttribute('aria-pressed', on ? 'true' : 'false');
+function showFixHeader(){
+  if (_state.shown) return;
+  _state.shown = true;
+  a11yShow(_state.root);
+
+  // Скрываем статичный хедер синхронно и делаем его не фокусируемым
+  if (_state.statHeader){
+    _state.statHeader.classList.add('hidden');
+    _state.statHeader.setAttribute('aria-hidden', 'true');
+    _state.statHeader.setAttribute('inert', '');
+  }
 }
 
-export function activateProductFixHeader({
-  isFav = () => false,
-  onBack = () => history.back(),
-  onFavToggle = () => {},
-  showThreshold = 120, // px прокрутки до показа
-} = {}) {
+function hideFixHeader(){
+  if (!_state.shown) return;
+  _state.shown = false;
+  a11yHide(_state.root);
+
+  if (_state.statHeader){
+    _state.statHeader.classList.remove('hidden');
+    _state.statHeader.removeAttribute('aria-hidden');
+    _state.statHeader.removeAttribute('inert');
+  }
+}
+
+function onScrollCheck(){
+  const y = window.scrollY || document.documentElement.scrollTop || 0;
+  if (y > _state.threshold) showFixHeader();
+  else hideFixHeader();
+}
+
+function bindListeners(){
+  if (_state.listenersBound) return;
+  _state.listenersBound = true;
+
+  _state.back?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    _state.onBack && _state.onBack();
+  });
+
+  _state.fav?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    _state.onFavToggle && _state.onFavToggle();
+    // локальная подсветка по текущему значению isFav()
+    try {
+      const on = !!_state.isFav?.();
+      setFavActive(on);
+    } catch {}
+  });
+
+  // Показ по скроллу (если threshold > 0)
+  window.addEventListener('scroll', onScrollCheck, { passive:true });
+  window.addEventListener('resize', onScrollCheck);
+}
+
+function unbindListeners(){
+  if (!_state.listenersBound) return;
+  _state.listenersBound = false;
+
+  // клик-хендлеры снимаем пересозданием нод (безопасный трюк, чтобы не держать ссылки)
   try {
-    const wrap = fixHdr();
-    if (!wrap) return;
-
-    // при входе на страницу товара — гарантируем видимость статичного хедера,
-    // а фикс-хедер стартует скрытым и появляется по скроллу
-    staticHeader()?.classList.remove('hidden');
-    toggleFixHeader(false);
-
-    const onScroll = () => {
-      const y = Math.max(document.documentElement.scrollTop || 0, window.scrollY || 0);
-      const show = y > showThreshold;
-      toggleFixHeader(show);
-      // когда фикс-хедер показан — прячем статичный
-      const stat = staticHeader();
-      if (stat) stat.classList.toggle('hidden', show);
-    };
-
-    const onHash = () => {
-      // выход со страницы товара — сразу скрываем слой и возвращаем статику
-      const h = String(location.hash || '');
-      if (!h.startsWith('#/product/') && !h.startsWith('#/p/')) {
-        deactivateProductFixHeader();
-      } else {
-        setTimeout(onScroll, 0);
-      }
-    };
-
-    // кнопки
-    const back = btnBack();
-    const fav = btnFav();
-    if (back) back.onclick = (e) => { e.preventDefault(); onBack(); };
-    if (fav) {
-      setFavActive(!!isFav());
-      fav.onclick = (e) => { e.preventDefault(); onFavToggle(); setFavActive(!!isFav()); };
+    if (_state.back){
+      const clone = _state.back.cloneNode(true);
+      _state.back.parentNode.replaceChild(clone, _state.back);
+      _state.back = clone;
     }
+    if (_state.fav){
+      const clone = _state.fav.cloneNode(true);
+      _state.fav.parentNode.replaceChild(clone, _state.fav);
+      _state.fav = clone;
+    }
+  } catch {}
 
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('hashchange', onHash);
-
-    // первый расчёт
-    onScroll();
-
-    unsub = () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('hashchange', onHash);
-      if (back) back.onclick = null;
-      if (fav) fav.onclick = null;
-    };
-
-    // иконки
-    try { window.lucide?.createIcons?.(); } catch {}
-  } catch (e) {
-    console.warn('[ProductFixHeader] activate failed', e);
-  }
+  window.removeEventListener('scroll', onScrollCheck);
+  window.removeEventListener('resize', onScrollCheck);
 }
 
-export function deactivateProductFixHeader() {
+/** Публично: синхронизация состояния «избранного» */
+export function setFavActive(on){
   try {
-    unsub?.(); unsub = null;
-    toggleFixHeader(false);
-    // вернём статичный хедер
-    staticHeader()?.classList.remove('hidden');
-  } catch (e) {
-    console.warn('[ProductFixHeader] deactivate failed', e);
-  }
+    const b = _state.fav || qs('btnFixFav');
+    if (!b) return;
+    b.classList.toggle('active', !!on);
+    b.setAttribute('aria-pressed', String(!!on));
+  } catch {}
 }
 
-export default { activateProductFixHeader, deactivateProductFixHeader, setFavActive };
+/** Активировать фикс-хедер на странице товара */
+export function activateProductFixHeader({
+  isFav = ()=>false,
+  onBack = ()=>history.back(),
+  onFavToggle = ()=>{},
+  showThreshold = 0,
+} = {}){
+  _state.root = qs('productFixHdr');
+  _state.back = qs('btnFixBack');
+  _state.fav  = qs('btnFixFav');
+  _state.statHeader = document.querySelector('.app-header') || null;
+  _state.isFav = isFav;
+  _state.onBack = onBack;
+  _state.onFavToggle = onFavToggle;
+  _state.threshold = Number(showThreshold)||0;
+
+  if (!_state.root){
+    // на всякий случай не падать
+    _state = { ..._state, shown:false };
+    return;
+  }
+
+  // Поднять начальное состояние фаворита
+  setFavActive(!!isFav());
+
+  // Убедимся, что корень изначально скрыт для SR до момента показа
+  if (!_state.root.classList.contains('show')){
+    _state.root.setAttribute('aria-hidden','true');
+    _state.root.setAttribute('inert','');
+  }
+
+  bindListeners();
+
+  // Начальный расчёт показа
+  onScrollCheck();
+  // если порог нулевой — показать сразу
+  if (_state.threshold <= 0) showFixHeader();
+}
+
+/** Деактивировать фикс-хедер (уход со страницы) */
+export function deactivateProductFixHeader(){
+  hideFixHeader();
+  unbindListeners();
+
+  // Чистка состояния
+  _state = {
+    root: null,
+    back: null,
+    fav: null,
+    statHeader: _state.statHeader, // вернули видимость выше
+    onBack: null,
+    onFavToggle: null,
+    isFav: null,
+    threshold: 0,
+    shown: false,
+    listenersBound: false,
+  };
+}
