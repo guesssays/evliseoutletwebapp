@@ -7,6 +7,7 @@ import {
   deactivateProductFixHeader,
   setFavActive as setFixFavActive,
 } from './ProductFixHeader.js';
+import { ScrollReset } from '../core/scroll-reset.js';
 
 /* ====== КОНСТАНТЫ КЭШБЕКА/РЕФЕРАЛОВ (должны совпадать с корзиной/аккаунтом) ====== */
 const CASHBACK_RATE_BASE  = 0.05; // 5%
@@ -134,21 +135,26 @@ export function renderProduct({id}){
 
   const favActive = isFav(p.id);
 
-  // Активируем фикс-хедер товара и связываем обработчики
-  activateProductFixHeader({
-    isFav: () => isFav(p.id),
-    onBack: () => history.back(),
-    onFavToggle: () => {
-      const now = toggleFav(p.id);
-      const heroFav = document.getElementById('favBtn');
-      if (heroFav) {
-        heroFav.classList.toggle('active', now);
-        heroFav.setAttribute('aria-pressed', now ? 'true' : 'false');
-      }
-      setFixFavActive(now);
-    },
-    showThreshold: 20,
-  });
+activateProductFixHeader({
+  isFav: () => isFav(p.id),
+  onBack: () => {
+    try { ScrollReset.suppress(900); ScrollReset.quiet(900); } catch {}
+    history.back();
+  },
+  onFavToggle: () => {
+    try { ScrollReset.quiet(900); } catch {}
+    const now = toggleFav(p.id);
+    const heroFav = document.getElementById('favBtn');
+    if (heroFav) {
+      heroFav.classList.toggle('active', now);
+      heroFav.setAttribute('aria-pressed', now ? 'true' : 'false');
+    }
+    setFixFavActive(now);
+    window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: p.id, active: now } }));
+  },
+  showThreshold: 20,
+});
+
 
   // ✅ Нормализация источников изображений
   const images = Array.isArray(p.images)
@@ -455,8 +461,15 @@ export function renderProduct({id}){
     });
   }
 
-  // Навигация назад
-  document.getElementById('goBack').onclick=()=> history.back();
+const heroBack = document.getElementById('goBack');
+if (heroBack) {
+  heroBack.addEventListener('click', (e) => {
+    e.preventDefault();
+    try { ScrollReset.suppress(900); ScrollReset.quiet(900); } catch {}
+    history.back();
+  }, { passive: false });
+}
+
 
   // === Глобальный синк избранного (ЕДИНОЖДЫ на рендер страницы) ===
   function onFavSync(ev){
@@ -482,11 +495,10 @@ export function renderProduct({id}){
   // Сердечко в герое — локальный клик без регистрации других слушателей
   const favBtn = document.getElementById('favBtn');
 if (favBtn) {
-  favBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    try { ScrollReset.quiet(800); } catch {}
-    const nowActive = toggleFav(p.id);
+favBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  try { ScrollReset.quiet(900); } catch {}
+  const nowActive = toggleFav(p.id);
 
     favBtn.classList.toggle('active', nowActive);
     favBtn.setAttribute('aria-pressed', String(nowActive));

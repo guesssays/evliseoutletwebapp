@@ -1160,3 +1160,18 @@ body.has-cta .tabbar-inner .btn span{ color:#fff !important; }
 #productFixHdr button,
 #productFixHdr .btn,
 #productFixHdr [role="button"] { pointer-events: auto; }
+/* === Product Fix Header base === */
+#productFixHdr{
+  position:fixed; inset:0 auto auto 0; top:0; left:0; right:0;
+  z-index: 1003;
+  transform: translateY(-110%);
+  transition: transform .18s ease, opacity .18s ease;
+  opacity: 0;
+  pointer-events: none; /* клики ловят лишь внутренние кнопки */
+}
+#productFixHdr.show{
+  transform: translateY(0);
+  opacity: 1;
+}
+#productFixHdr .btn{ pointer-events: auto; } /* на всякий случай */
+.app-header.hidden{ opacity:0; visibility:hidden; }
