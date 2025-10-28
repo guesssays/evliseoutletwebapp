@@ -1,5 +1,5 @@
 // src/components/ProductFixHeader.js
-// Фикс-хедер карточки товара: стабильные клики без «залипаний».
+// Фикс-хедер карточки товара: стабильные клики, без автоскролла, полная синхронизация fav.
 // Экспорт: activateProductFixHeader, deactivateProductFixHeader, setFavActive
 
 import { ScrollReset } from '../core/scroll-reset.js';
@@ -25,6 +25,7 @@ const S = {
   _scrollTargets: [],
   _unbindDetectors: [],
   _observer: null,
+  _onFavChanged: null,
 
   // антидребезг
   _cooldownMs: 180,
@@ -133,13 +134,13 @@ function onScrollCheck(){
   else hideFixHeader();
 }
 
-/* ===================== обработчики кнопок (без делегирования) ===================== */
+/* ===================== обработчики кнопок ===================== */
 function safeBack(){
   const now = Date.now();
   if (now - S._tsBack < S._cooldownMs) return;
   S._tsBack = now;
 
-  // подавляем возможные внешние ScrollReset.request, чтобы не тянуло вверх
+  // переносим возможные reset'ы скролла при навигации
   try { ScrollReset.suppress(900); } catch {}
 
   try{
@@ -160,14 +161,16 @@ function doFavToggle(){
   if (now - S._tsFav < S._cooldownMs) return;
   S._tsFav = now;
 
-  // на всякий случай — глушим автосбросы скролла коротким окном
-  try { ScrollReset.suppress(700); } catch {}
+  // полная «тишина» для любых ScrollReset.request() со стороны
+  try { ScrollReset.quiet(800); } catch {}
 
   try { S.onFavToggle && S.onFavToggle(); } catch {}
-  try {
-    const on = !!(S.isFav && S.isFav());
-    setFavActive(on);
-  } catch {}
+
+  // локально обновим кнопку в фикс-хедере
+  try { setFavActive(!!(S.isFav && S.isFav())); } catch {}
+
+  // синхронизация всем слушателям (hero и др.)
+  try { window.dispatchEvent(new CustomEvent('fav:changed', { detail: {} })); } catch {}
 }
 
 /** Навесить клики на конкретные кнопки. Пере-бинд при замене DOM. */
@@ -179,19 +182,23 @@ function bindButtonHandlers(){
   if (S.btnBack === back && S.btnFav === fav) return;
 
   // снять старые, если были
-  try{ S.btnBack?.removeEventListener('click', safeBack); }catch{}
-  try{ S.btnFav?.removeEventListener('click', doFavToggle); }catch{}
+  try{ S.btnBack?.removeEventListener('click', S._onBackClick, { capture:false }); }catch{}
+  try{ S.btnFav?.removeEventListener('click',  S._onFavClick,  { capture:false }); }catch{}
 
   S.btnBack = back;
   S.btnFav  = fav;
 
+  // свежие замыкания с preventDefault/stopPropagation
+  S._onBackClick = (e)=>{ e.preventDefault(); e.stopPropagation(); safeBack(); };
+  S._onFavClick  = (e)=>{ e.preventDefault(); e.stopPropagation(); doFavToggle(); };
+
   if (back){
     back.style.pointerEvents = 'auto';
-    back.addEventListener('click', safeBack, { passive: true });
+    back.addEventListener('click', S._onBackClick, { passive:false });
   }
   if (fav){
     fav.style.pointerEvents = 'auto';
-    fav.addEventListener('click',  doFavToggle, { passive: true });
+    fav.addEventListener('click',  S._onFavClick,  { passive:false });
   }
 }
 
@@ -207,7 +214,7 @@ function bindListeners(){
   }
   S._unbindDetectors = S._scrollTargets.map(bindActiveTargetDetector);
 
-  // прямые клики по кнопкам (без делегирования и без preventDefault)
+  // клики по кнопкам
   bindButtonHandlers();
 
   // следим за заменой внутренней разметки (иконки/перерисовка) и ребиндим
@@ -215,6 +222,12 @@ function bindListeners(){
     S._observer = new MutationObserver(bindButtonHandlers);
     S._observer.observe(S.root, { childList: true, subtree: true });
   }catch{}
+
+  // глобальный синк избранного (обновляем состояние фикс-хедера при внешних изменениях)
+  S._onFavChanged = () => {
+    try { setFavActive(!!(S.isFav && S.isFav())); } catch {}
+  };
+  window.addEventListener('fav:changed', S._onFavChanged);
 
   S.listenersBound = true;
 
@@ -237,9 +250,12 @@ function unbindListeners(){
   for (const unb of S._unbindDetectors){ try{ unb(); }catch{} }
   S._unbindDetectors = [];
 
-  try{ S.btnBack?.removeEventListener('click', safeBack); }catch{}
-  try{ S.btnFav?.removeEventListener('click', doFavToggle); }catch{}
+  try{ S.btnBack?.removeEventListener('click', S._onBackClick, { capture:false }); }catch{}
+  try{ S.btnFav?.removeEventListener('click',  S._onFavClick,  { capture:false }); }catch{}
   S.btnBack = S.btnFav = null;
+
+  try{ window.removeEventListener('fav:changed', S._onFavChanged); }catch{}
+  S._onFavChanged = null;
 
   try{ S._observer?.disconnect(); }catch{}
   S._observer = null;
@@ -262,7 +278,7 @@ export function activateProductFixHeader(opts = {}){
   // первичная подсветка сердца
   try { setFavActive(!!(S.isFav && S.isFav())); } catch {}
 
-  // слой и кнопки кликабельны (без делегирования)
+  // слой кликабелен
   S.root.style.pointerEvents = 'auto';
 
   bindListeners();

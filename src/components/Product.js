@@ -481,24 +481,23 @@ export function renderProduct({id}){
 
   // Сердечко в герое — локальный клик без регистрации других слушателей
   const favBtn = document.getElementById('favBtn');
-  if (favBtn) {
-    favBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const nowActive = toggleFav(p.id);
+if (favBtn) {
+  favBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try { ScrollReset.quiet(800); } catch {}
+    const nowActive = toggleFav(p.id);
 
-      // локально обновили героевскую кнопку
-      favBtn.classList.toggle('active', nowActive);
-      favBtn.setAttribute('aria-pressed', String(nowActive));
+    favBtn.classList.toggle('active', nowActive);
+    favBtn.setAttribute('aria-pressed', String(nowActive));
+    setFixFavActive(nowActive);
 
-      // синкнули фикс-хедер
-      setFixFavActive(nowActive);
+    window.dispatchEvent(new CustomEvent('fav:changed', {
+      detail: { id: p.id, active: nowActive }
+    }));
+  }, { passive:false });
+}
 
-      // разослали событие всем заинтересованным
-      window.dispatchEvent(new CustomEvent('fav:changed', {
-        detail: { id: p.id, active: nowActive }
-      }));
-    });
-  }
 
   // Галерея
   const thumbs = document.getElementById('thumbs');
