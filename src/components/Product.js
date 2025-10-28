@@ -458,15 +458,14 @@ export function renderProduct({id}){
   // Навигация назад
   document.getElementById('goBack').onclick=()=> history.back();
 
-  // Избранное (крупная кнопка в герое)
-  const favBtn = document.getElementById('favBtn');
-  favBtn.onclick = ()=>{
-    toggleFav(p.id);
-    const active = isFav(p.id);
-    favBtn.classList.toggle('active', active);
-    favBtn.setAttribute('aria-pressed', String(active));
-    setFixFavActive(active); // синк с фикс-хедером
-  };
+favBtn.onclick = ()=>{
+  toggleFav(p.id);
+  const active = isFav(p.id);
+  favBtn.classList.toggle('active', active);
+  favBtn.setAttribute('aria-pressed', String(active));
+  setFixFavActive(active);
+  window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: p.id, active } }));
+};
 
   // Галерея
   const thumbs = document.getElementById('thumbs');

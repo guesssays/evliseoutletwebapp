@@ -929,3 +929,36 @@ body.has-cta .tabbar-inner .btn span{ color:#fff !important; }
 .tabbar{ z-index: var(--z-tabbar); }
 .toast-wrap{ z-index: var(--z-toast); }
 .modal{ z-index: var(--z-modal); }
+/* === Product Fix Header — чистые кнопки без подложек/пунктира === */
+.product-fixhdr,
+.product-fixhdr::before,
+.product-fixhdr::after{
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+.product-fixhdr .fixbtn{
+  pointer-events: auto;
+  width: 48px; height: 48px;
+  border-radius: 999px;
+  display: grid; place-items: center;
+  background: #fff; border: 1px solid var(--stroke); box-shadow: var(--shadow);
+  color: var(--text);
+  outline: none !important;
+}
+.product-fixhdr .fixbtn:focus-visible{
+  outline: 2px solid #121111; outline-offset: 3px;
+}
+#btnFixBack{ left:12px; top: calc(6px + var(--safe-top)); position:absolute; }
+#btnFixFav{  right:12px; top: calc(6px + var(--safe-top)); position:absolute; }
+#btnFixFav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none }
+
+/* на всякий — глушим любые «декоративные» штрихи */
+.product-fixhdr .fixbtn::before,
+.product-fixhdr .fixbtn::after{ content:none !important; display:none !important; }
+
+/* слои, чтобы ничего не перекрывалось */
+:root{ --z-fixhdr: 80; --z-scrolltop: 85; }
+.product-fixhdr{ z-index: var(--z-fixhdr) !important; }
+#scrollTopBtn{ z-index: var(--z-scrolltop) !important; }
