@@ -40,13 +40,18 @@ function _afterImagesIn(el) {
   const pending = imgs
     .filter(img => !img.complete || img.naturalWidth === 0)
     .map(img => new Promise(res => {
-      const done = () => { img.removeEventListener('load', done); img.removeEventListener('error', done); res(); };
+      const done = () => { 
+        img.removeEventListener('load', done); 
+        img.removeEventListener('error', done); 
+        res(); 
+      };
       img.addEventListener('load', done, { once: true });
       img.addEventListener('error', done, { once: true });
     }));
+  // Увеличиваем тайм-аут до 600 мс для более гибкой обработки
   return Promise.race([
     Promise.all(pending),
-    new Promise(res => setTimeout(res, 350))
+    new Promise(res => setTimeout(res, 600))
   ]);
 }
 
@@ -58,7 +63,7 @@ function _remainMs(untilVar) {
 let _pendingTimer = null;
 
 /* ===== Окно НАВИГАЦИИ: разрешаем сброс только рядом с hashchange/start ===== */
-const NAV_WINDOW_MS_DEFAULT = 1600;
+const NAV_WINDOW_MS_DEFAULT = 2000;  // Увеличиваем окно навигации до 2000 мс
 let __allowScrollResetUntil = 0;
 
 function _openNavWindow(ms = NAV_WINDOW_MS_DEFAULT) {
