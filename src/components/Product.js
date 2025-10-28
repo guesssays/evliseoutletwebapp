@@ -7,7 +7,7 @@ import { addToCart, removeLineFromCart, isInCart } from './cartActions.js';
 const CASHBACK_RATE_BASE  = 0.05; // 5%
 const CASHBACK_RATE_BOOST = 0.10; // 10% для 1-го заказа по реф-ссылке
 
-/* ——— хранилище пер-пользовательских данных ——— */
+/* ——— пер-пользовательские ключи ——— */
 function k(base){
   try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }
   catch{ return `${base}__guest`; }
@@ -36,6 +36,115 @@ function categoryNameBySlug(slug){
   return findCategoryBySlug(slug)?.name || '';
 }
 
+/* ========= МАЛЕНЬКАЯ ДИАГНОСТИКА ДЛЯ 2-ХЕДЕРА ========= */
+const PHDBG = {
+  enabled: false,
+  panel: null,
+  init(){
+    try{
+      this.enabled = Boolean(
+        window.DEBUG_PRODUCT_HDR ||
+        localStorage.DEBUG_PRODUCT_HDR === '1'
+      );
+    }catch{}
+    if (!this.enabled) return;
+
+    // Панель
+    const wrap = document.createElement('div');
+    wrap.id = 'ph-diag';
+    wrap.style.cssText = `
+      position:fixed; right:10px; bottom:10px; z-index:99999;
+      display:grid; gap:6px; padding:10px; border:1px solid #ddd;
+      background:#fff; color:#111; border-radius:10px; font:12px/1.3 system-ui;
+      box-shadow:0 6px 20px rgba(0,0,0,.18);
+    `;
+    wrap.innerHTML = `
+      <b style="font-weight:800">PH-Diag</b>
+      <div id="ph-state" style="max-width:280px; word-break:break-word"></div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap">
+        <button id="ph-toggle" style="padding:6px 10px; border:1px solid #bbb; border-radius:8px; cursor:pointer; background:#f6f6f6">Force Toggle</button>
+        <button id="ph-dump"   style="padding:6px 10px; border:1px solid #bbb; border-radius:8px; cursor:pointer; background:#f6f6f6">Dump</button>
+        <button id="ph-clear"  style="padding:6px 10px; border:1px solid #bbb; border-radius:8px; cursor:pointer; background:#f6f6f6">Clear logs</button>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    this.panel = wrap;
+
+    // Слушатели
+    wrap.querySelector('#ph-toggle')?.addEventListener('click', ()=>{
+      const fix = document.getElementById('productFixHdr');
+      const stat = document.querySelector('.app-header');
+      if (!fix || !stat){ console.warn('[PH] toggle: missing nodes', {fix:!!fix, stat:!!stat}); return; }
+      const newShow = !fix.classList.contains('show');
+      fix.classList.toggle('show', newShow);
+      fix.setAttribute('aria-hidden', String(!newShow));
+      stat.classList.toggle('hidden', newShow);
+      this.note('ForceToggle', { newShow, classList:[...fix.classList], statHidden: stat.classList.contains('hidden') });
+      this.renderState();
+    });
+
+    wrap.querySelector('#ph-dump')?.addEventListener('click', ()=>{
+      this.dumpNow();
+    });
+
+    wrap.querySelector('#ph-clear')?.addEventListener('click', ()=>{
+      console.clear();
+      this.note('Console cleared');
+    });
+
+    // Первичный status
+    this.renderState();
+    this.note('PH-Diag initialized');
+  },
+
+  renderState(){
+    if (!this.panel) return;
+    const s = document.querySelector('.app-header');
+    const f = document.getElementById('productFixHdr');
+    const btnB = document.getElementById('btnFixBack');
+    const btnF = document.getElementById('btnFixFav');
+    const sc = Math.max(document.documentElement.scrollTop||0, window.scrollY||0);
+    const html = `
+      scrollY=${sc}
+      <br>stat(.app-header): ${s? 'OK' : '—'} ${s? `hidden=${s.classList.contains('hidden')}`:''}
+      <br>fix(#productFixHdr): ${f? 'OK' : '—'} ${f? `show=${f.classList.contains('show')} z=${getComputedStyle(f).zIndex}`:''}
+      <br>btnBack: ${btnB? 'OK':'—'}&nbsp;&nbsp;btnFav: ${btnF? 'OK':'—'}
+    `;
+    this.panel.querySelector('#ph-state').innerHTML = html;
+  },
+
+  dumpNow(){
+    const s = document.querySelector('.app-header');
+    const f = document.getElementById('productFixHdr');
+    const dumpEl = (el, name)=> el ? {
+      name,
+      exists: true,
+      classList: [...el.classList],
+      style: getComputedStyle(el),
+      bbox: el.getBoundingClientRect(),
+      ariaHidden: el.getAttribute('aria-hidden'),
+    } : { name, exists:false };
+    const data = {
+      scroll: { y: Math.max(document.documentElement.scrollTop||0, window.scrollY||0) },
+      stat: dumpEl(s, 'app-header'),
+      fix: dumpEl(f, 'productFixHdr'),
+      btnBack: dumpEl(document.getElementById('btnFixBack'), 'btnFixBack'),
+      btnFav:  dumpEl(document.getElementById('btnFixFav'),  'btnFixFav'),
+    };
+    console.log('[PH dump]', data);
+    this.note('Dump printed to console');
+  },
+
+  note(msg, extra){
+    try{
+      console.log(`[PH] ${msg}`, extra||'');
+      // лёгкая вибрация по клику — помогает замечать действия
+      navigator.vibrate?.(10);
+    }catch{}
+  }
+};
+
+/* ========= РЕНДЕР СТРАНИЦЫ ТОВАРА ========= */
 export function renderProduct({id}){
   const p = state.products.find(x=> String(x.id)===String(id));
   if (!p){ location.hash='#/'; return; }
@@ -194,37 +303,14 @@ export function renderProduct({id}){
         border:1px solid var(--stroke);
         border-radius:16px;
       }
-
-      .size-table{
-        width:100%;
-        border-collapse:separate;
-        border-spacing:0;
+      .size-table{ width:100%; border-collapse:separate; border-spacing:0; }
+      .size-table th,.size-table td{
+        padding:10px 12px; white-space:nowrap; font-size:14px; text-align:center;
+        font-variant-numeric: tabular-nums;
       }
-
-      .size-table th,
-      .size-table td{
-        padding:10px 12px;
-        white-space:nowrap;
-        font-size:14px;
-        text-align:center;                 /* центрируем значения */
-        font-variant-numeric: tabular-nums;/* ровные цифры по сетке */
-      }
-
-      .size-table thead th{
-        background:#f8f8f8;
-        font-weight:800;
-        text-align:center;                 /* заголовки тоже по центру */
-      }
-
-      /* если первая колонка — названия/размер (а не число), оставим её слева */
-      .size-table th:first-child,
-      .size-table td:first-child{
-        text-align:left;
-      }
-
-      .size-table tbody tr:not(:last-child) td{
-        border-bottom:1px solid var(--stroke);
-      }
+      .size-table thead th{ background:#f8f8f8; font-weight:800; text-align:center; }
+      .size-table th:first-child, .size-table td:first-child{ text-align:left; }
+      .size-table tbody tr:not(:last-child) td{ border-bottom:1px solid var(--stroke); }
     </style>
 
     <div class="product">
@@ -379,7 +465,7 @@ export function renderProduct({id}){
     setFixFavActive(active);
   };
 
-  // Галерея: миниатюры -> главное фото (учитываем реальные)
+  // Галерея
   const thumbs = document.getElementById('thumbs');
   const mainImg = document.getElementById('mainImg');
   const galleryMain = document.querySelector('.gallery-main');
@@ -388,10 +474,8 @@ export function renderProduct({id}){
       const t = e.target.closest('button.thumb'); if (!t) return;
       const idx = Number(t.getAttribute('data-index'))||0;
       const it = gallery[idx] || gallery[0];
-      // переключаем картинку
       mainImg.src = it.src || '';
       mainImg.alt = `${p.title}${it.isReal ? ' (реальное фото)' : ''}`;
-      // бейдж
       const old = galleryMain.querySelector('.real-badge');
       if (old) old.remove();
       if (it.isReal){
@@ -401,7 +485,6 @@ export function renderProduct({id}){
         galleryMain.appendChild(b);
         window.lucide?.createIcons && lucide.createIcons();
       }
-      // активная миниатюра
       thumbs.querySelectorAll('.thumb').forEach(x=>{
         x.classList.toggle('active', x===t);
         x.setAttribute('aria-selected', x===t ? 'true':'false');
@@ -452,77 +535,10 @@ export function renderProduct({id}){
   });
   function resetZoom(){ if (!mainImg) return; mainImg.style.transform=''; mainImg.dataset.zoom='1'; }
 
-  /* -------- Два хедера -------- */
+  /* -------- Два хедера + ДИАГНОСТИКА -------- */
   setupTwoHeaders({ isFav: favActive });
-  function setupTwoHeaders({ isFav: favAtStart }){
-    const stat = document.querySelector('.app-header');
-    const fix  = document.getElementById('productFixHdr');
-    const btnBack = document.getElementById('btnFixBack');
-    const btnFav  = document.getElementById('btnFixFav');
-    if (!stat || !fix || !btnBack || !btnFav) {
-      console.warn('[ProductHdr] missing nodes -> no two-headers behavior');
-      return;
-    }
 
-    // Завершаем предыдущую сессию
-    if (window._productHdrAbort){
-      try{ window._productHdrAbort.abort(); }catch{}
-    }
-    const ctrl = new AbortController();
-    window._productHdrAbort = ctrl;
-
-    // Стартовое состояние
-    stat.classList.remove('hidden');
-    fix.classList.remove('show');
-    fix.setAttribute('aria-hidden','true');
-
-    // Кнопки
-    btnBack.addEventListener('click', ()=> history.back(), { signal: ctrl.signal });
-    setFixFavActive(favAtStart);
-    btnFav.addEventListener('click', ()=>{
-      toggleFav(p.id);
-      const active = isFav(p.id);
-      setFixFavActive(active);
-      // синхронизируем «большое» сердце в герое
-      const hero = document.getElementById('favBtn');
-      if (hero) {
-        hero.classList.toggle('active', active);
-        hero.setAttribute('aria-pressed', String(active));
-      }
-    }, { signal: ctrl.signal });
-
-    // Показываем фикс-хедер после скролла
-    const THRESHOLD = 24;
-    const onScroll = ()=>{
-      const scDoc = document.documentElement.scrollTop || 0;
-      const scWin = window.scrollY || 0;
-      const sc = Math.max(scDoc, scWin);
-      const showFix = sc > THRESHOLD;
-      stat.classList.toggle('hidden', showFix);
-      fix.classList.toggle('show', showFix);
-      fix.setAttribute('aria-hidden', String(!showFix));
-    };
-
-    window.addEventListener('scroll', onScroll, { passive:true, signal: ctrl.signal });
-    document.addEventListener('scroll', onScroll, { passive:true, signal: ctrl.signal });
-    onScroll();
-
-    // Очистка при уходе со страницы товара
-    const cleanup = ()=>{
-      fix.classList.remove('show');
-      fix.setAttribute('aria-hidden','true');
-      stat.classList.remove('hidden');
-      try{ ctrl.abort(); }catch{}
-      if (window._productHdrAbort === ctrl) window._productHdrAbort = null;
-    };
-    window.addEventListener('hashchange', cleanup, { signal: ctrl.signal });
-    window.addEventListener('popstate',  cleanup, { signal: ctrl.signal });
-    window.addEventListener('beforeunload', cleanup, { signal: ctrl.signal });
-  }
-
-  if (related.length){
-    drawRelatedCards(related);
-  }
+  if (PHDBG.enabled) PHDBG.init();
 }
 
 /* ===== функции вне renderProduct, доступные модулю ===== */
@@ -790,7 +806,6 @@ function openZoomOverlay(src){
 
 /* ========= SIZE CALCULATOR ========= */
 
-/* Определяем тип сетки по заголовкам */
 function inferSizeChartType(headers=[]) {
   const hs = headers.map(h=>String(h).toLowerCase());
   const shoeHints = ['стопа','длина стопы','foot','cm','mm','eu','us','uk','длина, см','eu size','eur'];
@@ -804,7 +819,6 @@ function inferSizeChartType(headers=[]) {
   return 'clothes';
 }
 
-/* Открываем модалку с формой и считаем размер */
 function openSizeCalculator(p){
   const modal = document.getElementById('modal');
   const mb = document.getElementById('modalBody');
@@ -915,7 +929,6 @@ function openSizeCalculator(p){
       const sizesEl = document.getElementById('sizes');
       const btn = sizesEl?.querySelector(`.size[data-v="${CSS.escape(rec.size)}"]`);
       if (btn){
-        // кликнем на кнопку, чтобы сработала общая логика выбора/CTA
         btn.click();
         btn.scrollIntoView({ behavior:'smooth', block:'center' });
       }
@@ -924,16 +937,14 @@ function openSizeCalculator(p){
   });
 }
 
-/* === Подбор размера для ОБУВИ по колонке длины стопы (см) === */
+/* === Подбор размера (обувь) === */
 function computeShoeSize(chart, footCm){
   if (!footCm || !isFinite(footCm)) return null;
 
-  // Ищем колонку длины в см/мм
   const h = chart.headers || [];
   const idxLen = getColumnIndex(h, ['длина стопы','foot length','длина, см','см','cm','mm']);
   if (idxLen===-1) return null;
 
-  // Индекс колонки «Размер»
   const idxSize = guessSizeColIndex(h);
 
   let best = null, bestDiff = Infinity;
@@ -953,7 +964,7 @@ function computeShoeSize(chart, footCm){
   return best;
 }
 
-/* === Подбор размера для ОДЕЖДЫ с учётом роста/веса === */
+/* === Подбор размера (одежда) === */
 function computeClothSize(chart, bust, waist, hips, height, weight, sizesOrder=[]){
   const h = chart.headers || [];
   const idxSize   = guessSizeColIndex(h);
@@ -965,7 +976,7 @@ function computeClothSize(chart, bust, waist, hips, height, weight, sizesOrder=[
   const idxHeight = getColumnIndex(h, ['рост','height']);
 
   if (idxBust===-1 && idxWaist===-1 && idxHips===-1 && (idxHeight===-1 || !height)) {
-    return null; // совсем нечего сравнивать
+    return null;
   }
 
   let best=null, bestScore=Infinity, bestRow=null;
@@ -991,7 +1002,6 @@ function computeClothSize(chart, bust, waist, hips, height, weight, sizesOrder=[
       score += Math.abs(v - hips); weightSum += 1;
       rs.push(`бёдра: ${isFinite(v)?v.toFixed(0):'—'} см`);
     }
-    // Рост учитываем с половинным весом, чтобы не «перебивал» обхваты
     if (idxHeight>-1 && height){
       const v = closestOfCell(row[idxHeight], height);
       score += 0.5 * Math.abs(v - height); weightSum += 0.5;
@@ -1003,7 +1013,6 @@ function computeClothSize(chart, bust, waist, hips, height, weight, sizesOrder=[
     const sizeLabel = String(row[idxSize] ?? row[0] ?? '').trim();
 
     if (norm < bestScore){
-      // сдвигаем текущий best в second
       second = best; secondScore = bestScore; secondRow = bestRow;
       best = sizeLabel; bestScore = norm; bestRow = row; bestReasons = rs.join(', ');
     }else if (norm < secondScore){
@@ -1013,16 +1022,14 @@ function computeClothSize(chart, bust, waist, hips, height, weight, sizesOrder=[
 
   if (!best) return null;
 
-  // Мягкая корректировка по росту/весу, если второй вариант близко
   let finalSize = best;
   let adj = '';
-  const close = isFinite(secondScore) && Math.abs(secondScore - bestScore) <= 1.8; // «рядом по таблице»
+  const close = isFinite(secondScore) && Math.abs(secondScore - bestScore) <= 1.8;
   const tallOrHeavy = (height && height >= 188) || (weight && weight >= 95);
   const shortOrLight = (height && height <= 160) || (weight && weight <= 50);
 
   if (close && sizesOrder && sizesOrder.length){
     const iBest = sizesOrder.indexOf(best);
-    const iSecond = sizesOrder.indexOf(second);
     if (tallOrHeavy && iBest>-1 && iBest < sizesOrder.length-1){
       finalSize = sizesOrder[iBest+1];
       adj = ' (учли рост/вес — взяли на полразмера больше)';
@@ -1041,9 +1048,7 @@ function computeClothSize(chart, bust, waist, hips, height, weight, sizesOrder=[
   return { size: finalSize, reason };
 }
 
-/* == ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ РАЗБОРА ТАБЛИЦЫ == */
-
-/* Возвращает индекс колонки, если заголовок содержит один из ключей */
+/* == Утилиты для таблицы == */
 function getColumnIndex(headers=[], keys=[]){
   const hs = headers.map(h=> String(h||'').toLowerCase());
   for (let i=0;i<hs.length;i++){
@@ -1052,8 +1057,6 @@ function getColumnIndex(headers=[], keys=[]){
   }
   return -1;
 }
-
-/* Пытаемся угадать колонку с обозначением размера (S/M/L, EU, US, число и т.п.) */
 function guessSizeColIndex(headers=[]){
   const hs = headers.map(h=> String(h||'').toLowerCase());
   const keys = ['размер','size','eu','us','ru','cn','intl'];
@@ -1062,16 +1065,12 @@ function guessSizeColIndex(headers=[]){
   }
   return 0;
 }
-
-/* Берём число из ячейки (поддержка диапазонов "80-84" или "80—84") */
 function takeNumber(cell){
   if (cell==null) return null;
   const s = String(cell).replace(',', '.').trim();
   const m = s.match(/(\d+(?:\.\d+)?)/);
   return m ? Number(m[1]) : null;
 }
-
-/* Для одежды: если в ячейке "80–84", возвращаем ближайшее к target */
 function closestOfCell(cell, target){
   if (!cell) return NaN;
   const s = String(cell).replace(',', '.');
@@ -1083,4 +1082,102 @@ function closestOfCell(cell, target){
   if (target < lo) return lo;
   if (target > hi) return hi;
   return target;
+}
+
+/* ========== ЛОГИКА 2-ХЕДЕРА С ВСТРОЕННЫМ ЛОГОМ ========== */
+function setupTwoHeaders({ isFav: favAtStart }){
+  const stat = document.querySelector('.app-header');
+  const fix  = document.getElementById('productFixHdr');
+  const btnBack = document.getElementById('btnFixBack');
+  const btnFav  = document.getElementById('btnFixFav');
+
+  if (!stat || !fix || !btnBack || !btnFav) {
+    console.warn('[ProductHdr] missing nodes -> no two-headers behavior', {
+      stat: !!stat, fix: !!fix, btnBack: !!btnBack, btnFav: !!btnFav
+    });
+    return;
+  }
+
+  // Завершаем предыдущую сессию
+  if (window._productHdrAbort){
+    try{ window._productHdrAbort.abort(); }catch{}
+  }
+  const ctrl = new AbortController();
+  window._productHdrAbort = ctrl;
+
+  // Стартовое состояние
+  stat.classList.remove('hidden');
+  fix.classList.remove('show');
+  fix.setAttribute('aria-hidden','true');
+
+  if (PHDBG.enabled) PHDBG.note('setupTwoHeaders: init state', {
+    statHidden: stat.classList.contains('hidden'),
+    fixShow: fix.classList.contains('show'),
+    zFix: getComputedStyle(fix).zIndex,
+  });
+
+  // Кнопки
+  btnBack.addEventListener('click', ()=> history.back(), { signal: ctrl.signal });
+  setFixFavActive(favAtStart);
+  btnFav.addEventListener('click', ()=>{
+    toggleFav(pSafeId());
+    const active = isFav(pSafeId());
+    setFixFavActive(active);
+    const hero = document.getElementById('favBtn');
+    if (hero) {
+      hero.classList.toggle('active', active);
+      hero.setAttribute('aria-pressed', String(active));
+    }
+  }, { signal: ctrl.signal });
+
+  // Показываем фикс-хедер после скролла
+  const THRESHOLD = 24;
+  const onScroll = ()=>{
+    const scDoc = document.documentElement.scrollTop || 0;
+    const scWin = window.scrollY || 0;
+    const sc = Math.max(scDoc, scWin);
+    const showFix = sc > THRESHOLD;
+    stat.classList.toggle('hidden', showFix);
+    fix.classList.toggle('show', showFix);
+    fix.setAttribute('aria-hidden', String(!showFix));
+
+    if (PHDBG.enabled){
+      // не засоряем консоль — лог раз в ~80px
+      if (!onScroll._last || Math.abs(sc - onScroll._last) > 80){
+        onScroll._last = sc;
+        console.log('[PH scroll]', { sc, showFix,
+          statHidden: stat.classList.contains('hidden'),
+          fixShow: fix.classList.contains('show'),
+          zFix: getComputedStyle(fix).zIndex
+        });
+        PHDBG.renderState();
+      }
+    }
+  };
+
+  window.addEventListener('scroll', onScroll, { passive:true, signal: ctrl.signal });
+  document.addEventListener('scroll', onScroll, { passive:true, signal: ctrl.signal });
+  onScroll();
+
+  // Очистка при уходе со страницы товара
+  const cleanup = ()=>{
+    fix.classList.remove('show');
+    fix.setAttribute('aria-hidden','true');
+    stat.classList.remove('hidden');
+    try{ ctrl.abort(); }catch{}
+    if (window._productHdrAbort === ctrl) window._productHdrAbort = null;
+    if (PHDBG.enabled) PHDBG.note('setupTwoHeaders: cleanup');
+  };
+  window.addEventListener('hashchange', cleanup, { signal: ctrl.signal });
+  window.addEventListener('popstate',  cleanup, { signal: ctrl.signal });
+  window.addEventListener('beforeunload', cleanup, { signal: ctrl.signal });
+
+  // Вспомогалка, чтобы замкнуть id товара внутри замыкания
+  function pSafeId(){
+    try{
+      const hash = location.hash || '';
+      const m = hash.match(/#\/product\/([^/?#]+)/);
+      return m ? m[1] : null;
+    }catch{ return null; }
+  }
 }
