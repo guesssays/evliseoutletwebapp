@@ -20,7 +20,6 @@ let _state = {
   _unbindDetectors: [],
   _onFavChanged: null,
 
-  // ссылки на обработчики для корректного removeEventListener
   _handlers: {
     backClick: null,
     favClick: null,
@@ -30,7 +29,7 @@ let _state = {
     favPointer: null,
   },
 
-  // анти-дабл: временно блокируем кнопку на 300мс
+  // только логический лок — без disabled
   _lock: { back: false, fav: false },
 };
 
@@ -153,17 +152,21 @@ function safeBack(){
   }
 }
 
-/* -------- анти-дабл: временно блокируем элемент -------- */
-function guardClick(btnKey, btnEl, cb){
+/* -------- лёгкий анти-дабл без disabled -------- */
+function guardClick(btnKey, _btnEl, cb){
   if (_state._lock[btnKey]) return;
   _state._lock[btnKey] = true;
-  let t;
-  try { btnEl && (btnEl.disabled = true); } catch{}
   try { cb(); } catch {}
-  t = setTimeout(()=>{
-    _state._lock[btnKey] = false;
-    try { btnEl && (btnEl.disabled = false); } catch{}
-  }, 350);
+  setTimeout(()=>{ _state._lock[btnKey] = false; }, 250);
+}
+
+/* -------- безопасный вызов обработчика pointer -------- */
+function withPointerSafeguards(e, fn){
+  try { e.preventDefault(); e.stopPropagation(); } catch {}
+  try { e.target?.releasePointerCapture?.(e.pointerId); } catch {}
+  try { fn(); } catch {}
+  // страховка: гарантируем, что контейнер остаётся кликабельным
+  try { _state.root && (_state.root.style.pointerEvents = 'auto'); } catch {}
 }
 
 function bindListeners(){
@@ -182,48 +185,49 @@ function bindListeners(){
       _state.back.style.touchAction   = 'manipulation';
       _state.back.setAttribute('role','button');
       _state.back.setAttribute('tabindex','0');
+      _state.back.removeAttribute('disabled');
+      _state.back.removeAttribute('aria-disabled');
     }
     if (_state.fav){
       _state.fav.style.pointerEvents  = 'auto';
       _state.fav.style.touchAction    = 'manipulation';
       _state.fav.setAttribute('role','button');
       _state.fav.setAttribute('tabindex','0');
+      _state.fav.removeAttribute('disabled');
+      _state.fav.removeAttribute('aria-disabled');
     }
   } catch {}
 
   const backDo = ()=> guardClick('back', _state.back, (_state.onBack || safeBack));
 
-  // ВАЖНО: мгновенная локальная синхронизация + событие для остальных
   const favDo  = ()=> guardClick('fav',  _state.fav,  ()=>{
-    const next = !_state.isFav?.();              // вычисляем будущее состояние локально
-    _state.onFavToggle && _state.onFavToggle();  // реальный toggleFav() — внутри onFavToggle
-    try { setFavActive(next); } catch {}         // моментально обновляем кнопку фикс-хедера
-    try {
-      window.dispatchEvent(new CustomEvent('fav:changed', { detail:{ active: next } }));
-    } catch {}
+    const next = !_state.isFav?.();
+    _state.onFavToggle && _state.onFavToggle();
+    try { setFavActive(next); } catch {}
+    try { window.dispatchEvent(new CustomEvent('fav:changed', { detail:{ active: next } })); } catch {}
   });
 
-  // Основной канал — Pointer Events (используем pointerdown, чтобы не терять pointerup в WebView)
+  // Основной канал — pointerup (без capture), чтобы не «вешать» фазу и не блокировать другие слушатели
   _state._handlers.backPointer = (e)=>{
-    if (e.button === 0 || e.button === undefined){ e.preventDefault(); e.stopPropagation(); backDo(); }
+    if (e.button === 0 || e.button === undefined){ withPointerSafeguards(e, backDo); }
   };
   _state._handlers.favPointer  = (e)=>{
-    if (e.button === 0 || e.button === undefined){ e.preventDefault(); e.stopPropagation(); favDo(); }
+    if (e.button === 0 || e.button === undefined){ withPointerSafeguards(e, favDo); }
   };
 
-  _state.back?.addEventListener('pointerdown', _state._handlers.backPointer, { passive:false, capture:true });
-  _state.fav?.addEventListener('pointerdown',  _state._handlers.favPointer,  { passive:false, capture:true });
+  _state.back?.addEventListener('pointerup', _state._handlers.backPointer, { passive:false });
+  _state.fav?.addEventListener('pointerup',  _state._handlers.favPointer,  { passive:false });
 
-  // Резервные каналы — click + touchend (на случай старых UA)
-  _state._handlers.backClick = (e)=>{ e.preventDefault(); e.stopImmediatePropagation?.(); backDo(); };
-  _state._handlers.favClick  = (e)=>{ e.preventDefault(); e.stopImmediatePropagation?.(); favDo(); };
-  _state.back?.addEventListener('click', _state._handlers.backClick, { passive:false, capture:true });
-  _state.fav?.addEventListener('click', _state._handlers.favClick,  { passive:false, capture:true });
+  // Резервные каналы — click + touchend
+  _state._handlers.backClick = (e)=>{ withPointerSafeguards(e, backDo); };
+  _state._handlers.favClick  = (e)=>{ withPointerSafeguards(e, favDo); };
+  _state.back?.addEventListener('click', _state._handlers.backClick, { passive:false });
+  _state.fav?.addEventListener('click',  _state._handlers.favClick,  { passive:false });
 
-  _state._handlers.backTouch = (e)=>{ e.preventDefault?.(); backDo(); };
-  _state._handlers.favTouch  = (e)=>{ e.preventDefault?.(); favDo(); };
-  _state.back?.addEventListener('touchend', _state._handlers.backTouch, { passive:false, capture:true });
-  _state.fav?.addEventListener('touchend', _state._handlers.favTouch,  { passive:false, capture:true });
+  _state._handlers.backTouch = (e)=>{ withPointerSafeguards(e, backDo); };
+  _state._handlers.favTouch  = (e)=>{ withPointerSafeguards(e, favDo); };
+  _state.back?.addEventListener('touchend', _state._handlers.backTouch, { passive:false });
+  _state.fav?.addEventListener('touchend',  _state._handlers.favTouch,  { passive:false });
 
   // Подписки на скролл-контейнеры
   _state.scrollTargets = getScrollTargets();
@@ -240,7 +244,7 @@ function bindListeners(){
     }
   }
 
-  // Глобальная синхронизация фаворита — используем detail.active, чтобы не перетирать локальный next
+  // Глобальная синхронизация фаворита
   _state._onFavChanged = (e)=> {
     try {
       if (e && e.detail && typeof e.detail.active === 'boolean') {
@@ -259,14 +263,14 @@ function unbindListeners(){
 
   try{
     if (_state.back){
-      _state.back.removeEventListener('pointerdown', _state._handlers.backPointer, { capture:true });
-      _state.back.removeEventListener('click', _state._handlers.backClick, { capture:true });
-      _state.back.removeEventListener('touchend', _state._handlers.backTouch, { capture:true });
+      _state.back.removeEventListener('pointerup', _state._handlers.backPointer);
+      _state.back.removeEventListener('click', _state._handlers.backClick);
+      _state.back.removeEventListener('touchend', _state._handlers.backTouch);
     }
     if (_state.fav){
-      _state.fav.removeEventListener('pointerdown', _state._handlers.favPointer, { capture:true });
-      _state.fav.removeEventListener('click', _state._handlers.favClick, { capture:true });
-      _state.fav.removeEventListener('touchend', _state._handlers.favTouch, { capture:true });
+      _state.fav.removeEventListener('pointerup', _state._handlers.favPointer);
+      _state.fav.removeEventListener('click', _state._handlers.favClick);
+      _state.fav.removeEventListener('touchend', _state._handlers.favTouch);
     }
   }catch{}
 
@@ -302,6 +306,8 @@ export function setFavActive(on){
     const val = !!on;
     b.classList.toggle('active', val);
     b.setAttribute('aria-pressed', String(val));
+    // гарантируем кликабельность после изменения классов
+    b.style.pointerEvents = 'auto';
   } catch {}
 }
 
@@ -333,6 +339,8 @@ export function activateProductFixHeader({
     _state.fav  && (_state.fav.style.pointerEvents  = 'auto');
     _state.back && (_state.back.style.touchAction   = 'manipulation');
     _state.fav  && (_state.fav.style.touchAction    = 'manipulation');
+    _state.back && (_state.back.removeAttribute('disabled'));
+    _state.fav  && (_state.fav.removeAttribute('disabled'));
   } catch {}
 
   // начальное состояние сердца
