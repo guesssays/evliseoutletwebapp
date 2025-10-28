@@ -99,12 +99,11 @@ export const HomeScrollMemory = {
     if (y <= 0) return;
 
     // На время восстановления — заглушаем ваш ScrollReset (если подключён)
-    try { window.ScrollReset?.suppress?.(800); } catch {}
+    try { window.ScrollReset?.suppress?.(900); window.ScrollReset?.quiet?.(900); } catch {}
 
     // Ждём кадр, чтобы DOM дорисовался
     await new Promise(r => requestAnimationFrame(r));
 
-    // Если роутер шлёт событие «главная смонтирована» — к этому моменту grid уже есть
     const view = document.getElementById('view') || document.body;
 
     // Чуть дёрнуть вверх, чтобы браузер не заякорился на старых значениях
@@ -121,47 +120,51 @@ export const HomeScrollMemory = {
 
   /** Инициализировать слушатели. Можно передать router, если он есть. */
   mount(router) {
-    // 1) Если есть роутер со своими эвентами — используем их.
-    //    — при любом роут-чейндже: сохраняем скролл, если уходим с главной
-    //    — при монтировании главной: восстанавливаем
-    let usedRouter = false;
+    // 0) Клик-перехват: если кликаем по ссылке из главной — сохраняем ДО навигации
+    document.addEventListener('click', (e)=>{
+      const a = e.target.closest('a[href^="#/"]');
+      if (!a) return;
+      if (!isHome()) return;
 
+      const href = String(a.getAttribute('href')||'');
+      // навигация с главной на любой другой экран
+      if (href !== '#/' && href !== '#') {
+        this.saveIfHome();
+      }
+    }, { capture: true });
+
+    // 1) Если есть роутер-эмиттер — используем его события (опционально)
+    let usedRouter = false;
     try {
       if (router && typeof router.on === 'function') {
         usedRouter = true;
-
-        // До смены маршрута — сохранить, если стояли на главной
-        router.on('before-navigate', () => {
-          this.saveIfHome();
-        });
-
-        // Когда главная отрендерена вашим кодом (если у вас есть такое событие)
-        window.addEventListener('view:home-mounted', () => {
-          this.restoreIfHome();
-        });
-
-        // Подстраховка: после любой навигации — попытка восстановления, если это главная
-        router.on('after-navigate', () => {
-          this.restoreIfHome();
-        });
+        router.on('before-navigate', () => { this.saveIfHome(); });
+        window.addEventListener('view:home-mounted', () => { this.restoreIfHome(); });
+        router.on('after-navigate', () => { this.restoreIfHome(); });
       }
     } catch {}
 
-    // 2) Без роутера — базовая стратегия через hashchange.
+    // 2) Без роутера — надёжная стратегия через hashchange с памятью предыдущего состояния
     if (!usedRouter) {
+      let lastIsHome = isHome();
       window.addEventListener('hashchange', () => {
-        // при уходе с главной — сохраним (сначала текущий hash ещё «старый» в beginning-phase)
-        // поэтому сделаем двойной шаг: сразу сохраним, затем через тик восстановим если пришли на главную
-        this.saveIfHome();
-        setTimeout(() => this.restoreIfHome(), 0);
+        const wasHome = lastIsHome;
+        const nowHome = isHome();
+        if (wasHome && !nowHome) {
+          // уходим с главной
+          this.saveIfHome();
+        } else if (!wasHome && nowHome) {
+          // пришли на главную
+          this.restoreIfHome();
+        }
+        lastIsHome = nowHome;
       });
     }
 
-    // 3) Старт приложения: если попали на главную — восстановим
-    // (даём шанс роутеру смонтировать home)
+    // 3) Старт приложения: если мы уже на главной — попытаться восстановить
     setTimeout(() => this.restoreIfHome(), 0);
 
-    // 4) Подстраховка на bfcache возврат (Safari/IOS)
+    // 4) Подстраховка на bfcache (Safari/iOS)
     window.addEventListener('pageshow', (e) => {
       if (e && e.persisted) {
         setTimeout(() => this.restoreIfHome(), 0);

@@ -557,9 +557,17 @@ async function router(){
   setTabbarMenu(map[clean] || (inAdmin ? 'admin' : 'home'));
   hideProductHeader();
 
-  // ⬇️ НЕ сбрасываем скролл, если целевой роут — главная (части нет)
-  const isHomeRoute = (parts.length === 0);
-  if (!isHomeRoute) scrollTopNow();
+// 🔧 Новая логика: при переходе НА главную — восстанавливаем позицию;
+// при уходе С главной — сохраняем текущую позицию и сбрасываем скролл для новых экранов.
+const goingHome = (parts.length === 0);
+if (goingHome) {
+  try { ScrollReset.suppress(900); ScrollReset.quiet(900); } catch {}
+  await HomeScrollMemory.restoreIfHome();
+} else {
+  HomeScrollMemory.saveIfHome();
+  scrollTopNow();
+}
+
 
   // Админ-режим
   if (inAdmin){
