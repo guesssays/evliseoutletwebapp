@@ -1008,3 +1008,87 @@ body.has-cta .tabbar-inner .btn span{ color:#fff !important; }
   outline:none !important; border:none !important; box-shadow:inherit; background:transparent;
   content:none !important;
 }
+/* === PATCH: Fix-Header buttons must look exactly like hero buttons === */
+/* контейнер фикс-хедера — полностью прозрачный слой */
+.product-fixhdr,
+.product-fixhdr::before,
+.product-fixhdr::after{
+  background:transparent !important;
+  border:none !important;
+  outline:none !important;
+  box-shadow:none !important;
+  filter:none !important;
+  mix-blend-mode:normal !important;
+}
+
+/* сами кнопки = как .hero-btn */
+.product-fixhdr .fixbtn{
+  width:48px !important;
+  height:48px !important;
+  border-radius:999px !important;
+  display:grid !important;
+  place-items:center !important;
+
+  background:#fff !important;                /* белые как в hero */
+  border:1px solid var(--stroke) !important; /* та же тонкая рамка */
+  box-shadow:var(--shadow) !important;       /* та же тень */
+  color:var(--text) !important;              /* иконки через currentColor */
+
+  pointer-events:auto !important;
+  outline:none !important;
+  background-image:none !important;          /* глушим возможные градиенты */
+}
+
+/* размеры и поведение иконок совпадают с hero */
+.product-fixhdr .fixbtn i,
+.product-fixhdr .fixbtn svg{
+  width:22px !important;
+  height:22px !important;
+  stroke:currentColor !important;
+  fill:none !important;
+}
+
+/* активное сердце — тот же розовый */
+#btnFixFav.active .lucide-heart{
+  color:#ff4d5a !important;
+  fill:currentColor !important;
+  stroke:none !important;
+}
+
+/* позиции — как было, но без влияния внешних слоёв */
+#btnFixBack{
+  position:absolute !important;
+  left:12px !important;
+  top:calc(6px + var(--safe-top)) !important;
+}
+#btnFixFav{
+  position:absolute !important;
+  right:12px !important;
+  top:calc(6px + var(--safe-top)) !important;
+}
+
+/* фокус и нажатие — как у hero */
+.product-fixhdr .fixbtn:focus-visible{
+  outline:2px solid #121111 !important;
+  outline-offset:3px !important;
+}
+.product-fixhdr .fixbtn:active{
+  transform:translateY(1px) !important;
+}
+
+/* на всякий — убираем любые декоративные псевдоэлементы */
+.product-fixhdr .fixbtn::before,
+.product-fixhdr .fixbtn::after{
+  content:none !important;
+  display:none !important;
+}
+
+/* одинаково и в тёмной теме: кнопки остаются белыми */
+@media (prefers-color-scheme: dark){
+  .product-fixhdr .fixbtn{
+    background:#ffffff !important;
+    border:1px solid var(--stroke) !important;
+    color:#ffffff !important; /* иконки будут белыми? ↓ исправим на тёмный текст */
+    color:#121111 !important; /* финально: как в hero */
+  }
+}

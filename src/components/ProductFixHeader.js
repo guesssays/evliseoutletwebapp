@@ -1,4 +1,4 @@
-// Фикс-хедер карточки товара: доступность, синхронизация с фаворитом, управление показом
+// Фикс-хедер карточки товара: доступность, синхронизация с фаворитом, стабилизация нажатий
 // Экспорт: activateProductFixHeader, deactivateProductFixHeader, setFavActive
 
 let _state = {
@@ -16,6 +16,7 @@ let _state = {
   _unbindDetectors: [],
   _onFavChanged: null,
   _handlers: { backClick:null, backPtr:null, favClick:null, favPtr:null },
+  _pressGuard: { back:0, fav:0 }, // анти-дабл-тап
 };
 
 function qs(id){ return document.getElementById(id); }
@@ -90,7 +91,6 @@ function a11yHide(el){
   if (!el) return;
   try { if (el.contains(document.activeElement)) document.activeElement.blur(); } catch {}
   el.classList.remove('show');
-  // двойной rAF, чтобы SR не ругались на aria-hidden с фокусом внутри
   requestAnimationFrame(()=>{ requestAnimationFrame(()=>{
     el.setAttribute('aria-hidden', 'true');
     el.setAttribute('inert', '');
@@ -126,7 +126,6 @@ function onScrollCheck(){
 /* -------- безопасный назад -------- */
 function safeBack(){
   try{
-    // если в истории почти нечего — уведём на главную
     if (history.length <= 1){
       const h = String(location.hash||'');
       if (!h || h.startsWith('#/product/')) location.hash = '#/';
@@ -139,37 +138,50 @@ function safeBack(){
   }
 }
 
+/* -------- анти-дабл-тап (pointerup + click в одном тапе) -------- */
+function handleOnce(key, fn){
+  return (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const now = Date.now();
+    if (now - (_state._pressGuard[key]||0) < 300) return; // игнорим дубликат в 300мс
+    _state._pressGuard[key] = now;
+    try { fn(); } catch {}
+  };
+}
+
 function bindListeners(){
   if (_state.listenersBound) return;
   _state.listenersBound = true;
 
-  // Именованные обработчики, чтобы снимать их корректно
-  const backHandler = (e)=>{ e.preventDefault(); e.stopPropagation(); (_state.onBack || safeBack)(); };
-  const backPtr     = (e)=>{ e.preventDefault(); e.stopPropagation(); (_state.onBack || safeBack)(); };
-
-  const favHandler  = (e)=>{ 
-    e.preventDefault(); e.stopPropagation();
+  const backDo = ()=>{ (_state.onBack || safeBack)(); };
+  const favDo  = ()=>{ 
     _state.onFavToggle && _state.onFavToggle();
+    // после внешнего тоггла — читаем актуальное значение у источника
     try { setFavActive(!!_state.isFav?.()); } catch {}
-  };
-  const favPtr      = (e)=>{ 
-    e.preventDefault(); e.stopPropagation();
-    _state.onFavToggle && _state.onFavToggle();
-    try { setFavActive(!!_state.isFav?.()); } catch {}
+    // и транслируем наверх (на случай, если onFavToggle не шлёт событие сам)
+    try {
+      window.dispatchEvent(new CustomEvent('fav:changed', { detail:{ active: !!_state.isFav?.() } }));
+    } catch {}
   };
 
-  // Сохраним ссылки — пригодятся при removeEventListener
+  // обёртки с дедупликацией
+  const backHandler = handleOnce('back', backDo);
+  const favHandler  = handleOnce('fav',  favDo);
+
+  // Сохраняем ссылки для removeEventListener
   _state._handlers.backClick = backHandler;
-  _state._handlers.backPtr   = backPtr;
+  _state._handlers.backPtr   = backHandler;
   _state._handlers.favClick  = favHandler;
-  _state._handlers.favPtr    = favPtr;
+  _state._handlers.favPtr    = favHandler;
 
-  // Надёжные клики + дублируем pointerup для некоторых webview
+  // Надёжно: в некоторых webview надёжнее слушать и click, и pointerup,
+  // но с анти-дабл-тапом это безопасно.
+  _state.back?.addEventListener('pointerup', backHandler, { passive:false });
   _state.back?.addEventListener('click',     backHandler, { passive:false });
-  _state.back?.addEventListener('pointerup', backPtr,     { passive:false });
 
+  _state.fav?.addEventListener('pointerup',  favHandler,  { passive:false });
   _state.fav?.addEventListener('click',      favHandler,  { passive:false });
-  _state.fav?.addEventListener('pointerup',  favPtr,      { passive:false });
 
   // Подписки на скролл-контейнеры
   _state.scrollTargets = getScrollTargets();
@@ -186,19 +198,17 @@ function bindListeners(){
     }
   }
 
-  // Глобальная синхронизация фаворита
+  // Глобальная синхронизация фаворита (из Hero и т.д.)
   _state._onFavChanged = ()=> {
     try { setFavActive(!!_state.isFav?.()); } catch {}
   };
   window.addEventListener('fav:changed', _state._onFavChanged);
 }
 
-
 function unbindListeners(){
   if (!_state.listenersBound) return;
   _state.listenersBound = false;
 
-  // Снимаем обработчики БЕЗ клонирования DOM
   try{
     if (_state.back){
       _state.back.removeEventListener('click',     _state._handlers.backClick);
@@ -211,6 +221,7 @@ function unbindListeners(){
   }catch{}
 
   _state._handlers = { backClick:null, backPtr:null, favClick:null, favPtr:null };
+  _state._pressGuard = { back:0, fav:0 };
 
   for (const t of _state.scrollTargets){
     if (t === window){
@@ -233,14 +244,14 @@ function unbindListeners(){
   }
 }
 
-
 /** Публично: синхронизация состояния «избранного» */
 export function setFavActive(on){
   try {
     const b = _state.fav || qs('btnFixFav');
     if (!b) return;
-    b.classList.toggle('active', !!on);
-    b.setAttribute('aria-pressed', String(!!on));
+    const val = !!on;
+    b.classList.toggle('active', val);
+    b.setAttribute('aria-pressed', String(val));
   } catch {}
 }
 
@@ -283,12 +294,13 @@ export function activateProductFixHeader({
 export function deactivateProductFixHeader(){
   hideFixHeader();
   unbindListeners();
-_state = {
-  root:null, back:null, fav:null,
-  statHeader:_state.statHeader,
-  onBack:null, onFavToggle:null, isFav:null,
-  threshold:0, shown:false, listenersBound:false,
-  scrollTargets:[], _unbindDetectors:[], _onFavChanged:null,
-  _handlers:{ backClick:null, backPtr:null, favClick:null, favPtr:null },
-};
+  _state = {
+    root:null, back:null, fav:null,
+    statHeader:_state.statHeader,
+    onBack:null, onFavToggle:null, isFav:null,
+    threshold:0, shown:false, listenersBound:false,
+    scrollTargets:[], _unbindDetectors:[], _onFavChanged:null,
+    _handlers:{ backClick:null, backPtr:null, favClick:null, favPtr:null },
+    _pressGuard:{ back:0, fav:0 },
+  };
 }

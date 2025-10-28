@@ -414,8 +414,8 @@ export function renderProduct({id}){
     </div>`;
 
   window.lucide?.createIcons && lucide.createIcons();
- // отрисовать «Похожие»
- drawRelatedCards(related);
+  // отрисовать «Похожие»
+  drawRelatedCards(related);
   // help modal
   document.getElementById('cbHelpBtn')?.addEventListener('click', showCashbackHelpModal);
 
@@ -458,24 +458,47 @@ export function renderProduct({id}){
   // Навигация назад
   document.getElementById('goBack').onclick=()=> history.back();
 
-const favBtn = document.getElementById('favBtn');
-if (favBtn) {
-  favBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    const nowActive = toggleFav(p.id);
-    favBtn.classList.toggle('active', nowActive);
-    favBtn.setAttribute('aria-pressed', String(nowActive));
+  // === Глобальный синк избранного (ЕДИНОЖДЫ на рендер страницы) ===
+  function onFavSync(ev){
+    try{
+      const evId = String(ev?.detail?.id ?? '');
+      if (evId && evId !== String(p.id)) return; // событие про другой товар — игнор
 
-    // синхронизируем фикс-хедер
-    setFixFavActive(nowActive);
+      const on = !!isFav(p.id);
 
-    // пингуем глобально (если открыт фикс-хедер — он поймает)
-    window.dispatchEvent(new CustomEvent('fav:changed', {
-      detail: { id: p.id, active: nowActive }
-    }));
-  });
-}
+      // Обновляем сердечко в герое
+      const heroFav = document.getElementById('favBtn');
+      if (heroFav) {
+        heroFav.classList.toggle('active', on);
+        heroFav.setAttribute('aria-pressed', String(on));
+      }
 
+      // И фикс-хедер
+      setFixFavActive(on);
+    }catch{}
+  }
+  window.addEventListener('fav:changed', onFavSync);
+
+  // Сердечко в герое — локальный клик без регистрации других слушателей
+  const favBtn = document.getElementById('favBtn');
+  if (favBtn) {
+    favBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const nowActive = toggleFav(p.id);
+
+      // локально обновили героевскую кнопку
+      favBtn.classList.toggle('active', nowActive);
+      favBtn.setAttribute('aria-pressed', String(nowActive));
+
+      // синкнули фикс-хедер
+      setFixFavActive(nowActive);
+
+      // разослали событие всем заинтересованным
+      window.dispatchEvent(new CustomEvent('fav:changed', {
+        detail: { id: p.id, active: nowActive }
+      }));
+    });
+  }
 
   // Галерея
   const thumbs = document.getElementById('thumbs');
@@ -556,6 +579,7 @@ if (favBtn) {
     if (!h.startsWith('#/product/') && !h.startsWith('#/p/')) {
       deactivateProductFixHeader();
       window.removeEventListener('hashchange', _onHashChange);
+      window.removeEventListener('fav:changed', onFavSync); // снять слушатель при уходе
     }
   };
   window.addEventListener('hashchange', _onHashChange);
