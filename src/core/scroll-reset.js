@@ -1,5 +1,6 @@
 // src/core/scroll-reset.js
-// Жёсткий, многокадровый сброс скролла + подавление и «тихое окно» для интра-кликов.
+// Жёсткий, многокадровый сброс скролла + подавление и «тихое окно»,
+// ТЕПЕРЬ: работает ТОЛЬКО возле навигации (hashchange) или по явному allow.
 
 function _targets() {
   const list = [];
@@ -56,25 +57,47 @@ function _remainMs(untilVar) {
 }
 let _pendingTimer = null;
 
+/* ===== Окно НАВИГАЦИИ: разрешаем сброс только рядом с hashchange/start ===== */
+const NAV_WINDOW_MS_DEFAULT = 1600;
+let __allowScrollResetUntil = 0;
+
+function _openNavWindow(ms = NAV_WINDOW_MS_DEFAULT) {
+  __allowScrollResetUntil = Date.now() + Math.max(0, ms|0);
+}
+function _navRemainMs() {
+  return Math.max(0, __allowScrollResetUntil - Date.now());
+}
+function _isResetAllowed(optsAllowFlag) {
+  // 1) явное разрешение (e.g., для клиентских событий)
+  if (optsAllowFlag) return true;
+  // 2) только в окне навигации (после hashchange/start)
+  return _navRemainMs() > 0;
+}
+
 export const ScrollReset = {
   /**
    * Просим сброс скролла.
-   * Если включено подавление (suppress) — переносим на конец окна.
-   * Если включено «тихое окно» (quiet) — просто игнорируем запрос.
+   * Работает только:
+   *  - в течение «окна навигации» после hashchange/start
+   *  - или если передан opts.allow === true
+   * Плюс учитывает suppress/quiet.
    */
-  request(containerEl) {
-    // если идёт восстановление главной — вообще ничего не делаем
-
+  request(containerEl, opts = {}) {
+    const allow = !!opts.allow;
 
     // «тихое окно»: полностью игнорируем без переназначений
     if (_remainMs('__dropScrollResetUntil') > 0) return;
 
+    // не в окне навигации и без явного allow — выходим (не дёргаем страницу)
+    if (!_isResetAllowed(allow)) return;
+
+    // отложим на конец suppress-окна
     const wait = _remainMs('__suppressScrollResetUntil');
     if (wait > 0) {
       if (_pendingTimer) clearTimeout(_pendingTimer);
       _pendingTimer = setTimeout(() => {
         _pendingTimer = null;
-        this.request(containerEl);
+        this.request(containerEl, opts);
       }, wait + 12);
       return;
     }
@@ -88,16 +111,18 @@ export const ScrollReset = {
     });
   },
 
-
-  forceNow() {
-
+  /**
+   * Мгновенный сброс — те же правила (нужно окно навигации или opts.allow).
+   */
+  forceNow(opts = {}) {
+    const allow = !!opts.allow;
     if (_remainMs('__dropScrollResetUntil') > 0) return;
     if (_remainMs('__suppressScrollResetUntil') > 0) return;
+    if (!_isResetAllowed(allow)) return;
     _scheduleFrames();
   },
 
-
-  /** Перенести любые ближайшие сбросы на ms миллисекунд (для навигации/back). */
+  /** Перенести ближайшие сбросы на ms миллисекунд (для back/внутренней навигации). */
   suppress(ms = 400) {
     const until = Date.now() + Math.max(0, ms|0);
     window.__suppressScrollResetUntil = until;
@@ -106,7 +131,7 @@ export const ScrollReset = {
 
   /**
    * Полностью «заглушить» любые запросы на ms миллисекунд (без переотложений).
-   * Используем для интра-кликов (например, сердце), чтобы не сработали чужие request().
+   * Используем для интра-кликов (например, сердечко), чтобы не сработали чужие request().
    */
   quiet(ms = 600) {
     const until = Date.now() + Math.max(0, ms|0);
@@ -114,28 +139,39 @@ export const ScrollReset = {
     if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
   },
 
-// src/core/scroll-reset.js
-// (только один апдейт внутри mount())
+  /**
+   * Опционально: можно явным вызовом открыть окно навигации, если где-то
+   * выполняется переход без hashchange (редко, но пусть будет).
+   */
+  allow(ms = NAV_WINDOW_MS_DEFAULT) {
+    _openNavWindow(ms);
+  },
 
-mount() {
-  try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch {}
+  // (только один апдейт внутри mount())
+  mount() {
+    try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch {}
 
-  const onPageShow = (e) => {
-    // если планируется восстановление главной — не трогаем
+    // При старте дать небольшое окно для первичного сброса
+    _openNavWindow(NAV_WINDOW_MS_DEFAULT);
 
-    if (e && e.persisted) {
-      requestAnimationFrame(() => this.request(document.getElementById('view')));
-    }
-  };
-  window.addEventListener('pageshow', onPageShow);
+    // Любая смена хеша — открыть окно навигации (и скролл можно сбрасывать)
+    window.addEventListener('hashchange', () => _openNavWindow(NAV_WINDOW_MS_DEFAULT), { capture: true });
 
-requestAnimationFrame(() => this.request(document.getElementById('view')));
+    const onPageShow = (e) => {
+      // Возвращение из bfcache — тоже считаем как «навигацию»
+      if (e && e.persisted) {
+        _openNavWindow(NAV_WINDOW_MS_DEFAULT);
+        requestAnimationFrame(() => this.request(document.getElementById('view'), { allow: true }));
+      }
+    };
+    window.addEventListener('pageshow', onPageShow);
 
-
-}
-
-
+    // Первичный запрос — разрешаем явно
+    requestAnimationFrame(() => this.request(document.getElementById('view'), { allow: true }));
+  }
 };
 
-// Глобальный канал
-window.addEventListener('client:scroll:top', () => ScrollReset.request(document.getElementById('view')));
+// Глобальный канал: разрешаем явно (кнопка «Наверх» или принудительный скролл вверх)
+window.addEventListener('client:scroll:top', () =>
+  ScrollReset.request(document.getElementById('view'), { allow: true })
+);
