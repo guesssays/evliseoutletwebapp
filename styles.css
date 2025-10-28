@@ -1247,3 +1247,70 @@ body.admin-mode #scrollTopBtn{ display: none !important; }
 
 /* на всякий — поверх любых локальных перекрытий */
 #scrollTopBtn::before, #scrollTopBtn::after{ content: none !important; display: none !important; }
+/* === ScrollTop: glassmorphism + выше таббара (EOF patch) === */
+:root{
+  /* удобный зазор над таббаром (можешь менять на вкус) */
+  --scrolltop-gap: 26px;
+}
+
+/* базовый вид: круглая, «жидкое стекло», мягкая тень */
+#scrollTopBtn{
+  width:56px;
+  height:56px;
+  border-radius:999px;
+  right:14px;
+  bottom: calc(var(--tabbar-h) + var(--safe) + var(--scrolltop-gap)) !important;
+
+  /* glass */
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.78) 0%, rgba(255,255,255,.62) 100%) !important;
+  backdrop-filter: saturate(1.2) blur(10px) !important;
+  -webkit-backdrop-filter: saturate(1.2) blur(10px) !important;
+  border: 1px solid rgba(255,255,255,.65) !important;
+  box-shadow:
+    0 10px 30px rgba(0,0,0,.14),
+    inset 0 1px 0 rgba(255,255,255,.35) !important;
+
+  color: var(--text) !important;
+  display:grid; place-items:center;
+  transition: transform .18s ease, opacity .18s ease, box-shadow .18s ease;
+  z-index: var(--z-scrolltop, 120) !important;
+}
+
+/* иконка — как и прежде */
+#scrollTopBtn i,
+#scrollTopBtn svg{
+  width:22px; height:22px;
+  stroke: currentColor; fill: none;
+}
+
+/* hover/active/focus — чуть более «живые» */
+@media (hover:hover){
+  #scrollTopBtn:hover{
+    box-shadow:
+      0 14px 36px rgba(0,0,0,.18),
+      inset 0 1px 0 rgba(255,255,255,.42) !important;
+  }
+}
+#scrollTopBtn:active{ transform: translateY(1px); }
+#scrollTopBtn:focus-visible{
+  outline:2px solid rgba(18,17,17,.9);
+  outline-offset:3px;
+}
+
+/* супер-узкие — немного компактнее и ближе к краю */
+@media (max-width:380px){
+  #scrollTopBtn{ right:10px; width:52px; height:52px; }
+}
+
+/* тёмная тема — стекло чуть плотнее, но остаётся белым */
+@media (prefers-color-scheme: dark){
+  #scrollTopBtn{
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.72) 0%, rgba(255,255,255,.56) 100%) !important;
+    border-color: rgba(255,255,255,.52) !important;
+    box-shadow:
+      0 12px 34px rgba(0,0,0,.28),
+      inset 0 1px 0 rgba(255,255,255,.28) !important;
+  }
+}
