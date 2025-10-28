@@ -1,32 +1,73 @@
-// src/components/ScrollTop.js
 // Кнопка «Наверх»: корректная доступность и синхронизация hidden/aria-hidden/inert
-// + поддержка скролла не только у window
+// + поддержка скролла не только у window, но и у внутренних контейнеров
 
-function getScrollContainerCandidates(){
-  const list = [];
-  if (document.scrollingElement) list.push(document.scrollingElement);
-  const view = document.getElementById('view');
-  if (view) list.push(view);
-  const app = document.getElementById('app');
-  if (app) list.push(app);
-  list.push(window);
-  return Array.from(new Set(list));
+/* ===================== UNIVERSAL SCROLL ROOT DETECT ===================== */
+function classicCandidates(){
+  const arr = [];
+  if (document.scrollingElement) arr.push(document.scrollingElement);
+  const view = document.getElementById('view'); if (view) arr.push(view);
+  const app  = document.getElementById('app');  if (app) arr.push(app);
+  arr.push(window);
+  return arr;
 }
+
+let __activeScrollTarget = null;
+
+function findAnyScrollable(){
+  const all = Array.from(document.querySelectorAll('body, body *'));
+  for (const el of all){
+    try{
+      const cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+      const oy = cs.overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) {
+        return el;
+      }
+    }catch{}
+  }
+  return null;
+}
+
+function getScrollTargets(){
+  const out = new Set();
+  if (__activeScrollTarget) out.add(__activeScrollTarget);
+  for (const c of classicCandidates()) out.add(c);
+  const auto = findAnyScrollable();
+  if (auto) out.add(auto);
+  return Array.from(out);
+}
+
 function getScrollY(){
-  const cands = getScrollContainerCandidates();
+  if (__activeScrollTarget && __activeScrollTarget !== window){
+    return __activeScrollTarget.scrollTop || 0;
+  }
+  const cands = getScrollTargets();
   for (const c of cands){
     if (c === window){
       const y = window.scrollY || document.documentElement.scrollTop || 0;
       if (y) return y;
-    } else {
-      if (c.scrollHeight > c.clientHeight) return c.scrollTop || 0;
+    } else if (c && c.scrollHeight > c.clientHeight){
+      const y = c.scrollTop || 0;
+      if (y) return y;
     }
   }
-  return window.scrollY || document.documentElement.scrollTop || 0;
+  return 0;
 }
+
+function bindActiveTargetDetector(node){
+  const onWheel = (e)=>{ __activeScrollTarget = e.currentTarget; };
+  const onTouch = (e)=>{ __activeScrollTarget = e.currentTarget; };
+  node.addEventListener('wheel', onWheel, { passive:true });
+  node.addEventListener('touchmove', onTouch, { passive:true });
+  return ()=> {
+    node.removeEventListener('wheel', onWheel);
+    node.removeEventListener('touchmove', onTouch);
+  };
+}
+/* ====================================================================== */
+
 function scrollToTop(){
-  // скроллим и window, и контейнеры — кто “главный”, тот дернется
-  const cands = getScrollContainerCandidates();
+  const cands = getScrollTargets();
   let did = false;
   for (const c of cands){
     if (c === window){
@@ -38,7 +79,7 @@ function scrollToTop(){
     }
   }
   if (!did){
-    try { document.documentElement.scrollTo({ top:0, behavior:'smooth' }); } catch {}
+    try { (document.documentElement || document.body).scrollTo({ top:0, behavior:'smooth' }); } catch {}
   }
 }
 
@@ -69,9 +110,11 @@ export function mountScrollTop(threshold = 400) {
     scrollToTop();
   });
 
-  // слушаем все возможные скролл-контейнеры
-  const targets = getScrollContainerCandidates();
+  // слушаем все возможные скролл-контейнеры + фиксируем активный
+  const targets = getScrollTargets();
+  const unbinds = [];
   for (const t of targets){
+    unbinds.push(bindActiveTargetDetector(t));
     if (t === window){
       window.addEventListener('scroll', update, { passive: true });
       window.addEventListener('resize', update);
@@ -80,8 +123,24 @@ export function mountScrollTop(threshold = 400) {
       t.addEventListener('resize', update);
     }
   }
+
   window.addEventListener('hashchange', () => setTimeout(update, 0));
 
+  // старт
   hide();
   setTimeout(update, 0);
+
+  // (опционально) вернуть функцию для отписки, если когда-нибудь понадобится размонтировать
+  return () => {
+    for (const t of targets){
+      if (t === window){
+        window.removeEventListener('scroll', update);
+        window.removeEventListener('resize', update);
+      } else {
+        t.removeEventListener('scroll', update);
+        t.removeEventListener('resize', update);
+      }
+    }
+    unbinds.forEach(fn=>{ try{ fn(); }catch{} });
+  };
 }
