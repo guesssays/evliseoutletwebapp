@@ -1155,3 +1155,8 @@ body.has-cta .tabbar-inner .btn span{ color:#fff !important; }
   pointer-events: auto !important;
 }
 #productFixHdr{ pointer-events:auto !important; }
+/* === Fixed Product Header — click safety === */
+#productFixHdr { pointer-events: auto; }
+#productFixHdr button,
+#productFixHdr .btn,
+#productFixHdr [role="button"] { pointer-events: auto; }
