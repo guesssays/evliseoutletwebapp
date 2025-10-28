@@ -458,14 +458,24 @@ export function renderProduct({id}){
   // Навигация назад
   document.getElementById('goBack').onclick=()=> history.back();
 
-favBtn.onclick = ()=>{
-  toggleFav(p.id);
-  const active = isFav(p.id);
-  favBtn.classList.toggle('active', active);
-  favBtn.setAttribute('aria-pressed', String(active));
-  setFixFavActive(active);
-  window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: p.id, active } }));
-};
+const favBtn = document.getElementById('favBtn');
+if (favBtn) {
+  favBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    const nowActive = toggleFav(p.id);
+    favBtn.classList.toggle('active', nowActive);
+    favBtn.setAttribute('aria-pressed', String(nowActive));
+
+    // синхронизируем фикс-хедер
+    setFixFavActive(nowActive);
+
+    // пингуем глобально (если открыт фикс-хедер — он поймает)
+    window.dispatchEvent(new CustomEvent('fav:changed', {
+      detail: { id: p.id, active: nowActive }
+    }));
+  });
+}
+
 
   // Галерея
   const thumbs = document.getElementById('thumbs');

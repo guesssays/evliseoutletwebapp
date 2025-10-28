@@ -283,19 +283,12 @@ export function activateProductFixHeader({
 export function deactivateProductFixHeader(){
   hideFixHeader();
   unbindListeners();
-  _state = {
-    root: null,
-    back: null,
-    fav: null,
-    statHeader: _state.statHeader,
-    onBack: null,
-    onFavToggle: null,
-    isFav: null,
-    threshold: 0,
-    shown: false,
-    listenersBound: false,
-    scrollTargets: [],
-    _unbindDetectors: [],
-    _onFavChanged: null,
-  };
+_state = {
+  root:null, back:null, fav:null,
+  statHeader:_state.statHeader,
+  onBack:null, onFavToggle:null, isFav:null,
+  threshold:0, shown:false, listenersBound:false,
+  scrollTargets:[], _unbindDetectors:[], _onFavChanged:null,
+  _handlers:{ backClick:null, backPtr:null, favClick:null, favPtr:null },
+};
 }
