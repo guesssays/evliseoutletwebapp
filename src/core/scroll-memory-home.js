@@ -1,23 +1,20 @@
 // src/core/scroll-memory-home.js
-// Память скролла для главной: сохраняем при уходе, восстанавливаем при возвращении.
-// Работает с любым скролл-контейнером, ждёт рендер и картинки,
-// не конфликтует с вашим ScrollReset (сам подавляет его на время восстановления).
+// Память скролла главной
 
-/* ===== утилиты (совпадают по духу с ScrollTop.js) ===== */
+/* ===== утилиты ===== */
 function isHome() {
+  // Главная только когда хэш пустой, '#', '#/', или '#/?...'
   const raw = String(location.hash || '');
   if (raw === '' || raw === '#') return true;
 
-  let path = raw.slice(1);
-  if (path.startsWith('?')) return true;
-  if (path === '' || path === '/') return true;
-  if (path.startsWith('/?')) return true;
+  let path = raw.slice(1);          // убираем '#'
+  const [pure, query=''] = path.split('?');
+  const clean = String(pure || '').replace(/^\/+/, ''); // срезаем ведущие '/'
 
-  // если роутер уже отрисовал главную — будет грид
-  if (document.getElementById('productGrid')) return true;
+  // пустой путь ('' или '/'), любые query поверх корня — считаем главной
+  if (clean === '' && (query === '' || query.length >= 0)) return true;
 
-  path = path.split('?')[0].replace(/^\/+/, '');
-  return path === '';
+  return false;
 }
 
 function classicCandidates(){
@@ -74,75 +71,71 @@ function afterImagesIn(el) {
   ]);
 }
 
-/* ===== ключ в sessionStorage (переживает переходы в рамках сессии) ===== */
 const KEY = 'home:scrollY';
 
-/* ===== публичный API ===== */
 export const HomeScrollMemory = {
-  /** Сохранить текущий скролл, если мы на главной. */
   saveIfHome() {
     if (!isHome()) return;
     const y = getScrollY();
     try { sessionStorage.setItem(KEY, String(Math.max(0, y|0))); } catch {}
   },
 
-  /** Сбросить сохранённое (по желанию, обычно не нужно). */
   clear() {
     try { sessionStorage.removeItem(KEY); } catch {}
   },
 
-  /** Восстановить скролл, если есть сохранённое значение. */
   async restoreIfHome() {
+    // быстрая проверка маршрута
     if (!isHome()) return;
+
     let y = 0;
     try { y = Number(sessionStorage.getItem(KEY) || 0) || 0; } catch {}
     if (y <= 0) return;
 
-    // ⚠️ Важно: ставим флаг прямо здесь, чтобы ScrollReset не вмешивался
     try {
+      // блокируем любые внешние сбросы на время восстановления
       window.__HOME_WILL_RESTORE__ = true;
-      // Блокируем любые request() от ScrollReset на время восстановления
       window.ScrollReset?.quiet?.(1500);
       window.ScrollReset?.suppress?.(1500);
     } catch {}
 
     try {
-      // Дать DOM дорендериться
+      // дать DOM дорендериться
       await new Promise(r => requestAnimationFrame(r));
+
+      // 🔁 повторно убеждаемся, что всё ещё на главной (могли успеть уйти)
+      if (!isHome()) return;
+
       const view = document.getElementById('view') || document.body;
 
-      // Лёгкая «подкачка» в область
+      // «подкачка» в область
       scrollToY(Math.max(0, y - 1));
 
-      // Ждём ключевые изображения (но ограниченно по времени)
+      // ждём основные изображения (с таймаутом)
       await afterImagesIn(view);
 
-      // Двойной прострел позиции
+      // двойной прострел позиции
       scrollToY(y);
       await new Promise(r => requestAnimationFrame(r));
       scrollToY(y);
     } finally {
-      // сигнал ScrollReset: восстановление завершено
       try { window.__HOME_WILL_RESTORE__ = false; } catch {}
     }
   },
 
-  /** Инициализировать слушатели. Можно передать router, если он есть. */
   mount(router) {
-    // 0) Клик-перехват: если кликаем по ссылке из главной — сохраняем ДО навигации
+    // перехват кликов: уходим с главной — сохраняем позицию ДО навигации
     document.addEventListener('click', (e)=>{
       const a = e.target.closest('a[href^="#/"]');
       if (!a) return;
       if (!isHome()) return;
 
       const href = String(a.getAttribute('href')||'');
-      // навигация с главной на любой другой экран
       if (href !== '#/' && href !== '#') {
         this.saveIfHome();
       }
     }, { capture: true });
 
-    // 1) Если есть роутер-эмиттер — используем его события (опционально)
     let usedRouter = false;
     try {
       if (router && typeof router.on === 'function') {
@@ -153,27 +146,22 @@ export const HomeScrollMemory = {
       }
     } catch {}
 
-    // 2) Без роутера — надёжная стратегия через hashchange с памятью предыдущего состояния
     if (!usedRouter) {
       let lastIsHome = isHome();
       window.addEventListener('hashchange', () => {
         const wasHome = lastIsHome;
         const nowHome = isHome();
         if (wasHome && !nowHome) {
-          // уходим с главной
           this.saveIfHome();
         } else if (!wasHome && nowHome) {
-          // пришли на главную
           this.restoreIfHome();
         }
         lastIsHome = nowHome;
       });
     }
 
-    // 3) Старт приложения: если мы уже на главной — попытаться восстановить
     setTimeout(() => this.restoreIfHome(), 0);
 
-    // 4) Подстраховка на bfcache (Safari/iOS)
     window.addEventListener('pageshow', (e) => {
       if (e && e.persisted) {
         setTimeout(() => this.restoreIfHome(), 0);

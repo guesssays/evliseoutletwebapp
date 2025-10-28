@@ -114,25 +114,41 @@ export const ScrollReset = {
     if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
   },
 
-  mount() {
-    try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch {}
+// src/core/scroll-reset.js
+// (только один апдейт внутри mount())
 
-    const onPageShow = (e) => {
-      // если есть восстановление главной — не трогаем скролл
-      const wantHomeRestore = !!window.__HOME_WILL_RESTORE__ || ((sessionStorage.getItem('home:scrollY')|0) > 0 && (location.hash === '' || location.hash === '#/' || location.hash === '#'));
-      if (wantHomeRestore) return;
-      if (e && e.persisted) {
-        requestAnimationFrame(() => this.request(document.getElementById('view')));
-      }
-    };
-    window.addEventListener('pageshow', onPageShow);
+mount() {
+  try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch {}
 
-    // стартовый «кнут» тоже пропускаем, если впереди restore главной
-    const wantHomeRestoreStart = !!window.__HOME_WILL_RESTORE__ || ((sessionStorage.getItem('home:scrollY')|0) > 0 && (location.hash === '' || location.hash === '#/' || location.hash === '#'));
-    if (!wantHomeRestoreStart) {
+  const onPageShow = (e) => {
+    // если планируется восстановление главной — не трогаем
+    const wantHomeRestore =
+      !!window.__HOME_WILL_RESTORE__ ||
+      (isHomeHashOnly() && (sessionStorage.getItem('home:scrollY')|0) > 0);
+    if (wantHomeRestore) return;
+    if (e && e.persisted) {
       requestAnimationFrame(() => this.request(document.getElementById('view')));
     }
+  };
+  window.addEventListener('pageshow', onPageShow);
+
+  const wantHomeRestoreStart =
+    !!window.__HOME_WILL_RESTORE__ ||
+    (isHomeHashOnly() && (sessionStorage.getItem('home:scrollY')|0) > 0);
+  if (!wantHomeRestoreStart) {
+    requestAnimationFrame(() => this.request(document.getElementById('view')));
   }
+
+  // локальный хелпер без зависимости от DOM:
+  function isHomeHashOnly(){
+    const raw = String(location.hash || '');
+    if (raw === '' || raw === '#') return true;
+    const path = raw.slice(1);
+    const [pure] = path.split('?');
+    return String(pure||'').replace(/^\/+/, '') === '';
+  }
+}
+
 
 };
 
