@@ -227,8 +227,6 @@ export function renderProduct({id}){
       }
     </style>
 
-
-
     <div class="product">
       <!-- ГАЛЕРЕЯ -->
       <div class="p-hero">
@@ -371,7 +369,7 @@ export function renderProduct({id}){
   // Навигация назад
   document.getElementById('goBack').onclick=()=> history.back();
 
-  // Избранное
+  // Избранное (крупная кнопка в герое)
   const favBtn = document.getElementById('favBtn');
   favBtn.onclick = ()=>{
     toggleFav(p.id);
@@ -461,44 +459,58 @@ export function renderProduct({id}){
     const fix  = document.getElementById('productFixHdr');
     const btnBack = document.getElementById('btnFixBack');
     const btnFav  = document.getElementById('btnFixFav');
-    if (!stat || !fix || !btnBack || !btnFav) return;
+    if (!stat || !fix || !btnBack || !btnFav) {
+      console.warn('[ProductHdr] missing nodes -> no two-headers behavior');
+      return;
+    }
 
+    // Завершаем предыдущую сессию
     if (window._productHdrAbort){
       try{ window._productHdrAbort.abort(); }catch{}
     }
     const ctrl = new AbortController();
     window._productHdrAbort = ctrl;
 
+    // Стартовое состояние
     stat.classList.remove('hidden');
     fix.classList.remove('show');
     fix.setAttribute('aria-hidden','true');
 
+    // Кнопки
     btnBack.addEventListener('click', ()=> history.back(), { signal: ctrl.signal });
     setFixFavActive(favAtStart);
     btnFav.addEventListener('click', ()=>{
       toggleFav(p.id);
       const active = isFav(p.id);
       setFixFavActive(active);
-      const heroActive = favBtn.classList.contains('active');
-      if (heroActive !== active){
-        favBtn.classList.toggle('active', active);
-        favBtn.setAttribute('aria-pressed', String(active));
+      // синхронизируем «большое» сердце в герое
+      const hero = document.getElementById('favBtn');
+      if (hero) {
+        hero.classList.toggle('active', active);
+        hero.setAttribute('aria-pressed', String(active));
       }
     }, { signal: ctrl.signal });
 
+    // Показываем фикс-хедер после скролла
     const THRESHOLD = 24;
     const onScroll = ()=>{
-      const sc = window.scrollY || document.documentElement.scrollTop || 0;
+      const scDoc = document.documentElement.scrollTop || 0;
+      const scWin = window.scrollY || 0;
+      const sc = Math.max(scDoc, scWin);
       const showFix = sc > THRESHOLD;
       stat.classList.toggle('hidden', showFix);
       fix.classList.toggle('show', showFix);
       fix.setAttribute('aria-hidden', String(!showFix));
     };
+
     window.addEventListener('scroll', onScroll, { passive:true, signal: ctrl.signal });
+    document.addEventListener('scroll', onScroll, { passive:true, signal: ctrl.signal });
     onScroll();
 
+    // Очистка при уходе со страницы товара
     const cleanup = ()=>{
-      fix.classList.remove('show'); fix.setAttribute('aria-hidden','true');
+      fix.classList.remove('show');
+      fix.setAttribute('aria-hidden','true');
       stat.classList.remove('hidden');
       try{ ctrl.abort(); }catch{}
       if (window._productHdrAbort === ctrl) window._productHdrAbort = null;
@@ -508,16 +520,19 @@ export function renderProduct({id}){
     window.addEventListener('beforeunload', cleanup, { signal: ctrl.signal });
   }
 
-  function setFixFavActive(active){
-    const btnFav  = document.getElementById('btnFixFav');
-    if (!btnFav) return;
-    btnFav.classList.toggle('active', !!active);
-    btnFav.setAttribute('aria-pressed', String(!!active));
-  }
-
   if (related.length){
     drawRelatedCards(related);
   }
+}
+
+/* ===== функции вне renderProduct, доступные модулю ===== */
+
+/* Синхронизация состояния «сердца» в фикс-хедере */
+function setFixFavActive(active){
+  const btnFav  = document.getElementById('btnFixFav');
+  if (!btnFav) return;
+  btnFav.classList.toggle('active', !!active);
+  btnFav.setAttribute('aria-pressed', String(!!active));
 }
 
 /* карточки «Похожие» — используем шаблон #product-card (как в каталоге) */
@@ -1008,7 +1023,6 @@ function computeClothSize(chart, bust, waist, hips, height, weight, sizesOrder=[
   if (close && sizesOrder && sizesOrder.length){
     const iBest = sizesOrder.indexOf(best);
     const iSecond = sizesOrder.indexOf(second);
-    // если порядок понятен, аккуратно смещаемся
     if (tallOrHeavy && iBest>-1 && iBest < sizesOrder.length-1){
       finalSize = sizesOrder[iBest+1];
       adj = ' (учли рост/вес — взяли на полразмера больше)';
@@ -1018,7 +1032,6 @@ function computeClothSize(chart, bust, waist, hips, height, weight, sizesOrder=[
     }
   }
 
-  // Если в таблице есть явная колонка «рост», можем уточнить рекомендацию текстом
   if (!adj && idxHeight>-1 && height){
     if (height >= 190) adj = ' (рост высокий, ориентировались на длину/рост из таблицы)';
     else if (height <= 160) adj = ' (рост невысокий, ориентировались на длину/рост из таблицы)';
@@ -1069,5 +1082,5 @@ function closestOfCell(cell, target){
   const hi = Math.max(nums[0], nums[1]);
   if (target < lo) return lo;
   if (target > hi) return hi;
-  return target; // внутри диапазона — идеально
+  return target;
 }
