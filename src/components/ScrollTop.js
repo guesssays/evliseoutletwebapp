@@ -1,35 +1,57 @@
 // src/components/ScrollTop.js
-// Кнопка «Наверх»: показывается ТОЛЬКО на главной (#/), корректная доступность,
-// живые обработчики без одноразовости, поддержка внутренних скролл-контейнеров.
+// Кнопка «Наверх»: появляется ТОЛЬКО на главной (#/), корректная доступность,
+// живые обработчики без одноразовости, поддержка внутренних скролл-контейнеров,
+// безопасный ребиндинг при hashchange.
 
-/* ===================== UNIVERSAL SCROLL ROOT DETECT ===================== */
-function classicCandidates(){
+/* ================== ВСПОМОГАТЕЛЬНОЕ: ОПРЕДЕЛЕНИЕ ГЛАВНОЙ ================== */
+/**
+ * Возвращает true, если мы на главной:
+ *  - '', '#', '#/', '#/?...' и даже '#?utm=...'
+ */
+function isHome() {
+  const raw = String(location.hash || '');
+  if (raw === '' || raw === '#') return true;
+
+  // убираем ведущий '#'
+  let path = raw.slice(1); // например '/?utm=...' | '/' | '?a=1' | 'product/123'
+  if (path.startsWith('?')) return true;     // '#?utm=...'
+  if (path === '' || path === '/') return true;
+  if (path.startsWith('/?')) return true;    // '#/?utm=...'
+
+  // отрезаем query и ведущие слэши
+  path = path.split('?')[0].replace(/^\/+/, ''); // 'product/123' | '' (главная)
+  return path === '';
+}
+
+/* ============== ПОИСК СКРОЛЛ-КОНТЕЙНЕРА(ОВ) И ТЕКУЩЕГО СКРОЛЛА ============== */
+function classicCandidates() {
   const arr = [];
   if (document.scrollingElement) arr.push(document.scrollingElement);
   const view = document.getElementById('view'); if (view) arr.push(view);
-  const app  = document.getElementById('app');  if (app) arr.push(app);
+  const app  = document.getElementById('app');  if (app)  arr.push(app);
   arr.push(window);
   return arr;
 }
 
 let __activeScrollTarget = null;
 
-function findAnyScrollable(){
+/** Находим любой «живой» скролл-элемент в DOM (страховка под кастомные layout’ы). */
+function findAnyScrollable() {
   const all = Array.from(document.querySelectorAll('body, body *'));
-  for (const el of all){
-    try{
+  for (const el of all) {
+    try {
       const cs = getComputedStyle(el);
       if (cs.visibility === 'hidden' || cs.display === 'none') continue;
       const oy = cs.overflowY;
       if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) {
         return el;
       }
-    }catch{}
+    } catch {}
   }
   return null;
 }
 
-function getScrollTargets(){
+function getScrollTargets() {
   const out = new Set();
   if (__activeScrollTarget) out.add(__activeScrollTarget);
   for (const c of classicCandidates()) out.add(c);
@@ -38,16 +60,16 @@ function getScrollTargets(){
   return Array.from(out);
 }
 
-function getScrollY(){
-  if (__activeScrollTarget && __activeScrollTarget !== window){
+function getScrollY() {
+  if (__activeScrollTarget && __activeScrollTarget !== window) {
     return __activeScrollTarget.scrollTop || 0;
   }
   const cands = getScrollTargets();
-  for (const c of cands){
-    if (c === window){
+  for (const c of cands) {
+    if (c === window) {
       const y = window.scrollY || document.documentElement.scrollTop || 0;
       if (y) return y;
-    } else if (c && c.scrollHeight > c.clientHeight){
+    } else if (c && c.scrollHeight > c.clientHeight) {
       const y = c.scrollTop || 0;
       if (y) return y;
     }
@@ -55,47 +77,47 @@ function getScrollY(){
   return 0;
 }
 
-function bindActiveTargetDetector(node){
-  const onWheel = (e)=>{ __activeScrollTarget = e.currentTarget; };
-  const onTouch = (e)=>{ __activeScrollTarget = e.currentTarget; };
-  node.addEventListener('wheel', onWheel, { passive:true });
-  node.addEventListener('touchmove', onTouch, { passive:true });
-  return ()=> {
+function bindActiveTargetDetector(node) {
+  const onWheel = (e) => { __activeScrollTarget = e.currentTarget; };
+  const onTouch = (e) => { __activeScrollTarget = e.currentTarget; };
+  node.addEventListener('wheel', onWheel, { passive: true });
+  node.addEventListener('touchmove', onTouch, { passive: true });
+  return () => {
     node.removeEventListener('wheel', onWheel);
     node.removeEventListener('touchmove', onTouch);
   };
 }
-/* ====================================================================== */
 
-/** Главная страница? Разрешаем пустой хеш, '#', '#/' и вариации с query. */
-function isHome(){
-  const h = String(location.hash || '');
-  if (h === '' || h === '#' || h === '#/') return true;
-  // допустим '#/?utm=...' — тоже главная
-  if (h.startsWith('#/?')) return true;
-  return false;
-}
-
-function scrollToTop(){
+/* ========================= ПРОКРУТКА К ВЕРХУ (SMOOTH) ====================== */
+function scrollToTop() {
   const cands = getScrollTargets();
   let did = false;
-  for (const c of cands){
-    if (c === window){
+  for (const c of cands) {
+    if (c === window) {
       window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
       did = true;
-    } else if (c.scrollHeight > c.clientHeight){
+    } else if (c.scrollHeight > c.clientHeight) {
       c.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
       did = true;
     }
   }
-  if (!did){
-    try { (document.documentElement || document.body).scrollTo({ top:0, behavior:'smooth' }); } catch {}
+  if (!did) {
+    try { (document.documentElement || document.body).scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
   }
 }
 
+/* =============================== ПУБЛИЧНЫЙ API ============================== */
 export function mountScrollTop(threshold = 400) {
   const btn = document.getElementById('scrollTopBtn');
   if (!btn) return;
+
+  // защита от повторной инициализации
+  if (btn.dataset.bound === '1') {
+    // При повторном вызове просто принудительно пересчитаем состояние
+    try { btn.dispatchEvent(new Event('__force_update__')); } catch {}
+    return;
+  }
+  btn.dataset.bound = '1';
 
   const hide = () => {
     try { if (document.activeElement === btn) document.activeElement.blur(); } catch {}
@@ -117,21 +139,24 @@ export function mountScrollTop(threshold = 400) {
     if (y > threshold) show(); else hide();
   };
 
-  // Клик — всегда живой (без одноразовости)
+  // Клик — живой обработчик
   btn.addEventListener('click', () => {
     try { document.activeElement?.blur?.(); } catch {}
     scrollToTop();
   });
 
-  // --- Биндинг скролл-источников с возможной перебиндовкой при смене маршрута ---
+  // Локальный «служебный» ивент для форс-апдейта (см. защита выше)
+  btn.addEventListener('__force_update__', () => update());
+
+  // --- Биндинг и ребиндинг слушателей скролла ---
   let targets = [];
   let unbinds = [];
   const onScroll = () => update();
   const onResize = () => update();
 
-  function unbindAll(){
-    for (const t of targets){
-      if (t === window){
+  function unbindAll() {
+    for (const t of targets) {
+      if (t === window) {
         window.removeEventListener('scroll', onScroll);
         window.removeEventListener('resize', onResize);
       } else {
@@ -140,44 +165,43 @@ export function mountScrollTop(threshold = 400) {
       }
     }
     targets = [];
-    unbinds.forEach(fn=>{ try{ fn(); }catch{} });
+    unbinds.forEach(fn => { try { fn(); } catch {} });
     unbinds = [];
   }
 
-  function bindAll(){
+  function bindAll() {
     targets = getScrollTargets();
-    for (const t of targets){
+    for (const t of targets) {
       unbinds.push(bindActiveTargetDetector(t));
-      if (t === window){
+      if (t === window) {
         window.addEventListener('scroll', onScroll, { passive: true });
         window.addEventListener('resize', onResize);
       } else {
         t.addEventListener('scroll', onScroll, { passive: true });
-        // не все элементы бросают resize, но безвредно
+        // не все элементы шлют resize, но это безопасно
         t.addEventListener('resize', onResize);
       }
     }
-    // сразу пересчитать
-    update();
+    update(); // моментальный пересчёт
   }
 
   // первая инициализация
   hide();
   bindAll();
 
-  // При смене маршрута — перебиндить слушатели (контейнер мог смениться)
+  // Перебинд при смене маршрута (DOM/контейнер мог измениться)
   const onHash = () => {
-    // Сначала спрятать (если ушли с главной), потом перебиндить и пересчитать
-    hide();
-    unbindAll();
-    // небольшой next-tick, чтобы DOM успел перерисоваться
-    setTimeout(() => { bindAll(); }, 0);
+    hide();         // мгновенно спрятать (если ушли с главной)
+    unbindAll();    // отписаться от старых
+    setTimeout(() => { bindAll(); }, 0); // next-tick — уже с новым DOM
   };
   window.addEventListener('hashchange', onHash);
 
-  // Вернуть функцию для полного размонтажа (если понадобится)
+  // Вернуть функцию полного размонтажа (на будущее)
   return () => {
     window.removeEventListener('hashchange', onHash);
     unbindAll();
+    try { delete btn.dataset.bound; } catch {}
+    hide();
   };
 }
