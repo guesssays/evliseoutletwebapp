@@ -1,5 +1,6 @@
 // src/core/scroll-reset.js
 // Жёсткий, многокадровый сброс скролла + учёт загрузки изображений и bfcache.
+// Добавлено: подавление ScrollReset на короткое окно (suppress), чтобы клики fixed-header не дёргали вверх.
 
 function _targets() {
   const list = [];
@@ -20,8 +21,6 @@ function _toTopOnce() {
 }
 
 function _scheduleFrames() {
-  // Несколько кадров подряд: сразу, rAF, rAF+rAF, и с таймерами —
-  // это надёжно перебивает отложенные перерисовки/ресторы браузера
   _toTopOnce();
   requestAnimationFrame(() => {
     _toTopOnce();
@@ -45,56 +44,71 @@ function _afterImagesIn(el) {
       img.addEventListener('load', done, { once: true });
       img.addEventListener('error', done, { once: true });
     }));
-  // мягкий лимит ожидания, чтобы не зависнуть навсегда
   return Promise.race([
     Promise.all(pending),
     new Promise(res => setTimeout(res, 350))
   ]);
 }
 
+/* ===== Подавление ScrollReset на короткое окно ===== */
+function _remainMs() {
+  const until = Number(window.__suppressScrollResetUntil || 0);
+  return Math.max(0, until - Date.now());
+}
+
 export const ScrollReset = {
   /**
    * Просим сброс скролла на следующий цикл перерисовки.
-   * Опционально можно передать контейнер (обычно #view) — чтобы дождаться изображений.
+   * Если включено подавление — переносим вызов на конец окна подавления.
    */
   request(containerEl) {
+    const wait = _remainMs();
+    if (wait > 0) {
+      setTimeout(() => this.request(containerEl), wait + 10);
+      return;
+    }
     queueMicrotask(() => {
       _scheduleFrames();
-      // ещё серия попыток после загрузки изображений в контейнере
       _afterImagesIn(containerEl || document.getElementById('view'))
         .then(() => _scheduleFrames())
         .catch(() => {});
     });
   },
 
-  /** Немедленно сбросить вверх и сделать несколько попыток. */
+  /** Немедленно сбросить вверх (игнорируя подавление не вызываем). */
   forceNow() {
+    const wait = _remainMs();
+    if (wait > 0) return; // уважаем подавление
     _scheduleFrames();
   },
 
   /**
-   * Инициализация: отключает авто-восстановление скролла браузером
-   * и чинит возврат из bfcache (pageshow.persisted === true).
+   * Включить подавление ScrollReset на ms миллисекунд.
+   * Используем при кликах «Назад»/сердце во fixed-header.
+   */
+  suppress(ms = 400) {
+    const until = Date.now() + Math.max(0, ms|0);
+    window.__suppressScrollResetUntil = until;
+  },
+
+  /**
+   * Инициализация: manual scrollRestoration + фикса bfcache.
    */
   mount() {
     try {
       if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     } catch {}
 
-    // При возврате из истории (bfcache) некоторые WebView восстанавливают середину страницы.
-    // В таком случае принудительно отправляемся наверх.
     const onPageShow = (e) => {
       if (e && e.persisted) {
-        // кадр на перерисовку + наши мультикадровые попытки
         requestAnimationFrame(() => this.request(document.getElementById('view')));
       }
     };
     window.addEventListener('pageshow', onPageShow);
 
-    // Страховка при первой загрузке
     requestAnimationFrame(() => this.request(document.getElementById('view')));
   }
 };
 
-// Глобальный канал: кто угодно может вызвать window.dispatchEvent(new Event('client:scroll:top'))
+// Глобальный канал: window.dispatchEvent(new Event('client:scroll:top'))
 window.addEventListener('client:scroll:top', () => ScrollReset.request(document.getElementById('view')));

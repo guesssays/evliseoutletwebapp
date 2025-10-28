@@ -1,6 +1,7 @@
 // src/components/ProductFixHeader.js
 // Фикс-хедер карточки товара: стабильные клики, безопасный «Назад», синхронизированное сердце
 // Экспорт: activateProductFixHeader, deactivateProductFixHeader, setFavActive
+import { ScrollReset } from '../core/scroll-reset.js'; // ← если импортов нет, добавь вверху файла
 
 let S = {
   // DOM
@@ -140,11 +141,13 @@ function onScrollCheck(){
   else hideFixHeader();
 }
 
-/* ---------------- безопасный «Назад» ---------------- */
 function safeBack(){
   const now = Date.now();
   if (now - S._tsBack < S._cooldownMs) return;
   S._tsBack = now;
+
+  // ⛔️ не даём глобальному ScrollReset дёргать страницу вверх после back/hashchange
+  try { ScrollReset.suppress(900); } catch {}
 
   try{
     if (history.length <= 1){
@@ -160,11 +163,13 @@ function safeBack(){
   }
 }
 
-/* ---------------- сердце ---------------- */
 function doFavToggle(){
   const now = Date.now();
   if (now - S._tsFav < S._cooldownMs) return;
   S._tsFav = now;
+
+  // ⛔️ на всякий случай скрываем автосброс при клике по сердцу
+  try { ScrollReset.suppress(600); } catch {}
 
   try { S.onFavToggle && S.onFavToggle(); } catch {}
   try {
@@ -172,6 +177,7 @@ function doFavToggle(){
     setFavActive(on);
   } catch {}
 }
+
 
 /* ---------------- делегирование событий ---------------- */
 // Единая точка входа, чтобы DOM-замены кнопок не ломали обработчики.
