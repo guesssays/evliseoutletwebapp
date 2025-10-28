@@ -579,6 +579,9 @@ if (goingHome) {
 } else {
   HomeScrollMemory.saveIfHome();
 }
+  // После того как запомнили позицию главной — гарантированно вверх,
+  // чтобы новый экран НЕ унаследовал низ.
+  try { ScrollReset.forceNow(); } catch {}
 
 
 
@@ -659,13 +662,25 @@ if (parts.length===0) {
   if (match('faq')) return renderFAQ();
 
   {
-    const res = renderHome(router);
-    if (__NEED_HOME_SCROLL_RESTORE__) {
-      __NEED_HOME_SCROLL_RESTORE__ = false;
-      try { await HomeScrollMemory.restoreIfHome(); } catch {}
-    }
-    try { window.__HOME_WILL_RESTORE__ = false;  sessionStorage.removeItem('home:from_product');  } catch {}
-    return res;
+  const res = renderHome(router);
+
+  if (__NEED_HOME_SCROLL_RESTORE__) {
+    __NEED_HOME_SCROLL_RESTORE__ = false;
+    try { await HomeScrollMemory.restoreIfHome(); } catch {}
+  } else {
+    // НЕТ сохранённой позиции? — ЖЁСТКО в самый верх без ожиданий,
+    // чтобы не «наследовать» низ от других экранов.
+    try { ScrollReset.forceNow(); } catch {}
+  }
+
+  // ⬇️ снимаем флаги и маркеры
+  try {
+    window.__HOME_WILL_RESTORE__ = false;
+    sessionStorage.removeItem('home:from_product');
+  } catch {}
+
+  return res;
+
   }
 
 }
@@ -765,6 +780,22 @@ async function init(){
   await tryBindPendingInviter();
 
   window.addEventListener('hashchange', router);
+
+  window.addEventListener('hashchange', () => {
+    const h = String(location.hash || '');
+    if (h === '' || h === '#' || h === '#/' || h.startsWith('#/?')) {
+      // если возвращаемся домой «нативно», а маркер ещё не стоит — поставим и заглушим сбросы
+      if (sessionStorage.getItem('home:from_product') !== '1') {
+        try {
+          sessionStorage.setItem('home:from_product', '1');
+          window.__HOME_WILL_RESTORE__ = true;
+          ScrollReset.quiet(1200);
+          ScrollReset.suppress(1200);
+        } catch {}
+      }
+    }
+  });
+
 
   // Хард-сброс скролла только для НЕ-home (home восстанавливает HomeScrollMemory)
   window.addEventListener('hashchange', () => {

@@ -86,12 +86,17 @@ export const HomeScrollMemory = {
   },
 
   async restoreIfHome() {
-    // быстрая проверка маршрута
     if (!isHome()) return;
 
     let y = 0;
     try { y = Number(sessionStorage.getItem(KEY) || 0) || 0; } catch {}
-    if (y <= 0) return;
+
+    // ⬅️ Новое: если позиции нет — жёстко наверх, и выходим
+    if (y <= 0) {
+      try { scrollToY(0); } catch {}
+      return;
+    }
+
 
     try {
       // блокируем любые внешние сбросы на время восстановления

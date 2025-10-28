@@ -599,13 +599,30 @@ favBtn.addEventListener('click', (e) => {
   /* -------- Авто-деактивация фикс-хедера при уходе со страницы товара -------- */
   const _onHashChange = () => {
     const h = String(location.hash || '');
-    if (!h.startsWith('#/product/') && !h.startsWith('#/p/')) {
+    const leavingProduct = !h.startsWith('#/product/') && !h.startsWith('#/p/');
+
+    if (leavingProduct) {
+      // Если уходим ДОМОЙ — ставим маркер «из товара», и глушим любые сбросы скролла на мгновение.
+      const toHome =
+        h === '' || h === '#' ||
+        h === '#/' || h.startsWith('#/?');
+
+      if (toHome) {
+        try {
+          sessionStorage.setItem('home:from_product', '1');
+          window.__HOME_WILL_RESTORE__ = true;
+          ScrollReset.quiet(1500);
+          ScrollReset.suppress(1500);
+        } catch {}
+      }
+
       deactivateProductFixHeader();
       window.removeEventListener('hashchange', _onHashChange);
       window.removeEventListener('fav:changed', onFavSync); // снять слушатель при уходе
     }
   };
   window.addEventListener('hashchange', _onHashChange);
+
 }
 
 /* ===== карточки «Похожие» — используем шаблон #product-card (как в каталоге) ===== */
