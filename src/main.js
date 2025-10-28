@@ -31,7 +31,7 @@ import { ScrollReset } from './core/scroll-reset.js';
 
 // Вынесенный фикс-хедер товара
 import { deactivateProductFixHeader } from './components/ProductFixHeader.js';
-
+import { HomeScrollMemory } from './core/scroll-memory-home.js';
 // Админка
 import { renderAdmin } from './components/Admin.js';
 import { renderAdminLogin } from './components/AdminLogin.js';
@@ -313,13 +313,10 @@ loadProfile();
 loadFavorites();
 updateCartBadge();
 initTelegramChrome();
-// Кнопка "Наверх" — инициализация единый раз
 // Кнопка "Наверх" — инициализация
 mountScrollTop();
 // Глобальный анти-скролл — включает manual + хэндлер pageshow
 ScrollReset.mount();
-
-
 
 /* ---------- ADMIN MODE ---------- */
 function setAdminMode(on){
@@ -531,19 +528,14 @@ function hideProductHeader(){
   if (stat) stat.classList.remove('hidden');
 }
 
-
 function scrollTopNow(){
- ScrollReset.request();
+  ScrollReset.request();
 }
-
-
-
 
 /* ---------- РОУТЕР ---------- */
 async function router(){
   const path = (location.hash || '#/').slice(1);
   const clean = path.replace(/#.*/,'');
-
   const inAdmin = document.body.classList.contains('admin-mode');
 
   const parts = path.split('/').filter(Boolean);
@@ -564,7 +556,10 @@ async function router(){
 
   setTabbarMenu(map[clean] || (inAdmin ? 'admin' : 'home'));
   hideProductHeader();
-  scrollTopNow(); // ← вот здесь, один раз
+
+  // ⬇️ НЕ сбрасываем скролл, если целевой роут — главная (части нет)
+  const isHomeRoute = (parts.length === 0);
+  if (!isHomeRoute) scrollTopNow();
 
   // Админ-режим
   if (inAdmin){
@@ -717,14 +712,22 @@ async function init(){
 
   await router();
 
+  // ⬇️ Память скролла главной — после первого рендера UI
+  HomeScrollMemory.mount();
+
   // 1) После старта UI — пробуем привязать pending-инвайтера (когда уже есть наш UID)
   await tryBindPendingInviter();
 
   window.addEventListener('hashchange', router);
-  window.addEventListener('hashchange', () => {
-    // даём рендеру закончиться, затем поднимаем скролл
-  setTimeout(() => ScrollReset.request(), 0);
 
+  // Хард-сброс скролла только для НЕ-home (home восстанавливает HomeScrollMemory)
+  window.addEventListener('hashchange', () => {
+    setTimeout(() => {
+      const raw = (location.hash || '#/').slice(1);
+      const parts = raw.split('/').filter(Boolean);
+      if (parts.length === 0) return; // главная — не трогаем
+      ScrollReset.request();
+    }, 0);
   });
 
   window.addEventListener('orders:updated', ()=>{

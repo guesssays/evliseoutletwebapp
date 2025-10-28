@@ -147,9 +147,10 @@ export function mountScrollTop(threshold = 400) {
     if (y > threshold) show(); else hide();
   };
 
-  // Клик — живой
+  // Клик — живой (+ очистка памяти скролла главной)
   btn.addEventListener('click', () => {
     try { document.activeElement?.blur?.(); } catch {}
+    try { sessionStorage.removeItem('home:scrollY'); } catch {}
     scrollToTop();
   });
 
