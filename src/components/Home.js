@@ -30,22 +30,7 @@ export function renderHome(router){
 
   // ⛔ локальная кнопка «вверх» — не нужна (ScrollTop.js уже смонтирован)
 
-  // ✅ Точный снимок перед уходом в товар — ПРАВИЛЬНОЕ место
-  const grid = document.getElementById('productGrid');
-  if (grid && !grid.dataset.boundSaveY) {
-    grid.addEventListener('click', (e) => {
-      const a = e.target.closest('a[href^="#/product/"]');
-      if (!a) return;
-      try {
-        const y = Math.max(
-          window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0,
-          (document.getElementById('view')?.scrollTop || 0)
-        );
-        sessionStorage.setItem('home:scrollY', String(y|0));
-      } catch {}
-    }, { capture: true });
-    grid.dataset.boundSaveY = '1';
-  }
+
 }
 
 

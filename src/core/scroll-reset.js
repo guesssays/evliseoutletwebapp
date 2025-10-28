@@ -64,7 +64,7 @@ export const ScrollReset = {
    */
   request(containerEl) {
     // если идёт восстановление главной — вообще ничего не делаем
-    if (window.__HOME_WILL_RESTORE__) return;
+
 
     // «тихое окно»: полностью игнорируем без переназначений
     if (_remainMs('__dropScrollResetUntil') > 0) return;
@@ -90,7 +90,7 @@ export const ScrollReset = {
 
 
   forceNow() {
-    if (window.__HOME_WILL_RESTORE__) return;
+
     if (_remainMs('__dropScrollResetUntil') > 0) return;
     if (_remainMs('__suppressScrollResetUntil') > 0) return;
     _scheduleFrames();
@@ -122,31 +122,16 @@ mount() {
 
   const onPageShow = (e) => {
     // если планируется восстановление главной — не трогаем
-    const wantHomeRestore =
-      !!window.__HOME_WILL_RESTORE__ ||
-      (isHomeHashOnly() && (sessionStorage.getItem('home:scrollY')|0) > 0);
-    if (wantHomeRestore) return;
+
     if (e && e.persisted) {
       requestAnimationFrame(() => this.request(document.getElementById('view')));
     }
   };
   window.addEventListener('pageshow', onPageShow);
 
-  const wantHomeRestoreStart =
-    !!window.__HOME_WILL_RESTORE__ ||
-    (isHomeHashOnly() && (sessionStorage.getItem('home:scrollY')|0) > 0);
-  if (!wantHomeRestoreStart) {
-    requestAnimationFrame(() => this.request(document.getElementById('view')));
-  }
+requestAnimationFrame(() => this.request(document.getElementById('view')));
 
-  // локальный хелпер без зависимости от DOM:
-  function isHomeHashOnly(){
-    const raw = String(location.hash || '');
-    if (raw === '' || raw === '#') return true;
-    const path = raw.slice(1);
-    const [pure] = path.split('?');
-    return String(pure||'').replace(/^\/+/, '') === '';
-  }
+
 }
 
 

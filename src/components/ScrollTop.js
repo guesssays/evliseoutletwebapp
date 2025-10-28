@@ -150,7 +150,7 @@ export function mountScrollTop(threshold = 400) {
   // Клик — живой (+ очистка памяти скролла главной)
   btn.addEventListener('click', () => {
     try { document.activeElement?.blur?.(); } catch {}
-    try { sessionStorage.removeItem('home:scrollY'); } catch {}
+  
     scrollToTop();
   });
 

@@ -31,7 +31,7 @@ import { ScrollReset } from './core/scroll-reset.js';
 
 // Вынесенный фикс-хедер товара
 import { deactivateProductFixHeader } from './components/ProductFixHeader.js';
-import { HomeScrollMemory } from './core/scroll-memory-home.js';
+
 // Админка
 import { renderAdmin } from './components/Admin.js';
 import { renderAdminLogin } from './components/AdminLogin.js';
@@ -532,8 +532,7 @@ function scrollTopNow(){
   ScrollReset.request();
 }
 
-/* ====== ОТЛОЖЕННОЕ ВОССТАНОВЛЕНИЕ СКРОЛЛА ГЛАВНОЙ ====== */
-let __NEED_HOME_SCROLL_RESTORE__ = false;
+
 
 /* ---------- РОУТЕР ---------- */
 async function router(){
@@ -560,27 +559,8 @@ async function router(){
   setTabbarMenu(map[clean] || (inAdmin ? 'admin' : 'home'));
   hideProductHeader();
 
-  // 🔧 Новая логика (обновлено): при переходе НА главную — только помечаем восстановление ПОСЛЕ её рендера;
-  // при уходе С главной — сохраняем текущую позицию и сбрасываем скролл для новых экранов.
-const goingHome = (parts.length === 0);
-const viaProduct = (sessionStorage.getItem('home:from_product') === '1');
 
-if (goingHome) {
-  __NEED_HOME_SCROLL_RESTORE__ = true;
-  try {
-    window.__HOME_WILL_RESTORE__ = true;
-    // если именно «возврат из товара», подушку делаем подольше
-    const ms = viaProduct ? 1500 : 900;
-    if ((sessionStorage.getItem('home:scrollY')|0) > 0) {
-      ScrollReset.quiet(ms);
-      ScrollReset.suppress(ms);
-    }
-  } catch {}
-} else {
-  HomeScrollMemory.saveIfHome();
-}
-  // После того как запомнили позицию главной — гарантированно вверх,
-  // чтобы новый экран НЕ унаследовал низ.
+
   try { ScrollReset.forceNow(); } catch {}
 
 
@@ -601,21 +581,11 @@ if (goingHome) {
     return renderAdmin();
   }
 
-if (parts.length===0) {
-  const res = renderHome(router);
-  if (__NEED_HOME_SCROLL_RESTORE__) {
-    __NEED_HOME_SCROLL_RESTORE__ = false;
-    try { await HomeScrollMemory.restoreIfHome(); } catch {}
-  } else {
-    try { ScrollReset.request(document.getElementById('view')); } catch {}
-  }
-  // ⬇️ снимаем флаги и маркеры
-  try { 
-    window.__HOME_WILL_RESTORE__ = false; 
-    sessionStorage.removeItem('home:from_product'); 
-  } catch {}
-  return res;
-}
+ if (parts.length===0) {
+   const res = renderHome(router);
+   try { ScrollReset.request(document.getElementById('view')); } catch {}
+   return res;
+ }
 
 
   const m1=match('category/:slug'); if (m1) return renderCategory(m1);
@@ -664,20 +634,7 @@ if (parts.length===0) {
   {
   const res = renderHome(router);
 
-  if (__NEED_HOME_SCROLL_RESTORE__) {
-    __NEED_HOME_SCROLL_RESTORE__ = false;
-    try { await HomeScrollMemory.restoreIfHome(); } catch {}
-  } else {
-    // НЕТ сохранённой позиции? — ЖЁСТКО в самый верх без ожиданий,
-    // чтобы не «наследовать» низ от других экранов.
-    try { ScrollReset.forceNow(); } catch {}
-  }
-
-  // ⬇️ снимаем флаги и маркеры
-  try {
-    window.__HOME_WILL_RESTORE__ = false;
-    sessionStorage.removeItem('home:from_product');
-  } catch {}
+try { ScrollReset.forceNow(); } catch {}
 
   return res;
 
@@ -773,39 +730,16 @@ async function init(){
 
   await router();
 
-  // ⬇️ Память скролла главной — после первого рендера UI
-  HomeScrollMemory.mount();
 
   // 1) После старта UI — пробуем привязать pending-инвайтера (когда уже есть наш UID)
   await tryBindPendingInviter();
 
   window.addEventListener('hashchange', router);
 
-  window.addEventListener('hashchange', () => {
-    const h = String(location.hash || '');
-    if (h === '' || h === '#' || h === '#/' || h.startsWith('#/?')) {
-      // если возвращаемся домой «нативно», а маркер ещё не стоит — поставим и заглушим сбросы
-      if (sessionStorage.getItem('home:from_product') !== '1') {
-        try {
-          sessionStorage.setItem('home:from_product', '1');
-          window.__HOME_WILL_RESTORE__ = true;
-          ScrollReset.quiet(1200);
-          ScrollReset.suppress(1200);
-        } catch {}
-      }
-    }
-  });
 
 
-  // Хард-сброс скролла только для НЕ-home (home восстанавливает HomeScrollMemory)
-  window.addEventListener('hashchange', () => {
-    setTimeout(() => {
-      const raw = (location.hash || '#/').slice(1);
-      const parts = raw.split('/').filter(Boolean);
-      if (parts.length === 0) return; // главная — не трогаем
-      ScrollReset.request();
-    }, 0);
-  });
+
+
 
   window.addEventListener('orders:updated', ()=>{
     const inAdmin = document.body.classList.contains('admin-mode');

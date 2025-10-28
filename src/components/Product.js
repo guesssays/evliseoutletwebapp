@@ -138,12 +138,7 @@ export function renderProduct({id}){
 activateProductFixHeader({
   isFav: () => isFav(p.id),
 onBack: () => {
-  try {
-    sessionStorage.setItem('home:from_product', '1'); // ← маркер «возврат из товара»
-    window.__HOME_WILL_RESTORE__ = true;              // ← роутер/ScrollReset не трогают скролл
-    ScrollReset.quiet(1500);
-    ScrollReset.suppress(1500);
-  } catch {}
+  try { ScrollReset.quiet(400); } catch {}
   history.back();
 },
 
@@ -471,12 +466,7 @@ const heroBack = document.getElementById('goBack');
 if (heroBack) {
 heroBack.addEventListener('click', (e) => {
   e.preventDefault();
-  try {
-    sessionStorage.setItem('home:from_product', '1');
-    window.__HOME_WILL_RESTORE__ = true;
-    ScrollReset.quiet(1500);
-    ScrollReset.suppress(1500);
-  } catch {}
+try { ScrollReset.quiet(400); } catch {}
   history.back();
 }, { passive: false });
 
@@ -607,14 +597,7 @@ favBtn.addEventListener('click', (e) => {
         h === '' || h === '#' ||
         h === '#/' || h.startsWith('#/?');
 
-      if (toHome) {
-        try {
-          sessionStorage.setItem('home:from_product', '1');
-          window.__HOME_WILL_RESTORE__ = true;
-          ScrollReset.quiet(1500);
-          ScrollReset.suppress(1500);
-        } catch {}
-      }
+
 
       deactivateProductFixHeader();
       window.removeEventListener('hashchange', _onHashChange);
