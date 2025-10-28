@@ -1144,3 +1144,5 @@ body.has-cta .tabbar-inner .btn span{ color:#fff !important; }
   content: none !important;
   display: none !important;
 }
+/* fix-header click safety */
+#productFixHdr, #productFixHdr * { pointer-events: auto !important; }
