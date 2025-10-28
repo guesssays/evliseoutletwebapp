@@ -41,40 +41,92 @@
   <link rel="stylesheet" href="styles.css" />
 
   <style>
-    /* 🌟 Упрощённый вид фикс-хедера товара (только визуал, без поведенческих свойств) */
+    /* --------- БАЗОВЫЕ ПЕРЕМЕННЫЕ (если нет в styles.css) --------- */
+    :root{
+      --safe: env(safe-area-inset-bottom, 0px);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --stroke: rgba(15,23,42,.14);
+      --tabbar-h: 64px;
+      --shadow: 0 10px 30px rgba(0,0,0,.18);
+    }
+
+    /* Скрытие/появление штатного верхнего хедера */
+    .app-header.hidden{
+      transform: translateY(-100%);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform .18s ease, opacity .18s ease;
+    }
+
+    /* --------- ФИКС-ХЕДЕР ТОВАРА (самодостаточно) --------- */
     .product-fixhdr{
-      background:transparent !important;
-      border:none !important;
-      box-shadow:none !important;
-      padding:0 !important;
-      height:auto !important;
+      position: fixed;
+      left: 0; right: 0;
+      top: calc(var(--safe-top) + 8px);
+      height: 56px;
+      display: none;               /* скрыт по умолчанию */
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+      pointer-events: none;        /* кликабельны только кнопки */
+      z-index: 5000;               /* выше всего контента */
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    .product-fixhdr.show{
+      display: flex;               /* показывается при .show */
     }
     .product-fixhdr .fixbtn{
-      background:transparent !important;
-      border:none !important;
-      box-shadow:none !important;
-      color:inherit !important;
-      /* размеры задаёт styles.css; поведенческие свойства не трогаем */
+      pointer-events: auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px; height: 44px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.85);
+      backdrop-filter: saturate(1.3) blur(8px);
+      -webkit-backdrop-filter: saturate(1.3) blur(8px);
+      box-shadow: var(--shadow);
+      color: #111;
     }
+    @media (prefers-color-scheme:dark){
+      .product-fixhdr .fixbtn{
+        background: rgba(11,18,32,.7);
+        color: #fff;
+      }
+    }
+    #btnFixBack{ margin-left: 8px; }
+    #btnFixFav{ margin-right: 8px; }
     #btnFixFav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none; }
 
-    /* ⬆️ Scroll-to-Top (кнопка «наверх») */
+    /* --------- КНОПКА «НАВЕРХ» (самодостаточно) --------- */
     #scrollTopBtn{
-      position:fixed; right:16px; bottom:calc(var(--tabbar-h) + var(--safe) + 16px);
-      z-index:120; width:48px; height:48px; border-radius:14px;
-      border:1px solid var(--stroke); background:#fff; box-shadow:var(--shadow);
+      position: fixed;
+      right: 16px;
+      bottom: calc(var(--tabbar-h) + var(--safe) + 16px);
+      z-index: 6000;               /* выше таббара и карточек */
+      width: 48px; height: 48px;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: #fff;
+      box-shadow: var(--shadow);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
-    #scrollTopBtn[hidden]{ display:none !important; }
+    #scrollTopBtn[hidden]{ display: none !important; }
+    @media (prefers-color-scheme:dark){
+      #scrollTopBtn{ background:#0b1220; color:#fff; }
+    }
   </style>
 
   <!-- Telegram WebApp -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <!-- Lucide (пинованная версия) -->
-  <script
-    src="https://cdn.jsdelivr.net/npm/lucide@0.454.0/dist/umd/lucide.min.js"
-    defer>
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.454.0/dist/umd/lucide.min.js" defer></script>
 </head>
 
 <body>
@@ -199,7 +251,6 @@
       // !!! ЗАМЕНИ на точное значение ADMIN_API_TOKEN из Netlify !!!
       var ADMIN_TOKEN = 'UsA^5976JJbD4g6j*t^jkJMoMa%*Ho!j';
 
-      // Мини-предохранители: отдаём токен только внутри Telegram WebApp
       var h = (document.referrer || '').toLowerCase();
       var ua = (navigator.userAgent || '').toLowerCase();
       var isTgRef = h.startsWith('https://t.me') ||
@@ -207,7 +258,6 @@
                     h.startsWith('https://telegram.org');
       var isTgUA  = ua.indexOf('telegram') !== -1;
 
-      // Также считаем валидным, если есть initData (мини-апп реально открыт)
       var hasInitData = (function () {
         try { return typeof window.Telegram?.WebApp?.initData === 'string' && window.Telegram.WebApp.initData.length > 0; }
         catch { return false; }
@@ -218,7 +268,6 @@
         try { localStorage.setItem('admin_api_token', String(ADMIN_TOKEN)); } catch {}
       }
 
-      // Разовая установка через ?admintoken=...
       try {
         var p = new URLSearchParams(location.search);
         var q = p.get('admintoken');
@@ -232,25 +281,25 @@
     })();
   </script>
 
-  <!-- Главный модуль (без ?v — кэш отключён _headers’ом) -->
+  <!-- Главный модуль -->
   <script type="module" src="src/main.js"></script>
 
   <!-- Иконки после монтирования (запасной вызов) -->
-  <script>
-    try { window.lucide?.createIcons?.(); } catch {}
-  </script>
+  <script> try { window.lucide?.createIcons?.(); } catch {} </script>
 
-  <!-- Локальный JS для кнопки «вверх» (не зависит от модулей) -->
+  <!-- Локальный JS: кнопка «вверх» (автономно) -->
   <script>
     (function(){
       const btn = document.getElementById('scrollTopBtn');
       if(!btn) return;
+
       function onScroll(){
         const sc = Math.max(document.documentElement.scrollTop || 0, window.scrollY || 0);
-        btn.hidden = sc < 280;
+        btn.hidden = sc < 300;
       }
       window.addEventListener('scroll', onScroll, {passive:true});
       onScroll();
+
       btn.addEventListener('click', ()=> window.scrollTo({ top:0, behavior:'smooth' }));
       try{ window.lucide?.createIcons?.(); }catch{}
     })();
