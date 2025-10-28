@@ -562,21 +562,21 @@ async function router(){
 
   // 🔧 Новая логика (обновлено): при переходе НА главную — только помечаем восстановление ПОСЛЕ её рендера;
   // при уходе С главной — сохраняем текущую позицию и сбрасываем скролл для новых экранов.
-  const goingHome = (parts.length === 0);
-  if (goingHome) {
-    // глобальный флаг для ScrollReset: не трогать скролл, мы его сами восстановим
-    try {
-      window.__HOME_WILL_RESTORE__ = true;
-      // и ещё — если уже есть сохранённое значение, пусть ScrollReset вообще молчит это окно
-      if ((sessionStorage.getItem('home:scrollY')|0) > 0) {
-        ScrollReset.quiet(1500);
-        ScrollReset.suppress(1500);
-      }
-    } catch {}
-  } else {
-    HomeScrollMemory.saveIfHome();
-    scrollTopNow();
-  }
+const goingHome = (parts.length === 0);
+if (goingHome) {
+  __NEED_HOME_SCROLL_RESTORE__ = true; // ← ЭТОГО НЕ ХВАТАЛО
+  try {
+    window.__HOME_WILL_RESTORE__ = true;
+    if ((sessionStorage.getItem('home:scrollY')|0) > 0) {
+      ScrollReset.quiet(1500);
+      ScrollReset.suppress(1500);
+    }
+  } catch {}
+} else {
+  HomeScrollMemory.saveIfHome();
+  scrollTopNow();
+}
+
 
 
   // Админ-режим

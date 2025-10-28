@@ -98,22 +98,34 @@ export const HomeScrollMemory = {
     try { y = Number(sessionStorage.getItem(KEY) || 0) || 0; } catch {}
     if (y <= 0) return;
 
-    try { window.ScrollReset?.suppress?.(1000); window.ScrollReset?.quiet?.(1000); } catch {}
+    // ⚠️ Важно: ставим флаг прямо здесь, чтобы ScrollReset не вмешивался
+    try {
+      window.__HOME_WILL_RESTORE__ = true;
+      // Блокируем любые request() от ScrollReset на время восстановления
+      window.ScrollReset?.quiet?.(1500);
+      window.ScrollReset?.suppress?.(1500);
+    } catch {}
 
-    await new Promise(r => requestAnimationFrame(r));
-    const view = document.getElementById('view') || document.body;
+    try {
+      // Дать DOM дорендериться
+      await new Promise(r => requestAnimationFrame(r));
+      const view = document.getElementById('view') || document.body;
 
-    scrollToY(Math.max(0, y - 1));
-    await afterImagesIn(view);
+      // Лёгкая «подкачка» в область
+      scrollToY(Math.max(0, y - 1));
 
-    scrollToY(y);
-    await new Promise(r => requestAnimationFrame(r));
-    scrollToY(y);
+      // Ждём ключевые изображения (но ограниченно по времени)
+      await afterImagesIn(view);
 
-    // ⬇️ сигнал ScrollReset: мы всё, можно продолжать жить обычной жизнью
-    try { window.__HOME_WILL_RESTORE__ = false; } catch {}
+      // Двойной прострел позиции
+      scrollToY(y);
+      await new Promise(r => requestAnimationFrame(r));
+      scrollToY(y);
+    } finally {
+      // сигнал ScrollReset: восстановление завершено
+      try { window.__HOME_WILL_RESTORE__ = false; } catch {}
+    }
   },
-
 
   /** Инициализировать слушатели. Можно передать router, если он есть. */
   mount(router) {
