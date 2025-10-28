@@ -26,8 +26,8 @@ let _state = {
     favClick: null,
     backTouch: null,
     favTouch: null,
-        backPointer: null,   // ← добавили
-    favPointer: null, 
+    backPointer: null,
+    favPointer: null,
   },
 
   // анти-дабл: временно блокируем кнопку на 300мс
@@ -157,7 +157,6 @@ function safeBack(){
 function guardClick(btnKey, btnEl, cb){
   if (_state._lock[btnKey]) return;
   _state._lock[btnKey] = true;
-  // На всякий — убираем disabled через 350мс даже если что-то пошло не так
   let t;
   try { btnEl && (btnEl.disabled = true); } catch{}
   try { cb(); } catch {}
@@ -173,43 +172,58 @@ function bindListeners(){
 
   // Страховки от CSS
   try {
-    _state.root && (_state.root.style.pointerEvents = 'auto');
-    _state.root && (_state.root.style.zIndex = '999'); // поверх всего
-    _state.back && (_state.back.style.pointerEvents = 'auto');
-    _state.fav  && (_state.fav.style.pointerEvents  = 'auto');
-    _state.back && (_state.back.style.touchAction   = 'manipulation');
-    _state.fav  && (_state.fav.style.touchAction    = 'manipulation');
+    if (_state.root){
+      _state.root.style.pointerEvents = 'auto';
+      _state.root.style.zIndex = '999';
+      _state.root.setAttribute('role','region');
+    }
+    if (_state.back){
+      _state.back.style.pointerEvents = 'auto';
+      _state.back.style.touchAction   = 'manipulation';
+      _state.back.setAttribute('role','button');
+      _state.back.setAttribute('tabindex','0');
+    }
+    if (_state.fav){
+      _state.fav.style.pointerEvents  = 'auto';
+      _state.fav.style.touchAction    = 'manipulation';
+      _state.fav.setAttribute('role','button');
+      _state.fav.setAttribute('tabindex','0');
+    }
   } catch {}
 
   const backDo = ()=> guardClick('back', _state.back, (_state.onBack || safeBack));
 
   // ВАЖНО: мгновенная локальная синхронизация + событие для остальных
   const favDo  = ()=> guardClick('fav',  _state.fav,  ()=>{
-    const next = !_state.isFav?.();        // вычисляем будущее состояние локально
-    _state.onFavToggle && _state.onFavToggle(); // реальный toggleFav() — внутри onFavToggle
-    try { setFavActive(next); } catch {}   // моментально обновляем кнопку фикс-хедера
+    const next = !_state.isFav?.();              // вычисляем будущее состояние локально
+    _state.onFavToggle && _state.onFavToggle();  // реальный toggleFav() — внутри onFavToggle
+    try { setFavActive(next); } catch {}         // моментально обновляем кнопку фикс-хедера
     try {
       window.dispatchEvent(new CustomEvent('fav:changed', { detail:{ active: next } }));
     } catch {}
   });
 
-  // Основной канал — Pointer Events (надёжнее в WebView)
-  _state._handlers.backPointer = (e)=>{ if (e.button === 0 || e.button === undefined){ e.preventDefault(); e.stopPropagation(); backDo(); } };
-  _state._handlers.favPointer  = (e)=>{ if (e.button === 0 || e.button === undefined){ e.preventDefault(); e.stopPropagation(); favDo(); } };
+  // Основной канал — Pointer Events (используем pointerdown, чтобы не терять pointerup в WebView)
+  _state._handlers.backPointer = (e)=>{
+    if (e.button === 0 || e.button === undefined){ e.preventDefault(); e.stopPropagation(); backDo(); }
+  };
+  _state._handlers.favPointer  = (e)=>{
+    if (e.button === 0 || e.button === undefined){ e.preventDefault(); e.stopPropagation(); favDo(); }
+  };
 
-  _state.back?.addEventListener('pointerup', _state._handlers.backPointer, { passive:false, capture:true });
-  _state.fav?.addEventListener('pointerup',  _state._handlers.favPointer,  { passive:false, capture:true });
+  _state.back?.addEventListener('pointerdown', _state._handlers.backPointer, { passive:false, capture:true });
+  _state.fav?.addEventListener('pointerdown',  _state._handlers.favPointer,  { passive:false, capture:true });
 
   // Резервные каналы — click + touchend (на случай старых UA)
-  _state._handlers.backClick = (e)=>{ e.preventDefault(); e.stopPropagation(); backDo(); };
-  _state._handlers.favClick  = (e)=>{ e.preventDefault(); e.stopPropagation(); favDo(); };
+  _state._handlers.backClick = (e)=>{ e.preventDefault(); e.stopImmediatePropagation?.(); backDo(); };
+  _state._handlers.favClick  = (e)=>{ e.preventDefault(); e.stopImmediatePropagation?.(); favDo(); };
   _state.back?.addEventListener('click', _state._handlers.backClick, { passive:false, capture:true });
-  _state.fav ?.addEventListener('click', _state._handlers.favClick,  { passive:false, capture:true });
+  _state.fav?.addEventListener('click', _state._handlers.favClick,  { passive:false, capture:true });
 
   _state._handlers.backTouch = (e)=>{ e.preventDefault?.(); backDo(); };
   _state._handlers.favTouch  = (e)=>{ e.preventDefault?.(); favDo(); };
   _state.back?.addEventListener('touchend', _state._handlers.backTouch, { passive:false, capture:true });
-  _state.fav ?.addEventListener('touchend', _state._handlers.favTouch,  { passive:false, capture:true });
+  _state.fav?.addEventListener('touchend', _state._handlers.favTouch,  { passive:false, capture:true });
 
   // Подписки на скролл-контейнеры
   _state.scrollTargets = getScrollTargets();
@@ -226,13 +240,18 @@ function bindListeners(){
     }
   }
 
-  // Глобальная синхронизация фаворита
-  _state._onFavChanged = ()=> {
-    try { setFavActive(!!_state.isFav?.()); } catch {}
+  // Глобальная синхронизация фаворита — используем detail.active, чтобы не перетирать локальный next
+  _state._onFavChanged = (e)=> {
+    try {
+      if (e && e.detail && typeof e.detail.active === 'boolean') {
+        setFavActive(e.detail.active);
+      } else {
+        setFavActive(!!_state.isFav?.());
+      }
+    } catch {}
   };
   window.addEventListener('fav:changed', _state._onFavChanged);
 }
-
 
 function unbindListeners(){
   if (!_state.listenersBound) return;
@@ -240,19 +259,18 @@ function unbindListeners(){
 
   try{
     if (_state.back){
-      _state.back.removeEventListener('pointerup', _state._handlers.backPointer, { capture:true }); // ← добавили
+      _state.back.removeEventListener('pointerdown', _state._handlers.backPointer, { capture:true });
       _state.back.removeEventListener('click', _state._handlers.backClick, { capture:true });
       _state.back.removeEventListener('touchend', _state._handlers.backTouch, { capture:true });
     }
     if (_state.fav){
-      _state.fav.removeEventListener('pointerup', _state._handlers.favPointer, { capture:true });   // ← добавили
+      _state.fav.removeEventListener('pointerdown', _state._handlers.favPointer, { capture:true });
       _state.fav.removeEventListener('click', _state._handlers.favClick, { capture:true });
       _state.fav.removeEventListener('touchend', _state._handlers.favTouch, { capture:true });
     }
   }catch{}
 
-
-  _state._handlers = { backClick:null, favClick:null, backTouch:null, favTouch:null };
+  _state._handlers = { backClick:null, favClick:null, backTouch:null, favTouch:null, backPointer:null, favPointer:null };
   _state._lock = { back:false, fav:false };
 
   for (const t of _state.scrollTargets){
@@ -341,7 +359,7 @@ export function deactivateProductFixHeader(){
     onBack:null, onFavToggle:null, isFav:null,
     threshold:0, shown:false, listenersBound:false,
     scrollTargets:[], _unbindDetectors:[], _onFavChanged:null,
-    _handlers:{ backClick:null, favClick:null, backTouch:null, favTouch:null },
+    _handlers:{ backClick:null, favClick:null, backTouch:null, favTouch:null, backPointer:null, favPointer:null },
     _lock:{ back:false, fav:false },
   };
 }
