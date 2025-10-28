@@ -17,7 +17,7 @@ import { toast } from './core/toast.js';
 import { el, initTelegramChrome } from './core/utils.js';
 
 import { renderHome, drawCategoriesChips } from './components/Home.js';
-import { renderProduct } from './components/Product.js';
+import { renderProduct } from './components/Product.js?v=2025-10-28-ph1';
 import { renderCart } from './components/Cart.js';
 import { renderFavorites } from './components/Favorites.js';
 import { renderCategory } from './components/Category.js'; // ВАЖНО: заглавная буква
