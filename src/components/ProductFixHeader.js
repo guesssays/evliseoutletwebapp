@@ -207,7 +207,6 @@ function bindListeners(){
 
   // делегированные обработчики внутри фикс-хедера
   S._handlers.onPointerUp = (e)=> {
-    // перехватываем как можно раньше
     if (!S.root) return;
     if (!S.root.contains(e.target)) return;
     e.preventDefault();
@@ -215,7 +214,6 @@ function bindListeners(){
     handleActionFromTarget(e.target);
   };
   S._handlers.onClick = (e)=> {
-    // запасной канал (некоторые WebView странно ведут pointer-события)
     if (!S.root) return;
     if (!S.root.contains(e.target)) return;
     e.preventDefault();
@@ -241,7 +239,6 @@ function bindListeners(){
   // просто следим и актуализируем ARIA/active у свежих узлов
   try {
     S._observer = new MutationObserver(() => {
-      // при любом изменении — обновим подсветку сердца
       const on = !!(S.isFav && S.isFav());
       setFavActive(on);
     });
@@ -253,8 +250,7 @@ function bindListeners(){
   // мгновенный расчёт видимости
   queueMicrotask(onScrollCheck);
   requestAnimationFrame(onScrollCheck);
-setTimeout(onScrollCheck, 60);
-
+  setTimeout(onScrollCheck, 60);
 }
 
 function unbindListeners(){
