@@ -286,5 +286,39 @@
 
   <!-- Иконки после монтирования (запасной вызов) -->
   <script> try { window.lucide?.createIcons?.(); } catch {} </script>
+  <style>
+  /* DIAG ONLY: сделаем элементы заметными и поверх всего */
+  #productFixHdr{ outline:2px dashed magenta !important; background:rgba(255,0,255,.06) !important; z-index:99999 !important; }
+  #scrollTopBtn{ outline:2px dashed cyan !important; z-index:99999 !important; }
+</style>
+<script>
+  // DIAG ONLY: быстрые команды в консоли
+  window.__DBG__ = {
+    ph(){
+      const el = document.getElementById('productFixHdr');
+      if(!el){ console.warn('productFixHdr not found'); return; }
+      el.classList.add('show');
+      el.removeAttribute('aria-hidden'); el.removeAttribute('inert'); el.removeAttribute('hidden');
+      console.log('PH forced visible', el, getComputedStyle(el));
+    },
+    up(){
+      const b = document.getElementById('scrollTopBtn');
+      if(!b){ console.warn('scrollTopBtn not found'); return; }
+      b.removeAttribute('hidden'); b.removeAttribute('aria-hidden'); b.removeAttribute('inert');
+      b.style.display='inline-flex';
+      console.log('UP forced visible', b, getComputedStyle(b));
+    },
+    y(){
+      const view = document.getElementById('view');
+      return {
+        win: window.scrollY,
+        doc: document.scrollingElement?.scrollTop,
+        view: view?.scrollTop,
+        viewHasScroll: !!(view && view.scrollHeight>view.clientHeight)
+      };
+    }
+  };
+</script>
+
 </body>
 </html>
