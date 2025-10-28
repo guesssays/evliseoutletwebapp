@@ -98,25 +98,22 @@ export const HomeScrollMemory = {
     try { y = Number(sessionStorage.getItem(KEY) || 0) || 0; } catch {}
     if (y <= 0) return;
 
-    // На время восстановления — заглушаем ваш ScrollReset (если подключён)
-    try { window.ScrollReset?.suppress?.(900); window.ScrollReset?.quiet?.(900); } catch {}
+    try { window.ScrollReset?.suppress?.(1000); window.ScrollReset?.quiet?.(1000); } catch {}
 
-    // Ждём кадр, чтобы DOM дорисовался
     await new Promise(r => requestAnimationFrame(r));
-
     const view = document.getElementById('view') || document.body;
 
-    // Чуть дёрнуть вверх, чтобы браузер не заякорился на старых значениях
     scrollToY(Math.max(0, y - 1));
-
-    // Дождаться картинок (короткий таймаут внутри)
     await afterImagesIn(view);
 
-    // Двойная простановка — надёжнее на iOS
     scrollToY(y);
     await new Promise(r => requestAnimationFrame(r));
     scrollToY(y);
+
+    // ⬇️ сигнал ScrollReset: мы всё, можно продолжать жить обычной жизнью
+    try { window.__HOME_WILL_RESTORE__ = false; } catch {}
   },
+
 
   /** Инициализировать слушатели. Можно передать router, если он есть. */
   mount(router) {

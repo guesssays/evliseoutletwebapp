@@ -63,6 +63,9 @@ export const ScrollReset = {
    * Если включено «тихое окно» (quiet) — просто игнорируем запрос.
    */
   request(containerEl) {
+    // если идёт восстановление главной — вообще ничего не делаем
+    if (window.__HOME_WILL_RESTORE__) return;
+
     // «тихое окно»: полностью игнорируем без переназначений
     if (_remainMs('__dropScrollResetUntil') > 0) return;
 
@@ -85,12 +88,14 @@ export const ScrollReset = {
     });
   },
 
-  /** Немедленно вверх (уважая подавление и «тишину»). */
+
   forceNow() {
+    if (window.__HOME_WILL_RESTORE__) return;
     if (_remainMs('__dropScrollResetUntil') > 0) return;
     if (_remainMs('__suppressScrollResetUntil') > 0) return;
     _scheduleFrames();
   },
+
 
   /** Перенести любые ближайшие сбросы на ms миллисекунд (для навигации/back). */
   suppress(ms = 400) {
@@ -111,14 +116,24 @@ export const ScrollReset = {
 
   mount() {
     try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch {}
+
     const onPageShow = (e) => {
+      // если есть восстановление главной — не трогаем скролл
+      const wantHomeRestore = !!window.__HOME_WILL_RESTORE__ || ((sessionStorage.getItem('home:scrollY')|0) > 0 && (location.hash === '' || location.hash === '#/' || location.hash === '#'));
+      if (wantHomeRestore) return;
       if (e && e.persisted) {
         requestAnimationFrame(() => this.request(document.getElementById('view')));
       }
     };
     window.addEventListener('pageshow', onPageShow);
-    requestAnimationFrame(() => this.request(document.getElementById('view')));
+
+    // стартовый «кнут» тоже пропускаем, если впереди restore главной
+    const wantHomeRestoreStart = !!window.__HOME_WILL_RESTORE__ || ((sessionStorage.getItem('home:scrollY')|0) > 0 && (location.hash === '' || location.hash === '#/' || location.hash === '#'));
+    if (!wantHomeRestoreStart) {
+      requestAnimationFrame(() => this.request(document.getElementById('view')));
+    }
   }
+
 };
 
 // Глобальный канал

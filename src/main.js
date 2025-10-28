@@ -564,12 +564,20 @@ async function router(){
   // при уходе С главной — сохраняем текущую позицию и сбрасываем скролл для новых экранов.
   const goingHome = (parts.length === 0);
   if (goingHome) {
-    __NEED_HOME_SCROLL_RESTORE__ = true;
-    try { ScrollReset.suppress(1200); ScrollReset.quiet(1200); } catch {}
+    // глобальный флаг для ScrollReset: не трогать скролл, мы его сами восстановим
+    try {
+      window.__HOME_WILL_RESTORE__ = true;
+      // и ещё — если уже есть сохранённое значение, пусть ScrollReset вообще молчит это окно
+      if ((sessionStorage.getItem('home:scrollY')|0) > 0) {
+        ScrollReset.quiet(1500);
+        ScrollReset.suppress(1500);
+      }
+    } catch {}
   } else {
     HomeScrollMemory.saveIfHome();
     scrollTopNow();
   }
+
 
   // Админ-режим
   if (inAdmin){
@@ -586,15 +594,17 @@ async function router(){
     return renderAdmin();
   }
 
-  // Клиентский роутинг
   if (parts.length===0) {
     const res = renderHome(router);
     if (__NEED_HOME_SCROLL_RESTORE__) {
       __NEED_HOME_SCROLL_RESTORE__ = false;
       try { await HomeScrollMemory.restoreIfHome(); } catch {}
     }
+    // ⬇️ снять флаг, чтобы ScrollReset снова работал
+    try { window.__HOME_WILL_RESTORE__ = false; } catch {}
     return res;
   }
+
   const m1=match('category/:slug'); if (m1) return renderCategory(m1);
   const m2=match('product/:id');   if (m2) return renderProduct(m2);
   const m3=match('track/:id');     if (m3) return renderTrack(m3);
@@ -638,15 +648,16 @@ async function router(){
 
   if (match('faq')) return renderFAQ();
 
-  // Фоллбек на главную
   {
     const res = renderHome(router);
     if (__NEED_HOME_SCROLL_RESTORE__) {
       __NEED_HOME_SCROLL_RESTORE__ = false;
       try { await HomeScrollMemory.restoreIfHome(); } catch {}
     }
+    try { window.__HOME_WILL_RESTORE__ = false; } catch {}
     return res;
   }
+
 }
 
 /* ===== серверная синхронизация снапшота корзины/избранного ===== */
