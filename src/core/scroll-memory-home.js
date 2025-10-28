@@ -65,10 +65,11 @@ function afterImagesIn(el) {
       img.addEventListener('load', done, { once: true });
       img.addEventListener('error', done, { once: true });
     }));
-  return Promise.race([
-    Promise.all(pending),
-    new Promise(res => setTimeout(res, 350))
-  ]);
+return Promise.race([
+  Promise.all(pending),
+  new Promise(res => setTimeout(res, 800))
+]);
+
 }
 
 const KEY = 'home:scrollY';
@@ -115,9 +116,12 @@ export const HomeScrollMemory = {
       await afterImagesIn(view);
 
       // двойной прострел позиции
-      scrollToY(y);
-      await new Promise(r => requestAnimationFrame(r));
-      scrollToY(y);
+scrollToY(y);
+await new Promise(r => requestAnimationFrame(r));
+scrollToY(y);
+await new Promise(r => setTimeout(r, 0));
+scrollToY(y);
+
     } finally {
       try { window.__HOME_WILL_RESTORE__ = false; } catch {}
     }

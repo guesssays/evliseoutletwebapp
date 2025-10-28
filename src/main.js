@@ -563,25 +563,23 @@ async function router(){
   // 🔧 Новая логика (обновлено): при переходе НА главную — только помечаем восстановление ПОСЛЕ её рендера;
   // при уходе С главной — сохраняем текущую позицию и сбрасываем скролл для новых экранов.
 const goingHome = (parts.length === 0);
+const viaProduct = (sessionStorage.getItem('home:from_product') === '1');
+
 if (goingHome) {
-  const savedY = (sessionStorage.getItem('home:scrollY')|0);
-  const hasSaved = savedY > 0;
-  __NEED_HOME_SCROLL_RESTORE__ = hasSaved;
+  __NEED_HOME_SCROLL_RESTORE__ = true;
   try {
-    // Флаг и подавление — только если реально будем восстанавливать позицию
-    if (hasSaved) {
-      window.__HOME_WILL_RESTORE__ = true;
-      ScrollReset.quiet(1500);
-      ScrollReset.suppress(1500);
-    } else {
-      // Без сохранённой позиции — ничего не подавляем, дадим ScrollReset отработать
-      try { window.__HOME_WILL_RESTORE__ = false; } catch {}
+    window.__HOME_WILL_RESTORE__ = true;
+    // если именно «возврат из товара», подушку делаем подольше
+    const ms = viaProduct ? 1500 : 900;
+    if ((sessionStorage.getItem('home:scrollY')|0) > 0) {
+      ScrollReset.quiet(ms);
+      ScrollReset.suppress(ms);
     }
   } catch {}
 } else {
   HomeScrollMemory.saveIfHome();
-   //scrollTopNow();
 }
+
 
 
 
@@ -600,19 +598,22 @@ if (goingHome) {
     return renderAdmin();
   }
 
-  if (parts.length===0) {
-    const res = renderHome(router);
-    if (__NEED_HOME_SCROLL_RESTORE__) {
-      __NEED_HOME_SCROLL_RESTORE__ = false;
-      try { await HomeScrollMemory.restoreIfHome(); } catch {}
+if (parts.length===0) {
+  const res = renderHome(router);
+  if (__NEED_HOME_SCROLL_RESTORE__) {
+    __NEED_HOME_SCROLL_RESTORE__ = false;
+    try { await HomeScrollMemory.restoreIfHome(); } catch {}
   } else {
-    // Памяти нет — открываем главную с верха, чтобы не наследовать дно с прошлой страницы
     try { ScrollReset.request(document.getElementById('view')); } catch {}
   }
-  // ⬇️ на всякий случай снимаем флаг
-  try { window.__HOME_WILL_RESTORE__ = false; } catch {}
-    return res;
-  }
+  // ⬇️ снимаем флаги и маркеры
+  try { 
+    window.__HOME_WILL_RESTORE__ = false; 
+    sessionStorage.removeItem('home:from_product'); 
+  } catch {}
+  return res;
+}
+
 
   const m1=match('category/:slug'); if (m1) return renderCategory(m1);
   const m2=match('product/:id');   if (m2) return renderProduct(m2);
@@ -663,7 +664,7 @@ if (goingHome) {
       __NEED_HOME_SCROLL_RESTORE__ = false;
       try { await HomeScrollMemory.restoreIfHome(); } catch {}
     }
-    try { window.__HOME_WILL_RESTORE__ = false; } catch {}
+    try { window.__HOME_WILL_RESTORE__ = false;  sessionStorage.removeItem('home:from_product');  } catch {}
     return res;
   }
 

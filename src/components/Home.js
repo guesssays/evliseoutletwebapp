@@ -28,9 +28,26 @@ export function renderHome(router){
   drawProducts(state.products);
   try { window.dispatchEvent(new CustomEvent('view:home-mounted')); } catch {}
 
-  // ⛔ Больше НЕ создаём локальную кнопку «вверх».
-  // За неё отвечает единый компонент src/components/ScrollTop.js (mountScrollTop уже вызывается в main.js).
+  // ⛔ локальная кнопка «вверх» — не нужна (ScrollTop.js уже смонтирован)
+
+  // ✅ Точный снимок перед уходом в товар — ПРАВИЛЬНОЕ место
+  const grid = document.getElementById('productGrid');
+  if (grid && !grid.dataset.boundSaveY) {
+    grid.addEventListener('click', (e) => {
+      const a = e.target.closest('a[href^="#/product/"]');
+      if (!a) return;
+      try {
+        const y = Math.max(
+          window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0,
+          (document.getElementById('view')?.scrollTop || 0)
+        );
+        sessionStorage.setItem('home:scrollY', String(y|0));
+      } catch {}
+    }, { capture: true });
+    grid.dataset.boundSaveY = '1';
+  }
 }
+
 
 /** Рендер чипов категорий (верхние группы + «Все», «Новинки»). */
 export function drawCategoriesChips(router){
