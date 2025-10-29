@@ -3,8 +3,8 @@
 // - таргетим window + documentElement + body + scrollingElement + #view;
 // - отменяем только при реальном скролле (wheel/touchmove/scroll-keys);
 // - работает в окне навигации И/ИЛИ при allow:true;
-// - forceNow() по умолчанию имеет allow:true;
-// - NEW: ScrollReset.guardNoResetClick(el) — локальная глушилка ресетов для конкретной кнопки.
+// - forceNow() по умолчанию игнорирует «недавний скролл» (важно для явных команд);
+// - ScrollReset.guardNoResetClick(el) больше НЕ глушит всплытие и не ломает клики.
 
 const NAV_WINDOW_MS_DEFAULT = 1800;
 let __allowScrollResetUntil = 0;
@@ -119,7 +119,7 @@ function _quiet(ms = 600){
 }
 
 // ——— локальный helper для отмены навигации у родительского <a>
-function _cancelAnchorDefault(e, target){
+function _preventAnchorDefault(e, target){
   try{
     const a = target && target.closest && target.closest('a[href]');
     if (a) e.preventDefault();
@@ -154,12 +154,14 @@ export const ScrollReset = {
     });
   },
 
+  // NEW: ignoreUserScroll=true по умолчанию для явных команд
   forceNow(opts = {}) {
     const allow = (opts.allow === false) ? false : true; // default allow:true
+    const ignoreUserScroll = (opts.ignoreUserScroll === false) ? false : true; // default true
     if (_remainMs('__dropScrollResetUntil') > 0) return;
     if (_remainMs('__suppressScrollResetUntil') > 0) return;
     if (!_isResetAllowed(allow)) return;
-    if (_userHasScrolledRecently()) return;
+    if (!ignoreUserScroll && _userHasScrolledRecently()) return;
     const token = _newToken();
     _scheduleShort(token);
   },
@@ -183,22 +185,20 @@ export const ScrollReset = {
     const onPageShow = (e) => {
       if (e && e.persisted) {
         _openNavWindow(NAV_WINDOW_MS_DEFAULT);
-        requestAnimationFrame(() => this.request(document.getElementById('view'), { allow: true }));
+        requestAnimationFrame(() => this.forceNow({ allow: true, ignoreUserScroll: true }));
       }
     };
     window.addEventListener('pageshow', onPageShow);
 
-    requestAnimationFrame(() => this.request(document.getElementById('view'), { allow: true }));
+    requestAnimationFrame(() => this.forceNow({ allow: true, ignoreUserScroll: true }));
   },
 
   /**
-   * Локально «приглушить» ресеты вокруг клика по элементу.
-   * Не ломает твои обработчики и не трогает всплытие.
-   *
+   * Локально «приглушить» ресеты вокруг клика по элементу, не мешая обработчикам клика.
    * @param {Element} el — кнопка/иконка «избранного»
    * @param {Object} opts
    * @param {number} opts.duration — длительность окна (мс), деф. 900
-   * @param {boolean} opts.preventAnchorNav — запрещать ли навигацию по родительскому <a>, деф. true
+   * @param {boolean} opts.preventAnchorNav — отменять ли default у ближайшего <a>, деф. true
    * @returns {Function} unbind
    */
   guardNoResetClick(el, opts = {}) {
@@ -211,41 +211,36 @@ export const ScrollReset = {
       window.__suppressScrollResetUntil = Date.now() + dur;
     };
 
+    // pointerdown — в capture, чтобы успеть до любых жестов
     const onPD = () => { calm(); };
 
+    // click/touchend — БЕЗ stopPropagation/stopImmediatePropagation
     const onClick = (e) => {
       calm();
-      if (preventAnchor) {
-        _cancelAnchorDefault(e, el);
-        try { e.stopPropagation(); e.stopImmediatePropagation?.(); } catch {}
-      }
+      if (preventAnchor) _preventAnchorDefault(e, el);
+      // никаких stopPropagation — пусть ваши обработчики отработают
     };
-
     const onTouchEnd = (e) => {
       calm();
-      if (preventAnchor) {
-        _cancelAnchorDefault(e, el);
-        try { e.stopPropagation(); e.stopImmediatePropagation?.(); } catch {}
-      }
+      if (preventAnchor) _preventAnchorDefault(e, el);
     };
 
-    el.addEventListener('pointerdown', onPD,     { passive:true,  capture:true });
-    el.addEventListener('click',       onClick,  { passive:false, capture:true });
-    el.addEventListener('touchend',    onTouchEnd, { passive:false, capture:true });
+    el.addEventListener('pointerdown', onPD,        { passive:true,  capture:true });
+    el.addEventListener('click',       onClick,     { passive:false, capture:false });
+    el.addEventListener('touchend',    onTouchEnd,  { passive:false, capture:false });
 
     // safety: делаем это настоящей кнопкой
     try { el.setAttribute('type','button'); el.setAttribute('role','button'); } catch {}
 
     return () => {
       try{ el.removeEventListener('pointerdown', onPD, { capture:true }); }catch{}
-      try{ el.removeEventListener('click', onClick, { capture:true }); }catch{}
-      try{ el.removeEventListener('touchend', onTouchEnd, { capture:true }); }catch{}
+      try{ el.removeEventListener('click', onClick); }catch{}
+      try{ el.removeEventListener('touchend', onTouchEnd); }catch{}
     };
   }
-
 };
 
 // Глобальный канал: принудительный скролл вверх
 window.addEventListener('client:scroll:top', () =>
-  ScrollReset.forceNow({ allow:true })
+  ScrollReset.forceNow({ allow:true, ignoreUserScroll:true })
 );
