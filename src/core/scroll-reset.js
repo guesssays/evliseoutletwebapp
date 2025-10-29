@@ -4,7 +4,8 @@
 // - отменяем только при реальном скролле (wheel/touchmove/scroll-keys);
 // - работает в окне навигации И/ИЛИ при allow:true;
 // - forceNow() по умолчанию имеет allow:true;
-// - 🔇 тапы по «избранному» мгновенно отменяют любые активные циклы ресета.
+// - 🔇 тапы по «избранному» мгновенно отменяют любые активные циклы ресета
+//   И предотвращают навигацию у родительского <a> (если таковой есть).
 
 const NAV_WINDOW_MS_DEFAULT = 1800;
 let __allowScrollResetUntil = 0;
@@ -105,18 +106,14 @@ let _pendingTimer = null;
 function _openNavWindow(ms = NAV_WINDOW_MS_DEFAULT) {
   __allowScrollResetUntil = Date.now() + Math.max(0, ms|0);
 }
-function _navRemainMs() {
-  return Math.max(0, __allowScrollResetUntil - Date.now());
-}
 function _isResetAllowed(optsAllowFlag) {
   if (optsAllowFlag) return true;
-  return _navRemainMs() > 0;
+  return (Date.now() <= __allowScrollResetUntil);
 }
 
-// ⚠️ Критично: «тихий режим» теперь ещё и инвалидирует активные сессии,
-// чтобы мгновенно остановить уже запущенные циклы и убрать мигание.
+// «Тихий режим» сразу инвалидирует активные сессии
 function _quiet(ms = 600){
-  __sessionId++; // ← инвалидировать все текущие токены немедленно
+  __sessionId++; // стопнуть любые текущие циклы
   const until = Date.now() + Math.max(0, ms|0);
   window.__dropScrollResetUntil = until;
   if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
@@ -173,6 +170,7 @@ export const ScrollReset = {
   mount() {
     try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch {}
     _openNavWindow(NAV_WINDOW_MS_DEFAULT);
+
     window.addEventListener('hashchange', () => _openNavWindow(NAV_WINDOW_MS_DEFAULT), { capture: true });
 
     const onPageShow = (e) => {
@@ -187,26 +185,59 @@ export const ScrollReset = {
   }
 };
 
-// === 🔇 Автоглушилка для избранного ===============================
-// При любых «сердцах» мгновенно глушим и ОТМЕНЯЕМ активные циклы,
-// плюс ставим короткий suppress, чтобы новые попытки не стартовали следом.
+// === 🔇 Автоглушилка для избранного + защита от навигации по <a> =================
 
+// Широкий набор селекторов для «сердец»
 const FAV_SELECTORS = [
-  '#btnFixFav',                 // сердечко в фикс-хедере товара
+  '#btnFixFav',                 // фикс-хедер товара
   '.card .fav',                 // сердечко в карточке на сетке
-  '[aria-label="В избранное"]'  // общий случай
+  'button.fav',
+  'button[aria-label="В избранное"]',
+  '[data-action="fav"]',
+  '[data-fav]',
+  '[aria-pressed][aria-label*="збран"]' // «избран»/«в избранное» (без учета регистра)
 ].join(',');
 
-function _muteForFav(){
-  _quiet(900);                  // мгновенно отменить всё активное + drop новые запросы
-  window.__suppressScrollResetUntil = Date.now() + 900; // и не пытаться перезапускать
+function _isFavClickTarget(target){
+  if (!target) return false;
+  // точное совпадение по селекторам
+  const el = target.closest ? target.closest(FAV_SELECTORS) : null;
+  if (el) return el;
+  // частный случай: клик по иконке внутри кнопки с сердцем
+  const p = target.parentElement;
+  if (p && p.closest) return p.closest(FAV_SELECTORS);
+  return null;
 }
 
-['pointerdown','click'].forEach(type => {
+function _preventNavFromAnchor(target){
+  const a = target.closest && target.closest('a[href]');
+  if (!a) return false;
+  // Блокируем навигацию (в том числе #/…)
+  try { a.blur && a.blur(); } catch {}
+  return true;
+}
+
+function _muteForFav(e, target){
+  // 1) мгновенно отменить любые активные циклы и не пускать новые
+  _quiet(1000);
+  window.__suppressScrollResetUntil = Date.now() + 1000;
+
+  // 2) если сердечко внутри <a> — гасим сам переход
+  const hasAnchor = _preventNavFromAnchor(target);
+  if (hasAnchor && e){
+    // На капчере: стопаем ВСЁ, чтобы хэш не изменился
+    try { e.preventDefault(); } catch {}
+    try { e.stopImmediatePropagation(); } catch {}
+    try { e.stopPropagation(); } catch {}
+  }
+}
+
+// Ранний капчер: перехватываем до того, как <a> получит клик
+['pointerdown','click','touchend'].forEach(type => {
   document.addEventListener(type, (e) => {
-    const btn = e.target && (e.target.closest ? e.target.closest(FAV_SELECTORS) : null);
-    if (btn) _muteForFav();
-  }, { capture: true, passive: true });
+    const favEl = _isFavClickTarget(e.target);
+    if (favEl) _muteForFav(e, favEl);
+  }, { capture: true, passive: false });
 });
 
 // Глобальный канал: принудительный скролл вверх
