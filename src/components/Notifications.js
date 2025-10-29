@@ -1,9 +1,15 @@
 // src/components/Notifications.js
-import { k, getUID, getNotifications as getList, setNotifications as setList } from '../core/state.js';
+import { getUID, getNotifications as getList, setNotifications as setList } from '../core/state.js';
 import { getInitHeaders } from '../core/tg-init.js';
 
 const ENDPOINT = '/.netlify/functions/notifs';
 const FETCH_TIMEOUT_MS = 10000;
+
+/* ===== user-scoped key helper (локально, без импорта из state.js) ===== */
+function kLocal(base){
+  try { const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }
+  catch { return `${base}__guest`; }
+}
 
 /* ===== Общий таймаут ===== */
 function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
@@ -20,7 +26,7 @@ function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
 function unreadCount(list){ return (list||[]).reduce((a,n)=> a + (!n.read ? 1 : 0), 0); }
 function updateUnreadBadge(n){
   const v = Math.max(0, n|0);
-  try { localStorage.setItem(k('notifs_unread'), String(v)); } catch {}
+  try { localStorage.setItem(kLocal('notifs_unread'), String(v)); } catch {}
   try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: v })); } catch {}
 }
 
