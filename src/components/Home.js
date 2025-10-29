@@ -123,20 +123,66 @@ export function drawProducts(list){
     const priceEl = node.querySelector('.price');
     if (priceEl) priceEl.textContent = priceFmt(p.price);
 
-    const favBtn = node.querySelector('.fav');
+const favBtn = node.querySelector('.fav');
 if (favBtn){
   const active = isFav(p.id);
   favBtn.classList.toggle('active', active);
   favBtn.setAttribute('aria-pressed', String(active));
-  // делаем настоящей кнопкой и отключаем всплытие (чтобы не трогать <a>)
+
+  // делаем настоящей кнопкой
   try { favBtn.setAttribute('type','button'); favBtn.setAttribute('role','button'); } catch {}
+
   favBtn.onclick = (ev)=>{
-    try { ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation?.(); } catch {}
+    try {
+      ev.preventDefault();
+      ev.stopPropagation();
+      ev.stopImmediatePropagation?.();
+    } catch {}
+
+    // Не даём скролл-ресетам «дёрнуть» страницу
     try { ScrollReset.quiet(900); } catch {}
-    toggleFav(p.id);
+
+    const now = toggleFav(p.id);
+
+    // 🔴 ВАЖНО: мгновенно обновляем UI
+    favBtn.classList.toggle('active', now);
+    favBtn.setAttribute('aria-pressed', String(now));
+
+    // Глобальный синк (карточка товара / фикс-хедер и т.д.)
+    try {
+      window.dispatchEvent(new CustomEvent('fav:changed', {
+        detail: { id: p.id, active: now }
+      }));
+    } catch {}
+
+    // Режим «Избранное»: если товар снят из избранного — убираем карточку из сетки
+    try {
+      const grid = favBtn.closest('#productGrid');
+      if (grid && grid.dataset.favMode === '1' && !now) {
+        const card = favBtn.closest('.card') || favBtn.closest('a.card');
+        card?.remove();
+        if (!grid.querySelector('.card')) {
+          const v = document.getElementById('view');
+          v.innerHTML = `
+            <div class="section-title" style="display:flex;align-items:center;gap:10px">
+              <button class="square-btn" id="favBack"><i data-lucide="chevron-left"></i></button>
+              Избранное
+            </div>
+            <section class="checkout">
+              <div class="cart-sub">Список избранного пуст</div>
+            </section>
+          `;
+          window.lucide?.createIcons && lucide.createIcons();
+          document.getElementById('favBack')?.addEventListener('click', ()=> history.back());
+        }
+      }
+    } catch {}
   };
+
+  // Блокируем якорь/навигацию при клике на иконку
   try { ScrollReset.guardNoResetClick(favBtn, { duration: 900, preventAnchorNav: true }); } catch {}
 }
+
 
 
     frag.appendChild(node);

@@ -549,8 +549,13 @@ export async function renderProduct({id}){
 if (favBtn) {
   try { favBtn.setAttribute('type','button'); favBtn.setAttribute('role','button'); } catch {}
   favBtn.addEventListener('click', (e) => {
-    try { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation?.(); } catch {}
+    try {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation?.();
+    } catch {}
     try { ScrollReset.quiet(900); } catch {}
+
     const nowActive = toggleFav(p.id);
 
     favBtn.classList.toggle('active', nowActive);
@@ -561,8 +566,10 @@ if (favBtn) {
       detail: { id: p.id, active: nowActive }
     }));
   }, { passive:false, capture:false });
+
   try { ScrollReset.guardNoResetClick(favBtn, { duration: 900, preventAnchorNav: true }); } catch {}
 }
+
 
 
     // Галерея

@@ -14,24 +14,25 @@ export function renderFavorites(){
     </div>
   `;
 
-  if (!list.length){
-    v.innerHTML = `
-      ${header}
-      <section class="checkout">
-        <div class="cart-sub">Список избранного пуст</div>
-      </section>
-    `;
-    window.lucide?.createIcons && lucide.createIcons();
-    document.getElementById('favBack')?.addEventListener('click', ()=> history.back());
-    return;
-  }
-
+if (!list.length){
   v.innerHTML = `
     ${header}
-    <div class="grid" id="productGrid"></div>
+    <section class="checkout">
+      <div class="cart-sub">Список избранного пуст</div>
+    </section>
   `;
-  drawProducts(list);
-
   window.lucide?.createIcons && lucide.createIcons();
   document.getElementById('favBack')?.addEventListener('click', ()=> history.back());
+  return;
+}
+
+v.innerHTML = `
+  ${header}
+  <div class="grid" id="productGrid" data-fav-mode="1"></div>
+`;
+drawProducts(list);
+
+window.lucide?.createIcons && lucide.createIcons();
+document.getElementById('favBack')?.addEventListener('click', ()=> history.back());
+
 }
