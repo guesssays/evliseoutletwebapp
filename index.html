@@ -38,7 +38,7 @@
   <!-- Fonts / styles -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=2025-10-28-15-06" />
+  <link rel="stylesheet" href="styles.css?v=2025-10-28-15-06" />
 
   <style>
     /* --------- БАЗОВЫЕ ПЕРЕМЕННЫЕ (если нет в styles.css) --------- */
@@ -120,6 +120,34 @@
     @media (prefers-color-scheme:dark){
       #scrollTopBtn{ background:#0b1220; color:#fff; }
     }
+
+    /* === Поиск с иконкой камеры === */
+    .section-search .search-wrap{
+      position: relative;
+    }
+    .section-search .search{
+      width: 100%;
+      padding-right: 44px;         /* место под кнопку камеры */
+    }
+    .search-photo{
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--stroke);
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+    }
+    @media (prefers-color-scheme:dark){
+      .search-photo{ background:#0b1220; color:#fff; }
+    }
+    .search-photo i{ pointer-events:none; }
   </style>
 
   <!-- Telegram WebApp -->
@@ -166,6 +194,10 @@
       <div class="search-wrap">
         <i data-lucide="search" class="search-ico"></i>
         <input id="searchInput" class="search" placeholder="Поиск одежды…" />
+        <!-- Новое: кнопка камеры -->
+        <button id="btnPhotoSearch" class="search-photo" aria-label="Поиск по фото">
+          <i data-lucide="camera"></i>
+        </button>
       </div>
       <button id="openFilters" class="square-btn" aria-label="Открыть фильтры">
         <i data-lucide="sliders-horizontal"></i>
@@ -281,12 +313,86 @@
     })();
   </script>
 
+  <!-- === Поиск по фото: модалка и переход к оператору === -->
+  <script>
+    (function(){
+      // username без @
+      var SUPPORT_TARGET = 'evliseorder';
+
+      function tgOpen(url){
+        try {
+          if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openTelegramLink === 'function'){
+            Telegram.WebApp.openTelegramLink(url);
+            return;
+          }
+        } catch {}
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+
+      function resolveTargetLink(){
+        if (!SUPPORT_TARGET) return 'https://t.me/';
+        if (/^https?:\/\//i.test(SUPPORT_TARGET)) return SUPPORT_TARGET;
+        return 'https://t.me/' + SUPPORT_TARGET;
+      }
+
+      function openPhotoSearchModal(){
+        var modal = document.getElementById('modal');
+        var mb = document.getElementById('modalBody');
+        var mt = document.getElementById('modalTitle');
+        var ma = document.getElementById('modalActions');
+        if (!modal || !mb || !mt || !ma) return;
+
+        mt.textContent = 'Поиск по фото';
+        mb.innerHTML = `
+          <div class="muted" style="margin-bottom:12px">
+            Отправьте нам фото желаемой вещи — оператор подберёт варианты и пришлёт ссылки.
+          </div>
+          <ul class="mini" style="margin:0 0 12px 18px; line-height:1.4">
+            <li>Прикрепите 1–5 фото (желательно на белом фоне или на модели)</li>
+            <li>Напишите параметры: размер, цвет, бюджет</li>
+            <li>Мы ответим прямо в чате</li>
+          </ul>
+          <div class="muted mini">Поддерживаются изображения и PDF (чеки/референсы).</div>
+        `;
+        var link = resolveTargetLink();
+        ma.innerHTML = `
+          <button id="psCancel" class="pill">Отмена</button>
+          <button id="psOpenChat" class="pill primary">
+            <i data-lucide="send"></i><span style="margin-left:6px">Написать оператору</span>
+          </button>
+        `;
+
+        modal.classList.add('show');
+        try { window.lucide?.createIcons?.(); } catch {}
+
+        var close = function(){ modal.classList.remove('show'); };
+        document.getElementById('modalClose')?.addEventListener('click', close, { once:true });
+        document.getElementById('psCancel')?.addEventListener('click', close, { once:true });
+        document.getElementById('psOpenChat')?.addEventListener('click', function(){
+          tgOpen(link);
+          close();
+        }, { once:true });
+
+        // Esc закрывает
+        var onKey = function(e){ if (e.key==='Escape'){ close(); window.removeEventListener('keydown', onKey);} };
+        window.addEventListener('keydown', onKey);
+      }
+
+      // Кнопка в поиске
+      document.getElementById('btnPhotoSearch')?.addEventListener('click', function(e){
+        e.preventDefault();
+        openPhotoSearchModal();
+      });
+
+      // На всякий: иконки после монтирования
+      try { window.lucide?.createIcons?.(); } catch {}
+    })();
+  </script>
+
   <!-- Главный модуль -->
-<script type="module" src="src/main.js?v=2025-10-28-15-06"></script>
+  <script type="module" src="src/main.js?v=2025-10-28-15-06"></script>
 
   <!-- Иконки после монтирования (запасной вызов) -->
   <script> try { window.lucide?.createIcons?.(); } catch {} </script>
-
-
 </body>
 </html>
