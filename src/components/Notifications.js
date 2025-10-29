@@ -28,17 +28,7 @@ function getTgInitDataRaw(){
 
 /* ===== badge helpers ===== */
 function unreadCount(list){ return (list||[]).reduce((a,n)=> a + (!n.read ? 1 : 0), 0); }
-
-/**
- * ВНИМАНИЕ: здесь добавлен kill-switch.
- * Если window.__NOTIFS_BADGE_OFF__ === true — всегда шлём 0 и скрываем бейдж.
- */
 function updateUnreadBadge(n){
-  if (window.__NOTIFS_BADGE_OFF__) {
-    try { localStorage.setItem(k('notifs_unread'), '0'); } catch {}
-    try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: 0 })); } catch {}
-    return;
-  }
   const v = Math.max(0, n|0);
   try { localStorage.setItem(k('notifs_unread'), String(v)); } catch {}
   try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: v })); } catch {}
@@ -78,13 +68,13 @@ export async function renderNotifications(onAfterMarkRead){
     const norm = serverItems.map(n => normalize({ ...n, read: true }));
     const sorted = norm.sort((a,b)=> (b.ts||0)-(a.ts||0));
     setList(sorted);
-    applyDomReadState(sorted);         // ← МГНОВЕННО ПОМЕНЯТЬ КЛАССЫ В DOM
-    updateUnreadBadge(unreadCount(sorted));
+    applyDomReadState(sorted);         // ← мгновенно в DOM
+    updateUnreadBadge(unreadCount(sorted)); // будет 0
   } else {
     // оффлайн-фолбэк: локально всё отметить
     const updated = list.map(n => normalize({ ...n, read: true }));
     setList(updated);
-    applyDomReadState(updated);        // ← ТАК ЖЕ МЕНЯЕМ DOM
+    applyDomReadState(updated);
     updateUnreadBadge(0);
   }
 
@@ -167,7 +157,7 @@ async function markAllServerSafe(){
       }));
       const j = await r.json().catch(()=> ({}));
 
-      // >>> диагностический лог для проверки, действительно ли сервер применяет отметку
+      // диагностический лог (оставь пока)
       console.info('[notifs] mark attempt:', body, '→ status:', r.status, 'ok:', j?.ok, 'items:',
         Array.isArray(j?.items) ? j.items.length : 'no items');
 

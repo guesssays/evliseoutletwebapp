@@ -47,9 +47,6 @@ import {
 // Экран-мостик для браузера
 import { renderRefBridge } from './views/RefBridge.js';
 
-/* ==== TEMP: полностью отключить бейдж уведомлений (kill-switch) ==== */
-window.__NOTIFS_BADGE_OFF__ = true;
-
 /* ===== Кэшбек/Рефералы: локальные утилиты (дозревание локальных pending) ===== */
 const POINTS_MATURITY_MS  = 24*60*60*1000;
 function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
@@ -484,21 +481,9 @@ el('#searchInput')?.addEventListener('input', (e)=>{
 });
 
 /* ---------- Уведомления (per-user) ---------- */
-/**
- * Обновлённая функция: поддерживает kill-switch.
- * Если window.__NOTIFS_BADGE_OFF__ === true — всегда прячет бейдж.
- */
 function updateNotifBadge(explicitCount){
   const b = document.getElementById('notifBadge');
   if (!b) return;
-
-  // TEMP kill-switch
-  if (window.__NOTIFS_BADGE_OFF__) {
-    b.textContent = '';
-    b.hidden = true;
-    b.setAttribute('aria-hidden','true');
-    return;
-  }
 
   const unread = (typeof explicitCount === 'number')
     ? Math.max(0, explicitCount|0)
@@ -516,12 +501,8 @@ function updateNotifBadge(explicitCount){
 }
 window.updateNotifBadge = updateNotifBadge;
 
-// Слушаем событие от Notifications.js; при выключенном бейдже — гасим
+// Слушаем событие от Notifications.js: моментально синхронизируем бейдж
 window.addEventListener('notifs:unread', (e)=>{
-  if (window.__NOTIFS_BADGE_OFF__) {
-    updateNotifBadge(0);
-    return;
-  }
   const n = Number(e?.detail ?? 0) || 0;
   updateNotifBadge(n);
 });
@@ -541,6 +522,13 @@ function hideProductHeader(){
 
 function scrollTopNow(){
   ScrollReset.request();
+}
+
+/* маленькая утилита: жёстко обнулить локальный счётчик и перерисовать бейдж */
+function forceZeroUnreadBadge(){
+  try { localStorage.setItem(k('notifs_unread'), '0'); } catch {}
+  try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: 0 })); } catch {}
+  updateNotifBadge(0);
 }
 
 /* ---------- РОУТЕР ---------- */
@@ -606,8 +594,12 @@ async function router(){
   if (match('account/referrals'))  return renderReferrals();
 
   if (match('notifications')){
-    await renderNotifications(updateNotifBadge); // внутри: markAll + updateUnreadBadge(0|n)
-    await syncMyNotifications();                 // обновим локальный список (на будущее)
+    // 1) Рендерим экран: внутри он вызывает markAll и шлёт событие с новым количеством
+    await renderNotifications(updateNotifBadge);
+    // 2) На случай сетевых задержек / фолбэка — жёстко обнулим локальный счётчик и бейдж
+    forceZeroUnreadBadge();
+    // 3) Дополнительно подтянем актуальный список (если на сервере только что появились новые)
+    await syncMyNotifications();
     return;
   }
 
@@ -721,7 +713,7 @@ async function init(){
   }catch{}
   if (startRoute){ location.hash = startRoute; }
 
-  // одноразовый пинг о новом пользователе (только для Telegram-пользователя)
+  // одноразовый пинг о новом пользователе (только для Telegram-пользователей)
   await ensureUserJoinReported();
 
   // кэшбек: «дозреть» pending → available при старте
