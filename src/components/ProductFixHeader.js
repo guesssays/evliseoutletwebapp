@@ -206,13 +206,19 @@ function bindButtonHandlers(){
     back.style.pointerEvents = 'auto';
     back.addEventListener('click', safeBack, { passive:false });
   }
-  if (fav){
-    fav.style.pointerEvents = 'auto';
-    fav.addEventListener('click', doFavToggle, { passive:false });
-    // не даём ресету скролла запускаться на клик сердечка в фикс-хедере
-try { ScrollReset.guardNoResetClick(fav, { duration: 900, preventAnchorNav: true }); } catch {}
+if (fav){
+  fav.style.pointerEvents = 'auto';
+  // делаем «кнопку» и не даём всплывать клику
+  try { fav.setAttribute('type','button'); fav.setAttribute('role','button'); } catch {}
+  fav.addEventListener('click', (ev)=>{
+    try { ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation?.(); } catch {}
+    doFavToggle(ev);
+  }, { passive:false, capture:false });
 
-  }
+  // не даём ресету скролла запускаться на клик сердечка в фикс-хедере
+  try { ScrollReset.guardNoResetClick(fav, { duration: 900, preventAnchorNav: true }); } catch {}
+}
+
 }
 
 /* ---------------- lifecycle ---------------- */

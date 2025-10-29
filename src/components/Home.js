@@ -2,6 +2,7 @@
 import { state, isFav, toggleFav } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { applyFilters } from './Filters.js';
+import { ScrollReset } from '../core/scroll-reset.js';
 
 
 function findCategoryBySlug(slug){
@@ -123,14 +124,20 @@ export function drawProducts(list){
     if (priceEl) priceEl.textContent = priceFmt(p.price);
 
     const favBtn = node.querySelector('.fav');
-    if (favBtn){
-      const active = isFav(p.id);
-      favBtn.classList.toggle('active', active);
-      favBtn.setAttribute('aria-pressed', String(active));
-      favBtn.onclick = (ev)=>{ ev.preventDefault(); toggleFav(p.id); };
-      try { ScrollReset.guardNoResetClick(favBtn, { duration: 900, preventAnchorNav: true }); } catch {}
+if (favBtn){
+  const active = isFav(p.id);
+  favBtn.classList.toggle('active', active);
+  favBtn.setAttribute('aria-pressed', String(active));
+  // делаем настоящей кнопкой и отключаем всплытие (чтобы не трогать <a>)
+  try { favBtn.setAttribute('type','button'); favBtn.setAttribute('role','button'); } catch {}
+  favBtn.onclick = (ev)=>{
+    try { ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation?.(); } catch {}
+    try { ScrollReset.quiet(900); } catch {}
+    toggleFav(p.id);
+  };
+  try { ScrollReset.guardNoResetClick(favBtn, { duration: 900, preventAnchorNav: true }); } catch {}
+}
 
-    }
 
     frag.appendChild(node);
   }

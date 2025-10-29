@@ -546,24 +546,24 @@ export async function renderProduct({id}){
     window.addEventListener('fav:changed', onFavSync);
 
     const favBtn = document.getElementById('favBtn');
-    if (favBtn) {
-      favBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        try { ScrollReset.quiet(900); } catch {}
-        const nowActive = toggleFav(p.id);
+if (favBtn) {
+  try { favBtn.setAttribute('type','button'); favBtn.setAttribute('role','button'); } catch {}
+  favBtn.addEventListener('click', (e) => {
+    try { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation?.(); } catch {}
+    try { ScrollReset.quiet(900); } catch {}
+    const nowActive = toggleFav(p.id);
 
-        favBtn.classList.toggle('active', nowActive);
-        favBtn.setAttribute('aria-pressed', String(nowActive));
-        setFixFavActive(nowActive);
+    favBtn.classList.toggle('active', nowActive);
+    favBtn.setAttribute('aria-pressed', String(nowActive));
+    setFixFavActive(nowActive);
 
-        window.dispatchEvent(new CustomEvent('fav:changed', {
-          detail: { id: p.id, active: nowActive }
-        }));
-      }, { passive:false });
-      // локально глушим ресеты вокруг клика по сердцу, без влияния на твой обработчик
-try { ScrollReset.guardNoResetClick(favBtn, { duration: 900, preventAnchorNav: true }); } catch {}
+    window.dispatchEvent(new CustomEvent('fav:changed', {
+      detail: { id: p.id, active: nowActive }
+    }));
+  }, { passive:false, capture:false });
+  try { ScrollReset.guardNoResetClick(favBtn, { duration: 900, preventAnchorNav: true }); } catch {}
+}
 
-    }
 
     // Галерея
     const thumbs = document.getElementById('thumbs');

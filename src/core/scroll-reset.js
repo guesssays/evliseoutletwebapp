@@ -206,21 +206,35 @@ export const ScrollReset = {
     const dur = Number.isFinite(opts.duration) ? Math.max(0, opts.duration|0) : 900;
     const preventAnchor = (opts.preventAnchorNav !== false);
 
-    const onPD = () => { _quiet(dur); window.__suppressScrollResetUntil = Date.now() + dur; };
-    const onClick = (e) => {
+    const calm = () => {
       _quiet(dur);
       window.__suppressScrollResetUntil = Date.now() + dur;
-      if (preventAnchor) _cancelAnchorDefault(e, el);
-    };
-    const onTouchEnd = (e) => {
-      _quiet(dur);
-      window.__suppressScrollResetUntil = Date.now() + dur;
-      if (preventAnchor) _cancelAnchorDefault(e, el);
     };
 
-    el.addEventListener('pointerdown', onPD, { passive:true,  capture:true });
-    el.addEventListener('click',       onClick, { passive:false, capture:true });
+    const onPD = () => { calm(); };
+
+    const onClick = (e) => {
+      calm();
+      if (preventAnchor) {
+        _cancelAnchorDefault(e, el);
+        try { e.stopPropagation(); e.stopImmediatePropagation?.(); } catch {}
+      }
+    };
+
+    const onTouchEnd = (e) => {
+      calm();
+      if (preventAnchor) {
+        _cancelAnchorDefault(e, el);
+        try { e.stopPropagation(); e.stopImmediatePropagation?.(); } catch {}
+      }
+    };
+
+    el.addEventListener('pointerdown', onPD,     { passive:true,  capture:true });
+    el.addEventListener('click',       onClick,  { passive:false, capture:true });
     el.addEventListener('touchend',    onTouchEnd, { passive:false, capture:true });
+
+    // safety: делаем это настоящей кнопкой
+    try { el.setAttribute('type','button'); el.setAttribute('role','button'); } catch {}
 
     return () => {
       try{ el.removeEventListener('pointerdown', onPD, { capture:true }); }catch{}
@@ -228,6 +242,7 @@ export const ScrollReset = {
       try{ el.removeEventListener('touchend', onTouchEnd, { capture:true }); }catch{}
     };
   }
+
 };
 
 // Глобальный канал: принудительный скролл вверх
