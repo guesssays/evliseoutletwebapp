@@ -42,7 +42,7 @@ function originMatches(origin, rule) {
 function buildCorsHeaders(origin, isInternal = false) {
   const allowed = parseAllowed();
   const isAllowed =
-    isInternal ||                       // ⬅ внутренние вызовы всегда разрешаем
+    isInternal ||
     !allowed.length ||
     !origin ||
     isTelegramOrigin(origin) ||
@@ -53,7 +53,6 @@ function buildCorsHeaders(origin, isInternal = false) {
     headers: {
       'Access-Control-Allow-Origin': allowOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      // ✅ добавили X-Bot-Username
       'Access-Control-Allow-Headers': 'Content-Type, X-Internal-Auth, X-Tg-Init-Data, X-Bot-Username',
       'Access-Control-Max-Age': '86400',
       'Content-Type': 'application/json; charset=utf-8',
@@ -63,12 +62,11 @@ function buildCorsHeaders(origin, isInternal = false) {
   };
 }
 
-/* ---------- Telegram initData: надёжная валидация (WebApp + Login), decoded/raw, fix +→%20 ---------- */
-// нормализация сырой строки
+/* ---------- Telegram initData валидация ---------- */
 function normalizeInitRaw(raw) {
   let s = String(raw || '');
   if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1);
-  s = s.replace(/\r?\n/g, '&'); // иногда на iOS/Safari попадаются переводы строк
+  s = s.replace(/\r?\n/g, '&');
   return s.trim();
 }
 function splitRawPairs(raw) {
@@ -90,16 +88,13 @@ function timingEqHex(aHex, bHex) {
   } catch { return false; }
 }
 function calcFromDcs(tokenStr, dataCheckString) {
-  // WebApp-путь
   const secretWebApp = crypto.createHmac('sha256', 'WebAppData').update(tokenStr).digest();
   const calcWebApp   = crypto.createHmac('sha256', secretWebApp).update(dataCheckString).digest('hex');
-  // Login-путь
   const secretLogin  = crypto.createHash('sha256').update(tokenStr).digest();
   const calcLogin    = crypto.createHmac('sha256', secretLogin).update(dataCheckString).digest('hex');
   return { calcWebApp, calcLogin };
 }
 function parseAndCalc(tokenStr, raw) {
-  // decoded (как в доках)
   const usp = new URLSearchParams(raw);
   let hash = usp.get('hash') || usp.get('signature') || '';
   const pairs = [];
@@ -107,7 +102,6 @@ function parseAndCalc(tokenStr, raw) {
   pairs.sort();
   const dcsDecoded = pairs.join('\n');
 
-  // raw без декодирования (устойчиво к «+» как пробелам)
   const rawPairs = splitRawPairs(raw).filter(([k]) => k!=='hash' && k!=='signature');
   rawPairs.sort((a,b)=> a[0]<b[0]? -1 : a[0]>b[0]? 1 : 0);
   const dcsRaw = rawPairs.map(([k,v]) => `${k}=${v}`).join('\n');
@@ -127,19 +121,12 @@ function getBotTokens(){
     .split(',').map(s=>s.trim()).filter(Boolean);
   return [primary, ...extra].filter(Boolean);
 }
-/**
- * Возвращает uid (строка) при валидной подписи, иначе null (без исключения).
- */
 function verifyTgInitData(rawInit) {
   const tokens = getBotTokens();
   if (!tokens.length) return null;
-
   const rawBase = normalizeInitRaw(rawInit);
-
   for (const token of tokens) {
-    // прямой расчёт
     let r = parseAndCalc(token, rawBase);
-    // fix: "+ → %20"
     if (!r.ok) {
       const fixed = rawBase.replace(/\+/g, '%20');
       if (fixed !== rawBase) {
@@ -158,7 +145,7 @@ function verifyTgInitData(rawInit) {
   return null;
 }
 
-/* ---------- calls to internal functions ---------- */
+/* ---------- internal calls ---------- */
 function baseUrl(){
   return (process.env.URL || process.env.DEPLOY_URL || '').replace(/\/+$/,'');
 }
@@ -213,6 +200,17 @@ function makeDisplayId(orderId, shortId){
   return full.slice(-6).toUpperCase();
 }
 
+/* ---------- helpers: light order ---------- */
+function lightOrder(o){
+  if (!o || typeof o !== 'object') return o;
+  const { paymentScreenshot, ...rest } = o;
+  return {
+    ...rest,
+    hasPaymentScreenshot: !!paymentScreenshot,
+    paymentScreenshotSize: paymentScreenshot ? paymentScreenshot.length : 0
+  };
+}
+
 /* ---------------- Netlify Function ---------------- */
 export async function handler(event) {
   const origin = event.headers?.origin || event.headers?.Origin || '';
@@ -229,7 +227,6 @@ export async function handler(event) {
     return { statusCode: 403, headers, body: 'Forbidden by CORS' };
   }
 
-
   let store;
   let storeKind = 'blobs';
   try {
@@ -242,7 +239,8 @@ export async function handler(event) {
 
   try {
     if (event.httpMethod === 'GET') {
-      const op = (event.queryStringParameters?.op || 'list').toLowerCase();
+      const q = event.queryStringParameters || {};
+      const op = (q.op || 'list').toLowerCase();
 
       if (op === 'health') {
         const count = await store.count().catch(()=>null);
@@ -250,11 +248,18 @@ export async function handler(event) {
       }
 
       if (op === 'list') {
-        const items = await store.list();
-        return ok({ orders: items, meta:{ store: storeKind } }, headers);
+        // Лёгкая выдача по умолчанию: paymentScreenshot не отдаём
+        const light = String(q.light ?? '1') === '1';
+        const limitNum = Math.max(1, Math.min( Number(q.limit || 500) || 500, 1000 ));
+
+        const itemsAll = await store.list();
+        const items = itemsAll.slice(0, limitNum);
+        const out = light ? items.map(lightOrder) : items;
+
+        return ok({ orders: out, meta:{ store: storeKind, light: !!light, total: itemsAll.length, limit: limitNum } }, headers);
       }
-      if (op === 'get' && event.queryStringParameters?.id) {
-        const o = await store.get(String(event.queryStringParameters.id));
+      if (op === 'get' && q.id) {
+        const o = await store.get(String(q.id));
         return ok({ order: o || null }, headers);
       }
       return bad('unknown op', headers);
@@ -264,27 +269,21 @@ export async function handler(event) {
     const op = String(body.op || '').toLowerCase();
 
     if (op === 'add') {
-      // === Гарантируем userId из Telegram initData, иначе 400 ===
+      // === uid только из Telegram initData ===
       const rawInit = event.headers?.['x-tg-init-data'] || event.headers?.['X-Tg-Init-Data'] || '';
-      const uidFromInit = verifyTgInitData(rawInit); // string | null
+      const uidFromInit = verifyTgInitData(rawInit);
       const orderIn = body.order || {};
       const withUid = { ...orderIn, userId: orderIn.userId || uidFromInit || null };
 
       if (!withUid.userId) {
-        // Не создаём “гостевой” заказ: без uid не будет «Мои заказы» и начисления лояльности
         return bad('uid required (open inside Telegram)', headers);
       }
 
       const id = await store.add(withUid);
 
-      // ——— Админу: одно (!) уведомление в Telegram
-      try {
-        await notifyAdminNewOrder(id, withUid);
-      } catch (e) {
-        console.error('[orders] notifyAdminNewOrder error:', e);
-      }
+      // ——— уведомления
+      try { await notifyAdminNewOrder(id, withUid); } catch (e) { console.error('[orders] notifyAdminNewOrder error:', e); }
 
-      // ——— Пользователю: Telegram + App notifs
       try{
         await callNotify({
           chat_id: String(withUid.userId),
@@ -297,7 +296,7 @@ export async function handler(event) {
         await appNotif(withUid.userId, { icon:'package', title:`Оформлен заказ #${disp}`, sub:'Мы начали обработку', ts: Date.now(), read:false });
       }catch(e){ console.warn('[orders] notify orderPlaced failed:', e?.message||e); }
 
-      // ——— Лояльность: начислить pending
+      // ——— Лояльность
       try {
         const cartTotal =
           Array.isArray(withUid?.cart)
@@ -338,7 +337,7 @@ export async function handler(event) {
           await appNotif(o.userId, { icon:'check-circle', title:`Заказ #${disp} подтверждён`, sub:'Мы начали сборку', ts: Date.now(), read:false });
         }
       }catch(e){ console.warn('[orders] notify orderAccepted failed:', e?.message||e); }
-      return ok({ ok: !!o, order: o || null }, headers);
+      return ok({ ok: !!o, order: o ? lightOrder(o) : null }, headers);
     }
 
     if (op === 'cancel') {
@@ -362,7 +361,7 @@ export async function handler(event) {
         } catch(e){ console.warn('[orders] notify orderCanceled failed:', e?.message||e); }
       }
 
-      return ok({ ok: !!o, order: o || null }, headers);
+      return ok({ ok: !!o, order: o ? lightOrder(o) : null }, headers);
     }
 
     if (op === 'status') {
@@ -398,7 +397,7 @@ export async function handler(event) {
         } catch(e){ console.warn('[orders] notify statusChanged failed:', e?.message||e); }
       }
 
-      return ok({ ok: !!o, order: o || null }, headers);
+      return ok({ ok: !!o, order: o ? lightOrder(o) : null }, headers);
     }
 
     return bad('unknown op', headers);
@@ -505,7 +504,7 @@ function makeStoreCore(readAll, writeAll){
         address: typeof order.address === 'string' ? order.address : (order.address?.address || ''),
         phone: order.phone ?? '',
         payerFullName: order.payerFullName ?? '',
-        paymentScreenshot: order.paymentScreenshot ?? '',
+        paymentScreenshot: order.paymentScreenshot ?? '', // остаётся в хранилище, но не отдаётся в list
         status: initialStatus,
         accepted: !!order.accepted,
         canceled: !!order.canceled,
@@ -537,10 +536,7 @@ function makeStoreCore(readAll, writeAll){
       const i = list.findIndex(o=>String(o.id)===String(id));
       if (i===-1) return null;
       const o = list[i];
-
-      // можно отменять из любого не финального состояния (кроме уже выдан/отменён)
       if (o.canceled || o.status === 'отменён' || o.status === 'выдан') return null;
-
       o.canceled = true;
       o.cancelReason = String(reason || '').trim();
       o.canceledAt = Date.now();
@@ -561,7 +557,7 @@ function makeStoreCore(readAll, writeAll){
       if (i===-1) return null;
       const o = list[i];
       if (o.status==='отменён' || o.canceled) return null;
-      if (o.status==='новый' && status !== 'принят') return null; // принятие только через accept() или status->'принят'
+      if (o.status==='новый' && status !== 'принят') return null;
       o.status = status;
       if (!o.accepted && status!=='отменён') o.accepted = true;
       if (status==='выдан') o.completedAt = Date.now();
