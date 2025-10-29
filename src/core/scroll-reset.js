@@ -4,8 +4,7 @@
 // - отменяем только при реальном скролле (wheel/touchmove/scroll-keys);
 // - работает в окне навигации И/ИЛИ при allow:true;
 // - forceNow() по умолчанию имеет allow:true;
-// - 🔇 тапы по «избранному» мгновенно отменяют любые активные циклы ресета
-//   И предотвращают навигацию у родительского <a> (если таковой есть).
+// - 🔇 тапы по «избранному» глушат ресеты и блокируют навигацию у родительского <a>, не мешая твоим обработчикам.
 
 const NAV_WINDOW_MS_DEFAULT = 1800;
 let __allowScrollResetUntil = 0;
@@ -185,60 +184,63 @@ export const ScrollReset = {
   }
 };
 
-// === 🔇 Автоглушилка для избранного + защита от навигации по <a> =================
+// === 🔇 Автоглушилка для избранного + мягкая блокировка навигации по <a> =======
 
-// Широкий набор селекторов для «сердец»
+// Кандидаты сердечек
 const FAV_SELECTORS = [
-  '#btnFixFav',                 // фикс-хедер товара
-  '.card .fav',                 // сердечко в карточке на сетке
+  '#btnFixFav',
+  '.card .fav',
   'button.fav',
   'button[aria-label="В избранное"]',
   '[data-action="fav"]',
   '[data-fav]',
-  '[aria-pressed][aria-label*="збран"]' // «избран»/«в избранное» (без учета регистра)
+  '[aria-pressed][aria-label*="збран"]'
 ].join(',');
 
 function _isFavClickTarget(target){
-  if (!target) return false;
-  // точное совпадение по селекторам
+  if (!target) return null;
   const el = target.closest ? target.closest(FAV_SELECTORS) : null;
   if (el) return el;
-  // частный случай: клик по иконке внутри кнопки с сердцем
   const p = target.parentElement;
   if (p && p.closest) return p.closest(FAV_SELECTORS);
   return null;
 }
 
-function _preventNavFromAnchor(target){
+// только запрещаем навигацию у ближайшего <a>, не мешая твоим обработчикам
+function _cancelAnchorDefault(e, target){
   const a = target.closest && target.closest('a[href]');
-  if (!a) return false;
-  // Блокируем навигацию (в том числе #/…)
-  try { a.blur && a.blur(); } catch {}
-  return true;
+  if (!a) return;
+  // важное: НЕЛЬЗЯ ставить stopPropagation/stopImmediatePropagation — иначе
+  // обработчик кнопки не выполнится. Достаточно preventDefault.
+  try { e.preventDefault(); } catch {}
 }
 
-function _muteForFav(e, target){
-  // 1) мгновенно отменить любые активные циклы и не пускать новые
-  _quiet(1000);
-  window.__suppressScrollResetUntil = Date.now() + 1000;
-
-  // 2) если сердечко внутри <a> — гасим сам переход
-  const hasAnchor = _preventNavFromAnchor(target);
-  if (hasAnchor && e){
-    // На капчере: стопаем ВСЁ, чтобы хэш не изменился
-    try { e.preventDefault(); } catch {}
-    try { e.stopImmediatePropagation(); } catch {}
-    try { e.stopPropagation(); } catch {}
-  }
+function _muteForFavInteraction(){
+  _quiet(900); // отменить активные циклы
+  window.__suppressScrollResetUntil = Date.now() + 900; // и не запускать новые
 }
 
-// Ранний капчер: перехватываем до того, как <a> получит клик
-['pointerdown','click','touchend'].forEach(type => {
-  document.addEventListener(type, (e) => {
-    const favEl = _isFavClickTarget(e.target);
-    if (favEl) _muteForFav(e, favEl);
-  }, { capture: true, passive: false });
-});
+// На pointerdown просто ставим тихий режим (без preventDefault)
+document.addEventListener('pointerdown', (e) => {
+  const favEl = _isFavClickTarget(e.target);
+  if (favEl) _muteForFavInteraction();
+}, { capture: true, passive: true });
+
+// На click: тихий режим + отменяем ТОЛЬКО дефолт у <a>, оставляя всплытие
+document.addEventListener('click', (e) => {
+  const favEl = _isFavClickTarget(e.target);
+  if (!favEl) return;
+  _muteForFavInteraction();
+  _cancelAnchorDefault(e, favEl);
+}, { capture: true, passive: false });
+
+// Дополнительно страхуем touchend (старые вебвью)
+document.addEventListener('touchend', (e) => {
+  const favEl = _isFavClickTarget(e.target);
+  if (!favEl) return;
+  _muteForFavInteraction();
+  _cancelAnchorDefault(e, favEl);
+}, { capture: true, passive: false });
 
 // Глобальный канал: принудительный скролл вверх
 window.addEventListener('client:scroll:top', () =>
