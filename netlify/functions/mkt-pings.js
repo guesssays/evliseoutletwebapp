@@ -1,6 +1,6 @@
 // netlify/functions/mkt-pings.js
-// Крон: те же слоты 20:00–22:59 Asia/Tashkent (15–17 UTC), те же тексты/ротации/антидубли,
-// НО данные берём с сервера через /.netlify/functions/users-data (а не напрямую из Blobs).
+// Крон: 20:00–22:59 Asia/Tashkent (15–17 UTC), берём пользователей с сервера (users-data)
+// и шлём напоминания. ВАЖНО: notify вызываем как INTERNAL с X-Internal-Auth.
 
 export const config = { schedule: '*/15 15-17 * * *' };
 
@@ -12,30 +12,23 @@ function dayKey(ts){
   const d = new Date(ts || Date.now());
   return `${d.getUTCFullYear()}-${d.getUTCMonth()+1}-${d.getUTCDate()}`; // UTC
 }
-
-function authHeaders(method) {
-  const h = { 'Content-Type':'application/json' };
-  // ВАЖНО: внутренний заголовок для сервер-сервер вызовов:
-  const tok = (process.env.ADMIN_API_TOKEN || '').trim();
-  if (tok) h['X-Internal-Auth'] = tok;
-  return h;
-}
-
-async function httpJSON(base, path, { method='GET', body=null } = {}){
+async function httpJSON(base, path, { method='GET', body=null, headers={} } = {}){
   const url = new URL(path, base).toString();
   const r = await fetch(url, {
     method,
-    headers: authHeaders(method),
+    headers: { 'Content-Type':'application/json', ...headers },
     body: body ? JSON.stringify(body) : undefined
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || j?.ok === false) throw new Error(j?.error || `${r.status}`);
   return j;
 }
-
 async function postNotify(base, payload){
-  // Внутренний вызов с X-Internal-Auth => notify пропустит маркетинговые типы
-  return httpJSON(base, NOTIFY_ENDPOINT, { method:'POST', body: payload });
+  // 🔐 вызываем notify как INTERNAL
+  const headers = {};
+  const token = process.env.ADMIN_API_TOKEN || '';
+  if (token) headers['X-Internal-Auth'] = token;
+  return httpJSON(base, NOTIFY_ENDPOINT, { method:'POST', body: payload, headers });
 }
 async function getUsers(base){
   return (await httpJSON(base, USERS_DATA_ENDPOINT, { method:'GET' })).users || [];
@@ -96,16 +89,14 @@ export async function handler(){
       const favs = Array.isArray(u.favorites) ? u.favorites : [];
       const hasCart = cart.length > 0;
       const hasFav  = favs.length > 0;
-
       if (!hasCart && !hasFav) continue;
       considered++;
 
-      // === Корзина: 1 раз в день (UTC)
+      // Корзина: 1 раз в день (UTC)
       if (hasCart && u.lastCartReminderDay !== today) {
         const first = cart[0];
         const title = String(first?.title || 'товар').slice(0, 140);
         const count = cart.length;
-
         const { build, nextIdx } = pickVariant(CART_VARIANTS, u.cartVariantIdx || 0);
         const text = build({ title, count });
 
@@ -114,11 +105,10 @@ export async function handler(){
         sent++;
       }
 
-      // === Избранное: раз в 3 дня
+      // Избранное: раз в 3 дня
       if (hasFav && Number(u.lastFavReminderTs || 0) + THREE_DAYS <= now) {
         const { build, nextIdx } = pickVariant(FAV_VARIANTS, u.favVariantIdx || 0);
         const text = build({});
-
         await postNotify(base, { type: 'favReminder', chat_id: chatId, text });
         await patchUser(base, u.uid, { lastFavReminderTs: now, favVariantIdx: nextIdx });
         sent++;
