@@ -174,19 +174,37 @@ async function notifApiMarkAll(uid){
   throw new Error('notif mark error');
 }
 
+// === main.js — ЗАМЕНА mergeNotifsToLocal() на «не раз-прочитывает» ===
 function mergeNotifsToLocal(serverItems){
   const local = getNotifications();
   const byId = new Map(local.map(n => [String(n.id), n]));
   let changed = false;
 
-  for (const s of serverItems){
+  for (const s of (serverItems||[])){
     const sid = String(s.id);
     const prev = byId.get(sid);
+
+    // если локально уже read:true — сохраняем это, даже если сервер прислал read:false
+    const nextRead = prev?.read ? true : !!s.read;
+
     if (!prev){
-      byId.set(sid, { id:s.id, ts:s.ts||Date.now(), read:!!s.read, icon:s.icon||'bell', title:s.title||'', sub:s.sub||'' });
+      byId.set(sid, {
+        id: sid,
+        ts: s.ts || Date.now(),
+        read: nextRead,
+        icon: s.icon || 'bell',
+        title: String(s.title || ''),
+        sub: String(s.sub || ''),
+      });
       changed = true;
     }else{
-      const next = { ...prev, ...s };
+      const next = {
+        ...prev,
+        ...s,
+        read: nextRead,
+        id: sid,
+        ts: s.ts || prev.ts || Date.now(),
+      };
       if (JSON.stringify(next) !== JSON.stringify(prev)){
         byId.set(sid, next);
         changed = true;
@@ -198,6 +216,7 @@ function mergeNotifsToLocal(serverItems){
     setNotifications([...byId.values()].sort((a,b)=> (b.ts||0)-(a.ts||0)));
   }
 }
+
 
 async function serverPushFor(uid, notif){
   const safe = {

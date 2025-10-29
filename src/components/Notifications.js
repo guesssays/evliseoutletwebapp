@@ -134,6 +134,7 @@ async function fetchServerListSafe(){
   }
 }
 
+// === Notifications.js — ЗАМЕНА markAllServerSafe() ===
 async function markAllServerSafe(){
   const uid = getUID();
   if (!uid) return null;
@@ -142,12 +143,14 @@ async function markAllServerSafe(){
   const hasInit  = !!(initData && initData.length);
 
   try{
-    const headers = { 'Content-Type':'application/json', ...(hasInit ? { 'X-Tg-Init-Data': initData } : {}) };
+    const headers = { 'Content-Type':'application/json' };
+    if (hasInit) headers['X-Tg-Init-Data'] = initData;
 
-    // Пытаемся по «приватному» пути (initData), затем — по публичному с uid
+    // РАНЬШЕ: только markmine → markseen при hasInit
+    // ТЕПЕРЬ: добавили публичный fallback { op:'markAll', uid }, даже если hasInit=true
     const attempts = hasInit
-      ? [ { op:'markmine' }, { op:'markseen' } ]   // без uid, сервер возьмёт его из initData
-      : [ { op:'markAll', uid } ];                 // публичный путь требует uid
+      ? [ { op:'markmine' }, { op:'markseen' }, { op:'markAll', uid } ]
+      : [ { op:'markAll', uid } ];
 
     for (const body of attempts){
       const r = await withTimeout(fetch(ENDPOINT, {
@@ -157,21 +160,22 @@ async function markAllServerSafe(){
       }));
       const j = await r.json().catch(()=> ({}));
 
-      // диагностический лог (оставь пока)
-      console.info('[notifs] mark attempt:', body, '→ status:', r.status, 'ok:', j?.ok, 'items:',
-        Array.isArray(j?.items) ? j.items.length : 'no items');
+      console.info('[notifs] mark attempt:', body, '→ status:', r.status, 'ok:', j?.ok,
+        'items:', Array.isArray(j?.items) ? j.items.length : 'no items');
 
       if (r.ok && j?.ok !== false){
-        // если сервер вернул актуальные items — используем их; если нет — просто вернём []
+        // Сервер вернул актуальные элементы (уже read:true) — используем их.
         return Array.isArray(j.items) ? j.items : [];
       }
     }
+
     return null;
   }catch(e){
     console.warn('[notifs] markAllServerSafe failed:', e?.message||e);
     return null;
   }
 }
+
 
 /* ===== моментальное обновление DOM после read ===== */
 function applyDomReadState(list){
