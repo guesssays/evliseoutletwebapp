@@ -1,77 +1,88 @@
 // src/core/scroll-reset.js
-// Сброс скролла «без дёрганья»:
-// - короткая серия кадров;
-// - отмена ТОЛЬКО при реальном скролле (wheel/touchmove/scroll-keys);
-// - работает в окне навигации (hashchange) или с явным allow.
+// Сброс скролла «без дёрганья» с максимальной совместимостью:
+// - таргетим window + documentElement + body + scrollingElement + #view;
+// - отменяем только при реальном скролле (wheel/touchmove/scroll-keys);
+// - работает в окне навигации И/ИЛИ при allow:true;
+// - forceNow() по умолчанию имеет allow:true (чтобы выстреливать из роутера без условий).
 
-const NAV_WINDOW_MS_DEFAULT = 1400; // было 900 — добавили буфер после рендера
+const NAV_WINDOW_MS_DEFAULT = 1800;
 let __allowScrollResetUntil = 0;
 
-// ====== трекинг взаимодействий ======
-let __lastScrollInteractAt = 0;   // только «настоящий скролл»
-let __lastAnyInteractAt = 0;      // клики/тач-старты и пр. (для справки, но НЕ отменяет)
-
-const _scrollEvents = ['wheel', 'touchmove'];
-const _otherEvents  = ['touchstart', 'pointerdown', 'mousedown'];
+// ===== трекинг реального скролла =====
+let __lastScrollInteractAt = 0;
 
 function _isScrollKey(e){
   const k = e.key;
-  return k === 'PageDown' || k === 'PageUp' || k === 'Home' || k === 'End' || k === ' ' || k === 'ArrowDown' || k === 'ArrowUp';
+  return (
+    k === 'PageDown' || k === 'PageUp' || k === 'Home' || k === 'End' || k === ' ' ||
+    k === 'ArrowDown' || k === 'ArrowUp'
+  );
 }
 
-_scrollEvents.forEach(t => {
+['wheel','touchmove'].forEach(t => {
   window.addEventListener(t, () => { __lastScrollInteractAt = Date.now(); }, { passive:true, capture:true });
 });
-
-_otherEvents.forEach(t => {
-  window.addEventListener(t, () => { __lastAnyInteractAt = Date.now(); }, { passive:true, capture:true });
-});
-
 window.addEventListener('keydown', (e) => {
   if (_isScrollKey(e)) __lastScrollInteractAt = Date.now();
-  else __lastAnyInteractAt = Date.now();
 }, { capture:true });
 
 function _userHasScrolledRecently(ms = 300){
   return (Date.now() - __lastScrollInteractAt) <= ms;
 }
 
-// ====== токен отмены ======
+// ===== сессия / токен отмены =====
 let __sessionId = 0;
 function _newToken(){
   const id = ++__sessionId;
   return { id, get cancelled(){ return id !== __sessionId; } };
 }
 
-// ====== цели ======
+// ===== цели для сброса (максимально широкий набор) =====
 function _targets() {
-  const list = [];
-  const se = document.scrollingElement;
-  if (se) list.push(se);
-  const view = document.getElementById('view');
-  if (view) list.push(view);
-  return list;
+  const list = new Set();
+
+  try {
+    const se = document.scrollingElement;
+    if (se) list.add(se);
+  } catch {}
+
+  try {
+    const view = document.getElementById('view');
+    if (view) list.add(view);
+  } catch {}
+
+  try { list.add(document.documentElement); } catch {}
+  try { list.add(document.body); } catch {}
+
+  return Array.from(list).filter(Boolean);
 }
 
 function _toTopOnce(token) {
   if (token?.cancelled) return;
   try { document.activeElement?.blur?.(); } catch {}
-  for (const t of _targets()) { try { t.scrollTop = 0; } catch {} }
+
+  const tgs = _targets();
+  for (const t of tgs) {
+    try { t.scrollTop = 0; } catch {}
+  }
   try { window.scrollTo(0, 0); } catch {}
 }
 
 function _nearTop(){
-  const se = document.scrollingElement || document.documentElement;
-  return (se?.scrollTop || 0) <= 2;
+  const se = document.scrollingElement || document.documentElement || document.body;
+  return (se && typeof se.scrollTop === 'number') ? (se.scrollTop <= 2) : true;
 }
 
-// короткая серия: RAF × 2
+// Короткий мягкий цикл + небольшой «дожим» таймерами
 function _scheduleShort(token){
   if (token.cancelled) return;
   _toTopOnce(token);
   requestAnimationFrame(()=>{
     if (token.cancelled || _userHasScrolledRecently()) return;
     _toTopOnce(token);
+    // Лёгкий дожим (без дёрганий)
+    setTimeout(()=>{ if (!token.cancelled && !_userHasScrolledRecently()) _toTopOnce(token); }, 60);
+    setTimeout(()=>{ if (!token.cancelled && !_userHasScrolledRecently()) _toTopOnce(token); }, 120);
   });
 }
 
@@ -87,9 +98,8 @@ function _afterImagesIn(el, token) {
     }));
   if (pending.length === 0) return Promise.resolve();
 
-  // ждём не дольше 400 мс; отменяем, если пользователь НАЧАЛ СКРОЛЛ
   return new Promise(resolve => {
-    const t = setTimeout(resolve, 400);
+    const t = setTimeout(resolve, 450);
     Promise.all(pending).then(()=> { clearTimeout(t); resolve(); });
     const abortCheck = () => {
       if (token.cancelled || _userHasScrolledRecently()) {
@@ -121,13 +131,15 @@ function _isResetAllowed(optsAllowFlag) {
 }
 
 export const ScrollReset = {
+  /**
+   * Плавный запрос сброса. Сработает в окне навигации или при allow:true.
+   */
   request(containerEl, opts = {}) {
     const allow = !!opts.allow;
 
     if (_remainMs('__dropScrollResetUntil') > 0) return;
     if (!_isResetAllowed(allow)) return;
 
-    // важное изменение: клики/тапы НЕ отменяют; отменяет только реальный скролл
     if (_userHasScrolledRecently()) return;
 
     const wait = _remainMs('__suppressScrollResetUntil');
@@ -156,8 +168,12 @@ export const ScrollReset = {
     });
   },
 
+  /**
+   * Мгновенный жёсткий сброс. ВАЖНО: по умолчанию allow:true,
+   * то есть ведёт себя как «в контексте навигации», чтобы вызовы из роутера всегда работали.
+   */
   forceNow(opts = {}) {
-    const allow = !!opts.allow;
+    const allow = (opts.allow === false) ? false : true; // default allow:true
     if (_remainMs('__dropScrollResetUntil') > 0) return;
     if (_remainMs('__suppressScrollResetUntil') > 0) return;
     if (!_isResetAllowed(allow)) return;
@@ -166,25 +182,28 @@ export const ScrollReset = {
     _scheduleShort(token);
   },
 
+  /** Сдвинуть ближайшие сбросы на ms миллисекунд. */
   suppress(ms = 300) {
     const until = Date.now() + Math.max(0, ms|0);
     window.__suppressScrollResetUntil = until;
     if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
   },
 
+  /** Полная «тишина» на ms миллисекунд (никаких переотложений). */
   quiet(ms = 600) {
     const until = Date.now() + Math.max(0, ms|0);
     window.__dropScrollResetUntil = until;
     if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
   },
 
+  /** Вручную открыть окно навигации (для нестандартных переходов). */
   allow(ms = NAV_WINDOW_MS_DEFAULT) {
     _openNavWindow(ms);
   },
 
+  // Инициализация
   mount() {
     try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch {}
-
     _openNavWindow(NAV_WINDOW_MS_DEFAULT);
 
     window.addEventListener('hashchange', () => _openNavWindow(NAV_WINDOW_MS_DEFAULT), { capture: true });
@@ -203,5 +222,5 @@ export const ScrollReset = {
 
 // Глобальный канал: принудительный скролл вверх
 window.addEventListener('client:scroll:top', () =>
-  ScrollReset.request(document.getElementById('view'), { allow: true })
+  ScrollReset.forceNow({ allow:true })
 );
