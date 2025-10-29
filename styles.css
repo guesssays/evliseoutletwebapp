@@ -1663,6 +1663,57 @@ a.card .fav { pointer-events: auto; }                   /* на всякий с�
   height: 12px;
 }
 
+/* === Loader Lines: anti-ghost fix (EOF override) === */
+/* конт. под 9 линий — сетка, без baseline/inline артефактов */
+#globalLoader .gl__spinner{
+  width:66px !important;
+  height:20px !important;
+  display:grid !important;
+  place-items:center !important;
+}
+
+#globalLoader .gl__lines{
+  display:grid !important;
+  grid-auto-flow: column !important;
+  column-gap:4px !important;
+  align-items:end !important;
+  line-height:0 !important;
+}
+
+/* сами линии — блочные, анимация только через scaleY */
+#globalLoader .gl__line{
+  display:block !important;
+  width:2px !important;
+  height:16px !important;
+  background: currentColor !important;
+  border-radius:2px !important;
+
+  /* ключ: никаких height/translateY — только transform */
+  transform-origin: bottom center !important;
+  animation: gl-line-bounce-fix 1000ms ease-in-out infinite !important;
+
+  /* сглаживание и запрет «двойников» */
+  backface-visibility: hidden !important;
+  -webkit-backface-visibility: hidden !important;
+  will-change: transform, opacity !important;
+}
+
+/* те же ступенчатые задержки */
+#globalLoader .gl__line.l1 { animation-delay: 800ms !important; }
+#globalLoader .gl__line.l2 { animation-delay: 600ms !important; }
+#globalLoader .gl__line.l3 { animation-delay: 400ms !important; }
+#globalLoader .gl__line.l4 { animation-delay: 200ms !important; }
+#globalLoader .gl__line.l5 { animation-delay:   0ms !important; }
+#globalLoader .gl__line.l6 { animation-delay: 200ms !important; }
+#globalLoader .gl__line.l7 { animation-delay: 400ms !important; }
+#globalLoader .gl__line.l8 { animation-delay: 600ms !important; }
+#globalLoader .gl__line.l9 { animation-delay: 800ms !important; }
+
+/* новая анимация: мягкое «дыхание» без сдвигов по Y */
+@keyframes gl-line-bounce-fix{
+  0%, 100% { opacity:1;   transform: scaleY(1);     }
+  50%      { opacity:.33; transform: scaleY(0.72);  }
+}
 
 /* Ускоряем монтирование секций/экранов */
 #view > * { content-visibility: auto; contain-intrinsic-size: 800px; }
