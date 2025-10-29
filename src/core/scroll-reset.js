@@ -1,70 +1,113 @@
 // src/core/scroll-reset.js
-// Жёсткий, многокадровый сброс скролла + подавление и «тихое окно»,
-// ТЕПЕРЬ: работает ТОЛЬКО возле навигации (hashchange) или по явному allow.
+// Сброс скролла «без дёрганья»: короткая серия кадров, отмена при взаимодействии,
+// действует только рядом с навигацией (hashchange) или с явным allow.
 
+const NAV_WINDOW_MS_DEFAULT = 900; // было 2000 — меньше навязываемся
+let __allowScrollResetUntil = 0;
+
+// ====== пользовательское взаимодействие: мгновенная отмена текущих попыток ======
+let __lastUserInteractAt = 0;
+const _userEvents = [
+  'wheel', 'touchstart', 'touchmove', 'pointerdown', 'mousedown',
+  'keydown'
+];
+function _isScrollKey(e){
+  const k = e.key;
+  return k === 'PageDown' || k === 'PageUp' || k === 'Home' || k === 'End' || k === ' ' || k === 'ArrowDown' || k === 'ArrowUp';
+}
+_userEvents.forEach(t => {
+  window.addEventListener(t, (e) => {
+    if (t === 'keydown' && !_isScrollKey(e)) return;
+    __lastUserInteractAt = Date.now();
+    // активная сессия (если есть) сама увидит токен.cancelled и прекратится
+  }, { passive: true, capture: true });
+});
+
+function _userHasInteractedRecently(ms = 250){
+  return (Date.now() - __lastUserInteractAt) <= ms;
+}
+
+// ====== токен отмены (каждый request/forceNow запускает новую сессию) ======
+let __sessionId = 0;
+function _newToken(){
+  const id = ++__sessionId;
+  return {
+    id,
+    get cancelled(){ return id !== __sessionId; }
+  };
+}
+
+// ====== цели для ресета ======
 function _targets() {
   const list = [];
-  if (document.scrollingElement) list.push(document.scrollingElement);
-  const view = document.getElementById('view'); if (view) list.push(view);
-  list.push(document.documentElement, document.body, window);
-  return list.filter(Boolean);
+  const se = document.scrollingElement;
+  if (se) list.push(se);
+  const view = document.getElementById('view');
+  if (view) list.push(view);
+  return list;
 }
 
-function _toTopOnce() {
+function _toTopOnce(token) {
+  if (token?.cancelled) return;
   try { document.activeElement?.blur?.(); } catch {}
   for (const t of _targets()) {
-    try {
-      if (t === window) window.scrollTo(0, 0);
-      else t.scrollTop = 0;
-    } catch {}
+    try { t.scrollTop = 0; } catch {}
   }
+  try { window.scrollTo(0, 0); } catch {}
 }
 
-function _scheduleFrames() {
-  _toTopOnce();
-  requestAnimationFrame(() => {
-    _toTopOnce();
-    requestAnimationFrame(() => {
-      _toTopOnce();
-      setTimeout(_toTopOnce, 0);
-      setTimeout(_toTopOnce, 80);
-      setTimeout(_toTopOnce, 160);
-      setTimeout(_toTopOnce, 240);
-    });
+function _nearTop(){
+  const se = document.scrollingElement || document.documentElement;
+  return (se?.scrollTop || 0) <= 2;
+}
+
+// Короткая серия кадр→кадр; прекращаемся при любом признаке взаимодействия
+function _scheduleShort(token){
+  if (token.cancelled) return;
+  _toTopOnce(token);
+  requestAnimationFrame(()=>{
+    if (token.cancelled || _userHasInteractedRecently() ) return;
+    _toTopOnce(token);
   });
 }
 
-function _afterImagesIn(el) {
+function _afterImagesIn(el, token) {
   if (!el) return Promise.resolve();
   const imgs = [...el.querySelectorAll('img')];
   const pending = imgs
     .filter(img => !img.complete || img.naturalWidth === 0)
     .map(img => new Promise(res => {
-      const done = () => { 
-        img.removeEventListener('load', done); 
-        img.removeEventListener('error', done); 
-        res(); 
-      };
+      const done = () => { img.removeEventListener('load', done); img.removeEventListener('error', done); res(); };
       img.addEventListener('load', done, { once: true });
       img.addEventListener('error', done, { once: true });
     }));
-  // Увеличиваем тайм-аут до 600 мс для более гибкой обработки
-  return Promise.race([
-    Promise.all(pending),
-    new Promise(res => setTimeout(res, 600))
-  ]);
+  if (pending.length === 0) return Promise.resolve();
+
+  // ждём не дольше 400 мс, и отменяем, если юзер начал скроллить
+  return new Promise(resolve => {
+    const t = setTimeout(resolve, 400);
+    Promise.all(pending).then(()=> {
+      clearTimeout(t);
+      resolve();
+    });
+    const abortCheck = () => {
+      if (token.cancelled || _userHasInteractedRecently()) {
+        clearTimeout(t);
+        resolve();
+      } else {
+        requestAnimationFrame(abortCheck);
+      }
+    };
+    requestAnimationFrame(abortCheck);
+  });
 }
 
-/* ===== Окна подавления / тишины ===== */
+/* ===== окна подавления / тишины (как были) ===== */
 function _remainMs(untilVar) {
   const until = Number(window[untilVar] || 0);
   return Math.max(0, until - Date.now());
 }
 let _pendingTimer = null;
-
-/* ===== Окно НАВИГАЦИИ: разрешаем сброс только рядом с hashchange/start ===== */
-const NAV_WINDOW_MS_DEFAULT = 2000;  // Увеличиваем окно навигации до 2000 мс
-let __allowScrollResetUntil = 0;
 
 function _openNavWindow(ms = NAV_WINDOW_MS_DEFAULT) {
   __allowScrollResetUntil = Date.now() + Math.max(0, ms|0);
@@ -73,30 +116,25 @@ function _navRemainMs() {
   return Math.max(0, __allowScrollResetUntil - Date.now());
 }
 function _isResetAllowed(optsAllowFlag) {
-  // 1) явное разрешение (e.g., для клиентских событий)
   if (optsAllowFlag) return true;
-  // 2) только в окне навигации (после hashchange/start)
   return _navRemainMs() > 0;
 }
 
 export const ScrollReset = {
   /**
-   * Просим сброс скролла.
-   * Работает только:
-   *  - в течение «окна навигации» после hashchange/start
-   *  - или если передан opts.allow === true
-   * Плюс учитывает suppress/quiet.
+   * Запрос сброса скролла.
+   * Срабатывает только в окне навигации или при opts.allow === true.
+   * Не «насилует» страницу: короткая серия кадров, отмена при взаимодействии.
    */
   request(containerEl, opts = {}) {
     const allow = !!opts.allow;
 
-    // «тихое окно»: полностью игнорируем без переназначений
     if (_remainMs('__dropScrollResetUntil') > 0) return;
-
-    // не в окне навигации и без явного allow — выходим (не дёргаем страницу)
     if (!_isResetAllowed(allow)) return;
 
-    // отложим на конец suppress-окна
+    // если пользователь уже начал скролл прямо сейчас — не мешаем
+    if (_userHasInteractedRecently()) return;
+
     const wait = _remainMs('__suppressScrollResetUntil');
     if (wait > 0) {
       if (_pendingTimer) clearTimeout(_pendingTimer);
@@ -107,36 +145,47 @@ export const ScrollReset = {
       return;
     }
 
-    // обычная работа
+    const token = _newToken();
     queueMicrotask(() => {
-      _scheduleFrames();
-      _afterImagesIn(containerEl || document.getElementById('view'))
-        .then(() => _scheduleFrames())
-        .catch(() => {});
+      if (token.cancelled) return;
+      _scheduleShort(token);
+
+      // если мы уже у нуля — не продолжаем «качать» больше
+      if (_nearTop()) return;
+
+      _afterImagesIn(containerEl || document.getElementById('view'), token)
+        .then(() => {
+          if (token.cancelled || _userHasInteractedRecently()) return;
+          // последний мягкий дожим после загрузки картинок
+          _scheduleShort(token);
+        })
+        .catch(()=>{ /* ignore */ });
     });
   },
 
   /**
-   * Мгновенный сброс — те же правила (нужно окно навигации или opts.allow).
+   * Мгновенный сброс — под теми же правилами (окно навигации или opts.allow).
+   * Отменяемся при взаимодействии.
    */
   forceNow(opts = {}) {
     const allow = !!opts.allow;
     if (_remainMs('__dropScrollResetUntil') > 0) return;
     if (_remainMs('__suppressScrollResetUntil') > 0) return;
     if (!_isResetAllowed(allow)) return;
-    _scheduleFrames();
+    if (_userHasInteractedRecently()) return;
+    const token = _newToken();
+    _scheduleShort(token);
   },
 
-  /** Перенести ближайшие сбросы на ms миллисекунд (для back/внутренней навигации). */
-  suppress(ms = 400) {
+  /** Сдвинуть ближайшие сбросы на ms миллисекунд. */
+  suppress(ms = 300) {
     const until = Date.now() + Math.max(0, ms|0);
     window.__suppressScrollResetUntil = until;
     if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
   },
 
   /**
-   * Полностью «заглушить» любые запросы на ms миллисекунд (без переотложений).
-   * Используем для интра-кликов (например, сердечко), чтобы не сработали чужие request().
+   * Полная «тишина» на ms миллисекунд (никаких переотложений).
    */
   quiet(ms = 600) {
     const until = Date.now() + Math.max(0, ms|0);
@@ -144,26 +193,23 @@ export const ScrollReset = {
     if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
   },
 
-  /**
-   * Опционально: можно явным вызовом открыть окно навигации, если где-то
-   * выполняется переход без hashchange (редко, но пусть будет).
-   */
+  /** Открыть окно навигации вручную (если переход нестандартный). */
   allow(ms = NAV_WINDOW_MS_DEFAULT) {
     _openNavWindow(ms);
   },
 
-  // (только один апдейт внутри mount())
+  // Единоразовая инициализация
   mount() {
     try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch {}
 
-    // При старте дать небольшое окно для первичного сброса
+    // маленькое окно после первого старта
     _openNavWindow(NAV_WINDOW_MS_DEFAULT);
 
-    // Любая смена хеша — открыть окно навигации (и скролл можно сбрасывать)
+    // hashchange = открываем окно
     window.addEventListener('hashchange', () => _openNavWindow(NAV_WINDOW_MS_DEFAULT), { capture: true });
 
+    // bfcache возврат — считаем навигацией
     const onPageShow = (e) => {
-      // Возвращение из bfcache — тоже считаем как «навигацию»
       if (e && e.persisted) {
         _openNavWindow(NAV_WINDOW_MS_DEFAULT);
         requestAnimationFrame(() => this.request(document.getElementById('view'), { allow: true }));
@@ -171,12 +217,12 @@ export const ScrollReset = {
     };
     window.addEventListener('pageshow', onPageShow);
 
-    // Первичный запрос — разрешаем явно
+    // Первичный мягкий запрос (один короткий цикл)
     requestAnimationFrame(() => this.request(document.getElementById('view'), { allow: true }));
   }
 };
 
-// Глобальный канал: разрешаем явно (кнопка «Наверх» или принудительный скролл вверх)
+// Глобальный канал: принудительный скролл вверх (уважаем allow)
 window.addEventListener('client:scroll:top', () =>
   ScrollReset.request(document.getElementById('view'), { allow: true })
 );
