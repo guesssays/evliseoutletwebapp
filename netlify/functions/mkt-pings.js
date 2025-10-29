@@ -1,6 +1,6 @@
 // netlify/functions/mkt-pings.js
 // Крон: те же слоты 20:00–22:59 Asia/Tashkent (15–17 UTC), те же тексты/ротации/антидубли,
-// НО данные берутся с сервера через /.netlify/functions/users-data (а не напрямую из Blobs).
+// НО данные берём с сервера через /.netlify/functions/users-data (а не напрямую из Blobs).
 
 export const config = { schedule: '*/15 15-17 * * *' };
 
@@ -10,25 +10,35 @@ const NOTIFY_ENDPOINT     = '/.netlify/functions/notify';
 /* ---------- helpers ---------- */
 function dayKey(ts){
   const d = new Date(ts || Date.now());
-  return `${d.getUTCFullYear()}-${d.getUTCMonth()+1}-${d.getUTCDate()}`; // UTC, как и раньше
+  return `${d.getUTCFullYear()}-${d.getUTCMonth()+1}-${d.getUTCDate()}`; // UTC
 }
+
+function authHeaders(method) {
+  const h = { 'Content-Type':'application/json' };
+  // ВАЖНО: внутренний заголовок для сервер-сервер вызовов:
+  const tok = (process.env.ADMIN_API_TOKEN || '').trim();
+  if (tok) h['X-Internal-Auth'] = tok;
+  return h;
+}
+
 async function httpJSON(base, path, { method='GET', body=null } = {}){
   const url = new URL(path, base).toString();
   const r = await fetch(url, {
     method,
-    headers: { 'Content-Type':'application/json' },
+    headers: authHeaders(method),
     body: body ? JSON.stringify(body) : undefined
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || j?.ok === false) throw new Error(j?.error || `${r.status}`);
   return j;
 }
+
 async function postNotify(base, payload){
+  // Внутренний вызов с X-Internal-Auth => notify пропустит маркетинговые типы
   return httpJSON(base, NOTIFY_ENDPOINT, { method:'POST', body: payload });
 }
 async function getUsers(base){
-  const j = await httpJSON(base, USERS_DATA_ENDPOINT, { method:'GET' });
-  return Array.isArray(j.users) ? j.users : [];
+  return (await httpJSON(base, USERS_DATA_ENDPOINT, { method:'GET' })).users || [];
 }
 async function patchUser(base, uid, patch){
   return httpJSON(base, USERS_DATA_ENDPOINT, { method:'POST', body: { uid, ...patch } });
@@ -75,9 +85,7 @@ export async function handler(){
     const today = dayKey(now);
     const THREE_DAYS = 3*24*60*60*1000;
 
-    // 1) получаем пользователей и их актуальные cart/favorites с сервера
     const users = await getUsers(base);
-
     let sent = 0, considered = 0;
 
     for (const u of users) {

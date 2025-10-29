@@ -3,13 +3,13 @@
 //
 // ENV:
 //   TG_BOT_TOKEN
-//   ALT_TG_BOT_TOKENS        // через запятую — дополнительные токены, если бот менялся
+//   ALT_TG_BOT_TOKENS
 //   ADMIN_API_TOKEN
-//   ADMIN_CHAT_ID            // можно через запятую (несколько админов)
+//   ADMIN_CHAT_ID
 //   WEBAPP_URL
 //   ALLOWED_ORIGINS
 //
-// Заголовки от клиента: X-Tg-Init-Data, X-Bot-Username (диагностика)
+// Заголовки: X-Tg-Init-Data, X-Bot-Username (диагностика), X-Internal-Auth (внутр. вызовы)
 
 import crypto from 'node:crypto';
 
@@ -35,7 +35,6 @@ function buildCorsHeaders(origin, isInternal=false){
     headers:{
       'Access-Control-Allow-Origin': allow ? (origin||'*') : 'null',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      // 🔽 добавили X-Bot-Username
       'Access-Control-Allow-Headers': 'Content-Type, X-Tg-Init-Data, X-Internal-Auth, X-Bot-Username',
       'Access-Control-Max-Age': '86400',
       'Content-Type': 'application/json; charset=utf-8',
@@ -56,11 +55,10 @@ function isInternalCall(event){
 }
 
 /* ===== Надёжная проверка Telegram initData (WebApp + Login), decoded/raw, fix +→%20 ===== */
-// Нормализация "сырой" строки initData
 function normalizeInitRaw(raw) {
   let s = String(raw || '');
   if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1);
-  s = s.replace(/\r?\n/g, '&'); // Safari/iOS иногда рвёт строку
+  s = s.replace(/\r?\n/g, '&');
   return s.trim();
 }
 function splitRawPairs(raw) {
@@ -81,9 +79,6 @@ function sigOk(aHex, bHex) {
     return crypto.timingSafeEqual(a, b);
   } catch { return false; }
 }
-// Подписи считаем двумя способами:
-//  - WebApp:   HMAC( key = HMAC("sha256", "WebAppData", bot_token), data_check_string )
-//  - Login:    HMAC( key = sha256(bot_token), data_check_string )
 function _calcFromDcs(tokenStr, dataCheckString) {
   const secretWebApp = crypto.createHmac('sha256', 'WebAppData').update(tokenStr).digest();
   const calcWebApp   = crypto.createHmac('sha256', secretWebApp).update(dataCheckString).digest('hex');
@@ -92,7 +87,6 @@ function _calcFromDcs(tokenStr, dataCheckString) {
   return { calcWebApp, calcLogin };
 }
 function _parseAndCalc(tokenStr, raw) {
-  // decoded way (как в доках)
   const urlEncoded = new URLSearchParams(raw);
   let hash = urlEncoded.get('hash') || urlEncoded.get('signature') || '';
   const pairs = [];
@@ -100,7 +94,6 @@ function _parseAndCalc(tokenStr, raw) {
   pairs.sort();
   const dcsDecoded = pairs.join('\n');
 
-  // raw way (без декодирования, устойчиво к кейсам с '+')
   const rawPairs = splitRawPairs(raw).filter(([k]) => k!=='hash' && k!=='signature');
   rawPairs.sort((a,b)=>a[0]<b[0]? -1 : a[0]>b[0]? 1 : 0);
   const dcsRaw = rawPairs.map(([k,v]) => `${k}=${v}`).join('\n');
@@ -116,8 +109,7 @@ function _parseAndCalc(tokenStr, raw) {
 }
 function getBotTokens(){
   const primary = (process.env.TG_BOT_TOKEN||'').trim();
-  const extra = String(process.env.ALT_TG_BOT_TOKENS||'')
-    .split(',').map(s=>s.trim()).filter(Boolean);
+  const extra = String(process.env.ALT_TG_BOT_TOKENS||'').split(',').map(s=>s.trim()).filter(Boolean);
   return [primary, ...extra].filter(Boolean);
 }
 function verifyTgInitData(rawInitData){
@@ -127,9 +119,7 @@ function verifyTgInitData(rawInitData){
   const rawBase = normalizeInitRaw(rawInitData);
 
   for (const token of tokens) {
-    // (1) как есть
     let r = _parseAndCalc(token, rawBase);
-    // (2) пробуем фикс "+ → %20"
     if (!r.ok) {
       const fixed = rawBase.replace(/\+/g, '%20');
       if (fixed !== rawBase) {
@@ -184,7 +174,7 @@ async function sendTg(token, chatId, text, kb, type){
   if (!r.ok || data?.ok===false) throw new Error('telegram send failed');
 }
 
-/* Типы, связанные с заказами: требуем initData для внешних вызовов */
+/* Типы, связанные с заказами */
 const ORDER_ONLY_USER = new Set(['orderPlaced','orderAccepted','statusChanged','orderCanceled']);
 
 export async function handler(event){
@@ -210,11 +200,16 @@ export async function handler(event){
 
     const safeTitle = (t)=> (t ? String(t).slice(0,140) : '').trim();
     const goods = safeTitle(title) || 'товар';
+
+    // Разные клавиатуры для типов
     const kbForType = (t)=>{
       if (!webappUrl) return null;
       if (t==='cashbackMatured')       return [[{ text:'Перейти к оплате',     web_app:{ url: `${webappUrl}#/cart` } }]];
       if (t==='referralJoined')        return [[{ text:'Мои рефералы',        web_app:{ url: `${webappUrl}#/account/referrals` } }]];
       if (t==='referralOrderCashback') return [[{ text:'Мой кэшбек',          web_app:{ url: `${webappUrl}#/account/cashback` } }]];
+      if (t==='cartReminder')          return [[{ text:'Оформить заказ',      web_app:{ url: `${webappUrl}#/cart` } }]];
+      if (t==='favReminder')           return [[{ text:'Открыть избранное',   web_app:{ url: `${webappUrl}#/favorites` } }]];
+      // по умолчанию — на заказы
       return [[{ text:'Мои заказы',    web_app:{ url: `${webappUrl}#/orders` } }]];
     };
 

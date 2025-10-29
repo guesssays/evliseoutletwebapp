@@ -35,8 +35,7 @@ export function getUID(){
       localStorage.setItem(UID_KEY, tg);
       return tg;
     }
-    // важно: возвращаем null, чтобы не слать запросы как "guest"
-    return null;
+    return null; // важное изменение: не притворяемся гостем
   }catch{ return null; }
 }
 
@@ -48,13 +47,65 @@ export function migrateOnce(base){
     const scoped = localStorage.getItem(k(base));
     if (old && !scoped){
       localStorage.setItem(k(base), old);
-      // старый общий ключ можно удалить вручную при желании
     }
   }catch{}
 }
 
+/* ====== >>> SYNC: аккуратная синхронизация снимка пользователя на сервер ====== */
+function getTelegramChatId() {
+  try {
+    const id = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    return id ? String(id) : null;
+  } catch { return null; }
+}
+
+let __syncTimer = 0;
+function scheduleUserSync(delay = 600){
+  try{ clearTimeout(__syncTimer); }catch{}
+  __syncTimer = setTimeout(doUserSync, delay);
+}
+
+async function doUserSync(){
+  const uid = getUID();
+  const chatId = getTelegramChatId();
+  if (!uid || !chatId) return; // вне Telegram — пропускаем, чтобы не плодить мусор на бэке
+
+  // Готовим срез корзины
+  const cart = (state.cart?.items || []).map(it => ({
+    id   : String(it.productId || it.id || ''),
+    qty  : Number(it.qty || 1),
+    title: String((state.products.find(p=>String(p.id)===String(it.productId))?.title) || 'товар'),
+    price: Number((state.products.find(p=>String(p.id)===String(it.productId))?.price) || 0),
+  })).filter(x => x.id);
+
+  // Избранное — массив строк
+  const favorites = [...(state.favorites || new Set())].map(String);
+
+  const body = {
+    uid,
+    chatId,
+    tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Tashkent',
+    cart,
+    favorites
+  };
+
+  try{
+    await fetch('/.netlify/functions/user-sync', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify(body)
+    });
+  }catch{
+    // тихий режим
+  }
+}
+/* ====== <<< SYNC ====== */
+
 /* ===== Корзина ===== */
-export function persistCart(){ localStorage.setItem(k('nas_cart'), JSON.stringify(state.cart)); }
+export function persistCart(){
+  localStorage.setItem(k('nas_cart'), JSON.stringify(state.cart));
+  scheduleUserSync(500); // >>> SYNC: при каждом изменении корзины мягко синхронизируем
+}
 
 /**
  * ВАЖНО: больше НЕ переносим общий ключ 'nas_cart' в персональный.
@@ -163,6 +214,7 @@ export function loadFavorites(){
 }
 export function persistFavorites(){
   try{ localStorage.setItem(k(FAV_BASE), JSON.stringify([...state.favorites])); }catch{}
+  scheduleUserSync(800); // >>> SYNC: при изменениях избранного тоже синхронизируем
 }
 export function isFav(productId){
   return state.favorites.has(String(productId));
