@@ -65,26 +65,20 @@
       left: 0; right: 0;
       top: calc(var(--safe-top) + 8px);
       height: 56px;
-      display: none;               /* скрыт по умолчанию */
+      display: none;
       align-items: center;
       justify-content: space-between;
       padding: 0 8px;
-      pointer-events: none;        /* кликабельны только кнопки */
-      /* z-index задаётся в styles.css единожды */
+      pointer-events: none; /* кликабельны только кнопки */
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
     }
-    .product-fixhdr.show{
-      display: flex;               /* показывается при .show */
-    }
+    .product-fixhdr.show{ display: flex; }
     .product-fixhdr .fixbtn{
       pointer-events: auto;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 44px; height: 44px;
-      border-radius: 999px;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 44px; height: 44px; border-radius: 999px;
       border: 1px solid var(--stroke);
       background: rgba(255,255,255,.85);
       backdrop-filter: saturate(1.3) blur(8px);
@@ -93,10 +87,7 @@
       color: #111;
     }
     @media (prefers-color-scheme:dark){
-      .product-fixhdr .fixbtn{
-        background: rgba(11,18,32,.7);
-        color: #fff;
-      }
+      .product-fixhdr .fixbtn{ background: rgba(11,18,32,.7); color: #fff; }
     }
     #btnFixBack{ margin-left: 8px; }
     #btnFixFav{ margin-right: 8px; }
@@ -107,15 +98,12 @@
       position: fixed;
       right: 16px;
       bottom: calc(var(--tabbar-h) + var(--safe) + 16px);
-      /* z-index задаётся в styles.css единожды */
       width: 48px; height: 48px;
       border-radius: 14px;
       border: 1px solid var(--stroke);
       background: #fff;
       box-shadow: var(--shadow);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      display: inline-flex; align-items: center; justify-content: center;
     }
     #scrollTopBtn[hidden]{ display: none !important; }
     @media (prefers-color-scheme:dark){
@@ -123,26 +111,13 @@
     }
 
     /* === Поиск с иконкой камеры === */
-    .section-search .search-wrap{
-      position: relative;
-    }
-    .section-search .search{
-      width: 100%;
-      padding-right: 44px;         /* место под кнопку камеры */
-    }
+    .section-search .search-wrap{ position: relative; }
+    .section-search .search{ width: 100%; padding-right: 44px; }
     .search-photo{
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      border: 1px solid var(--stroke);
-      background: #fff;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      width: 36px; height: 36px; border-radius: 10px;
+      border: 1px solid var(--stroke); background: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
       box-shadow: var(--shadow);
     }
     @media (prefers-color-scheme:dark){
@@ -150,47 +125,45 @@
     }
     .search-photo i{ pointer-events:none; }
 
-    /* === Photo Search Modal (чистая лаконичная верстка) === */
-    .ps-modal{
-      display:flex; flex-direction:column; gap:14px;
-    }
+    /* === Photo Search Modal (лаконичный контент + выравнивание) === */
+    .ps-modal{ display:flex; flex-direction:column; gap:14px; }
     .ps-hero{
       display:flex; align-items:center; gap:12px;
-      padding:12px 12px; border:1px solid var(--stroke); border-radius:14px;
+      padding:12px; border:1px solid var(--stroke); border-radius:14px;
       background:rgba(0,0,0,.02);
     }
-    @media (prefers-color-scheme:dark){
-      .ps-hero{ background:rgba(255,255,255,.03); }
-    }
+    @media (prefers-color-scheme:dark){ .ps-hero{ background:rgba(255,255,255,.03); } }
     .ps-hero__ico{
       width:40px; height:40px; border-radius:12px;
       display:inline-flex; align-items:center; justify-content:center;
-      border:1px solid var(--stroke);
-      background:#fff; box-shadow:var(--shadow);
+      border:1px solid var(--stroke); background:#fff; box-shadow:var(--shadow);
       flex:0 0 auto;
     }
-    @media (prefers-color-scheme:dark){
-      .ps-hero__ico{ background:#0b1220; color:#fff; }
+    @media (prefers-color-scheme:dark){ .ps-hero__ico{ background:#0b1220; color:#fff; } }
+    .ps-hero__text{ display:flex; flex-direction:column; line-height:1.24; }
+    .ps-hero__title{ font-weight:700; font-size:16px; }
+    .ps-hero__hint{ color:var(--muted); font-size:13px; }
+
+    .ps-steps{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px; }
+    .ps-step{
+      display:flex; gap:10px; align-items:flex-start;
+      padding:10px 12px; border:1px dashed var(--stroke); border-radius:12px;
     }
-    .ps-hero__text{
-      display:flex; flex-direction:column; line-height:1.24;
+    .ps-step-num{
+      flex:0 0 auto; width:22px; height:22px; border-radius:999px;
+      display:inline-flex; align-items:center; justify-content:center;
+      border:1px solid var(--stroke); font-size:12px;
+      background:#fff;
     }
-    .ps-hero__title{
-      font-weight:700; font-size:16px;
-    }
-    .ps-hero__hint{
-      color:var(--muted); font-size:13px;
-    }
-    .ps-actions{
-      display:flex; gap:10px; justify-content:flex-end; align-items:center; margin-top:4px;
-    }
+    @media (prefers-color-scheme:dark){ .ps-step-num{ background:#0b1220; color:#fff; } }
+    .ps-step-text{ line-height:1.28; font-size:14px; }
+
+    .ps-actions{ display:flex; gap:10px; justify-content:flex-end; align-items:center; margin-top:4px; }
     .ps-actions .btn-primary{
-      padding:10px 14px; border-radius:12px;
-      display:inline-flex; align-items:center; gap:8px;
+      padding:10px 14px; border-radius:12px; display:inline-flex; align-items:center; gap:8px;
     }
     .ps-actions .btn-ghost{
-      padding:10px 12px; border-radius:12px; border:1px solid var(--stroke);
-      background:transparent;
+      padding:10px 12px; border-radius:12px; border:1px solid var(--stroke); background:transparent;
     }
   </style>
 
@@ -223,7 +196,7 @@
       </div>
     </header>
 
-    <!-- Фикс-хедер товара (разметка; поведение в ProductFixHeader.js) -->
+    <!-- Фикс-хедер товара -->
     <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
       <button id="btnFixBack" class="fixbtn" aria-label="Назад">
         <i data-lucide="arrow-left"></i>
@@ -292,7 +265,7 @@
       </div>
     </nav>
 
-    <!-- Кнопка «вверх» (разметка; поведение в ScrollTop.js) -->
+    <!-- Кнопка «вверх» -->
     <button id="scrollTopBtn" class="icon-btn" aria-label="Наверх" hidden>
       <i data-lucide="chevrons-up"></i>
     </button>
@@ -387,16 +360,30 @@
         if (!modal || !mb || !mt || !ma) return;
 
         mt.textContent = 'Поиск по фото';
-
         mb.innerHTML = `
           <div class="ps-modal">
             <div class="ps-hero">
               <div class="ps-hero__ico"><i data-lucide="camera"></i></div>
               <div class="ps-hero__text">
-                <div class="ps-hero__title">Отправьте фото вещи</div>
-                <div class="ps-hero__hint">Прикрепите 1–5 фото — оператор подберёт варианты и пришлёт ответ.</div>
+                <div class="ps-hero__title">Найдём вещь по вашим фото</div>
+                <div class="ps-hero__hint">Пришлите 1–5 фото желаемой вещи — мы подберём похожие варианты и ответим в чате.</div>
               </div>
             </div>
+
+            <ul class="ps-steps">
+              <li class="ps-step">
+                <div class="ps-step-num">1</div>
+                <div class="ps-step-text">Нажмите «Написать оператору» ниже.</div>
+              </li>
+              <li class="ps-step">
+                <div class="ps-step-num">2</div>
+                <div class="ps-step-text">Прикрепите фото вещи в открывшемся чате Telegram.</div>
+              </li>
+              <li class="ps-step">
+                <div class="ps-step-num">3</div>
+                <div class="ps-step-text">Мы ответим с подходящими позициями и ссылками на заказ.</div>
+              </li>
+            </ul>
           </div>
         `;
 
