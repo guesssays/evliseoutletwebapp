@@ -3,8 +3,8 @@
 // - таргетим window + documentElement + body + scrollingElement + #view;
 // - отменяем только при реальном скролле (wheel/touchmove/scroll-keys);
 // - работает в окне навигации И/ИЛИ при allow:true;
-// - forceNow() по умолчанию имеет allow:true (чтобы выстреливать из роутера без условий).
-// - 🔇 клики/тапы по «избранному» временно глушат любые сбросы (см. низ файла).
+// - forceNow() по умолчанию имеет allow:true;
+// - 🔇 тапы по «избранному» мгновенно отменяют любые активные циклы ресета.
 
 const NAV_WINDOW_MS_DEFAULT = 1800;
 let __allowScrollResetUntil = 0;
@@ -38,34 +38,20 @@ function _newToken(){
   return { id, get cancelled(){ return id !== __sessionId; } };
 }
 
-// ===== цели для сброса (максимально широкий набор) =====
+// ===== цели для сброса =====
 function _targets() {
   const list = new Set();
-
-  try {
-    const se = document.scrollingElement;
-    if (se) list.add(se);
-  } catch {}
-
-  try {
-    const view = document.getElementById('view');
-    if (view) list.add(view);
-  } catch {}
-
+  try { const se = document.scrollingElement; if (se) list.add(se); } catch {}
+  try { const view = document.getElementById('view'); if (view) list.add(view); } catch {}
   try { list.add(document.documentElement); } catch {}
   try { list.add(document.body); } catch {}
-
   return Array.from(list).filter(Boolean);
 }
 
 function _toTopOnce(token) {
   if (token?.cancelled) return;
   try { document.activeElement?.blur?.(); } catch {}
-
-  const tgs = _targets();
-  for (const t of tgs) {
-    try { t.scrollTop = 0; } catch {}
-  }
+  for (const t of _targets()) { try { t.scrollTop = 0; } catch {} }
   try { window.scrollTo(0, 0); } catch {}
 }
 
@@ -74,14 +60,13 @@ function _nearTop(){
   return (se && typeof se.scrollTop === 'number') ? (se.scrollTop <= 2) : true;
 }
 
-// Короткий мягкий цикл + небольшой «дожим» таймерами
+// Короткий мягкий цикл + лёгкий «дожим» таймерами
 function _scheduleShort(token){
   if (token.cancelled) return;
   _toTopOnce(token);
   requestAnimationFrame(()=>{
     if (token.cancelled || _userHasScrolledRecently()) return;
     _toTopOnce(token);
-    // Лёгкий дожим (без дёрганий)
     setTimeout(()=>{ if (!token.cancelled && !_userHasScrolledRecently()) _toTopOnce(token); }, 60);
     setTimeout(()=>{ if (!token.cancelled && !_userHasScrolledRecently()) _toTopOnce(token); }, 120);
   });
@@ -103,11 +88,8 @@ function _afterImagesIn(el, token) {
     const t = setTimeout(resolve, 450);
     Promise.all(pending).then(()=> { clearTimeout(t); resolve(); });
     const abortCheck = () => {
-      if (token.cancelled || _userHasScrolledRecently()) {
-        clearTimeout(t); resolve();
-      } else {
-        requestAnimationFrame(abortCheck);
-      }
+      if (token.cancelled || _userHasScrolledRecently()) { clearTimeout(t); resolve(); }
+      else { requestAnimationFrame(abortCheck); }
     };
     requestAnimationFrame(abortCheck);
   });
@@ -131,23 +113,20 @@ function _isResetAllowed(optsAllowFlag) {
   return _navRemainMs() > 0;
 }
 
-// Локальный helper для «глушилки» без обращения к export
+// ⚠️ Критично: «тихий режим» теперь ещё и инвалидирует активные сессии,
+// чтобы мгновенно остановить уже запущенные циклы и убрать мигание.
 function _quiet(ms = 600){
+  __sessionId++; // ← инвалидировать все текущие токены немедленно
   const until = Date.now() + Math.max(0, ms|0);
   window.__dropScrollResetUntil = until;
   if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
 }
 
 export const ScrollReset = {
-  /**
-   * Плавный запрос сброса. Сработает в окне навигации или при allow:true.
-   */
   request(containerEl, opts = {}) {
     const allow = !!opts.allow;
-
     if (_remainMs('__dropScrollResetUntil') > 0) return;
     if (!_isResetAllowed(allow)) return;
-
     if (_userHasScrolledRecently()) return;
 
     const wait = _remainMs('__suppressScrollResetUntil');
@@ -164,22 +143,13 @@ export const ScrollReset = {
     queueMicrotask(() => {
       if (token.cancelled) return;
       _scheduleShort(token);
-
       if (_nearTop()) return;
-
       _afterImagesIn(containerEl || document.getElementById('view'), token)
-        .then(() => {
-          if (token.cancelled || _userHasScrolledRecently()) return;
-          _scheduleShort(token);
-        })
+        .then(() => { if (!token.cancelled && !_userHasScrolledRecently()) _scheduleShort(token); })
         .catch(()=>{});
     });
   },
 
-  /**
-   * Мгновенный жёсткий сброс. ВАЖНО: по умолчанию allow:true,
-   * то есть ведёт себя как «в контексте навигации», чтобы вызовы из роутера всегда работали.
-   */
   forceNow(opts = {}) {
     const allow = (opts.allow === false) ? false : true; // default allow:true
     if (_remainMs('__dropScrollResetUntil') > 0) return;
@@ -190,26 +160,19 @@ export const ScrollReset = {
     _scheduleShort(token);
   },
 
-  /** Сдвинуть ближайшие сбросы на ms миллисекунд. */
   suppress(ms = 300) {
     const until = Date.now() + Math.max(0, ms|0);
     window.__suppressScrollResetUntil = until;
     if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
   },
 
-  /** Полная «тишина» на ms миллисекунд (никаких переотложений). */
   quiet(ms = 600) { _quiet(ms); },
 
-  /** Вручную открыть окно навигации (для нестандартных переходов). */
-  allow(ms = NAV_WINDOW_MS_DEFAULT) {
-    _openNavWindow(ms);
-  },
+  allow(ms = NAV_WINDOW_MS_DEFAULT) { _openNavWindow(ms); },
 
-  // Инициализация
   mount() {
     try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch {}
     _openNavWindow(NAV_WINDOW_MS_DEFAULT);
-
     window.addEventListener('hashchange', () => _openNavWindow(NAV_WINDOW_MS_DEFAULT), { capture: true });
 
     const onPageShow = (e) => {
@@ -225,23 +188,24 @@ export const ScrollReset = {
 };
 
 // === 🔇 Автоглушилка для избранного ===============================
-// Любое нажатие на «сердце» временно блокирует попытки сброса скролла,
-// чтобы не было возврата наверх при toggleFav.
+// При любых «сердцах» мгновенно глушим и ОТМЕНЯЕМ активные циклы,
+// плюс ставим короткий suppress, чтобы новые попытки не стартовали следом.
 
 const FAV_SELECTORS = [
   '#btnFixFav',                 // сердечко в фикс-хедере товара
   '.card .fav',                 // сердечко в карточке на сетке
-  '[aria-label="В избранное"]'  // общий случай на всякий
+  '[aria-label="В избранное"]'  // общий случай
 ].join(',');
 
-// ранний захват — глушим ещё до клика
+function _muteForFav(){
+  _quiet(900);                  // мгновенно отменить всё активное + drop новые запросы
+  window.__suppressScrollResetUntil = Date.now() + 900; // и не пытаться перезапускать
+}
+
 ['pointerdown','click'].forEach(type => {
   document.addEventListener(type, (e) => {
     const btn = e.target && (e.target.closest ? e.target.closest(FAV_SELECTORS) : null);
-    if (btn) {
-      // короткое окно «тишины» — достаточно, чтобы никакой request/forceNow не прошёл
-      _quiet(900);
-    }
+    if (btn) _muteForFav();
   }, { capture: true, passive: true });
 });
 
