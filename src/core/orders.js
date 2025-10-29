@@ -3,8 +3,7 @@
 // Также включает admin token-хэндлинг.
 
 import { getUID } from './state.js';
-// ▼ (опционально) пуш в бота с клиента — скрыто флагом, по умолчанию OFF
-import { notifyStatusChanged } from './botNotify.js';
+import { notifyStatusChanged } from './botNotify.js'; // если нет файла — можно убрать импорт, но у вас он есть
 
 const KEY = 'nas_orders';
 const API_BASE = '/.netlify/functions/orders';
@@ -30,11 +29,9 @@ export function getAdminToken() {
 /* ===== Telegram initData ===== */
 function getTgInitData() {
   try {
-    // Telegram WebApp среда
     const raw =
       (typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) ||
       '';
-    // Возможна ручная подмена в dev
     return String(window?.__TG_INIT_DATA__ || raw || '').trim();
   } catch {
     return '';
@@ -67,14 +64,16 @@ let __lastStoreKind = 'unknown';
 function baseHeaders() {
   const headers = { 'Content-Type': 'application/json' };
   const initData = getTgInitData();
-  if (initData) headers['X-Tg-Init-Data'] = initData; // <<< главный фикс: передаём initData на сервер
+  if (initData) headers['X-Tg-Init-Data'] = initData;
   return headers;
 }
 
 /* ===== API low-level ===== */
 async function apiGetList(){
   try{
-    const res = await withTimeout(fetch(`${API_BASE}?op=list&ts=${Date.now()}`, {
+    // Явно просим лёгкую выдачу без paymentScreenshot
+    const url = `${API_BASE}?op=list&light=1&limit=500&ts=${Date.now()}`;
+    const res = await withTimeout(fetch(url, {
       method: 'GET',
       headers: { ...baseHeaders(), 'Cache-Control':'no-store' }
     }));
@@ -101,13 +100,10 @@ async function apiGetOne(id){
 }
 async function apiPost(op, body){
   const headers = baseHeaders();
-
-  // Админские операции — добавляем внутренний токен
   if (ADMIN_OPS.has(op)) {
     const token = getAdminToken();
     if (token) headers['X-Internal-Auth'] = token;
   }
-
   const res = await withTimeout(fetch(API_BASE, {
     method:'POST',
     headers,
@@ -179,13 +175,9 @@ export async function addOrder(order){
   const now = Date.now();
   const initialStatus = canonStatus(order.status ?? 'новый');
 
-  // Пытаемся получить uid из state; если его нет — не даём оформить заказ,
-  // т.к. сервер всё равно отвергнет без X-Tg-Init-Data/uid.
   const safeUserId = order.userId ?? getUID() ?? null;
   if (!safeUserId) {
-    // Явная ошибка для UI — предложить открыть внутри Telegram
     const err = new Error('Требуется авторизация через Telegram. Откройте приложение внутри Telegram.');
-    // Бросаем ошибку сразу — не пишем в локальный кэш «гостевых» заказов
     throw err;
   }
 
@@ -233,9 +225,6 @@ export async function addOrder(order){
       saveOrders([next, ...list]);
     }
   }catch{
-    // Если сервер не принял (например, без initData) — не оставляем «локальный» заказ без uid
-    // Но на случай сетевого офлайна, когда сервер недоступен, можно сохранить локально,
-    // так как uid у нас есть (safeUserId). Оставим прежнюю офлайн-ветку:
     const list = getOrdersLocal();
     saveOrders([next, ...list]);
   }
@@ -383,5 +372,4 @@ export async function updateOrderStatus(orderId, status){
   return updatedOrder;
 }
 
-/* Демосидирование отключено */
 export function seedOrdersOnce(){ /* no-op */ }
