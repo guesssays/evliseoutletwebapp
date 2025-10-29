@@ -6,26 +6,34 @@
 // — "snooze" чтобы подавить вспышки на быстрых экранах (например Product)
 // — пресеты: pageTransition(), blocking()
 // — прогресс (опционально): setProgress(0..1), resetProgress()
+// — ⚡ flash-guard: защита от «мигания» при суперкоротких задачах
+// — micro(): обёртка для микрозадач без показа спиннера
 
 export const Loader = (() => {
   let $root = null;
   let $text = null;
   let $ring = null;
   let $progress = null;
-  let counter = 0;
-  let showTimer = null;
-  let lastShowAt = 0;
-  let snoozedUntil = 0;
+
+  let counter = 0;          // активные операции
+  let showTimer = null;     // таймер отложенного показа
+  let lastShowAt = 0;       // когда реально показали
+  let lastHideAt = 0;       // когда реально скрыли (для flash-guard)
+  let snoozedUntil = 0;     // «тишина» до этого момента (мс от epoch)
 
   // Базовые значения (можно менять через configure)
   let CFG = {
-    DELAY_MS: 260,  // показывать только если дольше 260мс
-    MIN_MS:   600,  // минимум держать 600мс
+    DELAY_MS:        380,   // показывать только если дольше 380мс (раньше было 260)
+    MIN_MS:          520,   // минимум держать 520мс (раньше было 600; ощущается мягче)
+    FLASH_GUARD_MS:  200,   // не показывать, если с момента hide прошло < 200мс
+    SNOOZE_DEFAULT:  900,   // дефолтная «тишина» (страничные переходы)
   };
 
   function configure(opts = {}) {
-    if (typeof opts.DELAY_MS === 'number') CFG.DELAY_MS = Math.max(0, opts.DELAY_MS);
-    if (typeof opts.MIN_MS   === 'number') CFG.MIN_MS   = Math.max(0, opts.MIN_MS);
+    if (typeof opts.DELAY_MS === 'number')       CFG.DELAY_MS       = Math.max(0, opts.DELAY_MS);
+    if (typeof opts.MIN_MS   === 'number')       CFG.MIN_MS         = Math.max(0, opts.MIN_MS);
+    if (typeof opts.FLASH_GUARD_MS === 'number') CFG.FLASH_GUARD_MS = Math.max(0, opts.FLASH_GUARD_MS);
+    if (typeof opts.SNOOZE_DEFAULT === 'number') CFG.SNOOZE_DEFAULT = Math.max(0, opts.SNOOZE_DEFAULT);
   }
 
   function ensureDom() {
@@ -85,23 +93,27 @@ export const Loader = (() => {
   function reallyShow(compact = false) {
     ensureDom();
 
-    // не показываем, пока действует «тишина»
-    if (Date.now() < snoozedUntil) {
-      return;
-    }
+    const now = Date.now();
+
+    // 1) не показываем, пока действует «тишина»
+    if (now < snoozedUntil) return;
+
+    // 2) flash-guard: если только что скрывали — не мигаем
+    if (now - lastHideAt < CFG.FLASH_GUARD_MS) return;
 
     if (compact) $root.classList.add('gl--compact');
     else $root.classList.remove('gl--compact');
 
     $root.removeAttribute('hidden');
     $root.classList.add('is-visible');
-    lastShowAt = Date.now();
+    lastShowAt = now;
   }
 
   function reallyHide() {
     if (!$root) return;
     $root.classList.remove('is-visible');
     $root.setAttribute('hidden', '');
+    lastHideAt = Date.now();
     // при скрытии сбрасываем прогресс на всякий
     resetProgress();
   }
@@ -127,11 +139,13 @@ export const Loader = (() => {
       return;
     }
 
+    // Отложенный показ
+    const plannedAt = Date.now() + delayMs;
     showTimer = setTimeout(() => {
-      // при срабатывании таймера могли уже скрыть — проверим счётчик
-      if (counter > 0) {
-        reallyShow(compact);
-      }
+      // Пока ждали — всё могло завершиться
+      if (counter <= 0) return;
+      // Если «тишина» ещё активна, не показываем (и не пересоздаём таймер — будет тихо)
+      reallyShow(compact);
     }, delayMs);
   }
 
@@ -146,7 +160,7 @@ export const Loader = (() => {
 
     const elapsed = Date.now() - lastShowAt;
     if (_visible() && elapsed < minMs) {
-      setTimeout(reallyHide, minMs - elapsed);
+      setTimeout(reallyHide, Math.max(0, minMs - elapsed));
     } else {
       reallyHide();
     }
@@ -168,13 +182,15 @@ export const Loader = (() => {
   }
 
   // Временная «тишина»: подавляем показ лоадера, чтобы избежать вспышки
-  function snooze(ms = 800) {
+  function snooze(ms = CFG.SNOOZE_DEFAULT) {
     snoozedUntil = Date.now() + Math.max(0, ms);
   }
 
+  // Публичный алиас если хочется явно подавить ближайшие микрозадачи
+  function suppressFlash(ms = CFG.SNOOZE_DEFAULT) { snooze(ms); }
+
   // «бережный» переход между страницами — обычно достаточно snooze без спиннера
   function pageTransition(message = 'Переход…', opts = {}) {
-    // здесь мы не форсим показ: просто ставим snooze и даём удобные start/done
     const compact = opts.compact ?? true;
     const delay   = opts.delay ?? CFG.DELAY_MS;
     const min     = opts.min ?? CFG.MIN_MS;
@@ -182,12 +198,12 @@ export const Loader = (() => {
     return {
       // мягкий вариант: при start() — только отложенный показ, плюс snooze
       start() {
-        snooze(700);
+        snooze(CFG.SNOOZE_DEFAULT);
         show(message, { delay, compact });
       },
       done() { hide({ min }); },
       async run(fn) {
-        snooze(700);
+        snooze(CFG.SNOOZE_DEFAULT);
         return wrap(fn, message, { delay, min, compact });
       },
     };
@@ -205,10 +221,19 @@ export const Loader = (() => {
     };
   }
 
+  // 🫧 Микро-обёртка: на время выполнения ставит snooze и НЕ показывает спиннер
+  async function micro(fn, snoozeMs = 600) {
+    snooze(snoozeMs);
+    const res = await (typeof fn === 'function' ? fn() : fn);
+    // небольшой дополнительный гвард от «эхо-вспышки»
+    snooze(120);
+    return res;
+  }
+
   return {
     show, hide, wrap, setText,
     setProgress, resetProgress,
     pageTransition, blocking,
-    snooze, configure,
+    snooze, suppressFlash, micro, configure,
   };
 })();
