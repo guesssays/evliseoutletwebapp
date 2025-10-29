@@ -1425,7 +1425,7 @@ body.admin-mode #scrollTopBtn{ display: none !important; }
   animation: gl-rotate 1.4s linear infinite;
 }
 
-#globalLoader .gl__orbit .dot{
+#globalLoader .gl__orbit .gl__dot{
   position:absolute; width:10px; height:10px; border-radius:50%;
   background:#121111;
   box-shadow: 0 4px 12px rgba(0,0,0,.18);
@@ -1434,9 +1434,9 @@ body.admin-mode #scrollTopBtn{ display: none !important; }
   #globalLoader .gl__orbit .dot{ background:#ffffff; }
 }
 
-#globalLoader .gl__orbit .d1{ transform: translateY(-22px); }
-#globalLoader .gl__orbit .d2{ transform: rotate(120deg) translateY(-22px); }
-#globalLoader .gl__orbit .d3{ transform: rotate(240deg) translateY(-22px); }
+ #globalLoader .gl__orbit .d1{ transform: translateY(-22px); }
+ #globalLoader .gl__orbit .d2{ transform: rotate(120deg) translateY(-22px); }
+ #globalLoader .gl__orbit .d3{ transform: rotate(240deg) translateY(-22px); }
 
 /* Прогресс-бар (опционально) */
 #globalLoader .gl__bar{

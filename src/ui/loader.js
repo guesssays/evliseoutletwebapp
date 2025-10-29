@@ -50,9 +50,9 @@ export const Loader = (() => {
         <div class="gl__spinner" aria-hidden="true">
           <div class="gl__ring"></div>
           <div class="gl__orbit">
-            <span class="dot d1"></span>
-            <span class="dot d2"></span>
-            <span class="dot d3"></span>
+ <span class="gl__dot d1"></span>
+ <span class="gl__dot d2"></span>
+ <span class="gl__dot d3"></span>
           </div>
         </div>
         <div class="gl__bar" aria-hidden="true"><b style="width:0%"></b></div>
