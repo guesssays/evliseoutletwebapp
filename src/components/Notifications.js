@@ -1,17 +1,10 @@
 // src/components/Notifications.js
-import { getUID, getNotifications as getList, setNotifications as setList } from '../core/state.js';
-import { getInitHeaders } from '../core/tg-init.js';
+import { k, getUID, getNotifications as getList, setNotifications as setList } from '../core/state.js';
 
 const ENDPOINT = '/.netlify/functions/notifs';
 const FETCH_TIMEOUT_MS = 10000;
 
-/* ===== user-scoped key helper (локально, без импорта из state.js) ===== */
-function kLocal(base){
-  try { const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }
-  catch { return `${base}__guest`; }
-}
-
-/* ===== Общий таймаут ===== */
+/* ===== Общий таймаут (как в других модулях) ===== */
 function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error('timeout')), ms);
@@ -22,11 +15,22 @@ function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
   });
 }
 
+// Сырой initData из Telegram Mini App (для серверной верификации)
+function getTgInitDataRaw(){
+  try {
+    return typeof window?.Telegram?.WebApp?.initData === 'string'
+      ? window.Telegram.WebApp.initData
+      : '';
+  } catch {
+    return '';
+  }
+}
+
 /* ===== badge helpers ===== */
 function unreadCount(list){ return (list||[]).reduce((a,n)=> a + (!n.read ? 1 : 0), 0); }
 function updateUnreadBadge(n){
   const v = Math.max(0, n|0);
-  try { localStorage.setItem(kLocal('notifs_unread'), String(v)); } catch {}
+  try { localStorage.setItem(k('notifs_unread'), String(v)); } catch {}
   try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: v })); } catch {}
 }
 
@@ -64,8 +68,8 @@ export async function renderNotifications(onAfterMarkRead){
     const norm = serverItems.map(n => normalize({ ...n, read: true }));
     const sorted = norm.sort((a,b)=> (b.ts||0)-(a.ts||0));
     setList(sorted);
-    applyDomReadState(sorted);
-    updateUnreadBadge(unreadCount(sorted)); // 0
+    applyDomReadState(sorted);         // ← мгновенно в DOM
+    updateUnreadBadge(unreadCount(sorted)); // будет 0
   } else {
     // оффлайн-фолбэк: локально всё отметить
     const updated = list.map(n => normalize({ ...n, read: true }));
@@ -115,7 +119,7 @@ async function fetchServerListSafe(){
   try{
     const r = await withTimeout(fetch(`${ENDPOINT}?op=list&uid=${encodeURIComponent(uid)}&ts=${Date.now()}`, {
       method:'GET',
-      headers: getInitHeaders()
+      headers:{ 'X-Tg-Init-Data': getTgInitDataRaw(), 'Cache-Control':'no-store' }
     }));
     const j = await r.json().catch(()=> ({}));
     if (!r.ok || j?.ok === false) return null;
@@ -123,21 +127,30 @@ async function fetchServerListSafe(){
     const items = Array.isArray(j.items) ? j.items : [];
     const norm = items.map(normalize).sort((a,b)=> (b.ts||0)-(a.ts||0));
     setList(norm);
+    // не трогаем read здесь — пометим централизованно в renderNotifications
     return norm;
   }catch{
     return null;
   }
 }
 
+// === Notifications.js — ЗАМЕНА markAllServerSafe() ===
 async function markAllServerSafe(){
   const uid = getUID();
   if (!uid) return null;
 
-  try{
-    const headers = getInitHeaders({ 'Content-Type':'application/json' });
+  const initData = getTgInitDataRaw();
+  const hasInit  = !!(initData && initData.length);
 
-    // Попытки: (1) markmine → (2) markseen → (3) публичный fallback markAll
-    const attempts = [ { op:'markmine' }, { op:'markseen' }, { op:'markAll', uid } ];
+  try{
+    const headers = { 'Content-Type':'application/json' };
+    if (hasInit) headers['X-Tg-Init-Data'] = initData;
+
+    // РАНЬШЕ: только markmine → markseen при hasInit
+    // ТЕПЕРЬ: добавили публичный fallback { op:'markAll', uid }, даже если hasInit=true
+    const attempts = hasInit
+      ? [ { op:'markmine' }, { op:'markseen' }, { op:'markAll', uid } ]
+      : [ { op:'markAll', uid } ];
 
     for (const body of attempts){
       const r = await withTimeout(fetch(ENDPOINT, {
@@ -151,6 +164,7 @@ async function markAllServerSafe(){
         'items:', Array.isArray(j?.items) ? j.items.length : 'no items');
 
       if (r.ok && j?.ok !== false){
+        // Сервер вернул актуальные элементы (уже read:true) — используем их.
         return Array.isArray(j.items) ? j.items : [];
       }
     }
@@ -161,6 +175,7 @@ async function markAllServerSafe(){
     return null;
   }
 }
+
 
 /* ===== моментальное обновление DOM после read ===== */
 function applyDomReadState(list){

@@ -28,7 +28,7 @@ import { renderAccount, renderAddresses, renderSettings, renderCashback, renderR
 import { renderFAQ } from './components/FAQ.js';
 import { renderNotifications } from './components/Notifications.js';
 import { ScrollReset } from './core/scroll-reset.js';
-import { initTelegram, getInitHeaders } from './core/tg-init.js';
+import { initTelegram } from './core/tg-init.js';
 // Вынесенный фикс-хедер товара
 import { deactivateProductFixHeader } from './components/ProductFixHeader.js';
 import { startAppRouter } from './views/ReBridge.js';
@@ -50,9 +50,6 @@ import { renderRefBridge } from './views/RefBridge.js';
 /* ===== Кэшбек/Рефералы: локальные утилиты (дозревание локальных pending) ===== */
 const POINTS_MATURITY_MS  = 24*60*60*1000;
 function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
-
-/* ---------- РАННЯЯ ИНИЦИАЛИЗАЦИЯ TELEGRAM (ОЧЕНЬ ВАЖНО) ---------- */
-initTelegram({ expectedBot: 'EvliseOutletBot' });
 
 /* ---------- ОДНОРАЗОВАЯ МИГРАЦИЯ КОШЕЛЬКА guest -> реальный UID ---------- */
 function migrateGuestWalletOnce() {
@@ -119,9 +116,17 @@ function makeDisplayOrderId(order) {
 const NOTIF_API = '/.netlify/functions/notifs';
 const USER_JOIN_API = '/.netlify/functions/user-join';
 
+function getTgInitDataRaw(){
+  try {
+    return typeof window?.Telegram?.WebApp?.initData === 'string'
+      ? window.Telegram.WebApp.initData
+      : '';
+  } catch { return ''; }
+}
+
 async function notifApiList(uid){
   const url = `${NOTIF_API}?op=list&uid=${encodeURIComponent(uid)}`;
-  const res = await fetch(url, { method: 'GET', headers: getInitHeaders() });
+  const res = await fetch(url, { method: 'GET', headers: { 'X-Tg-Init-Data': getTgInitDataRaw() }});
   const data = await res.json().catch(()=>({}));
   if (!res.ok || data?.ok === false) throw new Error('notif list error');
   return Array.isArray(data.items) ? data.items : [];
@@ -129,7 +134,7 @@ async function notifApiList(uid){
 async function notifApiAdd(uid, notif){
   const res = await fetch(NOTIF_API, {
     method:'POST',
-    headers: getInitHeaders({ 'Content-Type':'application/json' }),
+    headers:{ 'Content-Type':'application/json', 'X-Tg-Init-Data': getTgInitDataRaw() },
     body: JSON.stringify({ op:'add', uid:String(uid), notif })
   });
   const data = await res.json().catch(()=>({}));
@@ -137,21 +142,35 @@ async function notifApiAdd(uid, notif){
   return data.id || notif.id || Date.now();
 }
 async function notifApiMarkAll(uid){
-  // пробуем по очереди: markmine → markseen → markAll (fallback)
-  const attempts = [
-    { body:{ op:'markmine' }, headers:getInitHeaders({ 'Content-Type':'application/json' }) },
-    { body:{ op:'markseen' }, headers:getInitHeaders({ 'Content-Type':'application/json' }) },
-    { body:{ op:'markAll', uid:String(uid) }, headers:getInitHeaders({ 'Content-Type':'application/json' }) },
-  ];
+  const initData = getTgInitDataRaw();
+  const hasInit  = !!(initData && initData.length);
 
-  for (const { body, headers } of attempts){
-    const res = await fetch(NOTIF_API, { method:'POST', headers, body: JSON.stringify(body) });
+  const headers = { 'Content-Type':'application/json' };
+  if (hasInit) headers['X-Tg-Init-Data'] = initData;
+
+  // пробуем по очереди: markmine → markseen → markAll
+  const attempts = hasInit
+    ? [
+        { op:'markmine' },   // ← без uid при initData
+        { op:'markseen' },
+      ]
+    : [
+        { op:'markAll', uid:String(uid) },
+      ];
+
+  for (const body of attempts){
+    const res = await fetch(NOTIF_API, {
+      method:'POST',
+      headers,
+      body: JSON.stringify(body)
+    });
     let data = {};
     try { data = await res.json(); } catch {}
     if (res.ok && data?.ok !== false){
       return Array.isArray(data.items) ? data.items : null;
     }
   }
+
   throw new Error('notif mark error');
 }
 
@@ -197,6 +216,7 @@ function mergeNotifsToLocal(serverItems){
     setNotifications([...byId.values()].sort((a,b)=> (b.ts||0)-(a.ts||0)));
   }
 }
+
 
 async function serverPushFor(uid, notif){
   const safe = {
@@ -443,7 +463,7 @@ window.setTabbarCTA  = setTabbarCTA;
 window.setTabbarCTAs = setTabbarCTAs;
 
 /* ---------- Telegram авторизация + deep-link ---------- */
-(function bootstrapFromTelegram(){
+(function initTelegram(){
   const tg = window.Telegram?.WebApp;
   if (tg?.initDataUnsafe){
     const u = tg.initDataUnsafe.user;
@@ -455,7 +475,7 @@ window.setTabbarCTAs = setTabbarCTAs;
       try {
         fetch('/.netlify/functions/track', {
           method: 'POST',
-          headers: getInitHeaders({ 'Content-Type': 'application/json' }),
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             type: 'miniapp_open',
             startapp: sp,
@@ -661,7 +681,7 @@ async function sendSnapshot(){
     if (!snap.uid || !snap.chatId) return; // только Telegram-пользователи
     await fetch('/.netlify/functions/user-sync', {
       method:'POST',
-      headers: getInitHeaders({ 'Content-Type':'application/json' }),
+      headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify(snap),
     });
   }catch{}
@@ -900,7 +920,7 @@ async function ensureUserJoinReported(){
 
     const r = await fetch(USER_JOIN_API, {
       method: 'POST',
-      headers: getInitHeaders({ 'Content-Type':'application/json' }),
+      headers: { 'Content-Type':'application/json' },
       body: JSON.stringify(payload),
     });
     localStorage.setItem(FLAG, '1');
