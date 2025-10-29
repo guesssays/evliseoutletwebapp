@@ -7,16 +7,13 @@
       "price": 799000,
       "images": [
         "data/wearimages/kurtka-metra/kurtka-metra-1.jpg",
-        "data/wearimages/kurtka-metra/kurtka-metra-2.jpg",
-        "data/wearimages/kurtka-metra/kurtka-metra-3.jpg",
-        "data/wearimages/kurtka-metra/kurtka-metra-4.jpg",
-        "data/wearimages/kurtka-metra/kurtka-metra-5.jpg"
+        "data/wearimages/kurtka-metra/kurtka-metra-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/kurtka-metra/kurtka-metra-2.jpg",
+
         "data/wearimages/kurtka-metra/kurtka-metra-3.jpg",
-        "data/wearimages/kurtka-metra/kurtka-metra-4.jpg",
-        "data/wearimages/kurtka-metra/kurtka-metra-5.jpg"
+        "data/wearimages/kurtka-metra/kurtka-metra-4.jpg"
+
       ],
       "description": "Куртка MetrA\n\nРазмеры: M, L, XL, 2XL\n\nЦвета: черный, зелёный, фиолетовый \n\nЦена: 799.000 сум",
       "material": "Хлопок/полиэстер",
