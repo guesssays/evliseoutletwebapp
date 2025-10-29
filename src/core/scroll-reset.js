@@ -1,43 +1,49 @@
 // src/core/scroll-reset.js
-// Сброс скролла «без дёрганья»: короткая серия кадров, отмена при взаимодействии,
-// действует только рядом с навигацией (hashchange) или с явным allow.
+// Сброс скролла «без дёрганья»:
+// - короткая серия кадров;
+// - отмена ТОЛЬКО при реальном скролле (wheel/touchmove/scroll-keys);
+// - работает в окне навигации (hashchange) или с явным allow.
 
-const NAV_WINDOW_MS_DEFAULT = 900; // было 2000 — меньше навязываемся
+const NAV_WINDOW_MS_DEFAULT = 1400; // было 900 — добавили буфер после рендера
 let __allowScrollResetUntil = 0;
 
-// ====== пользовательское взаимодействие: мгновенная отмена текущих попыток ======
-let __lastUserInteractAt = 0;
-const _userEvents = [
-  'wheel', 'touchstart', 'touchmove', 'pointerdown', 'mousedown',
-  'keydown'
-];
+// ====== трекинг взаимодействий ======
+let __lastScrollInteractAt = 0;   // только «настоящий скролл»
+let __lastAnyInteractAt = 0;      // клики/тач-старты и пр. (для справки, но НЕ отменяет)
+
+const _scrollEvents = ['wheel', 'touchmove'];
+const _otherEvents  = ['touchstart', 'pointerdown', 'mousedown'];
+
 function _isScrollKey(e){
   const k = e.key;
   return k === 'PageDown' || k === 'PageUp' || k === 'Home' || k === 'End' || k === ' ' || k === 'ArrowDown' || k === 'ArrowUp';
 }
-_userEvents.forEach(t => {
-  window.addEventListener(t, (e) => {
-    if (t === 'keydown' && !_isScrollKey(e)) return;
-    __lastUserInteractAt = Date.now();
-    // активная сессия (если есть) сама увидит токен.cancelled и прекратится
-  }, { passive: true, capture: true });
+
+_scrollEvents.forEach(t => {
+  window.addEventListener(t, () => { __lastScrollInteractAt = Date.now(); }, { passive:true, capture:true });
 });
 
-function _userHasInteractedRecently(ms = 250){
-  return (Date.now() - __lastUserInteractAt) <= ms;
+_otherEvents.forEach(t => {
+  window.addEventListener(t, () => { __lastAnyInteractAt = Date.now(); }, { passive:true, capture:true });
+});
+
+window.addEventListener('keydown', (e) => {
+  if (_isScrollKey(e)) __lastScrollInteractAt = Date.now();
+  else __lastAnyInteractAt = Date.now();
+}, { capture:true });
+
+function _userHasScrolledRecently(ms = 300){
+  return (Date.now() - __lastScrollInteractAt) <= ms;
 }
 
-// ====== токен отмены (каждый request/forceNow запускает новую сессию) ======
+// ====== токен отмены ======
 let __sessionId = 0;
 function _newToken(){
   const id = ++__sessionId;
-  return {
-    id,
-    get cancelled(){ return id !== __sessionId; }
-  };
+  return { id, get cancelled(){ return id !== __sessionId; } };
 }
 
-// ====== цели для ресета ======
+// ====== цели ======
 function _targets() {
   const list = [];
   const se = document.scrollingElement;
@@ -50,9 +56,7 @@ function _targets() {
 function _toTopOnce(token) {
   if (token?.cancelled) return;
   try { document.activeElement?.blur?.(); } catch {}
-  for (const t of _targets()) {
-    try { t.scrollTop = 0; } catch {}
-  }
+  for (const t of _targets()) { try { t.scrollTop = 0; } catch {} }
   try { window.scrollTo(0, 0); } catch {}
 }
 
@@ -61,12 +65,12 @@ function _nearTop(){
   return (se?.scrollTop || 0) <= 2;
 }
 
-// Короткая серия кадр→кадр; прекращаемся при любом признаке взаимодействия
+// короткая серия: RAF × 2
 function _scheduleShort(token){
   if (token.cancelled) return;
   _toTopOnce(token);
   requestAnimationFrame(()=>{
-    if (token.cancelled || _userHasInteractedRecently() ) return;
+    if (token.cancelled || _userHasScrolledRecently()) return;
     _toTopOnce(token);
   });
 }
@@ -83,17 +87,13 @@ function _afterImagesIn(el, token) {
     }));
   if (pending.length === 0) return Promise.resolve();
 
-  // ждём не дольше 400 мс, и отменяем, если юзер начал скроллить
+  // ждём не дольше 400 мс; отменяем, если пользователь НАЧАЛ СКРОЛЛ
   return new Promise(resolve => {
     const t = setTimeout(resolve, 400);
-    Promise.all(pending).then(()=> {
-      clearTimeout(t);
-      resolve();
-    });
+    Promise.all(pending).then(()=> { clearTimeout(t); resolve(); });
     const abortCheck = () => {
-      if (token.cancelled || _userHasInteractedRecently()) {
-        clearTimeout(t);
-        resolve();
+      if (token.cancelled || _userHasScrolledRecently()) {
+        clearTimeout(t); resolve();
       } else {
         requestAnimationFrame(abortCheck);
       }
@@ -102,7 +102,7 @@ function _afterImagesIn(el, token) {
   });
 }
 
-/* ===== окна подавления / тишины (как были) ===== */
+/* ===== окна подавления / тишины ===== */
 function _remainMs(untilVar) {
   const until = Number(window[untilVar] || 0);
   return Math.max(0, until - Date.now());
@@ -121,19 +121,14 @@ function _isResetAllowed(optsAllowFlag) {
 }
 
 export const ScrollReset = {
-  /**
-   * Запрос сброса скролла.
-   * Срабатывает только в окне навигации или при opts.allow === true.
-   * Не «насилует» страницу: короткая серия кадров, отмена при взаимодействии.
-   */
   request(containerEl, opts = {}) {
     const allow = !!opts.allow;
 
     if (_remainMs('__dropScrollResetUntil') > 0) return;
     if (!_isResetAllowed(allow)) return;
 
-    // если пользователь уже начал скролл прямо сейчас — не мешаем
-    if (_userHasInteractedRecently()) return;
+    // важное изменение: клики/тапы НЕ отменяют; отменяет только реальный скролл
+    if (_userHasScrolledRecently()) return;
 
     const wait = _remainMs('__suppressScrollResetUntil');
     if (wait > 0) {
@@ -150,65 +145,50 @@ export const ScrollReset = {
       if (token.cancelled) return;
       _scheduleShort(token);
 
-      // если мы уже у нуля — не продолжаем «качать» больше
       if (_nearTop()) return;
 
       _afterImagesIn(containerEl || document.getElementById('view'), token)
         .then(() => {
-          if (token.cancelled || _userHasInteractedRecently()) return;
-          // последний мягкий дожим после загрузки картинок
+          if (token.cancelled || _userHasScrolledRecently()) return;
           _scheduleShort(token);
         })
-        .catch(()=>{ /* ignore */ });
+        .catch(()=>{});
     });
   },
 
-  /**
-   * Мгновенный сброс — под теми же правилами (окно навигации или opts.allow).
-   * Отменяемся при взаимодействии.
-   */
   forceNow(opts = {}) {
     const allow = !!opts.allow;
     if (_remainMs('__dropScrollResetUntil') > 0) return;
     if (_remainMs('__suppressScrollResetUntil') > 0) return;
     if (!_isResetAllowed(allow)) return;
-    if (_userHasInteractedRecently()) return;
+    if (_userHasScrolledRecently()) return;
     const token = _newToken();
     _scheduleShort(token);
   },
 
-  /** Сдвинуть ближайшие сбросы на ms миллисекунд. */
   suppress(ms = 300) {
     const until = Date.now() + Math.max(0, ms|0);
     window.__suppressScrollResetUntil = until;
     if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
   },
 
-  /**
-   * Полная «тишина» на ms миллисекунд (никаких переотложений).
-   */
   quiet(ms = 600) {
     const until = Date.now() + Math.max(0, ms|0);
     window.__dropScrollResetUntil = until;
     if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
   },
 
-  /** Открыть окно навигации вручную (если переход нестандартный). */
   allow(ms = NAV_WINDOW_MS_DEFAULT) {
     _openNavWindow(ms);
   },
 
-  // Единоразовая инициализация
   mount() {
     try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch {}
 
-    // маленькое окно после первого старта
     _openNavWindow(NAV_WINDOW_MS_DEFAULT);
 
-    // hashchange = открываем окно
     window.addEventListener('hashchange', () => _openNavWindow(NAV_WINDOW_MS_DEFAULT), { capture: true });
 
-    // bfcache возврат — считаем навигацией
     const onPageShow = (e) => {
       if (e && e.persisted) {
         _openNavWindow(NAV_WINDOW_MS_DEFAULT);
@@ -217,12 +197,11 @@ export const ScrollReset = {
     };
     window.addEventListener('pageshow', onPageShow);
 
-    // Первичный мягкий запрос (один короткий цикл)
     requestAnimationFrame(() => this.request(document.getElementById('view'), { allow: true }));
   }
 };
 
-// Глобальный канал: принудительный скролл вверх (уважаем allow)
+// Глобальный канал: принудительный скролл вверх
 window.addEventListener('client:scroll:top', () =>
   ScrollReset.request(document.getElementById('view'), { allow: true })
 );
