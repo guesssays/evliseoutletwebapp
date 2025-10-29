@@ -4,6 +4,7 @@
 // - отменяем только при реальном скролле (wheel/touchmove/scroll-keys);
 // - работает в окне навигации И/ИЛИ при allow:true;
 // - forceNow() по умолчанию имеет allow:true (чтобы выстреливать из роутера без условий).
+// - 🔇 клики/тапы по «избранному» временно глушат любые сбросы (см. низ файла).
 
 const NAV_WINDOW_MS_DEFAULT = 1800;
 let __allowScrollResetUntil = 0;
@@ -130,6 +131,13 @@ function _isResetAllowed(optsAllowFlag) {
   return _navRemainMs() > 0;
 }
 
+// Локальный helper для «глушилки» без обращения к export
+function _quiet(ms = 600){
+  const until = Date.now() + Math.max(0, ms|0);
+  window.__dropScrollResetUntil = until;
+  if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
+}
+
 export const ScrollReset = {
   /**
    * Плавный запрос сброса. Сработает в окне навигации или при allow:true.
@@ -190,11 +198,7 @@ export const ScrollReset = {
   },
 
   /** Полная «тишина» на ms миллисекунд (никаких переотложений). */
-  quiet(ms = 600) {
-    const until = Date.now() + Math.max(0, ms|0);
-    window.__dropScrollResetUntil = until;
-    if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
-  },
+  quiet(ms = 600) { _quiet(ms); },
 
   /** Вручную открыть окно навигации (для нестандартных переходов). */
   allow(ms = NAV_WINDOW_MS_DEFAULT) {
@@ -219,6 +223,27 @@ export const ScrollReset = {
     requestAnimationFrame(() => this.request(document.getElementById('view'), { allow: true }));
   }
 };
+
+// === 🔇 Автоглушилка для избранного ===============================
+// Любое нажатие на «сердце» временно блокирует попытки сброса скролла,
+// чтобы не было возврата наверх при toggleFav.
+
+const FAV_SELECTORS = [
+  '#btnFixFav',                 // сердечко в фикс-хедере товара
+  '.card .fav',                 // сердечко в карточке на сетке
+  '[aria-label="В избранное"]'  // общий случай на всякий
+].join(',');
+
+// ранний захват — глушим ещё до клика
+['pointerdown','click'].forEach(type => {
+  document.addEventListener(type, (e) => {
+    const btn = e.target && (e.target.closest ? e.target.closest(FAV_SELECTORS) : null);
+    if (btn) {
+      // короткое окно «тишины» — достаточно, чтобы никакой request/forceNow не прошёл
+      _quiet(900);
+    }
+  }, { capture: true, passive: true });
+});
 
 // Глобальный канал: принудительный скролл вверх
 window.addEventListener('client:scroll:top', () =>
