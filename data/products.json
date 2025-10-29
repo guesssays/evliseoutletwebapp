@@ -10,14 +10,12 @@
         "data/wearimages/kurtka-metra/kurtka-metra-2.jpg"
       ],
       "realPhotos": [
-
         "data/wearimages/kurtka-metra/kurtka-metra-3.jpg",
         "data/wearimages/kurtka-metra/kurtka-metra-4.jpg"
-
       ],
       "description": "Куртка MetrA\n\nРазмеры: M, L, XL, 2XL\n\nЦвета: черный, зелёный, фиолетовый \n\nЦена: 799.000 сум",
       "material": "Хлопок/полиэстер",
-      "colors": ["Черный","Зелёный","Фиолетовый"],
+      "colors": ["Черный","Зеленый","Фиолетовый"],
       "sizes": ["M","L","XL","2XL"],
       "category": "Куртки",
       "categoryId": "kurtki",
@@ -41,20 +39,15 @@
       "price": 399000,
       "images": [
         "data/wearimages/pukhovik-beaster/pukhovik-beaster-1.jpg",
-        "data/wearimages/pukhovik-beaster/pukhovik-beaster-2.jpg",
-        "data/wearimages/pukhovik-beaster/pukhovik-beaster-3.jpg",
-        "data/wearimages/pukhovik-beaster/pukhovik-beaster-4.jpg",
-        "data/wearimages/pukhovik-beaster/pukhovik-beaster-5.jpg"
+        "data/wearimages/pukhovik-beaster/pukhovik-beaster-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/pukhovik-beaster/pukhovik-beaster-2.jpg",
         "data/wearimages/pukhovik-beaster/pukhovik-beaster-3.jpg",
-        "data/wearimages/pukhovik-beaster/pukhovik-beaster-4.jpg",
-        "data/wearimages/pukhovik-beaster/pukhovik-beaster-5.jpg"
+        "data/wearimages/pukhovik-beaster/pukhovik-beaster-4.jpg"
       ],
       "description": "Пуховик Beaster \n\nРазмеры: S, M, L, XL\n\nЦвета: синий, жёлтый \n\nЦена: 399.000 сум",
       "material": "Хлопок/полиэстер",
-      "colors": ["Синий","Жёлтый"],
+      "colors": ["Синий","Желтый"],
       "sizes": ["S","M","L","XL"],
       "category": "Новинки",
       "categoryId": "kurtki",
@@ -78,16 +71,11 @@
       "price": 329000,
       "images": [
         "data/wearimages/khudi-ids/khudi-ids-1.jpg",
-        "data/wearimages/khudi-ids/khudi-ids-2.jpg",
-        "data/wearimages/khudi-ids/khudi-ids-3.jpg",
-        "data/wearimages/khudi-ids/khudi-ids-4.jpg",
-        "data/wearimages/khudi-ids/khudi-ids-5.jpg"
+        "data/wearimages/khudi-ids/khudi-ids-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/khudi-ids/khudi-ids-2.jpg",
         "data/wearimages/khudi-ids/khudi-ids-3.jpg",
-        "data/wearimages/khudi-ids/khudi-ids-4.jpg",
-        "data/wearimages/khudi-ids/khudi-ids-5.jpg"
+        "data/wearimages/khudi-ids/khudi-ids-4.jpg"
       ],
       "description": "Худи IDS\n\nРазмеры:  M, L, XL, 2XL\n\nЦвета: черный\n\nЦена: 329.000 сум",
       "material": "Хлопок/полиэстер",
@@ -115,16 +103,11 @@
       "price": 309000,
       "images": [
         "data/wearimages/khudi-erd/khudi-erd-1.jpg",
-        "data/wearimages/khudi-erd/khudi-erd-2.jpg",
-        "data/wearimages/khudi-erd/khudi-erd-3.jpg",
-        "data/wearimages/khudi-erd/khudi-erd-4.jpg",
-        "data/wearimages/khudi-erd/khudi-erd-5.jpg"
+        "data/wearimages/khudi-erd/khudi-erd-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/khudi-erd/khudi-erd-2.jpg",
         "data/wearimages/khudi-erd/khudi-erd-3.jpg",
-        "data/wearimages/khudi-erd/khudi-erd-4.jpg",
-        "data/wearimages/khudi-erd/khudi-erd-5.jpg"
+        "data/wearimages/khudi-erd/khudi-erd-4.jpg"
       ],
       "description": "Худи ERD\n\nРазмеры: S, M, L, XL, 2XL, 3XL\n\nЦвета: черный\n\nЦена: 309.000 сум",
       "material": "Хлопок/полиэстер",
@@ -154,7 +137,6 @@
         "data/wearimages/kurtka-mixgora/kurtka-mixgora-1.jpg",
         "data/wearimages/kurtka-mixgora/kurtka-mixgora-2.jpg"
       ],
-      "realPhotos": ["data/wearimages/kurtka-mixgora/kurtka-mixgora-2.jpg"],
       "description": "Куртка MIXGORA \n\nРазмеры: M, L, XL, 2XL\n\nЦвета: серый \n\nЦена: 399.000 сум\n\nФото нет, сетки нет\n\nреальных фото нет",
       "material": "Хлопок/полиэстер",
       "colors": ["Серый"],
@@ -181,16 +163,11 @@
       "price": 299000,
       "images": [
         "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-1.jpg",
-        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-2.jpg",
-        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-3.jpg",
-        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-4.jpg",
-        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-5.jpg"
+        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-2.jpg",
         "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-3.jpg",
-        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-4.jpg",
-        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-5.jpg"
+        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-4.jpg"
       ],
       "description": "Джинсы Y2K \n\nРазмеры: S, M, L, XL, 2XL\n\nЦвета: черный, синий, розовый\n\nЦена: 299.000 сум",
       "material": "Хлопок/полиэстер",
@@ -218,16 +195,11 @@
       "price": 549000,
       "images": [
         "data/wearimages/kurtka-f1/kurtka-f1-1.jpg",
-        "data/wearimages/kurtka-f1/kurtka-f1-2.jpg",
-        "data/wearimages/kurtka-f1/kurtka-f1-3.jpg",
-        "data/wearimages/kurtka-f1/kurtka-f1-4.jpg",
-        "data/wearimages/kurtka-f1/kurtka-f1-5.jpg"
+        "data/wearimages/kurtka-f1/kurtka-f1-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/kurtka-f1/kurtka-f1-2.jpg",
         "data/wearimages/kurtka-f1/kurtka-f1-3.jpg",
-        "data/wearimages/kurtka-f1/kurtka-f1-4.jpg",
-        "data/wearimages/kurtka-f1/kurtka-f1-5.jpg"
+        "data/wearimages/kurtka-f1/kurtka-f1-4.jpg"
       ],
       "description": "Куртка F1\n\nРазмеры: M, L, XL, 2XL\n\nЦвета: черный\n\nЦена: 549.000 сум",
       "material": "Хлопок/полиэстер",
@@ -254,15 +226,11 @@
       "title": "Maxdepy",
       "price": 329000,
       "images": [
-        "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-1.jpg",
-        "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-2.jpg",
-        "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-3.jpg",
-        "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-4.jpg"
+        "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-1.jpg"
       ],
       "realPhotos": [
         "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-2.jpg",
-        "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-3.jpg",
-        "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-4.jpg"
+        "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-3.jpg"
       ],
       "description": "Свитшот Maxdepy\n\nРазмеры: S, M, L, XL, 2XL, 3XL\n\nЦвета: черный, белый \n\nЦена: 329.000 сум",
       "material": "Хлопок/полиэстер",
@@ -289,15 +257,11 @@
       "title": "Jeans",
       "price": 409000,
       "images": [
-        "data/wearimages/kurtka-jeans/kurtka-jeans-1.jpg",
-        "data/wearimages/kurtka-jeans/kurtka-jeans-2.jpg",
-        "data/wearimages/kurtka-jeans/kurtka-jeans-3.jpg",
-        "data/wearimages/kurtka-jeans/kurtka-jeans-4.jpg"
+        "data/wearimages/kurtka-jeans/kurtka-jeans-1.jpg"
       ],
       "realPhotos": [
         "data/wearimages/kurtka-jeans/kurtka-jeans-2.jpg",
-        "data/wearimages/kurtka-jeans/kurtka-jeans-3.jpg",
-        "data/wearimages/kurtka-jeans/kurtka-jeans-4.jpg"
+        "data/wearimages/kurtka-jeans/kurtka-jeans-3.jpg"
       ],
       "description": "Куртка Jeans\n\nРазмеры: S, M, L, XL, 2XL\n\nЦвета: синий \n\nЦена: 409.000 сум",
       "material": "Хлопок/полиэстер",
@@ -324,9 +288,7 @@
       "title": "Xavier3",
       "price": 459000,
       "images": [
-        "data/wearimages/kedy-xavier3/kedy-xavier3-1.jpg",
-        "data/wearimages/kedy-xavier3/kedy-xavier3-2.jpg",
-        "data/wearimages/kedy-xavier3/kedy-xavier3-3.jpg"
+        "data/wearimages/kedy-xavier3/kedy-xavier3-1.jpg"
       ],
       "realPhotos": [
         "data/wearimages/kedy-xavier3/kedy-xavier3-2.jpg",
@@ -334,7 +296,7 @@
       ],
       "description": "Кеды Xavier3 \n\nРазмеры: 36-44\n\nЦвета: бежевый, жёлтый , синий, бордовый\n\nЦена: 459.000 сум",
       "material": "Хлопок/полиэстер",
-      "colors": ["Бежевый","Жёлтый","Синий","Бордовый"],
+      "colors": ["Бежевый","Желтый","Синий","Бордовый"],
       "sizes": ["36","37","38","39","40","41","42","43","44"],
       "category": "Кеды",
       "categoryId": "kedy",
@@ -360,16 +322,11 @@
       "price": 649000,
       "images": [
         "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-1.jpg",
-        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-2.jpg",
-        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-3.jpg",
-        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-4.jpg",
-        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-5.jpg"
+        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-2.jpg",
         "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-3.jpg",
-        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-4.jpg",
-        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-5.jpg"
+        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-4.jpg"
       ],
       "description": "Кожанка Двухсторонка\n\nРазмеры: M, L, XL\n\nЦвета: черный\n\nЦена: 649.000 сум",
       "material": "Хлопок/полиэстер",
@@ -397,16 +354,11 @@
       "price": 499000,
       "images": [
         "data/wearimages/bomber-greamreaper/bomber-greamreaper-1.jpg",
-        "data/wearimages/bomber-greamreaper/bomber-greamreaper-2.jpg",
-        "data/wearimages/bomber-greamreaper/bomber-greamreaper-3.jpg",
-        "data/wearimages/bomber-greamreaper/bomber-greamreaper-4.jpg",
-        "data/wearimages/bomber-greamreaper/bomber-greamreaper-5.jpg"
+        "data/wearimages/bomber-greamreaper/bomber-greamreaper-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/bomber-greamreaper/bomber-greamreaper-2.jpg",
         "data/wearimages/bomber-greamreaper/bomber-greamreaper-3.jpg",
-        "data/wearimages/bomber-greamreaper/bomber-greamreaper-4.jpg",
-        "data/wearimages/bomber-greamreaper/bomber-greamreaper-5.jpg"
+        "data/wearimages/bomber-greamreaper/bomber-greamreaper-4.jpg"
       ],
       "description": "Бомбер GreamReaper\n\nРазмеры: M, L, XL, 2XL, 3XL\n\nЦвета: черный\n\nЦена: 499.000 сум",
       "material": "Хлопок/полиэстер",
@@ -433,9 +385,7 @@
       "title": "God's Plan",
       "price": 269000,
       "images": [
-        "data/wearimages/sumka-god-s-plan/sumka-god-s-plan-1.jpg",
-        "data/wearimages/sumka-god-s-plan/sumka-god-s-plan-2.jpg",
-        "data/wearimages/sumka-god-s-plan/sumka-god-s-plan-3.jpg"
+        "data/wearimages/sumka-god-s-plan/sumka-god-s-plan-1.jpg"
       ],
       "realPhotos": [
         "data/wearimages/sumka-god-s-plan/sumka-god-s-plan-2.jpg",
@@ -444,7 +394,7 @@
       "description": "Сумка God's Plan\n\nРазмеры: \n\nЦвета: белый, розовый \n\nЦена: 269.000 сум",
       "material": "Хлопок/полиэстер",
       "colors": ["Белый","Розовый"],
-      "sizes": ["ЦВЕТА: БЕЛЫЙ","РОЗОВЫЙ"],
+      "sizes": [],
       "category": "Сумки",
       "categoryId": "sumki",
       "sizeChartType": "clothes",
@@ -466,15 +416,11 @@
       "title": "Downforce",
       "price": 549000,
       "images": [
-        "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-1.jpg",
-        "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-2.jpg",
-        "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-3.jpg",
-        "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-4.jpg"
+        "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-1.jpg"
       ],
       "realPhotos": [
         "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-2.jpg",
-        "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-3.jpg",
-        "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-4.jpg"
+        "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-3.jpg"
       ],
       "description": "Куртка Пуховик \n\nРазмеры: S, M, L, XL\n\nЦвета: черный\n\nЦена: 549.000 сум",
       "material": "Хлопок/полиэстер",
@@ -503,19 +449,14 @@
       "images": [
         "data/wearimages/botinki-newrock/botinki-newrock-1.jpg",
         "data/wearimages/botinki-newrock/botinki-newrock-2.jpg",
-        "data/wearimages/botinki-newrock/botinki-newrock-3.jpg",
-        "data/wearimages/botinki-newrock/botinki-newrock-4.jpg",
-        "data/wearimages/botinki-newrock/botinki-newrock-5.jpg"
+        "data/wearimages/botinki-newrock/botinki-newrock-3.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/botinki-newrock/botinki-newrock-2.jpg",
-        "data/wearimages/botinki-newrock/botinki-newrock-3.jpg",
-        "data/wearimages/botinki-newrock/botinki-newrock-4.jpg",
-        "data/wearimages/botinki-newrock/botinki-newrock-5.jpg"
+        "data/wearimages/botinki-newrock/botinki-newrock-4.jpg"
       ],
       "description": "Ботинки NewRock\n\nРазмеры: 38-46\n\nЦвета: cерый, черный , фиолетовый\n\nЦена: 849.000 сум\n\nразмерная сетка от ньюроков",
       "material": "Хлопок/полиэстер",
-      "colors": ["Cерый","Черный","Фиолетовый"],
+      "colors": ["Серый","Черный","Фиолетовый"],
       "sizes": ["38","39","40","41","42","43","44","45","46"],
       "category": "Ботинки",
       "categoryId": "botinki",
@@ -540,15 +481,11 @@
       "title": "Baggy",
       "price": 349000,
       "images": [
-        "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-1.jpg",
-        "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-2.jpg",
-        "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-3.jpg",
-        "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-4.jpg"
+        "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-1.jpg"
       ],
       "realPhotos": [
         "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-2.jpg",
-        "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-3.jpg",
-        "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-4.jpg"
+        "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-3.jpg"
       ],
       "description": "Джинсы Baggy\n\nРазмеры: XS, S, M, L, XL, 2XL\n\nЦвета: синий\n\nЦена: 349.000 сум",
       "material": "Хлопок/полиэстер",
@@ -575,15 +512,11 @@
       "title": "Autumn Line",
       "price": 549000,
       "images": [
-        "data/wearimages/palto-osennee/palto-osennee-1.jpg",
-        "data/wearimages/palto-osennee/palto-osennee-2.jpg",
-        "data/wearimages/palto-osennee/palto-osennee-3.jpg",
-        "data/wearimages/palto-osennee/palto-osennee-4.jpg"
+        "data/wearimages/palto-osennee/palto-osennee-1.jpg"
       ],
       "realPhotos": [
         "data/wearimages/palto-osennee/palto-osennee-2.jpg",
-        "data/wearimages/palto-osennee/palto-osennee-3.jpg",
-        "data/wearimages/palto-osennee/palto-osennee-4.jpg"
+        "data/wearimages/palto-osennee/palto-osennee-3.jpg"
       ],
       "description": "Пальто Осеннее\n\nРазмеры: S, M, L, XL, 2XL, 3XL\n\nЦвета: черный, серый\n\nЦена: 549.000 сум",
       "material": "Хлопок/полиэстер",
@@ -611,14 +544,11 @@
       "price": 399000,
       "images": [
         "data/wearimages/lofery-classic/lofery-classic-1.jpg",
-        "data/wearimages/lofery-classic/lofery-classic-2.jpg",
-        "data/wearimages/lofery-classic/lofery-classic-3.jpg",
-        "data/wearimages/lofery-classic/lofery-classic-4.jpg"
+        "data/wearimages/lofery-classic/lofery-classic-2.jpg"
       ],
       "realPhotos": [
         "data/wearimages/lofery-classic/lofery-classic-2.jpg",
-        "data/wearimages/lofery-classic/lofery-classic-3.jpg",
-        "data/wearimages/lofery-classic/lofery-classic-4.jpg"
+        "data/wearimages/lofery-classic/lofery-classic-3.jpg"
       ],
       "description": "Лоферы Classic \n\nРазмеры: 39-44\n\nЦвета: коричневый, бежевый\n\nЦена: 399.000 сум\n\nразмерной сетки нет",
       "material": "Хлопок/полиэстер",
@@ -645,9 +575,7 @@
       "title": "TheBlack",
       "price": 469000,
       "images": [
-        "data/wearimages/kozhanka-theblack/kozhanka-theblack-1.jpg",
-        "data/wearimages/kozhanka-theblack/kozhanka-theblack-2.jpg",
-        "data/wearimages/kozhanka-theblack/kozhanka-theblack-3.jpg"
+        "data/wearimages/kozhanka-theblack/kozhanka-theblack-1.jpg"
       ],
       "realPhotos": [
         "data/wearimages/kozhanka-theblack/kozhanka-theblack-2.jpg",
@@ -679,16 +607,11 @@
       "price": 569000,
       "images": [
         "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-1.jpg",
-        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-2.jpg",
-        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-3.jpg",
-        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-4.jpg",
-        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-5.jpg"
+        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-2.jpg",
         "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-3.jpg",
-        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-4.jpg",
-        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-5.jpg"
+        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-4.jpg"
       ],
       "description": "Пальто Осеннее\n\nРазмеры:  M, L, XL, 2XL, 3XL, 4XL, 5XL \n\nЦвета: черный, серый, бежевый\n\nЦена: 569.000 сум",
       "material": "Хлопок/полиэстер",
@@ -716,20 +639,15 @@
       "price": 369000,
       "images": [
         "data/wearimages/polo-coreevry/polo-coreevry-1.jpg",
-        "data/wearimages/polo-coreevry/polo-coreevry-2.jpg",
-        "data/wearimages/polo-coreevry/polo-coreevry-3.jpg",
-        "data/wearimages/polo-coreevry/polo-coreevry-4.jpg",
-        "data/wearimages/polo-coreevry/polo-coreevry-5.jpg"
+        "data/wearimages/polo-coreevry/polo-coreevry-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/polo-coreevry/polo-coreevry-2.jpg",
         "data/wearimages/polo-coreevry/polo-coreevry-3.jpg",
-        "data/wearimages/polo-coreevry/polo-coreevry-4.jpg",
-        "data/wearimages/polo-coreevry/polo-coreevry-5.jpg"
+        "data/wearimages/polo-coreevry/polo-coreevry-4.jpg"
       ],
       "description": "Поло Coreevry\n\nРазмеры:  M, L, XL, 2XL, 3XL, 4XL \n\nЦвета: синий , зелёный, черный , бежевый\n\nЦена: 369.000 сум",
       "material": "Хлопок/полиэстер",
-      "colors": ["Синий","Зелёный","Черный","Бежевый"],
+      "colors": ["Синий","Зеленый","Черный","Бежевый"],
       "sizes": ["M","L","XL","2XL","3XL","4XL"],
       "category": "Новинки",
       "categoryId": "polo",
@@ -753,16 +671,11 @@
       "price": 369000,
       "images": [
         "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-1.jpg",
-        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-2.jpg",
-        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-3.jpg",
-        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-4.jpg",
-        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-5.jpg"
+        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-2.jpg",
         "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-3.jpg",
-        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-4.jpg",
-        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-5.jpg"
+        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-4.jpg"
       ],
       "description": "Джинсы Мешковатые \n\nРазмеры: S, M, L, XL, 2XL, 3XL\n\nЦвета: синий\n\nЦена: 369.000 сум",
       "material": "Хлопок/полиэстер",
@@ -790,12 +703,9 @@
       "price": 369000,
       "images": [
         "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-1.jpg",
-        "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-2.jpg",
-        "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-3.jpg",
-        "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-4.jpg"
+        "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-2.jpg",
         "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-3.jpg",
         "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-4.jpg"
       ],
@@ -825,12 +735,9 @@
       "price": 549000,
       "images": [
         "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-1.jpg",
-        "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-2.jpg",
-        "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-3.jpg",
-        "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-4.jpg"
+        "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-2.jpg",
         "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-3.jpg",
         "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-4.jpg"
       ],
@@ -850,15 +757,11 @@
       "title": "Stylish",
       "price": 329000,
       "images": [
-        "data/wearimages/shtany-stylish/shtany-stylish-1.jpg",
-        "data/wearimages/shtany-stylish/shtany-stylish-2.jpg",
-        "data/wearimages/shtany-stylish/shtany-stylish-3.jpg",
-        "data/wearimages/shtany-stylish/shtany-stylish-4.jpg"
+        "data/wearimages/shtany-stylish/shtany-stylish-1.jpg"
       ],
       "realPhotos": [
         "data/wearimages/shtany-stylish/shtany-stylish-2.jpg",
-        "data/wearimages/shtany-stylish/shtany-stylish-3.jpg",
-        "data/wearimages/shtany-stylish/shtany-stylish-4.jpg"
+        "data/wearimages/shtany-stylish/shtany-stylish-3.jpg"
       ],
       "description": "Штаны Stylish \n\nРазмеры: S, M, L, XL\n\nЦвета: серый \n\nЦена: 329.000 сум",
       "material": "Хлопок/полиэстер",
@@ -877,20 +780,15 @@
       "price": 689000,
       "images": [
         "data/wearimages/bomber-teplyi/bomber-teplyi-1.jpg",
-        "data/wearimages/bomber-teplyi/bomber-teplyi-2.jpg",
-        "data/wearimages/bomber-teplyi/bomber-teplyi-3.jpg",
-        "data/wearimages/bomber-teplyi/bomber-teplyi-4.jpg",
-        "data/wearimages/bomber-teplyi/bomber-teplyi-5.jpg"
+        "data/wearimages/bomber-teplyi/bomber-teplyi-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/bomber-teplyi/bomber-teplyi-2.jpg",
         "data/wearimages/bomber-teplyi/bomber-teplyi-3.jpg",
-        "data/wearimages/bomber-teplyi/bomber-teplyi-4.jpg",
-        "data/wearimages/bomber-teplyi/bomber-teplyi-5.jpg"
+        "data/wearimages/bomber-teplyi/bomber-teplyi-4.jpg"
       ],
       "description": "Бомбер теплый \n\nРазмеры: M, L, XL, 2XL, 3XL, 4XL \n\nЦвета: черный, зелёный, жёлтый \n\nЦена: 689.000 сум\n\nимеется утепленная версия и обычная",
       "material": "Хлопок/полиэстер",
-      "colors": ["Черный","Зелёный","Жёлтый"],
+      "colors": ["Черный","Зеленый","Желтый"],
       "sizes": ["M","L","XL","2XL","3XL","4XL"],
       "category": "Новинки",
       "categoryId": "kurtki",
@@ -905,16 +803,11 @@
       "price": 549000,
       "images": [
         "data/wearimages/kozhanka-snake/kozhanka-snake-1.jpg",
-        "data/wearimages/kozhanka-snake/kozhanka-snake-2.jpg",
-        "data/wearimages/kozhanka-snake/kozhanka-snake-3.jpg",
-        "data/wearimages/kozhanka-snake/kozhanka-snake-4.jpg",
-        "data/wearimages/kozhanka-snake/kozhanka-snake-5.jpg"
+        "data/wearimages/kozhanka-snake/kozhanka-snake-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/kozhanka-snake/kozhanka-snake-2.jpg",
         "data/wearimages/kozhanka-snake/kozhanka-snake-3.jpg",
-        "data/wearimages/kozhanka-snake/kozhanka-snake-4.jpg",
-        "data/wearimages/kozhanka-snake/kozhanka-snake-5.jpg"
+        "data/wearimages/kozhanka-snake/kozhanka-snake-4.jpg"
       ],
       "description": "Кожанка Snake\n\nРазмеры: M, L, XL, 2XL\n\nЦвета: черный\n\nЦена: 549.000 сум",
       "material": "Хлопок/полиэстер",
@@ -933,18 +826,15 @@
       "price": 369000,
       "images": [
         "data/wearimages/kedy-venom/kedy-venom-1.jpg",
-        "data/wearimages/kedy-venom/kedy-venom-2.jpg",
-        "data/wearimages/kedy-venom/kedy-venom-3.jpg",
-        "data/wearimages/kedy-venom/kedy-venom-4.jpg"
+        "data/wearimages/kedy-venom/kedy-venom-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/kedy-venom/kedy-venom-2.jpg",
         "data/wearimages/kedy-venom/kedy-venom-3.jpg",
         "data/wearimages/kedy-venom/kedy-venom-4.jpg"
       ],
       "description": "Кеды Venom\n\nРазмеры: 35-44\n\nЦвета: черный, белый, чёрно-белый \n\nЦена: 369.000 сум\n\nРазмерная сетка от ньюроков",
       "material": "Хлопок/полиэстер",
-      "colors": ["Черный","Белый","Чёрно-белый"],
+      "colors": ["Черный","Белый","Черно-белый"],
       "sizes": ["35","36","37","38","39","40","41","42","43","44"],
       "category": "Кеды",
       "categoryId": "kedy",
@@ -970,16 +860,11 @@
       "price": 499000,
       "images": [
         "data/wearimages/bomber-meam/bomber-meam-1.jpg",
-        "data/wearimages/bomber-meam/bomber-meam-2.jpg",
-        "data/wearimages/bomber-meam/bomber-meam-3.jpg",
-        "data/wearimages/bomber-meam/bomber-meam-4.jpg",
-        "data/wearimages/bomber-meam/bomber-meam-5.jpg"
+        "data/wearimages/bomber-meam/bomber-meam-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/bomber-meam/bomber-meam-2.jpg",
         "data/wearimages/bomber-meam/bomber-meam-3.jpg",
-        "data/wearimages/bomber-meam/bomber-meam-4.jpg",
-        "data/wearimages/bomber-meam/bomber-meam-5.jpg"
+        "data/wearimages/bomber-meam/bomber-meam-4.jpg"
       ],
       "description": "Бомбер Meam\n\nРазмеры: S,M, L, XL, 2XL, 3XL \n\nЦвета: черный, белый\n\nЦена: 499.000 сум",
       "material": "Хлопок/полиэстер",
@@ -998,20 +883,15 @@
       "price": 599000,
       "images": [
         "data/wearimages/bomber-fordream/bomber-fordream-1.jpg",
-        "data/wearimages/bomber-fordream/bomber-fordream-2.jpg",
-        "data/wearimages/bomber-fordream/bomber-fordream-3.jpg",
-        "data/wearimages/bomber-fordream/bomber-fordream-4.jpg",
-        "data/wearimages/bomber-fordream/bomber-fordream-5.jpg"
+        "data/wearimages/bomber-fordream/bomber-fordream-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/bomber-fordream/bomber-fordream-2.jpg",
         "data/wearimages/bomber-fordream/bomber-fordream-3.jpg",
-        "data/wearimages/bomber-fordream/bomber-fordream-4.jpg",
-        "data/wearimages/bomber-fordream/bomber-fordream-5.jpg"
+        "data/wearimages/bomber-fordream/bomber-fordream-4.jpg"
       ],
       "description": "Бомбер ForDream\n\nРазмеры: M, L, XL, 2XL, 3XL, 4XL, 5XL, 6XL, 7XL\n\nЦвета: черный, синий, зелёный \n\nЦена: 599.000 сум",
       "material": "Хлопок/полиэстер",
-      "colors": ["Черный","Синий","Зелёный"],
+      "colors": ["Черный","Синий","Зеленый"],
       "sizes": ["M","L","XL","2XL","3XL","4XL","5XL","6XL","7XL"],
       "category": "Новинки",
       "categoryId": "kurtki",
@@ -1026,16 +906,11 @@
       "price": 349000,
       "images": [
         "data/wearimages/khudi-ford/khudi-ford-1.jpg",
-        "data/wearimages/khudi-ford/khudi-ford-2.jpg",
-        "data/wearimages/khudi-ford/khudi-ford-3.jpg",
-        "data/wearimages/khudi-ford/khudi-ford-4.jpg",
-        "data/wearimages/khudi-ford/khudi-ford-5.jpg"
+        "data/wearimages/khudi-ford/khudi-ford-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/khudi-ford/khudi-ford-2.jpg",
         "data/wearimages/khudi-ford/khudi-ford-3.jpg",
-        "data/wearimages/khudi-ford/khudi-ford-4.jpg",
-        "data/wearimages/khudi-ford/khudi-ford-5.jpg"
+        "data/wearimages/khudi-ford/khudi-ford-4.jpg"
       ],
       "description": "Худи Ford\n\nРазмеры:XS,  S, M, L, XL, 2XL, 3XL\n\nЦвета: серый\n\nЦена: 349.000 сум",
       "material": "Хлопок/полиэстер",
@@ -1054,16 +929,11 @@
       "price": 959000,
       "images": [
         "data/wearimages/botinki-rickowens/botinki-rickowens-1.jpg",
-        "data/wearimages/botinki-rickowens/botinki-rickowens-2.jpg",
-        "data/wearimages/botinki-rickowens/botinki-rickowens-3.jpg",
-        "data/wearimages/botinki-rickowens/botinki-rickowens-4.jpg",
-        "data/wearimages/botinki-rickowens/botinki-rickowens-5.jpg"
+        "data/wearimages/botinki-rickowens/botinki-rickowens-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/botinki-rickowens/botinki-rickowens-2.jpg",
         "data/wearimages/botinki-rickowens/botinki-rickowens-3.jpg",
-        "data/wearimages/botinki-rickowens/botinki-rickowens-4.jpg",
-        "data/wearimages/botinki-rickowens/botinki-rickowens-5.jpg"
+        "data/wearimages/botinki-rickowens/botinki-rickowens-4.jpg"
       ],
       "description": "Ботинки RickOwens \n\nРазмеры: 36-45\n\nЦвета: черный\n\nЦена: 959.000 сум",
       "material": "Хлопок/полиэстер",
@@ -1093,20 +963,15 @@
       "price": 329000,
       "images": [
         "data/wearimages/kardigan-dino/kardigan-dino-1.jpg",
-        "data/wearimages/kardigan-dino/kardigan-dino-2.jpg",
-        "data/wearimages/kardigan-dino/kardigan-dino-3.jpg",
-        "data/wearimages/kardigan-dino/kardigan-dino-4.jpg",
-        "data/wearimages/kardigan-dino/kardigan-dino-5.jpg"
+        "data/wearimages/kardigan-dino/kardigan-dino-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/kardigan-dino/kardigan-dino-2.jpg",
         "data/wearimages/kardigan-dino/kardigan-dino-3.jpg",
-        "data/wearimages/kardigan-dino/kardigan-dino-4.jpg",
-        "data/wearimages/kardigan-dino/kardigan-dino-5.jpg"
+        "data/wearimages/kardigan-dino/kardigan-dino-4.jpg"
       ],
       "description": "Кардиган Dino \n\nРазмеры: M, L, XL, 2XL\n\nЦвета: черный, белый, зелёный \n\nЦена: 329.000 сум",
       "material": "Хлопок/полиэстер",
-      "colors": ["Черный","Белый","Зелёный"],
+      "colors": ["Черный","Белый","Зеленый"],
       "sizes": ["M","L","XL","2XL"],
       "category": "Кардиганы",
       "categoryId": "kardigany",
@@ -1121,20 +986,11 @@
       "price": 369000,
       "images": [
         "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-1.jpg",
-        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-2.jpg",
-        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-3.jpg",
-        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-4.jpg",
-        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-5.jpg",
-        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-6.jpg",
-        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-7.jpg"
+        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-2.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-2.jpg",
         "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-3.jpg",
-        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-4.jpg",
-        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-5.jpg",
-        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-6.jpg",
-        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-7.jpg"
+        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-4.jpg"
       ],
       "description": "Джинсы AstroBoy \n\nРазмеры: S,M,L,XL,2XL,3XL\n\nЦвета: черный, синий\n\nЦена: 369.000 сум",
       "material": "Хлопок/полиэстер",
