@@ -1,9 +1,10 @@
 // src/core/orders.js
 // Работа с заказами: клиент → сервер (remote-first) + локальный кэш.
-// Также включает admin token-хэндлинг.
+// Также включает admin token-хэндлинг и «лёгкий» список без paymentScreenshot.
+// Полный заказ (с чеком) подтягиваем по запросу getOrderById(id).
 
 import { getUID } from './state.js';
-import { notifyStatusChanged } from './botNotify.js'; // если нет файла — можно убрать импорт, но у вас он есть
+import { notifyStatusChanged } from './botNotify.js'; // если файла нет — можно убрать импорт
 
 const KEY = 'nas_orders';
 const API_BASE = '/.netlify/functions/orders';
@@ -64,14 +65,14 @@ let __lastStoreKind = 'unknown';
 function baseHeaders() {
   const headers = { 'Content-Type': 'application/json' };
   const initData = getTgInitData();
-  if (initData) headers['X-Tg-Init-Data'] = initData;
+  if (initData) headers['X-Tg-Init-Data'] = initData; // для серверной привязки uid
   return headers;
 }
 
 /* ===== API low-level ===== */
 async function apiGetList(){
   try{
-    // Явно просим лёгкую выдачу без paymentScreenshot
+    // Лёгкая выдача: сервер не присылает paymentScreenshot
     const url = `${API_BASE}?op=list&light=1&limit=500&ts=${Date.now()}`;
     const res = await withTimeout(fetch(url, {
       method: 'GET',
@@ -100,6 +101,7 @@ async function apiGetOne(id){
 }
 async function apiPost(op, body){
   const headers = baseHeaders();
+  // Админские операции — добавляем внутренний токен
   if (ADMIN_OPS.has(op)) {
     const token = getAdminToken();
     if (token) headers['X-Internal-Auth'] = token;
@@ -170,11 +172,28 @@ export async function getOrders(){
   return list.map(normalizeOrder);
 }
 
+/**
+ * Точечная подгрузка полного заказа.
+ * Возвращает объект с paymentScreenshot (если он есть).
+ * По умолчанию обновляет локальный кэш этой записью.
+ */
+export async function getOrderById(id, { updateCache = true } = {}) {
+  const one = await apiGetOne(id);
+  if (one && updateCache) {
+    const list = getOrdersLocal();
+    const i = list.findIndex(o => String(o.id) === String(id));
+    if (i > -1) list[i] = one; else list.unshift(one);
+    replaceOrdersCacheSilently(list);
+  }
+  return one;
+}
+
 export async function addOrder(order){
   const idLocal = order.id ?? String(Date.now());
   const now = Date.now();
   const initialStatus = canonStatus(order.status ?? 'новый');
 
+  // Сервер всё равно проверит X-Tg-Init-Data и uid, но на клиенте не даём оформить «гостевой»
   const safeUserId = order.userId ?? getUID() ?? null;
   if (!safeUserId) {
     const err = new Error('Требуется авторизация через Telegram. Откройте приложение внутри Telegram.');
@@ -372,4 +391,5 @@ export async function updateOrderStatus(orderId, status){
   return updatedOrder;
 }
 
+/* Демосидирование отключено */
 export function seedOrdersOnce(){ /* no-op */ }
