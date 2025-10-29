@@ -4,7 +4,7 @@
 // - отменяем только при реальном скролле (wheel/touchmove/scroll-keys);
 // - работает в окне навигации И/ИЛИ при allow:true;
 // - forceNow() по умолчанию имеет allow:true;
-// - 🔇 тапы по «избранному» глушат ресеты и блокируют навигацию у родительского <a>, не мешая твоим обработчикам.
+// - NEW: ScrollReset.guardNoResetClick(el) — локальная глушилка ресетов для конкретной кнопки.
 
 const NAV_WINDOW_MS_DEFAULT = 1800;
 let __allowScrollResetUntil = 0;
@@ -118,6 +118,14 @@ function _quiet(ms = 600){
   if (_pendingTimer) { clearTimeout(_pendingTimer); _pendingTimer = null; }
 }
 
+// ——— локальный helper для отмены навигации у родительского <a>
+function _cancelAnchorDefault(e, target){
+  try{
+    const a = target && target.closest && target.closest('a[href]');
+    if (a) e.preventDefault();
+  }catch{}
+}
+
 export const ScrollReset = {
   request(containerEl, opts = {}) {
     const allow = !!opts.allow;
@@ -181,66 +189,46 @@ export const ScrollReset = {
     window.addEventListener('pageshow', onPageShow);
 
     requestAnimationFrame(() => this.request(document.getElementById('view'), { allow: true }));
+  },
+
+  /**
+   * Локально «приглушить» ресеты вокруг клика по элементу.
+   * Не ломает твои обработчики и не трогает всплытие.
+   *
+   * @param {Element} el — кнопка/иконка «избранного»
+   * @param {Object} opts
+   * @param {number} opts.duration — длительность окна (мс), деф. 900
+   * @param {boolean} opts.preventAnchorNav — запрещать ли навигацию по родительскому <a>, деф. true
+   * @returns {Function} unbind
+   */
+  guardNoResetClick(el, opts = {}) {
+    if (!el) return () => {};
+    const dur = Number.isFinite(opts.duration) ? Math.max(0, opts.duration|0) : 900;
+    const preventAnchor = (opts.preventAnchorNav !== false);
+
+    const onPD = () => { _quiet(dur); window.__suppressScrollResetUntil = Date.now() + dur; };
+    const onClick = (e) => {
+      _quiet(dur);
+      window.__suppressScrollResetUntil = Date.now() + dur;
+      if (preventAnchor) _cancelAnchorDefault(e, el);
+    };
+    const onTouchEnd = (e) => {
+      _quiet(dur);
+      window.__suppressScrollResetUntil = Date.now() + dur;
+      if (preventAnchor) _cancelAnchorDefault(e, el);
+    };
+
+    el.addEventListener('pointerdown', onPD, { passive:true,  capture:true });
+    el.addEventListener('click',       onClick, { passive:false, capture:true });
+    el.addEventListener('touchend',    onTouchEnd, { passive:false, capture:true });
+
+    return () => {
+      try{ el.removeEventListener('pointerdown', onPD, { capture:true }); }catch{}
+      try{ el.removeEventListener('click', onClick, { capture:true }); }catch{}
+      try{ el.removeEventListener('touchend', onTouchEnd, { capture:true }); }catch{}
+    };
   }
 };
-
-// === 🔇 Автоглушилка для избранного + мягкая блокировка навигации по <a> =======
-
-// Кандидаты сердечек
-const FAV_SELECTORS = [
-  '#btnFixFav',
-  '.card .fav',
-  'button.fav',
-  'button[aria-label="В избранное"]',
-  '[data-action="fav"]',
-  '[data-fav]',
-  '[aria-pressed][aria-label*="збран"]'
-].join(',');
-
-function _isFavClickTarget(target){
-  if (!target) return null;
-  const el = target.closest ? target.closest(FAV_SELECTORS) : null;
-  if (el) return el;
-  const p = target.parentElement;
-  if (p && p.closest) return p.closest(FAV_SELECTORS);
-  return null;
-}
-
-// только запрещаем навигацию у ближайшего <a>, не мешая твоим обработчикам
-function _cancelAnchorDefault(e, target){
-  const a = target.closest && target.closest('a[href]');
-  if (!a) return;
-  // важное: НЕЛЬЗЯ ставить stopPropagation/stopImmediatePropagation — иначе
-  // обработчик кнопки не выполнится. Достаточно preventDefault.
-  try { e.preventDefault(); } catch {}
-}
-
-function _muteForFavInteraction(){
-  _quiet(900); // отменить активные циклы
-  window.__suppressScrollResetUntil = Date.now() + 900; // и не запускать новые
-}
-
-// На pointerdown просто ставим тихий режим (без preventDefault)
-document.addEventListener('pointerdown', (e) => {
-  const favEl = _isFavClickTarget(e.target);
-  if (favEl) _muteForFavInteraction();
-}, { capture: true, passive: true });
-
-// На click: тихий режим + отменяем ТОЛЬКО дефолт у <a>, оставляя всплытие
-document.addEventListener('click', (e) => {
-  const favEl = _isFavClickTarget(e.target);
-  if (!favEl) return;
-  _muteForFavInteraction();
-  _cancelAnchorDefault(e, favEl);
-}, { capture: true, passive: false });
-
-// Дополнительно страхуем touchend (старые вебвью)
-document.addEventListener('touchend', (e) => {
-  const favEl = _isFavClickTarget(e.target);
-  if (!favEl) return;
-  _muteForFavInteraction();
-  _cancelAnchorDefault(e, favEl);
-}, { capture: true, passive: false });
 
 // Глобальный канал: принудительный скролл вверх
 window.addEventListener('client:scroll:top', () =>

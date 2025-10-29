@@ -128,6 +128,8 @@ export function drawProducts(list){
       favBtn.classList.toggle('active', active);
       favBtn.setAttribute('aria-pressed', String(active));
       favBtn.onclick = (ev)=>{ ev.preventDefault(); toggleFav(p.id); };
+      try { ScrollReset.guardNoResetClick(favBtn, { duration: 900, preventAnchorNav: true }); } catch {}
+
     }
 
     frag.appendChild(node);

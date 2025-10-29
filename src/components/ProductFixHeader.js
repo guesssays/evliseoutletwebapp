@@ -209,6 +209,9 @@ function bindButtonHandlers(){
   if (fav){
     fav.style.pointerEvents = 'auto';
     fav.addEventListener('click', doFavToggle, { passive:false });
+    // не даём ресету скролла запускаться на клик сердечка в фикс-хедере
+try { ScrollReset.guardNoResetClick(fav, { duration: 900, preventAnchorNav: true }); } catch {}
+
   }
 }
 

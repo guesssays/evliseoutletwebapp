@@ -560,6 +560,9 @@ export async function renderProduct({id}){
           detail: { id: p.id, active: nowActive }
         }));
       }, { passive:false });
+      // локально глушим ресеты вокруг клика по сердцу, без влияния на твой обработчик
+try { ScrollReset.guardNoResetClick(favBtn, { duration: 900, preventAnchorNav: true }); } catch {}
+
     }
 
     // Галерея
