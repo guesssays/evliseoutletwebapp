@@ -47,16 +47,14 @@ import {
 // Экран-мостик для браузера
 import { renderRefBridge } from './views/RefBridge.js';
 
+/* ==== TEMP: полностью отключить бейдж уведомлений (kill-switch) ==== */
+window.__NOTIFS_BADGE_OFF__ = true;
 
 /* ===== Кэшбек/Рефералы: локальные утилиты (дозревание локальных pending) ===== */
 const POINTS_MATURITY_MS  = 24*60*60*1000;
 function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
 
 /* ---------- ОДНОРАЗОВАЯ МИГРАЦИЯ КОШЕЛЬКА guest -> реальный UID ---------- */
-/**
- * Если старые пользователи копили баллы под ключом points_wallet__guest,
- * переносим содержимое в points_wallet__<uid>. Запускается один раз на UID.
- */
 function migrateGuestWalletOnce() {
   try {
     const realUid = getUID?.();
@@ -73,7 +71,6 @@ function migrateGuestWalletOnce() {
 
     if (guestRaw && !realRaw) {
       localStorage.setItem(realKey, guestRaw);
-      // при желании можно очистить старый ключ:
       // localStorage.removeItem(guestKey);
     }
     localStorage.setItem(FLAG, '1');
@@ -147,7 +144,6 @@ async function notifApiAdd(uid, notif){
   if (!res.ok || data?.ok === false) throw new Error('notif add error');
   return data.id || notif.id || Date.now();
 }
-/* === ПРАВКА ЗДЕСЬ (осталась без изменений в этом файле) === */
 async function notifApiMarkAll(uid){
   const initData = getTgInitDataRaw();
   const hasInit  = !!(initData && initData.length);
@@ -488,13 +484,26 @@ el('#searchInput')?.addEventListener('input', (e)=>{
 });
 
 /* ---------- Уведомления (per-user) ---------- */
-// Обновлённая функция: можно вызвать с числом для принудительной установки.
+/**
+ * Обновлённая функция: поддерживает kill-switch.
+ * Если window.__NOTIFS_BADGE_OFF__ === true — всегда прячет бейдж.
+ */
 function updateNotifBadge(explicitCount){
   const b = document.getElementById('notifBadge');
   if (!b) return;
+
+  // TEMP kill-switch
+  if (window.__NOTIFS_BADGE_OFF__) {
+    b.textContent = '';
+    b.hidden = true;
+    b.setAttribute('aria-hidden','true');
+    return;
+  }
+
   const unread = (typeof explicitCount === 'number')
     ? Math.max(0, explicitCount|0)
     : getNotifications().reduce((a,n)=> a + (!n.read ? 1 : 0), 0);
+
   if (unread>0){
     b.textContent = String(unread);
     b.hidden = false;
@@ -507,8 +516,12 @@ function updateNotifBadge(explicitCount){
 }
 window.updateNotifBadge = updateNotifBadge;
 
-// Слушаем событие от Notifications.js для моментального обнуления
+// Слушаем событие от Notifications.js; при выключенном бейдже — гасим
 window.addEventListener('notifs:unread', (e)=>{
+  if (window.__NOTIFS_BADGE_OFF__) {
+    updateNotifBadge(0);
+    return;
+  }
   const n = Number(e?.detail ?? 0) || 0;
   updateNotifBadge(n);
 });
@@ -521,9 +534,7 @@ document.addEventListener('click', (e)=>{
 
 /* ---------- фикс-хедер товара: скрытие вне карточки ---------- */
 function hideProductHeader(){
-  // делегируем логику компоненту фикс-хедера
   try { deactivateProductFixHeader(); } catch {}
-  // и возвращаем видимость статичного хедера
   const stat = document.querySelector('.app-header');
   if (stat) stat.classList.remove('hidden');
 }
@@ -531,8 +542,6 @@ function hideProductHeader(){
 function scrollTopNow(){
   ScrollReset.request();
 }
-
-
 
 /* ---------- РОУТЕР ---------- */
 async function router(){
@@ -559,12 +568,7 @@ async function router(){
   setTabbarMenu(map[clean] || (inAdmin ? 'admin' : 'home'));
   hideProductHeader();
 
-
-
   try { ScrollReset.forceNow(); } catch {}
-
-
-
 
   // Админ-режим
   if (inAdmin){
@@ -581,12 +585,11 @@ async function router(){
     return renderAdmin();
   }
 
- if (parts.length===0) {
-   const res = renderHome(router);
-   try { ScrollReset.request(document.getElementById('view')); } catch {}
-   return res;
- }
-
+  if (parts.length===0) {
+    const res = renderHome(router);
+    try { ScrollReset.request(document.getElementById('view')); } catch {}
+    return res;
+  }
 
   const m1=match('category/:slug'); if (m1) return renderCategory(m1);
   const m2=match('product/:id');   if (m2) return renderProduct(m2);
@@ -603,7 +606,7 @@ async function router(){
   if (match('account/referrals'))  return renderReferrals();
 
   if (match('notifications')){
-    await renderNotifications(updateNotifBadge); // внутри: markAll + updateUnreadBadge(0)
+    await renderNotifications(updateNotifBadge); // внутри: markAll + updateUnreadBadge(0|n)
     await syncMyNotifications();                 // обновим локальный список (на будущее)
     return;
   }
@@ -632,14 +635,10 @@ async function router(){
   if (match('faq')) return renderFAQ();
 
   {
-  const res = renderHome(router);
-
-try { ScrollReset.forceNow(); } catch {}
-
-  return res;
-
+    const res = renderHome(router);
+    try { ScrollReset.forceNow(); } catch {}
+    return res;
   }
-
 }
 
 /* ===== серверная синхронизация снапшота корзины/избранного ===== */
@@ -730,16 +729,10 @@ async function init(){
 
   await router();
 
-
   // 1) После старта UI — пробуем привязать pending-инвайтера (когда уже есть наш UID)
   await tryBindPendingInviter();
 
   window.addEventListener('hashchange', router);
-
-
-
-
-
 
   window.addEventListener('orders:updated', ()=>{
     const inAdmin = document.body.classList.contains('admin-mode');
@@ -763,6 +756,15 @@ async function init(){
     tryBindPendingInviter();
   });
 
+  function makeDisplayOrderIdFromParts(orderId, shortId) {
+    const s = String(shortId || '').trim();
+    if (s) return s.toUpperCase();
+    const full = String(orderId || '').trim();
+    return full ? full.slice(-6).toUpperCase() : '';
+  }
+  function makeDisplayOrderId(order) {
+    return makeDisplayOrderIdFromParts(order?.id, order?.shortId);
+  }
   function buildOrderShortTitle(order) {
     const firstTitle =
       order?.cart?.[0]?.title ||

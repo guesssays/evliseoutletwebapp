@@ -28,9 +28,19 @@ function getTgInitDataRaw(){
 
 /* ===== badge helpers ===== */
 function unreadCount(list){ return (list||[]).reduce((a,n)=> a + (!n.read ? 1 : 0), 0); }
+
+/**
+ * ВНИМАНИЕ: здесь добавлен kill-switch.
+ * Если window.__NOTIFS_BADGE_OFF__ === true — всегда шлём 0 и скрываем бейдж.
+ */
 function updateUnreadBadge(n){
+  if (window.__NOTIFS_BADGE_OFF__) {
+    try { localStorage.setItem(k('notifs_unread'), '0'); } catch {}
+    try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: 0 })); } catch {}
+    return;
+  }
   const v = Math.max(0, n|0);
-  localStorage.setItem(k('notifs_unread'), String(v));
+  try { localStorage.setItem(k('notifs_unread'), String(v)); } catch {}
   try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: v })); } catch {}
 }
 
@@ -139,13 +149,10 @@ async function markAllServerSafe(){
   if (!uid) return null;
 
   const initData = getTgInitDataRaw();
-  const hasInit = !!(initData && initData.length);
+  const hasInit  = !!(initData && initData.length);
 
   try{
-    const headers = {
-      'Content-Type':'application/json',
-      ...(hasInit ? { 'X-Tg-Init-Data': initData } : {}),
-    };
+    const headers = { 'Content-Type':'application/json', ...(hasInit ? { 'X-Tg-Init-Data': initData } : {}) };
 
     // Пытаемся по «приватному» пути (initData), затем — по публичному с uid
     const attempts = hasInit
@@ -159,13 +166,19 @@ async function markAllServerSafe(){
         body: JSON.stringify(body),
       }));
       const j = await r.json().catch(()=> ({}));
+
+      // >>> диагностический лог для проверки, действительно ли сервер применяет отметку
+      console.info('[notifs] mark attempt:', body, '→ status:', r.status, 'ok:', j?.ok, 'items:',
+        Array.isArray(j?.items) ? j.items.length : 'no items');
+
       if (r.ok && j?.ok !== false){
         // если сервер вернул актуальные items — используем их; если нет — просто вернём []
         return Array.isArray(j.items) ? j.items : [];
       }
     }
     return null;
-  }catch{
+  }catch(e){
+    console.warn('[notifs] markAllServerSafe failed:', e?.message||e);
     return null;
   }
 }
