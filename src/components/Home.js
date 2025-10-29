@@ -4,7 +4,6 @@ import { priceFmt } from '../core/utils.js';
 import { applyFilters } from './Filters.js';
 import { ScrollReset } from '../core/scroll-reset.js';
 
-
 function findCategoryBySlug(slug){
   for (const g of state.categories){
     if (g.slug === slug) return g;
@@ -106,7 +105,9 @@ export function drawProducts(list){
     if (!t) continue;
     const node = t.content.firstElementChild.cloneNode(true);
 
+    // ВАЖНО: сохраняем id карточки сразу, чтобы делегат мог его считать
     node.href = `#/product/${p.id}`;
+    node.dataset.id = String(p.id);
 
     const im = node.querySelector('img');
     if (im){ im.src = p.images?.[0] || ''; im.alt = p.title; }
@@ -123,45 +124,59 @@ export function drawProducts(list){
     const priceEl = node.querySelector('.price');
     if (priceEl) priceEl.textContent = priceFmt(p.price);
 
-const favBtn = node.querySelector('.fav');
-if (favBtn){
-  const active = isFav(p.id);
-  favBtn.classList.toggle('active', active);
-  favBtn.setAttribute('aria-pressed', String(active));
+    // Кнопка «избранное»: только выставляем состояние и aria,
+    // обработчик клика — ТОЛЬКО делегированный ниже.
+    const favBtn = node.querySelector('.fav, button.fav');
+    if (favBtn){
+      const active = isFav(p.id);
+      favBtn.classList.toggle('active', active);
+      favBtn.setAttribute('aria-pressed', String(active));
+      try { favBtn.setAttribute('type','button'); favBtn.setAttribute('role','button'); } catch {}
+    }
 
-  // делаем настоящей кнопкой
-  try { favBtn.setAttribute('type','button'); favBtn.setAttribute('role','button'); } catch {}
+    frag.appendChild(node);
+  }
 
-  favBtn.onclick = (ev)=>{
-    try {
-      ev.preventDefault();
-      ev.stopPropagation();
-      ev.stopImmediatePropagation?.();
-    } catch {}
+  grid.appendChild(frag);
 
-    // Не даём скролл-ресетам «дёрнуть» страницу
-    try { ScrollReset.quiet(900); } catch {}
+  // --- ГЛОБАЛЬНЫЙ делегированный обработчик кликов по сердечкам ---
+  if (!grid.dataset.favHandlerBound) {
+    grid.addEventListener('click', (ev) => {
+      const favBtn = ev.target.closest('.fav, button.fav');
+      if (!favBtn) return;
 
-    const now = toggleFav(p.id);
+      // не даём якорю/картам перехватить клик
+      try {
+        ev.preventDefault();
+        ev.stopPropagation();
+        ev.stopImmediatePropagation?.();
+      } catch {}
 
-    // 🔴 ВАЖНО: мгновенно обновляем UI
-    favBtn.classList.toggle('active', now);
-    favBtn.setAttribute('aria-pressed', String(now));
+      try { ScrollReset.quiet(900); } catch {}
 
-    // Глобальный синк (карточка товара / фикс-хедер и т.д.)
-    try {
-      window.dispatchEvent(new CustomEvent('fav:changed', {
-        detail: { id: p.id, active: now }
-      }));
-    } catch {}
+      // найдём карточку и productId
+      const card = favBtn.closest('.card, a.card');
+      const href = card?.getAttribute('href') || '';
+      let pid = card?.dataset?.id || '';
+      if (!pid && href.startsWith('#/product/')) pid = href.replace('#/product/', '').trim();
+      if (!pid) return;
 
-    // Режим «Избранное»: если товар снят из избранного — убираем карточку из сетки
-    try {
-      const grid = favBtn.closest('#productGrid');
-      if (grid && grid.dataset.favMode === '1' && !now) {
-        const card = favBtn.closest('.card') || favBtn.closest('a.card');
+      const now = toggleFav(pid);
+
+      // мгновенно подсветим кнопку
+      favBtn.classList.toggle('active', now);
+      favBtn.setAttribute('aria-pressed', String(now));
+
+      // глобальный синк (карточка товара / фикс-хедер и т.д.)
+      try {
+        window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: pid, active: now } }));
+      } catch {}
+
+      // режим «Избранное»: удаляем карточку при снятии из избранного
+      const gridEl = favBtn.closest('#productGrid');
+      if (gridEl && gridEl.dataset.favMode === '1' && !now) {
         card?.remove();
-        if (!grid.querySelector('.card')) {
+        if (!gridEl.querySelector('.card')) {
           const v = document.getElementById('view');
           v.innerHTML = `
             <div class="section-title" style="display:flex;align-items:center;gap:10px">
@@ -176,18 +191,10 @@ if (favBtn){
           document.getElementById('favBack')?.addEventListener('click', ()=> history.back());
         }
       }
-    } catch {}
-  };
+    }, { passive:false });
 
-  // Блокируем якорь/навигацию при клике на иконку
-  try { ScrollReset.guardNoResetClick(favBtn, { duration: 900, preventAnchorNav: true }); } catch {}
-}
-
-
-
-    frag.appendChild(node);
+    grid.dataset.favHandlerBound = '1';
   }
 
-  grid.appendChild(frag);
   window.lucide?.createIcons && lucide.createIcons();
 }

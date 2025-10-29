@@ -1569,6 +1569,24 @@ body.admin-mode #scrollTopBtn{ display: none !important; }
 
 /* старые правила тостов — глушим, чтобы не конфликтовали */
 .toast-wrap.right, .toast{ all: unset; }
+/* --- fav: кликабельность поверх <a.card> и любых оверлеев --- */
+.card { position: relative; }
+.card .fav {
+  position: absolute;
+  right: 10px; top: 10px;
+  z-index: 5;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+.card .fav svg, .card .fav i { pointer-events: none; } /* клика попадает в кнопку */
+a.card .fav { pointer-events: auto; }                   /* на всякий случай для <a class="card"> */
+
+/* чтобы никакие оверлеи сетки не съедали клики по отдельным кнопкам */
+#productGrid [data-fav-mode="1"] .card,
+#productGrid .card { pointer-events: auto; }
+
+/* отключим случайные outline-рывки */
+.card .fav:focus { outline: none; }
 
 
 /* Ускоряем монтирование секций/экранов */

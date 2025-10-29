@@ -568,7 +568,13 @@ if (favBtn) {
   }, { passive:false, capture:false });
 
   try { ScrollReset.guardNoResetClick(favBtn, { duration: 900, preventAnchorNav: true }); } catch {}
+
+    // глушим навигационные жесты в самом начале
+  favBtn.addEventListener('pointerdown', () => {
+    try { ScrollReset.quiet(900); } catch {}
+  }, { passive:true, capture:true });
 }
+
 
 
 
