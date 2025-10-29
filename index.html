@@ -48,6 +48,7 @@
       --stroke: rgba(15,23,42,.14);
       --tabbar-h: 64px;
       --shadow: 0 10px 30px rgba(0,0,0,.18);
+      --muted: #787676;
     }
 
     /* Скрытие/появление штатного верхнего хедера */
@@ -148,6 +149,49 @@
       .search-photo{ background:#0b1220; color:#fff; }
     }
     .search-photo i{ pointer-events:none; }
+
+    /* === Photo Search Modal (чистая лаконичная верстка) === */
+    .ps-modal{
+      display:flex; flex-direction:column; gap:14px;
+    }
+    .ps-hero{
+      display:flex; align-items:center; gap:12px;
+      padding:12px 12px; border:1px solid var(--stroke); border-radius:14px;
+      background:rgba(0,0,0,.02);
+    }
+    @media (prefers-color-scheme:dark){
+      .ps-hero{ background:rgba(255,255,255,.03); }
+    }
+    .ps-hero__ico{
+      width:40px; height:40px; border-radius:12px;
+      display:inline-flex; align-items:center; justify-content:center;
+      border:1px solid var(--stroke);
+      background:#fff; box-shadow:var(--shadow);
+      flex:0 0 auto;
+    }
+    @media (prefers-color-scheme:dark){
+      .ps-hero__ico{ background:#0b1220; color:#fff; }
+    }
+    .ps-hero__text{
+      display:flex; flex-direction:column; line-height:1.24;
+    }
+    .ps-hero__title{
+      font-weight:700; font-size:16px;
+    }
+    .ps-hero__hint{
+      color:var(--muted); font-size:13px;
+    }
+    .ps-actions{
+      display:flex; gap:10px; justify-content:flex-end; align-items:center; margin-top:4px;
+    }
+    .ps-actions .btn-primary{
+      padding:10px 14px; border-radius:12px;
+      display:inline-flex; align-items:center; gap:8px;
+    }
+    .ps-actions .btn-ghost{
+      padding:10px 12px; border-radius:12px; border:1px solid var(--stroke);
+      background:transparent;
+    }
   </style>
 
   <!-- Telegram WebApp -->
@@ -313,10 +357,10 @@
     })();
   </script>
 
-  <!-- === Поиск по фото: модалка и переход к оператору === -->
+  <!-- === Поиск по фото: модалка и переход к оператору (@evliseorder) === -->
   <script>
     (function(){
-      // username без @
+      // username без @ (оператор)
       var SUPPORT_TARGET = 'evliseorder';
 
       function tgOpen(url){
@@ -343,23 +387,27 @@
         if (!modal || !mb || !mt || !ma) return;
 
         mt.textContent = 'Поиск по фото';
+
         mb.innerHTML = `
-          <div class="muted" style="margin-bottom:12px">
-            Отправьте нам фото желаемой вещи — оператор подберёт варианты и пришлёт ссылки.
+          <div class="ps-modal">
+            <div class="ps-hero">
+              <div class="ps-hero__ico"><i data-lucide="camera"></i></div>
+              <div class="ps-hero__text">
+                <div class="ps-hero__title">Отправьте фото вещи</div>
+                <div class="ps-hero__hint">Прикрепите 1–5 фото — оператор подберёт варианты и пришлёт ответ.</div>
+              </div>
+            </div>
           </div>
-          <ul class="mini" style="margin:0 0 12px 18px; line-height:1.4">
-            <li>Прикрепите 1–5 фото (желательно на белом фоне или на модели)</li>
-            <li>Напишите параметры: размер, цвет, бюджет</li>
-            <li>Мы ответим прямо в чате</li>
-          </ul>
-          <div class="muted mini">Поддерживаются изображения и PDF (чеки/референсы).</div>
         `;
+
         var link = resolveTargetLink();
         ma.innerHTML = `
-          <button id="psCancel" class="pill">Отмена</button>
-          <button id="psOpenChat" class="pill primary">
-            <i data-lucide="send"></i><span style="margin-left:6px">Написать оператору</span>
-          </button>
+          <div class="ps-actions">
+            <button id="psCancel" class="btn-ghost">Отмена</button>
+            <button id="psOpenChat" class="btn-primary">
+              <i data-lucide="send"></i><span>Написать оператору</span>
+            </button>
+          </div>
         `;
 
         modal.classList.add('show');
@@ -373,12 +421,11 @@
           close();
         }, { once:true });
 
-        // Esc закрывает
         var onKey = function(e){ if (e.key==='Escape'){ close(); window.removeEventListener('keydown', onKey);} };
         window.addEventListener('keydown', onKey);
       }
 
-      // Кнопка в поиске
+      // Кнопка с камерой в поиске
       document.getElementById('btnPhotoSearch')?.addEventListener('click', function(e){
         e.preventDefault();
         openPhotoSearchModal();
