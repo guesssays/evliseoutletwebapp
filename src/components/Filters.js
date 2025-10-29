@@ -1,4 +1,4 @@
-// src/components/filters.js
+
 import { state } from '../core/state.js';
 import { openModal, closeModal } from '../core/modal.js';
 import { el } from '../core/utils.js';

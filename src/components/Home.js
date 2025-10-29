@@ -1,7 +1,8 @@
 // src/components/Home.js
 import { state, isFav, toggleFav } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
-import { applyFilters } from './filters.js';
+import { applyFilters } from './Filters.js';
+
 
 function findCategoryBySlug(slug){
   for (const g of state.categories){
