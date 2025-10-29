@@ -400,7 +400,7 @@ export async function renderProduct({id}){
 
           <!-- Характеристики -->
           <div class="specs"><b>Категория:</b> ${escapeHtml(findCategoryBySlug(p.categoryId)?.name || '—')}</div>
-          <div class="specs"><b>Материал:</b> ${p.material ? escapeHtml(p.material) : '—'}</div>
+
 
           <!-- Опции -->
           <div class="p-options">
