@@ -44,21 +44,28 @@ export const Loader = (() => {
     $root.setAttribute('aria-live', 'polite');
     $root.setAttribute('hidden', '');
 
-    $root.innerHTML = `
-      <div class="gl__backdrop"></div>
-      <div class="gl__box" role="status" aria-label="Загрузка">
-        <div class="gl__spinner" aria-hidden="true">
-          <div class="gl__ring"></div>
-          <div class="gl__orbit">
- <span class="gl__dot d1"></span>
- <span class="gl__dot d2"></span>
- <span class="gl__dot d3"></span>
-          </div>
-        </div>
-        <div class="gl__bar" aria-hidden="true"><b style="width:0%"></b></div>
-        <div class="gl__text" id="glText">Загружаем…</div>
+// src/ui/loader.js — внутри ensureDom()
+$root.innerHTML = `
+  <div class="gl__backdrop"></div>
+  <div class="gl__box" role="status" aria-label="Загрузка">
+    <div class="gl__spinner" aria-hidden="true">
+      <div class="gl__lines" aria-hidden="true">
+        <span class="gl__line l1"></span>
+        <span class="gl__line l2"></span>
+        <span class="gl__line l3"></span>
+        <span class="gl__line l4"></span>
+        <span class="gl__line l5"></span>
+        <span class="gl__line l6"></span>
+        <span class="gl__line l7"></span>
+        <span class="gl__line l8"></span>
+        <span class="gl__line l9"></span>
       </div>
-    `;
+    </div>
+    <div class="gl__bar" aria-hidden="true"><b style="width:0%"></b></div>
+    <div class="gl__text" id="glText">Загружаем…</div>
+  </div>
+`;
+
     document.body.appendChild($root);
     $text = $root.querySelector('#glText');
     $ring = $root.querySelector('.gl__ring');

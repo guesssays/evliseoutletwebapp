@@ -1587,6 +1587,81 @@ a.card .fav { pointer-events: auto; }                   /* на всякий с�
 
 /* отключим случайные outline-рывки */
 .card .fav:focus { outline: none; }
+/* === Global Loader — Lines style (override) === */
+
+/* глушим старую «орбиту» и кольцо */
+#globalLoader .gl__ring,
+#globalLoader .gl__orbit { display: none !important; }
+
+/* контейнер спиннера — фиксированная ширина под 9 линий */
+#globalLoader .gl__spinner{
+  width: 66px;
+  height: 22px; /* чуть выше, чем 12px, чтобы в боксе было «воздуха» */
+  display: grid;
+  place-items: center;
+}
+
+/* набор линий по центру */
+#globalLoader .gl__lines{
+  display: inline-block;
+  line-height: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* базовая линия */
+#globalLoader .gl__line{
+  width: 2px;               /* можно 1px, но 2px лучше читается на ретина */
+  height: 14px;             /* базовая высота */
+  display: inline-block;
+  margin: 0 2px;
+  background: currentColor; /* наследуем цвет от коробки/темы */
+  opacity: 1;
+  animation: gl-line-bounce 1000ms infinite ease-in-out;
+  border-radius: 2px;
+}
+
+/* ступенчатые задержки (симметрия относительно центра) */
+#globalLoader .gl__line.l1 { animation-delay: 800ms; }
+#globalLoader .gl__line.l2 { animation-delay: 600ms; }
+#globalLoader .gl__line.l3 { animation-delay: 400ms; }
+#globalLoader .gl__line.l4 { animation-delay: 200ms; }
+#globalLoader .gl__line.l5 { animation-delay: 0ms;   }
+#globalLoader .gl__line.l6 { animation-delay: 200ms; }
+#globalLoader .gl__line.l7 { animation-delay: 400ms; }
+#globalLoader .gl__line.l8 { animation-delay: 600ms; }
+#globalLoader .gl__line.l9 { animation-delay: 800ms; }
+
+/* анимация по мотивам твоего opacity-2: слегка дышим высотой и прозрачностью */
+@keyframes gl-line-bounce {
+  0%   { opacity: 1; height: 16px; transform: translateY(0); }
+  50%  { opacity: .25; height: 12px; transform: translateY(1px); }
+  100% { opacity: 1; height: 16px; transform: translateY(0); }
+}
+
+/* цвет линий — мягкий, от темы: коробка уже даёт контраст,
+   здесь просто наследуем и слегка приглушаем через opacity */
+#globalLoader .gl__box{
+  color: var(--text, #121111);
+}
+@media (prefers-color-scheme: dark){
+  #globalLoader .gl__box{
+    color: #ffffff;
+  }
+}
+
+/* компактный режим (когда Loader включает .gl--compact) — чуть меньше */
+#globalLoader .gl__box.gl--compact .gl__spinner,
+#globalLoader.gl--compact .gl__spinner{
+  width: 56px;
+  height: 18px;
+}
+#globalLoader .gl__box.gl--compact .gl__line,
+#globalLoader.gl--compact .gl__line{
+  margin: 0 1.5px;
+  width: 2px;
+  height: 12px;
+}
 
 
 /* Ускоряем монтирование секций/экранов */
