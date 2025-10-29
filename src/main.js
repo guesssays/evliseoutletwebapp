@@ -27,6 +27,7 @@ import { renderAccount, renderAddresses, renderSettings, renderCashback, renderR
 import { renderFAQ } from './components/FAQ.js';
 import { renderNotifications } from './components/Notifications.js';
 import { ScrollReset } from './core/scroll-reset.js';
+import './core/navLoader.js';
 
 // Вынесенный фикс-хедер товара
 import { deactivateProductFixHeader } from './components/ProductFixHeader.js';

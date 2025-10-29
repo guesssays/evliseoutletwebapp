@@ -22,6 +22,9 @@ const notifyCashbackMatured = (uid, payload) => {
 import { fetchMyLoyalty, getLocalLoyalty } from '../core/loyalty.js';
 import { ScrollReset } from '../core/scroll-reset.js';
 
+// 🔄 Глобальный лоадер
+import { Loader } from '../ui/loader.js';
+
 /* ===================== КЭШБЕК / РЕФЕРАЛЫ: правила ===================== */
 const CASHBACK_RATE_BASE  = 0.05;   // 5%
 const CASHBACK_RATE_BOOST = 0.10;   // 10% (1-й заказ реферала)
@@ -254,11 +257,15 @@ function keepCartOnTopWhileLoading(root){
 
 export async function renderCart(){
   // Сразу поднимаем страницу вверх перед тяжёлым DOM
-  // Просим менеджер поднять после того, как #view дорисуется
   ScrollReset.request();
 
-  // Всегда тянем свежий серверный баланс перед рендером
-  try { await fetchMyLoyalty(); } catch {}
+  // Всегда тянем свежий серверный баланс перед рендером (через лоадер)
+  try {
+    await Loader.wrap(() => fetchMyLoyalty(), 'Обновляем баланс…');
+  } catch {
+    // молча, оставим локальные значения
+  }
+
   const walletLike = getLocalLoyalty() || { available:0, pending:0 };
 
   const v = document.getElementById('view');
@@ -281,6 +288,7 @@ export async function renderCart(){
     document.getElementById('cartBack')?.addEventListener('click', ()=>history.back());
     ScrollReset.request();
     keepCartOnTopWhileLoading(v);
+    try { window.dispatchEvent(new CustomEvent('view:cart-mounted')); } catch {}
     return;
   }
 
@@ -490,10 +498,10 @@ export async function renderCart(){
   document.getElementById('redeemClearBtn')?.addEventListener('click', ()=>{ inEl.value=''; recalc(); });
   recalc();
 
-  // 🔄 Обновляем баланс с сервера и пересчитываем лимиты/итоги
+  // 🔄 Обновляем баланс с сервера и пересчитываем лимиты/итоги (через лоадер для UX)
   (async () => {
     try{
-      await fetchMyLoyalty();
+      await Loader.wrap(() => fetchMyLoyalty(), 'Сверяем баланс…');
       const b = getLocalLoyalty();
       // обновим доступные баллы
       availablePoints = Math.max(0, Number(b.available || 0));
@@ -535,6 +543,8 @@ export async function renderCart(){
       checkoutFlow(items, ad, totalRaw, { redeem: disc, toPay: pay });
     }
   });
+
+  try { window.dispatchEvent(new CustomEvent('view:cart-mounted')); } catch {}
 }
 
 /* ---------- scroll control: гарантированно в начало ---------- */
@@ -946,30 +956,30 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
         return;
       }
 
-      // --- РЕЗЕРВ СПИСАНИЯ БАЛЛОВ (loyalty.reserveRedeem) ---
+      // --- РЕЗЕРВ СПИСАНИЯ БАЛЛОВ (loyalty.reserveRedeem) — через лоадер ---
       // На всякий случай подтягиваем свежие лимиты/баланс перед резервом (устраняет гонку)
-      try { await fetchMyLoyalty(); } catch { /* молча: если не удалось — попробуем резерв всё равно */ }
+      try { await fetchMyLoyalty(); } catch {}
 
       try {
         if (toSpend > 0) {
-          const r2 = await callLoyalty('reserveRedeem', {
+          const r2 = await Loader.wrap(() => callLoyalty('reserveRedeem', {
             uid: getUID(),
             pts: toSpend,
             orderId,
             total: totalRaw,
             shortId: publicId
-          });
+          }), 'Резервируем баллы…');
 
           if (!r2?.ok) {
             const reason = r2?.reason || r2?.error || '';
             const msg =
-              reason === 'min'       ? `Минимум для списания: ${MIN_REDEEM_POINTS.toLocaleString('ру-RU')} баллов` :
+              reason === 'min'       ? `Минимум для списания: ${MIN_REDEEM_POINTS.toLocaleString('ru-RU')} баллов` :
               reason === 'rule'      ? 'Превышает лимит: не более 30% от суммы и максимум 150 000' :
               reason === 'balance'   ? 'Недостаточно баллов' :
               reason === 'total'     ? 'Некорректная сумма заказа для списания' :
               reason === 'bot_mismatch'
-                                      ? `Мини-приложение открыто в ${r2.clientBot || 'другом боте'}, а сервер ждёт ${r2.serverBot || 'другого бота'}. Откройте магазин через ${r2.serverBot || 'нужного бота'} и попробуйте снова.`
-                                      : 'Не удалось зарезервировать списание баллов';
+                                      ? `Мини-приложение открыто в ${r2.clientBot || 'другом боте'}, а сервер ждёт ${r2.serverBot || 'другого бота'}. Откройте магазин через ${r2.serverBot || 'нужного бота'} и попробуйте снова.` :
+              reason || 'Не удалось зарезервировать списание баллов';
             toast(msg);
             setSubmitDisabled(false);
             __orderSubmitBusy = false;
@@ -986,11 +996,11 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       }
       // --- КОНЕЦ БЛОКА РЕЗЕРВА ---
 
-      // Создание заказа (используем наш orderId) — повторный сабмит перезапишет тот же заказ
+      // Создание заказа — через лоадер
       let createdId = null;
       try{
         const first = items[0];
-        createdId = await addOrder({
+        createdId = await Loader.wrap(() => addOrder({
           id: orderId,
           shortId: publicId,           // ← короткий публичный ID
           cart: items.map(x=>({
@@ -1016,25 +1026,25 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
           paymentScreenshot,
           status: 'новый',
           accepted: false
-        });
+        }), 'Создаём заказ…');
       }catch(e){
-        // если заказ не создался — отменяем резерв
+        // если заказ не создался — отменяем резерв (с лоадером для понятности)
         if (reserved){
-          try{ await callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'cancel' }); }catch{}
+          try{ await Loader.wrap(() => callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'cancel' }), 'Откатываем баллы…'); }catch{}
         }
         toast('Не удалось создать заказ. Попробуйте ещё раз.');
         setSubmitDisabled(false); __orderSubmitBusy = false; return;
       }
 
-      // Финализируем списание и начисляем pending кешбэк/реф (это делает бэк лояльности)
+      // Финализируем списание и начисляем pending кешбэк/реф (через лоадер)
       try{
         if (toSpend > 0 && reserved){
-          await callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'commit' });
+          await Loader.wrap(() => callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'commit' }), 'Финализируем оплату…');
         }
       }catch(e){
-        // откатываем резерв если не удалось финализировать/начислить
+        // откатываем резерв если не удалось финализировать/начислить (с лоадером)
         if (reserved){
-          try{ await callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'cancel' }); }catch{}
+          try{ await Loader.wrap(() => callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'cancel' }), 'Откатываем баллы…'); }catch{}
         }
         toast('Не удалось зафиксировать баллы — попробуйте ещё раз');
         setSubmitDisabled(false); __orderSubmitBusy = false; return;

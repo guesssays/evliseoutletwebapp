@@ -1,5 +1,4 @@
 // src/components/Admin.js
-// стало:
 import {
   ORDER_STATUSES,
   getOrders,
@@ -8,14 +7,17 @@ import {
   updateOrderStatus,
   seedOrdersOnce,
   getStatusLabel as _getStatusLabel,
-  getOrderById,                 // ← НОВОЕ
+  getOrderById,                 // точечная подгрузка полного заказа
 } from '../core/orders.js';
 import { getAdminToken } from '../core/orders.js';
 import { state } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 
-// ▼ НОВОЕ: клиент к loyalty-функции
+// Клиент к loyalty-функции
 import { adminCalc, getBalance, confirmAccrual } from '../core/loyaltyAdmin.js';
+
+// Глобальный лоадер
+import { Loader } from '../ui/loader.js';
 
 /* ====== Безопасная обёртка для лейблов статусов ====== */
 function getStatusLabel(s) {
@@ -24,13 +26,12 @@ function getStatusLabel(s) {
 
 /* ====== Константы расчётов (должны совпадать с клиентскими) ====== */
 const CASHBACK_RATE_BASE  = 0.05;
-const CASHBACK_RATE_BOOST = 0.10; // при условии "первый заказ по реф-ссылке"
+const CASHBACK_RATE_BOOST = 0.10; // 1-й заказ реферала
 const REFERRER_RATE       = 0.05;
 const MAX_DISCOUNT_SHARE  = 0.30;
 const MAX_REDEEM_POINTS   = 150000;
 
-/* Общая функция: расчёт по заказу — без знания связок рефералов.
-   Для дашборда показываем "базовый" расчёт + примечание */
+/* Общая функция: расчёт по заказу — без знания связок рефералов */
 function computeOrderCalc(order){
   const sum = Number(order?.total||0);
   const maxRedeemByShare = Math.floor(sum * MAX_DISCOUNT_SHARE);
@@ -75,7 +76,7 @@ export async function renderAdmin(){
       </section>
     `;
     window.lucide?.createIcons && lucide.createIcons?.();
-    return; // <-- ВЫХОД, дальше не идём
+    return;
   }
 
   document.body.classList.add('admin-mode');
@@ -95,7 +96,6 @@ export async function renderAdmin(){
   function startPolling(){
     stopPolling();
     pollTimer = setInterval(async ()=>{
-      // не дергаем сервер, если пользователь не в админке/не в списке/вкладка не активна
       if (!document.body.classList.contains('admin-mode')) return;
       if (document.visibilityState === 'hidden') return;
       if (mode !== 'list') return;
@@ -148,7 +148,7 @@ export async function renderAdmin(){
         ${innerHTML}
       </section>
     `;
-    window.lucide?.createIcons && lucide.createIcons();
+    window.lucide?.createIcons && lucide.createIcons?.();
 
     document.getElementById('adminTabs')?.addEventListener('click', (e)=>{
       const b = e.target.closest('.admin-tab');
@@ -211,12 +211,13 @@ export async function renderAdmin(){
 
     shell(html);
 
-    const hook = (card)=>{
+    const hook = async (card)=>{
       if(!card) return;
       selectedId = card.getAttribute('data-id');
       if (!selectedId) return;
       mode = 'detail';
-      render();
+      // Переход в детали может упереться в сеть — покажем лоадер на время первичной загрузки
+      await Loader.wrap(() => render(), 'Открываем заказ…');
     };
     document.getElementById('adminListMini')?.addEventListener('click', (e)=> hook(e.target.closest('.order-mini')));
     document.getElementById('adminListMini')?.addEventListener('keydown', (e)=>{
@@ -227,6 +228,9 @@ export async function renderAdmin(){
         hook(card);
       }
     });
+
+    // Экран смонтирован — можно погасить навигационный лоадер
+    try { window.dispatchEvent(new CustomEvent('view:admin-mounted')); } catch {}
 
     // в режиме списка запускаем автопуллинг
     startPolling();
@@ -371,11 +375,18 @@ export async function renderAdmin(){
   // ====== Детальная карточка заказа ======
   async function detailView(){
     stopPolling(); // в деталях не дёргаем список
-const orders = await getAll();
-const oLight = orders.find(x => String(x?.id) === String(selectedId));
-if (!oLight) { mode='list'; return listView(); }
-// ключевая строка: тянем ПОЛНЫЙ заказ (с чек-скрином)
-const o = await getOrderById(String(selectedId)) || oLight;
+
+    // Ленивая точечная загрузка «полного» заказа + лоадер
+    const o = await Loader.wrap(async () => {
+      const orders = await getAll();
+      const oLight = orders.find(x => String(x?.id) === String(selectedId));
+      if (!oLight) { mode='list'; return null; }
+      // ПОЛНЫЙ заказ (с чеком)
+      const full = await getOrderById(String(selectedId));
+      return full || oLight;
+    }, 'Загружаем заказ…');
+
+    if (!o) return listView();
 
     // Заголовок
     const items = Array.isArray(o?.cart) ? o.cart : [];
@@ -393,16 +404,18 @@ const o = await getOrderById(String(selectedId)) || oLight;
     const isNew  = o?.status==='новый' && !o?.accepted;
     const isDone = ['выдан','отменён'].includes(o?.status);
 
-    // ▼ НОВОЕ: реальные данные лояльности
-  let loyaltyCalc = null;
-  let buyerBal = null;
-  let loyaltyErr = null;
+    // Реальные данные лояльности — с лоадером
+    let loyaltyCalc = null;
+    let buyerBal = null;
+    let loyaltyErr = null;
     try {
-      loyaltyCalc = await adminCalc(o.id);
-      buyerBal = await getBalance(loyaltyCalc?.uid || o?.userId);
-  } catch (e) {
-    loyaltyErr = e; // пробросим в UI, чтобы показать понятную причину (401/403/нет токена и т.п.)
-  }
+      await Loader.wrap(async () => {
+        loyaltyCalc = await adminCalc(o.id);
+        buyerBal = await getBalance(loyaltyCalc?.uid || o?.userId);
+      }, 'Готовим данные…');
+    } catch (e) {
+      loyaltyErr = e;
+    }
 
     shell(`
       <div class="order-detail">
@@ -491,8 +504,9 @@ const o = await getOrderById(String(selectedId)) || oLight;
 
     window.lucide?.createIcons && lucide.createIcons();
 
-    document.getElementById('backToList')?.addEventListener('click', ()=>{
-      mode='list'; selectedId=null; render();
+    document.getElementById('backToList')?.addEventListener('click', async ()=>{
+      mode='list'; selectedId=null;
+      await Loader.wrap(() => render(), 'Возвращаемся…');
     });
 
     // чек
@@ -512,7 +526,7 @@ const o = await getOrderById(String(selectedId)) || oLight;
       if (btnAccept.disabled) return;
       btnAccept.disabled = true;
       try{
-        await acceptOrder(o.id);
+        await Loader.wrap(() => acceptOrder(o.id), 'Подтверждаем…');
         dispatchGlobal('orders:updated');
         dispatchGlobal('admin:orderAccepted', { id: o.id, userId: o.userId });
         mode='detail';
@@ -530,7 +544,7 @@ const o = await getOrderById(String(selectedId)) || oLight;
       const reason = prompt('Причина отмены (будет видна клиенту):') || '';
       btnCancel.disabled = true;
       try{
-        await cancelOrder(o.id, reason);
+        await Loader.wrap(() => cancelOrder(o.id, reason), 'Отменяем…');
         dispatchGlobal('orders:updated');
         dispatchGlobal('admin:orderCanceled', { id:o.id, reason, userId:o.userId });
         mode='list'; tab='done'; render();
@@ -546,13 +560,12 @@ const o = await getOrderById(String(selectedId)) || oLight;
       const st = btn.getAttribute('data-st');
       if (!st) return;
 
-      // визуальный антидубль
       const prevText = btn.textContent;
       btn.disabled = true;
-      btn.textContent = '...';
+      btn.textContent = '…';
 
       try{
-        await updateOrderStatus(o.id, st);
+        await Loader.wrap(() => updateOrderStatus(o.id, st), 'Обновляем статус…');
         dispatchGlobal('orders:updated');
         dispatchGlobal('admin:statusChanged', { id:o.id, status:st, userId:o.userId });
 
@@ -564,16 +577,16 @@ const o = await getOrderById(String(selectedId)) || oLight;
       }
     });
 
-    // ▼ НОВОЕ: ручное подтверждение начислений
+    // Подтверждение начислений pending → available
     document.getElementById('btnConfirmAccrual')?.addEventListener('click', async (e)=>{
       const uid = e.currentTarget.getAttribute('data-uid') || '';
       const oid = e.currentTarget.getAttribute('data-oid') || '';
       if (!uid || !oid) return;
       const prev = e.currentTarget.textContent;
       e.currentTarget.disabled = true;
-      e.currentTarget.textContent = 'Подтверждаем...';
+      e.currentTarget.textContent = 'Подтверждаем…';
       try{
-        await confirmAccrual(uid, oid);
+        await Loader.wrap(() => confirmAccrual(uid, oid), 'Подтверждаем…');
         alert('Начисления подтверждены.');
       }catch(err){
         alert('Не удалось подтвердить начисления: ' + (err?.message || err));
@@ -584,6 +597,9 @@ const o = await getOrderById(String(selectedId)) || oLight;
       dispatchGlobal('orders:updated');
       render();
     });
+
+    // Экран смонтирован — погасим навигационный лоадер
+    try { window.dispatchEvent(new CustomEvent('view:admin-mounted')); } catch {}
   }
 
   async function render(){
@@ -713,7 +729,7 @@ function ensureExt(name, ext){
 }
 function escapeHtml(s=''){ return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-// хелпер для склонений: plural(число, 'товар', 'товара', 'товаров')
+// склонения
 function plural(n, one, few, many){
   n = Math.abs(n) % 100;
   const n1 = n % 10;
@@ -724,7 +740,6 @@ function plural(n, one, few, many){
 }
 
 /* ======== РАСПОЗНАВАНИЕ ЦВЕТА ======== */
-/* Показываем понятное название вместо кода/hex/rgb. Возвращает RU-название. */
 function humanColorName(value){
   if (!value && value!==0) return '';
   const s = String(value).trim();
@@ -757,7 +772,6 @@ function humanColorName(value){
 
   const base = hueToRu(h);
 
-  // модификаторы светлоты
   if (l >= 78) return `светло-${base}`;
   if (l <= 22) return `тёмно-${base}`;
   return base;
@@ -813,7 +827,6 @@ function parseAnyColorToRgb(str){
   // именованные css — пробуем через словарь, иначе null
   const low = s.toLowerCase();
   if (COLOR_EN_RU[low] || COLOR_RU[low]){
-    // вернём null — пусть обработается как уже человекочитаемое имя
     return null;
   }
 
