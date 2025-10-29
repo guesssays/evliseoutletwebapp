@@ -1,4 +1,5 @@
 // src/components/Admin.js
+// стало:
 import {
   ORDER_STATUSES,
   getOrders,
@@ -7,8 +8,9 @@ import {
   updateOrderStatus,
   seedOrdersOnce,
   getStatusLabel as _getStatusLabel,
+  getOrderById,                 // ← НОВОЕ
 } from '../core/orders.js';
-import { getAdminToken } from '../core/orders.js'; // <-- ДОБАВИТЬ
+import { getAdminToken } from '../core/orders.js';
 import { state } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 
@@ -369,12 +371,11 @@ export async function renderAdmin(){
   // ====== Детальная карточка заказа ======
   async function detailView(){
     stopPolling(); // в деталях не дёргаем список
-    const orders = await getAll();
-    const o = orders.find(x=>String(x?.id)===String(selectedId));
-    if(!o){
-      mode='list';
-      return listView();
-    }
+const orders = await getAll();
+const oLight = orders.find(x => String(x?.id) === String(selectedId));
+if (!oLight) { mode='list'; return listView(); }
+// ключевая строка: тянем ПОЛНЫЙ заказ (с чек-скрином)
+const o = await getOrderById(String(selectedId)) || oLight;
 
     // Заголовок
     const items = Array.isArray(o?.cart) ? o.cart : [];

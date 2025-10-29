@@ -188,6 +188,20 @@ export async function getOrderById(id, { updateCache = true } = {}) {
   return one;
 }
 
+// === ДОБАВЬ это в src/core/orders.js ===
+// Получить полный заказ по id (с paymentScreenshot) и обновить локальный кэш этой записи
+export async function getOrderById(id, { updateCache = true } = {}) {
+  const one = await apiGetOne(id);
+  if (updateCache && one) {
+    const list = getOrdersLocal();
+    const i = list.findIndex(o => String(o.id) === String(id));
+    if (i > -1) list[i] = one; else list.unshift(one);
+    replaceOrdersCacheSilently(list);
+  }
+  return one;
+}
+
+
 export async function addOrder(order){
   const idLocal = order.id ?? String(Date.now());
   const now = Date.now();
