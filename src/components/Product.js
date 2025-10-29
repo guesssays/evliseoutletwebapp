@@ -240,12 +240,28 @@ export async function renderProduct({id}){
       .filter(x => x.categoryId === p.categoryId && String(x.id) !== String(p.id))
       .slice(0, 12);
 
+    // 🔹 метка категории для заголовка
+    const catLabel = categoryNameBySlug(p.categoryId) || '';
+
     const v=document.getElementById('view');
     v.innerHTML = `
       <style>
         /* эффекты загрузки */
         img.lazy { filter: blur(10px); transform: scale(1.02); transition: filter .25s ease, transform .25s ease; }
         img.lazy.loaded { filter: blur(0); transform: scale(1); }
+
+        /* ===== Заголовок + подкатегория в строку ===== */
+        .p-title{
+          display:flex; align-items:baseline; gap:8px;
+          font-weight:900; font-size:clamp(18px,5.2vw,22px);
+        }
+        .p-title .p-name{ color:var(--text); }
+        .p-title .p-cat{
+          font-weight:800; opacity:.55; /* тише названия */
+        }
+        @media (prefers-color-scheme:dark){
+          .p-title .p-cat{ opacity:.65; }
+        }
 
         /* ===== Кэшбек ===== */
         .p-cashback{display:flex;align-items:center;gap:10px;margin:8px 0;padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#f59e0b 0%,#ef4444 100%);color:#fff;max-width:100%;}
@@ -380,7 +396,10 @@ export async function renderProduct({id}){
         </div>
 
         <div class="p-body home-bottom-pad">
-          <div class="p-title">${escapeHtml(p.title)}</div>
+          <div class="p-title">
+            <span class="p-name">${escapeHtml(p.title)}</span>
+            ${catLabel ? `<span class="p-cat">${escapeHtml(catLabel)}</span>` : ``}
+          </div>
 
           <!-- Кэшбек -->
           <div class="p-cashback" role="note" aria-label="Информация о кэшбеке">
@@ -397,10 +416,6 @@ export async function renderProduct({id}){
             <span class="p-delivery__title">Срок доставки:</span>
             <span class="muted"><b>14–16 дней</b></span>
           </div>
-
-          <!-- Характеристики -->
-          <div class="specs"><b>Категория:</b> ${escapeHtml(findCategoryBySlug(p.categoryId)?.name || '—')}</div>
-
 
           <!-- Опции -->
           <div class="p-options">

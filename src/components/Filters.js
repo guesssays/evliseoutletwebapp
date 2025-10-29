@@ -3,6 +3,31 @@ import { state } from '../core/state.js';
 import { openModal, closeModal } from '../core/modal.js';
 import { el } from '../core/utils.js';
 
+/* ===== утилиты по категориям ===== */
+function allSubcategories() {
+  // Собираем список { slug, name } из state.categories[*].children
+  const list = [];
+  for (const grp of state.categories || []) {
+    for (const ch of grp.children || []) {
+      list.push({ value: ch.slug, label: ch.name });
+    }
+  }
+  // fallback: если категорий нет — берём из товаров
+  if (!list.length) {
+    const uniq = Array.from(new Set((state.products || []).map(p => p.categoryId).filter(Boolean)));
+    return uniq.map(slug => ({ value: slug, label: slug }));
+  }
+  return list;
+}
+function categoryNameBySlug(slug) {
+  for (const grp of state.categories || []) {
+    for (const ch of grp.children || []) {
+      if (ch.slug === slug) return ch.name;
+    }
+  }
+  return slug || '';
+}
+
 /* ===== названия цветов для отображения ===== */
 const COLOR_MAP = {
   '#000000': 'чёрный', black: 'чёрный',
@@ -35,10 +60,12 @@ function colorLabel(c=''){
 
 /* ===== фильтрация ===== */
 export function applyFilters(list){
-  const f = state.filters;
+  const f = state.filters || {};
+  const subcats = f.subcats || []; // новые подкатегории
   return list.filter(p=>{
-    if (f.size.length){ if (!p.sizes || !p.sizes.some(s=>f.size.includes(s))) return false; }
-    if (f.colors.length){ if (!p.colors || !p.colors.some(c=>f.colors.includes(c))) return false; }
+    if (subcats.length){ if (!p.categoryId || !subcats.includes(p.categoryId)) return false; }
+    if (f.size?.length){ if (!p.sizes || !p.sizes.some(s=>f.size.includes(s))) return false; }
+    if (f.colors?.length){ if (!p.colors || !p.colors.some(c=>f.colors.includes(c))) return false; }
     // ⛔ материал убран: никаких проверок по p.material
     if (f.minPrice != null && p.price < f.minPrice) return false;
     if (f.maxPrice != null && p.price > f.maxPrice) return false;
@@ -49,10 +76,11 @@ export function applyFilters(list){
 
 /* ===== модалка фильтров ===== */
 export function openFilterModal(router){
-  const allSizes = Array.from(new Set(state.products.flatMap(p=>p.sizes||[])));
+  // данные для чипов
+  const allCats   = allSubcategories(); // [{value, label}]
+  const allSizes  = Array.from(new Set(state.products.flatMap(p=>p.sizes||[])));
   const allColorsRaw = Array.from(new Set(state.products.flatMap(p=>p.colors||[])));
   const allColors = allColorsRaw.map(v => ({ value: v, label: colorLabel(v) }));
-  // ⛔ список материалов больше не нужен
 
   const chipGroup = (items, selected, key)=> items.map(v=>{
     const val   = (typeof v === 'object') ? v.value : v;
@@ -63,11 +91,14 @@ export function openFilterModal(router){
   openModal({
     title: 'Фильтры',
     body: `
+      <div class="h2">Категория</div>
+      <div class="chipbar" id="fCats">${chipGroup(allCats, state.filters.subcats || [], 'cat')}</div>
+
       <div class="h2">Размер</div>
-      <div class="chipbar" id="fSizes">${chipGroup(allSizes, state.filters.size, 'size')}</div>
+      <div class="chipbar" id="fSizes">${chipGroup(allSizes, state.filters.size || [], 'size')}</div>
 
       <div class="h2">Цвет</div>
-      <div class="chipbar" id="fColors">${chipGroup(allColors, state.filters.colors, 'color')}</div>
+      <div class="chipbar" id="fColors">${chipGroup(allColors, state.filters.colors || [], 'color')}</div>
 
       <div class="chipbar" style="margin-top:8px">
         <label class="chip"><input id="fStock" type="checkbox" ${state.filters.inStock?'checked':''} style="margin-right:8px"> Только в наличии</label>
@@ -78,21 +109,29 @@ export function openFilterModal(router){
       { label: 'Применить', onClick: ()=>{
         state.filters.inStock = el('#fStock').checked;
         const pick=(sel,attr)=> Array.from(el(sel).querySelectorAll('.chip.active')).map(b=>b.getAttribute(attr));
-        state.filters.size = pick('#fSizes','data-size');
-        state.filters.colors = pick('#fColors','data-color');      // храним исходные значения
-        // ⛔ материалов больше нет
+        state.filters.subcats = pick('#fCats','data-cat');         // ← новые подкатегории
+        state.filters.size    = pick('#fSizes','data-size');
+        state.filters.colors  = pick('#fColors','data-color');     // храним исходные значения
         closeModal(); router(); renderActiveFilterChips();
       }}
     ],
     onOpen: ()=>{
-      ['#fSizes','#fColors'].forEach(s=>{
+      ['#fCats','#fSizes','#fColors'].forEach(s=>{
         el(s).addEventListener('click', e=>{
           const btn=e.target.closest('.chip'); if(!btn)return;
           btn.classList.toggle('active');
         });
       });
       el('#clearBtn').onclick = ()=>{
-        state.filters = { ...state.filters, size:[], colors:[], minPrice:null, maxPrice:null, inStock:false };
+        state.filters = {
+          ...state.filters,
+          subcats: [],
+          size: [],
+          colors: [],
+          minPrice: null,
+          maxPrice: null,
+          inStock: false
+        };
         closeModal(); router(); renderActiveFilterChips();
       };
     }
@@ -107,7 +146,11 @@ export function renderActiveFilterChips(){
     const n=tNode.content.firstElementChild.cloneNode(true);
     n.textContent=label; n.classList.add('active'); bar.appendChild(n);
   };
-  if (state.filters.size.length) addChip('Размер: ' + state.filters.size.join(', '));
-  if (state.filters.colors.length) addChip('Цвет: ' + state.filters.colors.map(colorLabel).join(', ')); // <-- названия
-  // ⛔ чип «Материал» удалён
+  if (state.filters.subcats?.length) {
+    const labels = state.filters.subcats.map(categoryNameBySlug);
+    addChip('Категория: ' + labels.join(', '));
+  }
+  if (state.filters.size?.length) addChip('Размер: ' + state.filters.size.join(', '));
+  if (state.filters.colors?.length) addChip('Цвет: ' + state.filters.colors.map(colorLabel).join(', '));
+  // ⛔ материала нет
 }
