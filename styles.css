@@ -1714,6 +1714,48 @@ a.card .fav { pointer-events: auto; }                   /* на всякий с�
   0%, 100% { opacity:1;   transform: scaleY(1);     }
   50%      { opacity:.33; transform: scaleY(0.72);  }
 }
+/* === Loader Lines: hard-center alignment (EOF patch) === */
+#globalLoader .gl__box{
+  align-items: center !important; /* колоночный флекс уже есть — фиксируем центр */
+  text-align: center !important;
+}
+
+#globalLoader .gl__spinner{
+  width: auto !important;         /* убираем 66px, пусть ширина под контент */
+  min-width: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0 auto !important;      /* явная центровка по ширине бокса */
+}
+
+#globalLoader .gl__lines{
+  display: grid !important;       /* остаёмся на grid — без baseline-глюков */
+  grid-auto-flow: column !important;
+  grid-auto-columns: 2px !important; /* ширина палочки */
+  column-gap: 4px !important;        /* зазор между палочками */
+  justify-content: center !important; /* центрируем весь набор */
+  align-items: end !important;
+  line-height: 0 !important;
+}
+
+#globalLoader .gl__line{
+  width: 2px !important;
+  height: 16px !important;
+  display: block !important;
+  background: currentColor !important;
+  border-radius: 2px !important;
+  transform-origin: bottom center !important;
+  animation: gl-line-bounce-fix 1000ms ease-in-out infinite !important;
+  backface-visibility: hidden !important;
+  -webkit-backface-visibility: hidden !important;
+  will-change: transform, opacity !important;
+}
+
+/* на всякий — убираем любые «случайные» внешние отступы у элементов */
+#globalLoader .gl__spinner, 
+#globalLoader .gl__lines, 
+#globalLoader .gl__text{ margin-left: 0 !important; margin-right: 0 !important; }
 
 /* Ускоряем монтирование секций/экранов */
 #view > * { content-visibility: auto; contain-intrinsic-size: 800px; }
