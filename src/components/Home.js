@@ -1,6 +1,7 @@
 // src/components/Home.js
 import { state, isFav, toggleFav } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
+import { applyFilters } from './filters.js';
 
 function findCategoryBySlug(slug){
   for (const g of state.categories){
@@ -29,10 +30,7 @@ export function renderHome(router){
   try { window.dispatchEvent(new CustomEvent('view:home-mounted')); } catch {}
 
   // ⛔ локальная кнопка «вверх» — не нужна (ScrollTop.js уже смонтирован)
-
-
 }
-
 
 /** Рендер чипов категорий (верхние группы + «Все», «Новинки»). */
 export function drawCategoriesChips(router){
@@ -72,7 +70,9 @@ export function drawCategoriesChips(router){
         list = state.products.filter(p => pool.has(p.categoryId));
       }
 
+      // Далее drawProducts сам применит остальные фильтры
       drawProducts(list);
+
       // прокрутим к началу списка для UX
       try { (document.scrollingElement || document.documentElement).scrollTo({top:0, behavior:'smooth'}); } catch {}
     });
@@ -86,11 +86,17 @@ export function drawProducts(list){
   if (!grid) return;
   grid.innerHTML='';
 
+  // 1) применяем выбранные фильтры (категории/размер/цвет/цена/наличие)
+  const base = applyFilters(Array.isArray(list) ? list : []);
+
+  // 2) затем текстовый поиск
   const q = (state.filters.query||'').trim().toLowerCase();
-  const filtered = list.filter(p=>
-    p.title.toLowerCase().includes(q) ||
-    (p.subtitle||'').toLowerCase().includes(q)
-  );
+  const filtered = q
+    ? base.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        (p.subtitle||'').toLowerCase().includes(q)
+      )
+    : base;
 
   const frag = document.createDocumentFragment();
   for (const p of filtered){

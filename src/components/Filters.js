@@ -61,12 +61,26 @@ function colorLabel(c=''){
 /* ===== фильтрация ===== */
 export function applyFilters(list){
   const f = state.filters || {};
-  const subcats = f.subcats || []; // новые подкатегории
-  return list.filter(p=>{
-    if (subcats.length){ if (!p.categoryId || !subcats.includes(p.categoryId)) return false; }
-    if (f.size?.length){ if (!p.sizes || !p.sizes.some(s=>f.size.includes(s))) return false; }
-    if (f.colors?.length){ if (!p.colors || !p.colors.some(c=>f.colors.includes(c))) return false; }
-    // ⛔ материал убран: никаких проверок по p.material
+  const subcats = Array.isArray(f.subcats) ? f.subcats : [];
+
+  // нормализация значений для регистронезависимого сравнения
+  const norm = v => String(v ?? '').trim().toLowerCase();
+  const wantSizes  = (f.size   || []).map(norm);
+  const wantColors = (f.colors || []).map(norm);
+
+  return (list || []).filter(p=>{
+    if (subcats.length){
+      if (!p.categoryId || !subcats.includes(p.categoryId)) return false;
+    }
+    if (wantSizes.length){
+      const sizes = (p.sizes || []).map(norm);
+      if (!sizes.some(s => wantSizes.includes(s))) return false;
+    }
+    if (wantColors.length){
+      const colors = (p.colors || []).map(norm);
+      if (!colors.some(c => wantColors.includes(c))) return false;
+    }
+    // ⛔ материал убран
     if (f.minPrice != null && p.price < f.minPrice) return false;
     if (f.maxPrice != null && p.price > f.maxPrice) return false;
     if (f.inStock && p.soldOut) return false;
@@ -78,8 +92,8 @@ export function applyFilters(list){
 export function openFilterModal(router){
   // данные для чипов
   const allCats   = allSubcategories(); // [{value, label}]
-  const allSizes  = Array.from(new Set(state.products.flatMap(p=>p.sizes||[])));
-  const allColorsRaw = Array.from(new Set(state.products.flatMap(p=>p.colors||[])));
+  const allSizes  = Array.from(new Set((state.products || []).flatMap(p=>p.sizes||[])));
+  const allColorsRaw = Array.from(new Set((state.products || []).flatMap(p=>p.colors||[])));
   const allColors = allColorsRaw.map(v => ({ value: v, label: colorLabel(v) }));
 
   const chipGroup = (items, selected, key)=> items.map(v=>{
@@ -109,9 +123,9 @@ export function openFilterModal(router){
       { label: 'Применить', onClick: ()=>{
         state.filters.inStock = el('#fStock').checked;
         const pick=(sel,attr)=> Array.from(el(sel).querySelectorAll('.chip.active')).map(b=>b.getAttribute(attr));
-        state.filters.subcats = pick('#fCats','data-cat');         // ← новые подкатегории
+        state.filters.subcats = pick('#fCats','data-cat');
         state.filters.size    = pick('#fSizes','data-size');
-        state.filters.colors  = pick('#fColors','data-color');     // храним исходные значения
+        state.filters.colors  = pick('#fColors','data-color');
         closeModal(); router(); renderActiveFilterChips();
       }}
     ],
