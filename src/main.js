@@ -16,7 +16,6 @@ import {
 import { toast } from './core/toast.js';
 import { el, initTelegramChrome } from './core/utils.js';
 import { mountScrollTop } from './components/ScrollTop.js';
-
 import { renderHome, drawCategoriesChips } from './components/Home.js';
 import { renderProduct } from './components/Product.js';
 import { renderCart } from './components/Cart.js';
@@ -28,10 +27,10 @@ import { renderAccount, renderAddresses, renderSettings, renderCashback, renderR
 import { renderFAQ } from './components/FAQ.js';
 import { renderNotifications } from './components/Notifications.js';
 import { ScrollReset } from './core/scroll-reset.js';
-import { initTelegram } from './core/tg-init.js';
+
 // Вынесенный фикс-хедер товара
 import { deactivateProductFixHeader } from './components/ProductFixHeader.js';
-import { startAppRouter } from './views/ReBridge.js';
+
 // Админка
 import { renderAdmin } from './components/Admin.js';
 import { renderAdminLogin } from './components/AdminLogin.js';
@@ -101,7 +100,7 @@ function settleMatured(){
   if (changed){ w.pending=keep; writeWallet(w); }
 }
 
-/* ===== ЕДИНЫЙ ФОРМАТ ОТОБРАЖАЕМОГО НОМЕРА ЗАКАЗА ===== */
+
 function makeDisplayOrderIdFromParts(orderId, shortId) {
   const s = String(shortId || '').trim();
   if (s) return s.toUpperCase();
@@ -112,7 +111,7 @@ function makeDisplayOrderId(order) {
   return makeDisplayOrderIdFromParts(order?.id, order?.shortId);
 }
 
-/* ===== «богатые» уведомления через Netlify Function ===== */
+
 const NOTIF_API = '/.netlify/functions/notifs';
 const USER_JOIN_API = '/.netlify/functions/user-join';
 
