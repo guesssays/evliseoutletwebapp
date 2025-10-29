@@ -8,10 +8,58 @@ import {
   setFavActive as setFixFavActive,
 } from './ProductFixHeader.js';
 import { ScrollReset } from '../core/scroll-reset.js';
+import { Loader } from '../ui/loader.js'; // ⬅️ новый лоадер
 
-/* ====== КОНСТАНТЫ КЭШБЕКА/РЕФЕРАЛОВ (должны совпадать с корзиной/аккаунтом) ====== */
+/* ====== КОНСТАНТЫ КЭШБЕКА/РЕФЕРАЛОВ ====== */
 const CASHBACK_RATE_BASE  = 0.05; // 5%
 const CASHBACK_RATE_BOOST = 0.10; // 10% для 1-го заказа по реф-ссылке
+
+/* ====== LAZY-LOAD SETUP ====== */
+const BLANK =
+  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+
+let __lazyObserver = null;
+function ensureLazyObserver() {
+  if (__lazyObserver || !('IntersectionObserver' in window)) return __lazyObserver;
+  __lazyObserver = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const el = e.target;
+      const src = el.getAttribute('data-src');
+      const srcset = el.getAttribute('data-srcset');
+      if (src) el.src = src;
+      if (srcset) el.srcset = srcset;
+      el.onload = () => el.classList.add('loaded');
+      __lazyObserver.unobserve(el);
+    }
+  }, { root: null, rootMargin: '250px 0px', threshold: 0.01 });
+  return __lazyObserver;
+}
+
+function lazyifyImg(img) {
+  // если Observer не поддерживается — ставим src сразу
+  const obs = ensureLazyObserver();
+  const dataSrc = img.getAttribute('data-src');
+  const dataSrcSet = img.getAttribute('data-srcset');
+  if (!obs) {
+    if (dataSrc) img.src = dataSrc;
+    if (dataSrcSet) img.srcset = dataSrcSet;
+    return;
+  }
+  // уже видимый в viewport главный img можно грузить сразу
+  const rect = img.getBoundingClientRect?.();
+  const immediately =
+    rect && rect.top < (window.innerHeight || 0) + 100 && rect.bottom > -100;
+  if (immediately) {
+    const s = img.getAttribute('data-src');
+    const ss = img.getAttribute('data-srcset');
+    if (s) img.src = s;
+    if (ss) img.srcset = ss;
+    img.onload = () => img.classList.add('loaded');
+    return;
+  }
+  obs.observe(img);
+}
 
 /* ——— пер-пользовательские ключи ——— */
 function k(base){
@@ -19,7 +67,7 @@ function k(base){
   catch{ return `${base}__guest`; }
 }
 
-/* Может ли пользователь получить буст x2 на 1-й заказ (если пришёл по реф-ссылке и ещё не оформлял) */
+/* Может ли пользователь получить буст x2 на 1-й заказ */
 function hasFirstOrderBoost(){
   try{
     const ref = JSON.parse(localStorage.getItem(k('ref_profile')) || '{}');
@@ -55,7 +103,6 @@ const PHDBG = {
     }catch{}
     if (!this.enabled) return;
 
-    // Панель
     const wrap = document.createElement('div');
     wrap.id = 'ph-diag';
     wrap.style.cssText = `
@@ -128,487 +175,483 @@ const PHDBG = {
   }
 };
 
+/* ==== вспомогалки для лоадера в этом модуле ==== */
+function waitImageLoad(img, timeoutMs=1200){
+  return new Promise((resolve)=>{
+    if (!img) return resolve();
+    if (img.complete && img.naturalWidth>0) return resolve();
+    let done=false;
+    const on = ()=>{ if(done) return; done=true; clear(); resolve(); };
+    const to = setTimeout(on, timeoutMs);
+    const clear=()=>{
+      clearTimeout(to);
+      img.removeEventListener('load', on);
+      img.removeEventListener('error', on);
+    };
+    img.addEventListener('load', on, { once:true });
+    img.addEventListener('error', on, { once:true });
+  });
+}
+
 /* ========= РЕНДЕР СТРАНИЦЫ ТОВАРА ========= */
-export function renderProduct({id}){
+export async function renderProduct({id}){
   const p = state.products.find(x=> String(x.id)===String(id));
   if (!p){ location.hash='#/'; return; }
 
-  const favActive = isFav(p.id);
+  // Быстрый «анти-дрожь» прокрутки при входе на карточку
+  try { ScrollReset.request(); } catch {}
 
-activateProductFixHeader({
-  isFav: () => isFav(p.id),
-onBack: () => {
-  try { ScrollReset.quiet(400); } catch {}
-  history.back();
-},
+  // Покажем лоадер на время первичного рендера и ожидания главного изображения
+  await Loader.wrap(async () => {
+    const favActive = isFav(p.id);
 
-  onFavToggle: () => {
-    try { ScrollReset.quiet(900); } catch {}
-    const now = toggleFav(p.id);
-    const heroFav = document.getElementById('favBtn');
-    if (heroFav) {
-      heroFav.classList.toggle('active', now);
-      heroFav.setAttribute('aria-pressed', now ? 'true' : 'false');
-    }
-    setFixFavActive(now);
-    window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: p.id, active: now } }));
-  },
-  showThreshold: 20,
-});
+    activateProductFixHeader({
+      isFav: () => isFav(p.id),
+      onBack: () => {
+        try { ScrollReset.quiet(400); } catch {}
+        history.back();
+      },
+      onFavToggle: () => {
+        try { ScrollReset.quiet(900); } catch {}
+        const now = toggleFav(p.id);
+        const heroFav = document.getElementById('favBtn');
+        if (heroFav) {
+          heroFav.classList.toggle('active', now);
+          heroFav.setAttribute('aria-pressed', now ? 'true' : 'false');
+        }
+        setFixFavActive(now);
+        window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: p.id, active: now } }));
+      },
+      showThreshold: 20,
+    });
 
+    // ✅ Нормализация источников изображений
+    const images = Array.isArray(p.images) ? p.images : (p.images ? [p.images] : []);
+    const realPhotos = Array.isArray(p.realPhotos) ? p.realPhotos : [];
 
-  // ✅ Нормализация источников изображений
-  const images = Array.isArray(p.images)
-    ? p.images
-    : (p.images ? [p.images] : []);
-  const realPhotos = Array.isArray(p.realPhotos) ? p.realPhotos : [];
+    const gallery = [
+      ...images.map(src => ({ src, isReal:false })),
+      ...realPhotos.map(src => ({ src, isReal:true })),
+    ];
+    const first = gallery[0] || { src:'', isReal:false };
 
-  // ОБЪЕДИНЁННАЯ ГАЛЕРЕЯ: сначала офф. фото, затем реальные
-  const gallery = [
-    ...images.map(src => ({ src, isReal:false })),
-    ...realPhotos.map(src => ({ src, isReal:true })),
-  ];
-  const first = gallery[0] || { src:'', isReal:false };
+    // Подбор «Похожие»
+    const related = state.products
+      .filter(x => x.categoryId === p.categoryId && String(x.id) !== String(p.id))
+      .slice(0, 12);
 
-  // Подбор «Похожие» по той же подкатегории
-  const related = state.products
-    .filter(x => x.categoryId === p.categoryId && String(x.id) !== String(p.id))
-    .slice(0, 12);
+    const v=document.getElementById('view');
+    v.innerHTML = `
+      <style>
+        /* эффекты загрузки */
+        img.lazy { filter: blur(10px); transform: scale(1.02); transition: filter .25s ease, transform .25s ease; }
+        img.lazy.loaded { filter: blur(0); transform: scale(1); }
 
-  const v=document.getElementById('view');
-  v.innerHTML = `
-    <style>
-      /* ===== Кэшбек ===== */
-      .p-cashback{display:flex;align-items:center;gap:10px;margin:8px 0;padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#f59e0b 0%,#ef4444 100%);color:#fff;max-width:100%;}
-      .p-cashback i[data-lucide="coins"]{flex:0 0 auto;width:20px;height:20px;opacity:.95;}
-      .p-cb-line{display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:visible;font-weight:800;font-size:clamp(12px,3.6vw,16px);line-height:1.2;}
-      .p-cb-pts{font-variant-numeric:tabular-nums;}
-      .p-cb-x2{flex:0 0 auto;font-size:.78em;line-height:1;padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);font-weight:800;}
-      .p-cb-help{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);transition:filter .15s ease;}
-      .p-cb-help svg{width:16px;height:16px;stroke:#fff;}
-      @media(hover:hover){.p-cb-help:hover{filter:brightness(1.05);} }
+        /* ===== Кэшбек ===== */
+        .p-cashback{display:flex;align-items:center;gap:10px;margin:8px 0;padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#f59e0b 0%,#ef4444 100%);color:#fff;max-width:100%;}
+        .p-cashback i[data-lucide="coins"]{flex:0 0 auto;width:20px;height:20px;opacity:.95;}
+        .p-cb-line{display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:visible;font-weight:800;font-size:clamp(12px,3.6vw,16px);line-height:1.2;}
+        .p-cb-pts{font-variant-numeric:tabular-nums;}
+        .p-cb-x2{flex:0 0 auto;font-size:.78em;line-height:1;padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);font-weight:800;}
+        .p-cb-help{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);transition:filter .15s ease;}
+        .p-cb-help svg{width:16px;height:16px;stroke:#fff;}
+        @media(hover:hover){.p-cb-help:hover{filter:brightness(1.05);} }
 
-      /* ===== Срок доставки ===== */
-      .p-delivery{display:flex;align-items:center;gap:10px;margin:6px 0 12px;padding:10px 12px;border-radius:12px;background:#ffffff;color:#0f172a;border:1px solid rgba(15,23,42,.12);}
-      .p-delivery svg{width:18px;height:18px;stroke:currentColor;opacity:1;}
-      .p-delivery__title{font-weight:800;margin-right:4px;color:#0b1220;}
-      .p-delivery .muted{color:#0b1220;opacity:1;font-weight:800;}
-      @media (prefers-color-scheme:dark){
-        .p-delivery{background:#111827;border-color:rgba(255,255,255,.14);color:#ffffff;}
-        .p-delivery__title{color:#ffffff;}
-        .p-delivery .muted{color:#ffffff;opacity:1;}
-      }
+        /* ===== Срок доставки ===== */
+        .p-delivery{display:flex;align-items:center;gap:10px;margin:6px 0 12px;padding:10px 12px;border-radius:12px;background:#ffffff;color:#0f172a;border:1px solid rgba(15,23,42,.12);}
+        .p-delivery svg{width:18px;height:18px;stroke:currentColor;opacity:1;}
+        .p-delivery__title{font-weight:800;margin-right:4px;color:#0b1220;}
+        .p-delivery .muted{color:#0b1220;opacity:1;font-weight:800;}
+        @media (prefers-color-scheme:dark){
+          .p-delivery{background:#111827;border-color:rgba(255,255,255,.14);color:#ffffff;}
+          .p-delivery__title{color:#ffffff;}
+          .p-delivery .muted{color:#ffffff;opacity:1;}
+        }
 
-      /* ===== Бейдж «Реальное фото товара» (main) ===== */
-      .real-badge{
-        position:absolute; right:10px; bottom:10px; z-index:2;
-        display:inline-flex; align-items:center; gap:6px;
-        padding:8px 10px; border-radius:999px;
-        font-size:12px; font-weight:800; line-height:1;
-        color:#0f172a;
-        background:rgba(255,255,255,.72);
-        backdrop-filter:saturate(1.4) blur(8px);
-        -webkit-backdrop-filter:saturate(1.4) blur(8px);
-        border:1px solid rgba(15,23,42,.12);
-        box-shadow:0 8px 24px rgba(15,23,42,.12);
-        letter-spacing:.2px;
-      }
-      .real-badge i{ width:14px; height:14px; opacity:.9; stroke-width:2.2; }
-      @media (prefers-color-scheme:dark){
+        /* ===== Бейдж «Реальное фото товара» ===== */
         .real-badge{
-          color:#fff;
-          background:rgba(11,18,32,.66);
-          border-color:rgba(255,255,255,.18);
-          box-shadow:0 8px 24px rgba(0,0,0,.35);
+          position:absolute; right:10px; bottom:10px; z-index:2;
+          display:inline-flex; align-items:center; gap:6px;
+          padding:8px 10px; border-radius:999px;
+          font-size:12px; font-weight:800; line-height:1;
+          color:#0f172a;
+          background:rgba(255,255,255,.72);
+          backdrop-filter:saturate(1.4) blur(8px);
+          -webkit-backdrop-filter:saturate(1.4) blur(8px);
+          border:1px solid rgba(15,23,42,.12);
+          box-shadow:0 8px 24px rgba(15,23,42,.12);
+          letter-spacing:.2px;
         }
-      }
-      /* Мини-бейдж на миниатюрах */
-      .thumb .real-dot{
-        position:absolute; left:6px; top:6px; z-index:1;
-        font-size:10px; font-weight:900; letter-spacing:.3px;
-        padding:3px 7px; border-radius:999px;
-        background:#ffffff; color:#0f172a; border:1px solid rgba(15,23,42,.12);
-      }
-      @media (prefers-color-scheme:dark){
-        .thumb .real-dot{ background:#0b1220; color:#fff; border-color:rgba(255,255,255,.18); }
-      }
+        .real-badge i{ width:14px; height:14px; opacity:.9; stroke-width:2.2; }
+        @media (prefers-color-scheme:dark){
+          .real-badge{
+            color:#fff;
+            background:rgba(11,18,32,.66);
+            border-color:rgba(255,255,255,.18);
+            box-shadow:0 8px 24px rgba(0,0,0,.35);
+          }
+        }
+        .thumb .real-dot{
+          position:absolute; left:6px; top:6px; z-index:1;
+          font-size:10px; font-weight:900; letter-spacing:.3px;
+          padding:3px 7px; border-radius:999px;
+          background:#ffffff; color:#0f172a; border:1px solid rgba(15,23,42,.12);
+        }
+        @media (prefers-color-scheme:dark){
+          .thumb .real-dot{ background:#0b1220; color:#fff; border-color:rgba(255,255,255,.18); }
+        }
 
-      /* ===== Раздел «Похожие» ===== */
-      .related-wrap{margin:18px -12px -8px;padding:14px 12px 10px;background:linear-gradient(0deg,rgba(15,23,42,.04),rgba(15,23,42,.04));border-top:1px solid rgba(15,23,42,.10);}
-      .related-head{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-weight:800;font-size:clamp(16px,4.2vw,18px);}
-      .related-head i{width:18px;height:18px;opacity:.9;}
-      @media (prefers-color-scheme:dark){
-        .related-wrap{background:linear-gradient(0deg,rgba(255,255,255,.04),rgba(255,255,255,.04));border-top-color:rgba(255,255,255,.14);}
-      }
-      .grid.related-grid{margin-top:6px;}
+        /* ===== Раздел «Похожие» ===== */
+        .related-wrap{margin:18px -12px -8px;padding:14px 12px 10px;background:linear-gradient(0deg,rgba(15,23,42,.04),rgba(15,23,42,.04));border-top:1px solid rgba(15,23,42,.10);}
+        .related-head{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-weight:800;font-size:clamp(16px,4.2vw,18px);}
+        .related-head i{width:18px;height:18px;opacity:.9;}
+        @media (prefers-color-scheme:dark){
+          .related-wrap{background:linear-gradient(0deg,rgba(255,255,255,.04),rgba(255,255,255,.04));border-top-color:rgba(255,255,255,.14);}
+        }
+        .grid.related-grid{margin-top:6px;}
 
-      /* Контейнер миниатюр: убрать скругление нижних углов */
-      .p-hero .thumbs{
-        border-bottom-left-radius: 0 !important;
-        border-bottom-right-radius: 0 !important;
-        overflow: hidden;
-      }
+        /* Контейнер миниатюр: убрать скругление нижних углов */
+        .p-hero .thumbs{
+          border-bottom-left-radius: 0 !important;
+          border-bottom-right-radius: 0 !important;
+          overflow: hidden;
+        }
 
-      /* ====== СВОТЧИ И РАЗМЕРЫ ====== */
-      .p-options{
-        display:grid;
-        grid-template-columns:1fr;
-        gap:16px;
-        margin:14px 0;
-      }
-      .opt-title{ font-weight:800; margin:6px 0 8px; }
-      .sizes,.colors{ display:flex; flex-wrap:wrap; gap:10px; }
+        /* ====== СВОТЧИ И РАЗМЕРЫ ====== */
+        .p-options{ display:grid; grid-template-columns:1fr; gap:16px; margin:14px 0; }
+        .opt-title{ font-weight:800; margin:6px 0 8px; }
+        .sizes,.colors{ display:flex; flex-wrap:wrap; gap:10px; }
 
-      /* — Цвета — */
-      .sw{
-        position:relative;
-        width:38px; height:38px;
-        border-radius:999px;
-        border:2px solid rgba(15,23,42,.18);
-        box-shadow: inset 0 0 0 2px rgba(255,255,255,.7);
-        outline:none; cursor:pointer;
-        transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, outline-color .12s ease;
-      }
-      @media (prefers-color-scheme:dark){
+        /* — Цвета — */
         .sw{
-          border-color: rgba(255,255,255,.22);
-          box-shadow: inset 0 0 0 2px rgba(0,0,0,.55);
+          position:relative; width:38px; height:38px; border-radius:999px;
+          border:2px solid rgba(15,23,42,.18);
+          box-shadow: inset 0 0 0 2px rgba(255,255,255,.7);
+          outline:none; cursor:pointer;
+          transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, outline-color .12s ease;
         }
-      }
-      .sw:focus-visible{ outline:3px solid #0ea5e9; outline-offset:2px; }
-      .sw:hover{ transform:translateY(-1px); }
+        @media (prefers-color-scheme:dark){
+          .sw{ border-color: rgba(255,255,255,.22); box-shadow: inset 0 0 0 2px rgba(0,0,0,.55); }
+        }
+        .sw:focus-visible{ outline:3px solid #0ea5e9; outline-offset:2px; }
+        .sw:hover{ transform:translateY(-1px); }
 
-      /* Активный цвет — только усиленная обводка + лёгкая анимация */
-      @keyframes swPulse { from{ transform:scale(1.04); } to{ transform:scale(1); } }
-      .sw.active{
-        border-color:#0ea5e9 !important;
-        box-shadow:
-          inset 0 0 0 2px rgba(255,255,255,.85),
-          0 0 0 3px rgba(14,165,233,.28);
-        animation: swPulse .25s ease;
-      }
+        @keyframes swPulse { from{ transform:scale(1.04); } to{ transform:scale(1); } }
+        .sw.active{
+          border-color:#0ea5e9 !important;
+          box-shadow: inset 0 0 0 2px rgba(255,255,255,.85), 0 0 0 3px rgba(14,165,233,.28);
+          animation: swPulse .25s ease;
+        }
 
-      /* — Размеры — */
-      .size{
-        padding:10px 14px;
-        border:1px solid var(--stroke);
-        border-radius:999px;
-        background:#fff;
-        font-weight:700;
-        cursor:pointer;
-      }
-      .size:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
-      .size.active{
-        background:#121111;
-        color:#fff;
-        border-color:#121111;
-      }
+        .size{ padding:10px 14px; border:1px solid var(--stroke); border-radius:999px; background:#fff; font-weight:700; cursor:pointer; }
+        .size:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
+        .size.active{ background:#121111; color:#fff; border-color:#121111; }
 
-      /* ===== Размерная сетка (центрирование значений) ===== */
-      .table-wrap{
-        overflow:auto;
-        -webkit-overflow-scrolling:touch;
-        margin-top:10px;
-        border:1px solid var(--stroke);
-        border-radius:16px;
-      }
-      .size-table{ width:100%; border-collapse:separate; border-spacing:0; }
-      .size-table th,.size-table td{
-        padding:10px 12px; white-space:nowrap; font-size:14px; text-align:center;
-        font-variant-numeric: tabular-nums;
-      }
-      .size-table thead th{ background:#f8f8f8; font-weight:800; text-align:center; }
-      .size-table th:first-child, .size-table td:first-child{ text-align:left; }
-      .size-table tbody tr:not(:last-child) td{ border-bottom:1px solid var(--stroke); }
-    </style>
+        .table-wrap{ overflow:auto; -webkit-overflow-scrolling:touch; margin-top:10px; border:1px solid var(--stroke); border-radius:16px; }
+        .size-table{ width:100%; border-collapse:separate; border-spacing:0; }
+        .size-table th,.size-table td{ padding:10px 12px; white-space:nowrap; font-size:14px; text-align:center; font-variant-numeric: tabular-nums; }
+        .size-table thead th{ background:#f8f8f8; font-weight:800; text-align:center; }
+        .size-table th:first-child, .size-table td:first-child{ text-align:left; }
+        .size-table tbody tr:not(:last-child) td{ border-bottom:1px solid var(--stroke); }
+      </style>
 
-    <div class="product">
-      <!-- ГАЛЕРЕЯ -->
-      <div class="p-hero">
-        <div class="gallery" role="region" aria-label="Галерея товара">
-          <div class="gallery-main">
-            ${first.isReal ? `<span class="real-badge"><i data-lucide="camera"></i><span>Реальное фото товара</span></span>` : ``}
-            <img id="mainImg" class="zoomable" src="${first.src||''}" alt="${escapeHtml(p.title)}${first.isReal?' (реальное фото)':''}">
-            <button class="hero-btn hero-back" id="goBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
-            <button class="hero-btn hero-fav ${favActive?'active':''}" id="favBtn" aria-pressed="${favActive?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
-          </div>
-
-          ${gallery.length>1 ? `
-          <div class="thumbs" id="thumbs" role="tablist" aria-label="Миниатюры">
-            ${gallery.map((it, i)=>`
-              <button class="thumb ${i===0?'active':''}" role="tab" aria-selected="${i===0?'true':'false'}" data-index="${i}" aria-controls="mainImg" style="position:relative">
-                ${it.isReal ? `<span class="real-dot">LIVE</span>` : ``}
-                <img loading="lazy" src="${it.src}" alt="${escapeHtml(`Фото ${i+1}${it.isReal?' (реальное)':''}`)}">
-              </button>
-            `).join('')}
-          </div>` : '' }
-        </div>
-      </div>
-
-      <div class="p-body home-bottom-pad">
-        <div class="p-title">${escapeHtml(p.title)}</div>
-
-        <!-- Кэшбек -->
-        <div class="p-cashback" role="note" aria-label="Информация о кэшбеке">
-          <i data-lucide="coins" aria-hidden="true"></i>
-          ${cashbackSnippetHTML(p.price)}
-          <button id="cbHelpBtn" class="p-cb-help" type="button" aria-label="Как работает кэшбек?">
-            <i data-lucide="help-circle"></i>
-          </button>
-        </div>
-
-        <!-- Срок доставки -->
-        <div class="p-delivery" role="note" aria-label="Срок доставки">
-          <i data-lucide="clock"></i>
-          <span class="p-delivery__title">Срок доставки:</span>
-          <span class="muted"><b>14–16 дней</b></span>
-        </div>
-
-        <!-- Характеристики -->
-        <div class="specs"><b>Категория:</b> ${escapeHtml(findCategoryBySlug(p.categoryId)?.name || '—')}</div>
-        <div class="specs"><b>Материал:</b> ${p.material ? escapeHtml(p.material) : '—'}</div>
-
-        <!-- Опции -->
-        <div class="p-options">
-          ${(p.sizes?.length||0) ? `
-          <div>
-            <div class="opt-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <span>Размер</span>
-              ${p.sizeChart ? `<button id="btnSizeCalc" class="pill small" type="button"><i data-lucide="ruler"></i><span>Подобрать размер</span></button>` : ``}
+      <div class="product">
+        <!-- ГАЛЕРЕЯ -->
+        <div class="p-hero">
+          <div class="gallery" role="region" aria-label="Галерея товара">
+            <div class="gallery-main">
+              ${first.isReal ? `<span class="real-badge"><i data-lucide="camera"></i><span>Реальное фото товара</span></span>` : ``}
+              <!-- главный кадр: грузим сразу (без data-src) -->
+              <img id="mainImg" class="zoomable" src="${first.src||''}" alt="${escapeHtml(p.title)}${first.isReal?' (реальное фото)':''}">
+              <button class="hero-btn hero-back" id="goBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
+              <button class="hero-btn hero-fav ${favActive?'active':''}" id="favBtn" aria-pressed="${favActive?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
             </div>
-            <div class="sizes" id="sizes">${p.sizes.map(s=>`<button class="size" data-v="${s}">${s}</button>`).join('')}</div>
-            ${!p.sizeChart ? `<div class="muted" style="font-size:12px;margin-top:6px">Таблица размеров недоступна для этого товара.</div>` : ``}
-          </div>`:''}
-          <div>
-            <div class="opt-title">Цвет</div>
-            <div class="colors" id="colors">
-              ${(p.colors||[]).map((c,i)=>`
-                <button
-                  class="sw${i===0?' active':''}"
-                  title="${c}${i===0?' — выбран':''}"
-                  aria-label="Цвет ${c}${i===0?' — выбран':''}"
-                  aria-pressed="${i===0?'true':'false'}"
-                  data-v="${c}"
-                  style="background:${colorToHex(c)}"
-                ></button>
+
+            ${gallery.length>1 ? `
+            <div class="thumbs" id="thumbs" role="tablist" aria-label="Миниатюры">
+              ${gallery.map((it, i)=>`
+                <button class="thumb ${i===0?'active':''}" role="tab" aria-selected="${i===0?'true':'false'}" data-index="${i}" aria-controls="mainImg" style="position:relative">
+                  ${it.isReal ? `<span class="real-dot">LIVE</span>` : ``}
+                  <img class="lazy" src="${BLANK}" data-src="${it.src}" alt="${escapeHtml(`Фото ${i+1}${it.isReal?' (реальное)':''}`)}" loading="lazy">
+                </button>
               `).join('')}
-            </div>
+            </div>` : '' }
           </div>
         </div>
 
-        ${p.sizeChart ? `
-        <div class="opt-title" style="margin-top:8px">Размерная сетка</div>
-        <div class="table-wrap">
-          <table class="size-table">
-            <thead><tr>${p.sizeChart.headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
-            <tbody>
-              ${p.sizeChart.rows.map(r=>`<tr>${r.map(c=>`<td>${escapeHtml(String(c))}</td>`).join('')}</tr>`).join('')}
-            </tbody>
-          </table>
-        </div>`:''}
+        <div class="p-body home-bottom-pad">
+          <div class="p-title">${escapeHtml(p.title)}</div>
 
-        <!-- БЛОК «Похожие» -->
-        ${related.length ? `
-        <section class="related-wrap" aria-label="Похожие товары">
-          <div class="related-head">
-            <i data-lucide="sparkles" aria-hidden="true"></i>
-            <span>Похожие</span>
+          <!-- Кэшбек -->
+          <div class="p-cashback" role="note" aria-label="Информация о кэшбеке">
+            <i data-lucide="coins" aria-hidden="true"></i>
+            ${cashbackSnippetHTML(p.price)}
+            <button id="cbHelpBtn" class="p-cb-help" type="button" aria-label="Как работает кэшбек?">
+              <i data-lucide="help-circle"></i>
+            </button>
           </div>
-          <div class="grid related-grid" id="relatedGrid"></div>
-        </section>` : ''}
 
-      </div>
-    </div>`;
+          <!-- Срок доставки -->
+          <div class="p-delivery" role="note" aria-label="Срок доставки">
+            <i data-lucide="clock"></i>
+            <span class="p-delivery__title">Срок доставки:</span>
+            <span class="muted"><b>14–16 дней</b></span>
+          </div>
 
-  window.lucide?.createIcons && lucide.createIcons();
-  // отрисовать «Похожие»
-  drawRelatedCards(related);
-  // help modal
-  document.getElementById('cbHelpBtn')?.addEventListener('click', showCashbackHelpModal);
+          <!-- Характеристики -->
+          <div class="specs"><b>Категория:</b> ${escapeHtml(findCategoryBySlug(p.categoryId)?.name || '—')}</div>
+          <div class="specs"><b>Материал:</b> ${p.material ? escapeHtml(p.material) : '—'}</div>
 
-  // Size calculator open
-  document.getElementById('btnSizeCalc')?.addEventListener('click', ()=> openSizeCalculator(p));
+          <!-- Опции -->
+          <div class="p-options">
+            ${(p.sizes?.length||0) ? `
+            <div>
+              <div class="opt-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span>Размер</span>
+                ${p.sizeChart ? `<button id="btnSizeCalc" class="pill small" type="button"><i data-lucide="ruler"></i><span>Подобрать размер</span></button>` : ``}
+              </div>
+              <div class="sizes" id="sizes">${p.sizes.map(s=>`<button class="size" data-v="${s}">${s}</button>`).join('')}</div>
+              ${!p.sizeChart ? `<div class="muted" style="font-size:12px;margin-top:6px">Таблица размеров недоступна для этого товара.</div>` : ``}
+            </div>`:''}
+            <div>
+              <div class="opt-title">Цвет</div>
+              <div class="colors" id="colors">
+                ${(p.colors||[]).map((c,i)=>`
+                  <button
+                    class="sw${i===0?' active':''}"
+                    title="${c}${i===0?' — выбран':''}"
+                    aria-label="Цвет ${c}${i===0?' — выбран':''}"
+                    aria-pressed="${i===0?'true':'false'}"
+                    data-v="${c}"
+                    style="background:${colorToHex(c)}"
+                  ></button>
+                `).join('')}
+              </div>
+            </div>
+          </div>
 
-  const needSize = Array.isArray(p.sizes) && p.sizes.length>0;
-  let size=null, color=(p.colors||[])[0]||null;
+          ${p.sizeChart ? `
+          <div class="opt-title" style="margin-top:8px">Размерная сетка</div>
+          <div class="table-wrap">
+            <table class="size-table">
+              <thead><tr>${p.sizeChart.headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
+              <tbody>
+                ${p.sizeChart.rows.map(r=>`<tr>${r.map(c=>`<td>${escapeHtml(String(c))}</td>`).join('')}</tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`:''}
 
-  const sizes=document.getElementById('sizes');
-  if (sizes){
-    sizes.addEventListener('click', e=>{
-      const b=e.target.closest('.size'); if(!b)return;
-      sizes.querySelectorAll('.size').forEach(x=>x.classList.remove('active'));
-      b.classList.add('active'); size=b.getAttribute('data-v');
-      refreshCTAByState();
-    });
-  }
-  const colors=document.getElementById('colors');
-  if (colors){
-    colors.addEventListener('click', e=>{
-      const b=e.target.closest('.sw'); if(!b)return;
-      colors.querySelectorAll('.sw').forEach(x=>{
-        x.classList.remove('active');
-        x.setAttribute('aria-pressed','false');
-        const t = x.getAttribute('title')||'';
-        x.setAttribute('title', t.replace(' — выбран',''));
-        const al = x.getAttribute('aria-label')||'';
-        x.setAttribute('aria-label', al.replace(' — выбран',''));
+          <!-- БЛОК «Похожие» -->
+          ${related.length ? `
+          <section class="related-wrap" aria-label="Похожие товары">
+            <div class="related-head">
+              <i data-lucide="sparkles" aria-hidden="true"></i>
+              <span>Похожие</span>
+            </div>
+            <div class="grid related-grid" id="relatedGrid"></div>
+          </section>` : ''}
+
+        </div>
+      </div>`;
+
+    window.lucide?.createIcons && lucide.createIcons();
+
+    // ЛЕНИВАЯ ИНИЦИАЛИЗАЦИЯ: миниатюры
+    document.querySelectorAll('#thumbs img[data-src]').forEach(lazyifyImg);
+
+    // отрисовать «Похожие»
+    drawRelatedCards(related);
+
+    // help modal
+    document.getElementById('cbHelpBtn')?.addEventListener('click', showCashbackHelpModal);
+
+    // Size calculator open
+    document.getElementById('btnSizeCalc')?.addEventListener('click', ()=> openSizeCalculator(p));
+
+    const needSize = Array.isArray(p.sizes) && p.sizes.length>0;
+    let size=null, color=(p.colors||[])[0]||null;
+
+    const sizes=document.getElementById('sizes');
+    if (sizes){
+      sizes.addEventListener('click', e=>{
+        const b=e.target.closest('.size'); if(!b)return;
+        sizes.querySelectorAll('.size').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active'); size=b.getAttribute('data-v');
+        refreshCTAByState();
       });
-      b.classList.add('active');
-      b.setAttribute('aria-pressed','true');
-      b.setAttribute('title', (b.getAttribute('title')||'') + ' — выбран');
-      b.setAttribute('aria-label', (b.getAttribute('aria-label')||'') + ' — выбран');
-      color=b.getAttribute('data-v');
-      refreshCTAByState();
-    });
-  }
-
-const heroBack = document.getElementById('goBack');
-if (heroBack) {
-heroBack.addEventListener('click', (e) => {
-  e.preventDefault();
-try { ScrollReset.quiet(400); } catch {}
-  history.back();
-}, { passive: false });
-
-}
-
-
-  // === Глобальный синк избранного (ЕДИНОЖДЫ на рендер страницы) ===
-  function onFavSync(ev){
-    try{
-      const evId = String(ev?.detail?.id ?? '');
-      if (evId && evId !== String(p.id)) return; // событие про другой товар — игнор
-
-      const on = !!isFav(p.id);
-
-      // Обновляем сердечко в герое
-      const heroFav = document.getElementById('favBtn');
-      if (heroFav) {
-        heroFav.classList.toggle('active', on);
-        heroFav.setAttribute('aria-pressed', String(on));
-      }
-
-      // И фикс-хедер
-      setFixFavActive(on);
-    }catch{}
-  }
-  window.addEventListener('fav:changed', onFavSync);
-
-  // Сердечко в герое — локальный клик без регистрации других слушателей
-  const favBtn = document.getElementById('favBtn');
-if (favBtn) {
-favBtn.addEventListener('click', (e) => {
-  e.preventDefault();
-  try { ScrollReset.quiet(900); } catch {}
-  const nowActive = toggleFav(p.id);
-
-    favBtn.classList.toggle('active', nowActive);
-    favBtn.setAttribute('aria-pressed', String(nowActive));
-    setFixFavActive(nowActive);
-
-    window.dispatchEvent(new CustomEvent('fav:changed', {
-      detail: { id: p.id, active: nowActive }
-    }));
-  }, { passive:false });
-}
-
-
-  // Галерея
-  const thumbs = document.getElementById('thumbs');
-  const mainImg = document.getElementById('mainImg');
-  const galleryMain = document.querySelector('.gallery-main');
-  if (thumbs && mainImg && gallery.length){
-    thumbs.addEventListener('click', (e)=>{
-      const t = e.target.closest('button.thumb'); if (!t) return;
-      const idx = Number(t.getAttribute('data-index'))||0;
-      const it = gallery[idx] || gallery[0];
-      mainImg.src = it.src || '';
-      mainImg.alt = `${p.title}${it.isReal ? ' (реальное фото)' : ''}`;
-      const old = galleryMain.querySelector('.real-badge');
-      if (old) old.remove();
-      if (it.isReal){
-        const b = document.createElement('span');
-        b.className='real-badge';
-        b.innerHTML = '<i data-lucide="camera"></i><span>Реальное фото товара</span>';
-        galleryMain.appendChild(b);
-        window.lucide?.createIcons && lucide.createIcons();
-      }
-      thumbs.querySelectorAll('.thumb').forEach(x=>{
-        x.classList.toggle('active', x===t);
-        x.setAttribute('aria-selected', x===t ? 'true':'false');
-      });
-      resetZoom();
-    });
-  }
-
-  /* -------- CTA в таббаре -------- */
-  function showAddCTA(){
-    const needPick = needSize && !size;
-    window.setTabbarCTA?.({
-      id: 'ctaAdd',
-      html: `<i data-lucide="shopping-bag"></i><span>${needPick ? 'Выберите размер' : 'Добавить в корзину&nbsp;|&nbsp;'+priceFmt(p.price)}</span>`,
-      onClick(){
-        if (needSize && !size){
-          document.getElementById('sizes')?.scrollIntoView({ behavior:'smooth', block:'center' });
-          return;
-        }
-        addToCart(p, size, color, 1);
-        showInCartCTAs();
-      }
-    });
-    const btn = document.getElementById('ctaAdd');
-    if (btn) btn.disabled = needPick;
-  }
-
-  function showInCartCTAs(){
-    window.setTabbarCTAs?.(
-      { html:`<i data-lucide="x"></i><span>Убрать из корзины</span>`,
-        onClick(){ removeLineFromCart(p.id, size||null, color||null); showAddCTA(); } },
-      { html:`<i data-lucide="shopping-bag"></i><span>Перейти в корзину</span>`,
-        onClick(){ location.hash = '#/cart'; } }
-    );
-  }
-
-  function refreshCTAByState(){
-    if (needSize && !size){ showAddCTA(); return; }
-    if (isInCart(p.id, size||null, color||null)) showInCartCTAs(); else showAddCTA();
-  }
-  refreshCTAByState();
-
-  /* -------- Зум -------- */
-  ensureZoomOverlay();
-  initZoomableInPlace(mainImg);
-  document.querySelectorAll('img.zoomable').forEach(img=>{
-    img.addEventListener('click', ()=> openZoomOverlay(img.src));
-  });
-  function resetZoom(){ if (!mainImg) return; mainImg.style.transform=''; mainImg.dataset.zoom='1'; }
-
-  /* -------- Диагностика (опционально) -------- */
-  if (PHDBG.enabled) PHDBG.init();
-
-  /* -------- Авто-деактивация фикс-хедера при уходе со страницы товара -------- */
-  const _onHashChange = () => {
-    const h = String(location.hash || '');
-    const leavingProduct = !h.startsWith('#/product/') && !h.startsWith('#/p/');
-
-    if (leavingProduct) {
-      // Если уходим ДОМОЙ — ставим маркер «из товара», и глушим любые сбросы скролла на мгновение.
-      const toHome =
-        h === '' || h === '#' ||
-        h === '#/' || h.startsWith('#/?');
-
-
-
-      deactivateProductFixHeader();
-      window.removeEventListener('hashchange', _onHashChange);
-      window.removeEventListener('fav:changed', onFavSync); // снять слушатель при уходе
     }
-  };
-  window.addEventListener('hashchange', _onHashChange);
+    const colors=document.getElementById('colors');
+    if (colors){
+      colors.addEventListener('click', e=>{
+        const b=e.target.closest('.sw'); if(!b)return;
+        colors.querySelectorAll('.sw').forEach(x=>{
+          x.classList.remove('active');
+          x.setAttribute('aria-pressed','false');
+          const t = x.getAttribute('title')||'';
+          x.setAttribute('title', t.replace(' — выбран',''));
+          const al = x.getAttribute('aria-label')||'';
+          x.setAttribute('aria-label', al.replace(' — выбран',''));
+        });
+        b.classList.add('active');
+        b.setAttribute('aria-pressed','true');
+        b.setAttribute('title', (b.getAttribute('title')||'') + ' — выбран');
+        b.setAttribute('aria-label', (b.getAttribute('aria-label')||'') + ' — выбран');
+        color=b.getAttribute('data-v');
+        refreshCTAByState();
+      });
+    }
 
+    const heroBack = document.getElementById('goBack');
+    if (heroBack) {
+      heroBack.addEventListener('click', (e) => {
+        e.preventDefault();
+        try { ScrollReset.quiet(400); } catch {}
+        history.back();
+      }, { passive: false });
+    }
+
+    // === Глобальный синк избранного
+    function onFavSync(ev){
+      try{
+        const evId = String(ev?.detail?.id ?? '');
+        if (evId && evId !== String(p.id)) return;
+
+        const on = !!isFav(p.id);
+
+        const heroFav = document.getElementById('favBtn');
+        if (heroFav) {
+          heroFav.classList.toggle('active', on);
+          heroFav.setAttribute('aria-pressed', String(on));
+        }
+
+        setFixFavActive(on);
+      }catch{}
+    }
+    window.addEventListener('fav:changed', onFavSync);
+
+    const favBtn = document.getElementById('favBtn');
+    if (favBtn) {
+      favBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        try { ScrollReset.quiet(900); } catch {}
+        const nowActive = toggleFav(p.id);
+
+        favBtn.classList.toggle('active', nowActive);
+        favBtn.setAttribute('aria-pressed', String(nowActive));
+        setFixFavActive(nowActive);
+
+        window.dispatchEvent(new CustomEvent('fav:changed', {
+          detail: { id: p.id, active: nowActive }
+        }));
+      }, { passive:false });
+    }
+
+    // Галерея
+    const thumbs = document.getElementById('thumbs');
+    const mainImg = document.getElementById('mainImg');
+    const galleryMain = document.querySelector('.gallery-main');
+    if (thumbs && mainImg && gallery.length){
+      thumbs.addEventListener('click', (e)=>{
+        const t = e.target.closest('button.thumb'); if (!t) return;
+        const idx = Number(t.getAttribute('data-index'))||0;
+        const it = gallery[idx] || gallery[0];
+
+        // если миниатюра ещё не прогружена — тянем src из data-src
+        const thumbImg = t.querySelector('img');
+        if (thumbImg && thumbImg.getAttribute('data-src') && thumbImg.src === BLANK) {
+          thumbImg.src = thumbImg.getAttribute('data-src');
+          thumbImg.removeAttribute('data-src');
+          thumbImg.classList.add('loaded');
+        }
+
+        mainImg.src = it.src || '';
+        mainImg.alt = `${p.title}${it.isReal ? ' (реальное фото)' : ''}`;
+
+        const old = galleryMain.querySelector('.real-badge');
+        if (old) old.remove();
+        if (it.isReal){
+          const b = document.createElement('span');
+          b.className='real-badge';
+          b.innerHTML = '<i data-lucide="camera"></i><span>Реальное фото товара</span>';
+          galleryMain.appendChild(b);
+          window.lucide?.createIcons && lucide.createIcons();
+        }
+        thumbs.querySelectorAll('.thumb').forEach(x=>{
+          x.classList.toggle('active', x===t);
+          x.setAttribute('aria-selected', x===t ? 'true':'false');
+        });
+        resetZoom();
+      });
+    }
+
+    /* -------- CTA в таббаре -------- */
+    function showAddCTA(){
+      const needPick = needSize && !size;
+      window.setTabbarCTA?.({
+        id: 'ctaAdd',
+        html: `<i data-lucide="shopping-bag"></i><span>${needPick ? 'Выберите размер' : 'Добавить в корзину&nbsp;|&nbsp;'+priceFmt(p.price)}</span>`,
+        onClick(){
+          if (needSize && !size){
+            document.getElementById('sizes')?.scrollIntoView({ behavior:'smooth', block:'center' });
+            return;
+          }
+          addToCart(p, size, color, 1);
+          showInCartCTAs();
+        }
+      });
+      const btn = document.getElementById('ctaAdd');
+      if (btn) btn.disabled = needPick;
+    }
+
+    function showInCartCTAs(){
+      window.setTabbarCTAs?.(
+        { html:`<i data-lucide="x"></i><span>Убрать из корзины</span>`,
+          onClick(){ removeLineFromCart(p.id, size||null, color||null); showAddCTA(); } },
+        { html:`<i data-lucide="shopping-bag"></i><span>Перейти в корзину</span>`,
+          onClick(){ location.hash = '#/cart'; } }
+      );
+    }
+
+    function refreshCTAByState(){
+      if (needSize && !size){ showAddCTA(); return; }
+      if (isInCart(p.id, size||null, color||null)) showInCartCTAs(); else showAddCTA();
+    }
+    refreshCTAByState();
+
+    /* -------- Зум -------- */
+    ensureZoomOverlay();
+    initZoomableInPlace(mainImg);
+    document.querySelectorAll('img.zoomable').forEach(img=>{
+      img.addEventListener('click', ()=> openZoomOverlay(img.src));
+    });
+    function resetZoom(){ if (!mainImg) return; mainImg.style.transform=''; mainImg.dataset.zoom='1'; }
+
+    /* -------- Диагностика (опционально) -------- */
+    if (PHDBG.enabled) PHDBG.init();
+
+    /* -------- Авто-деактивация фикс-хедера при уходе -------- */
+    const _onHashChange = () => {
+      const h = String(location.hash || '');
+      const leavingProduct = !h.startsWith('#/product/') && !h.startsWith('#/p/');
+      if (leavingProduct) {
+        deactivateProductFixHeader();
+        window.removeEventListener('hashchange', _onHashChange);
+        window.removeEventListener('fav:changed', onFavSync);
+      }
+    };
+    window.addEventListener('hashchange', _onHashChange);
+
+    // Дождаться первичной загрузки главного кадра (или таймаут) внутри лоадера
+    await waitImageLoad(document.getElementById('mainImg'), 1200);
+
+    // Сообщим, что экран готов (важно для второго хедера)
+    try {
+      window.dispatchEvent(new CustomEvent('view:product-mounted', { detail: { id: p.id } }));
+    } catch {}
+  }, 'Загружаем товар…'); // подпись лоадера
 }
 
-/* ===== карточки «Похожие» — используем шаблон #product-card (как в каталоге) ===== */
+/* ===== карточки «Похожие» — ленивые картинки ===== */
 function drawRelatedCards(list){
   const grid = document.getElementById('relatedGrid');
   if (!grid) return;
@@ -619,11 +662,16 @@ function drawRelatedCards(list){
     const t = document.getElementById('product-card');
     if (t && t.content?.firstElementChild){
       const node = t.content.firstElementChild.cloneNode(true);
-
       node.href = `#/product/${p.id}`;
 
       const im = node.querySelector('img');
-      if (im){ im.src = p.images?.[0] || ''; im.alt = p.title; }
+      if (im){
+        im.classList.add('lazy');
+        im.src = BLANK;
+        im.setAttribute('data-src', p.images?.[0] || '');
+        im.alt = p.title;
+        lazyifyImg(im);
+      }
 
       const titleEl = node.querySelector('.title');
       if (titleEl) titleEl.textContent = p.title;
@@ -651,7 +699,7 @@ function drawRelatedCards(list){
       a.href = `#/product/${p.id}`;
       a.className = 'card';
       a.innerHTML = `
-        <img src="${p.images?.[0]||''}" alt="${escapeHtml(p.title)}">
+        <img class="lazy" src="${BLANK}" data-src="${p.images?.[0]||''}" alt="${escapeHtml(p.title)}">
         <div class="title">${escapeHtml(p.title)}</div>
         <div class="price">${priceFmt(p.price)}</div>
       `;
@@ -660,6 +708,9 @@ function drawRelatedCards(list){
   }
 
   grid.appendChild(frag);
+  // Подписываем все ленивые изображения в блоке «Похожие»
+  grid.querySelectorAll('img.lazy[data-src]').forEach(lazyifyImg);
+
   window.lucide?.createIcons && lucide.createIcons();
 }
 

@@ -1,13 +1,17 @@
 // src/components/Cart.js
-import { state, persistCart, updateCartBadge } from '../core/state.js';
+import {
+  state,
+  persistCart,
+  updateCartBadge,
+  persistProfile,
+  getUID
+} from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 import { addOrder } from '../core/orders.js';
 import { getPayRequisites } from '../core/payments.js';
-import { persistProfile } from '../core/state.js';
-import { getUID } from '../core/state.js';
-// ⚠️ Убрали импорт ../core/botNotify.js, чтобы не ломать запуск при отсутствии модуля.
-// Делаем безопасные заглушки (если в проекте есть окно BotNotify — используем его).
+
+// ⚠️ Убрали прямой импорт ../core/botNotify.js — используем безопасные заглушки.
 const notifyReferralJoined = (uid, payload) => {
   try { window.BotNotify?.notifyReferralJoined?.(uid, payload); } catch {}
 };
@@ -18,7 +22,7 @@ const notifyCashbackMatured = (uid, payload) => {
   try { window.BotNotify?.notifyCashbackMatured?.(uid, payload); } catch {}
 };
 
-// 🔄 новее: показываем серверный баланс лояльности
+// 🔄 Баланс лояльности
 import { fetchMyLoyalty, getLocalLoyalty } from '../core/loyalty.js';
 import { ScrollReset } from '../core/scroll-reset.js';
 
@@ -48,12 +52,11 @@ function ensureDraftOrderId(){
   let id = sessionStorage.getItem(KEY_DRAFT_ORDER_ID());
   if (!id){
     const uid = String(getUID?.() || 'guest');
-    id = `${uid}_${Date.now()}`; // детерминированно в рамках попытки
+    id = `${uid}_${Date.now()}`;
     sessionStorage.setItem(KEY_DRAFT_ORDER_ID(), id);
   }
   return id;
 }
-/** Сбросить текущий idempotency ключ (после успеха) */
 function clearDraftOrderId(){
   sessionStorage.removeItem(KEY_DRAFT_ORDER_ID());
 }
@@ -72,12 +75,12 @@ function clearDraftPublicId(){
 }
 /** Короткий id: base36-время + 2-символьная контрольная сумма */
 function makePublicId(uid=''){
-  const ts = Date.now().toString(36).toUpperCase(); // ~8 символов
+  const ts = Date.now().toString(36).toUpperCase();
   const salt = String(uid||'').slice(-3);
   const raw = ts + salt;
   const sum = [...raw].reduce((a,c)=> a + c.charCodeAt(0), 0) & 0xFF;
-  const chk = sum.toString(36).toUpperCase().padStart(2,'0'); // 2 символа
-  return ts + chk; // итого 8–10 символов, например "L7Q2F4H3"
+  const chk = sum.toString(36).toUpperCase().padStart(2,'0');
+  return ts + chk;
 }
 
 /* ===================== Персональное локальное хранилище ===================== */
@@ -114,7 +117,6 @@ function settleMatured(){
   if (changed){
     w.pending = keep;
     writeWallet(w);
-    // In-app
     try{
       const uid = getUID?.() || 'guest';
       postAppNotif(uid, {
@@ -123,7 +125,6 @@ function settleMatured(){
         sub:`+${maturedSum.toLocaleString('ru-RU')} баллов — используйте при оформлении заказа.`,
       });
     }catch{}
-    // Бот
     try{
       notifyCashbackMatured(getUID?.(), { text: `✅ Кэшбек доступен: +${maturedSum.toLocaleString('ru-RU')} баллов. Жмём «Перейти к оплате».` });
     }catch{}
@@ -164,7 +165,7 @@ function markFirstOrderDone(){
   writeRefProfile(rp);
 }
 
-/* ====== Начисление рефереру (инвайтеру) + уведомления (локально; при серверной модели — не используется) ====== */
+/* ====== Начисление рефереру (локальная модель) ====== */
 function addReferrerPendingIfAny(paidAmount, orderId){
   try{
     const me = getUID?.() || '';
@@ -173,24 +174,20 @@ function addReferrerPendingIfAny(paidAmount, orderId){
     if (!inviter || inviter === String(me)) return;
 
     // ограничения по антифроду: лимит уникальных рефералов/мес у инвайтера
-    const monthKey = new Date().toISOString().slice(0,7); // YYYY-MM
+    const monthKey = new Date().toISOString().slice(0,7);
     const INV_KEY = `ref_control__${inviter}`;
     let inv = {};
     try{ inv = JSON.parse(localStorage.getItem(INV_KEY) || '{}'); }catch{ inv={}; }
     const setKey = `set_${monthKey}`;
     const whoSet = new Set(Array.isArray(inv[setKey]) ? inv[setKey] : []);
 
-    // признак «новый реферал для этого месяца»
     const isNewThisMonth = !whoSet.has(me);
 
     if (!whoSet.has(me) && whoSet.size >= 10){
-      // лимит новых рефералов/мес достигнут → просто выходим, реферер не получает
       return;
     }
-    // фиксируем «этот реферал учтён»
     if (!whoSet.has(me)){ whoSet.add(me); inv[setKey] = [...whoSet]; localStorage.setItem(INV_KEY, JSON.stringify(inv)); }
 
-    // уведомление инвайтеру о новом реферале (один раз/месяц на UID)
     if (isNewThisMonth){
       postAppNotif(inviter, {
         icon:'users',
@@ -200,7 +197,6 @@ function addReferrerPendingIfAny(paidAmount, orderId){
       notifyReferralJoined(inviter, { text: `🎉 Новый реферал: #${me}. Продолжаем копить кэшбек!` });
     }
 
-    // собственно начисление 5% рефереру (pending 24ч)
     const pts = Math.floor(Number(paidAmount||0) * REFERRER_RATE);
     if (pts > 0){
       const mk = (base)=> `${base}__${inviter}`;
@@ -211,7 +207,6 @@ function addReferrerPendingIfAny(paidAmount, orderId){
       w.pending.push({ id:`r_${Date.now()}`, pts, reason:`Заказ реферала #${getUID?.()||'-'}`, orderId, tsUnlock: Date.now()+POINTS_MATURITY_MS });
       localStorage.setItem(mk('points_wallet'), JSON.stringify(w));
 
-      // уведомления: «начислено 5% (ожидает 24ч)»
       postAppNotif(inviter, {
         icon:'coins',
         title:'Кэшбек от заказа реферала',
@@ -228,7 +223,6 @@ const OP_CHAT_URL = 'https://t.me/evliseorder';
 function forceTop(){
   try{ document.activeElement?.blur?.(); }catch{}
   const se = document.scrollingElement || document.documentElement;
-  // двойной выстрел + rAF помогает против «упругости» в WebView
   window.scrollTo(0, 0);
   se.scrollTop = 0;
   requestAnimationFrame(()=>{ window.scrollTo(0, 0); se.scrollTop = 0; });
@@ -241,17 +235,14 @@ function keepCartOnTopWhileLoading(root){
   const imgs = root.querySelectorAll('img');
 
   imgs.forEach(img => {
-    // 1) Если изображение уже загружено из кэша — сразу фиксируем верх
     if (img.complete && img.naturalWidth > 0) {
       if (stillCart()) forceTop();
       return;
     }
-    // 2) Иначе — один раз после загрузки
     const onLoad = () => { if (stillCart()) forceTop(); img.removeEventListener('load', onLoad); };
     img.addEventListener('load', onLoad, { once: true });
   });
 
-  // 3) Страховочный таймер, если браузер «схватил» размер позже
   setTimeout(()=>{ if (stillCart()) forceTop(); }, 250);
 }
 
@@ -259,7 +250,7 @@ export async function renderCart(){
   // Сразу поднимаем страницу вверх перед тяжёлым DOM
   ScrollReset.request();
 
-  // Всегда тянем свежий серверный баланс перед рендером (через лоадер)
+  // Всегда тянем свежий серверный баланс перед рендером (через мягкий лоадер)
   try {
     await Loader.wrap(() => fetchMyLoyalty(), 'Обновляем баланс…');
   } catch {
@@ -284,7 +275,7 @@ export async function renderCart(){
         Корзина
       </div>
       <section class="checkout"><div class="cart-sub">Корзина пуста</div></section>`;
-    window.lucide?.createIcons && lucide.createIcons();
+    try { window.lucide?.createIcons?.(); } catch {}
     document.getElementById('cartBack')?.addEventListener('click', ()=>history.back());
     ScrollReset.request();
     keepCartOnTopWhileLoading(v);
@@ -295,12 +286,12 @@ export async function renderCart(){
   // --- НЕ ПУСТО: готовим данные для основного шаблона ---
   const totalRaw = items.reduce((s,x)=> s + x.qty * x.product.price, 0);
 
-  // адреса (безопасно, если state.addresses ещё не успел подтянуться)
+  // адреса
   const addressesList = state.addresses?.list || [];
   const defaultAddrId = state.addresses?.defaultId;
   const ad = addressesList.find(a=>a.id===defaultAddrId) || null;
 
-  // списание баллов: лимиты и черновик
+  // списание баллов
   const canRedeemMaxByShare = Math.floor(totalRaw * MAX_DISCOUNT_SHARE);
   let availablePoints = Number((getLocalLoyalty()||{}).available || 0);
   let redeemMax = Math.max(0, Math.min(canRedeemMaxByShare, availablePoints, MAX_REDEEM_POINTS));
@@ -308,7 +299,7 @@ export async function renderCart(){
   const draft = Number(sessionStorage.getItem(KEY_REDEEM_DRAFT())||0) | 0;
   const redeemInit = Math.max(0, Math.min(redeemMax, draft));
 
-  // ТЕПЕРЬ — основной шаблон (как у тебя), уже ВНЕ ветки "пустая корзина"
+  // Основной шаблон
   v.innerHTML = `
   <style>/* ... твои стили ... */</style>
 
@@ -433,7 +424,7 @@ export async function renderCart(){
     <!-- /FAQ -->
   </section>`;
 
-  window.lucide?.createIcons && lucide.createIcons();
+  try { window.lucide?.createIcons?.(); } catch {}
 
   // и не даём подгрузке картинок сдвинуть страницу
   keepCartOnTopWhileLoading(v);
@@ -527,7 +518,7 @@ export async function renderCart(){
     }
   })();
 
-  // CTA «Оформить заказ» в таббаре (анти дабл-тап: кликаем не чаще раза в ~1.2s)
+  // CTA «Оформить заказ» в таббаре (анти дабл-тап ~1.2s)
   window.setTabbarCTA?.({
     html: `<i data-lucide="credit-card"></i><span>Оформить заказ</span>`,
     onClick(){
@@ -535,7 +526,6 @@ export async function renderCart(){
       __checkoutFlowBusy = true;
       setTimeout(()=>{ __checkoutFlowBusy = false; }, 1200);
 
-      // не даём открыть две модалки подряд
       if (document.body.dataset.checkoutModalOpen === '1') return;
 
       const { disc, pay, err } = recalc();
@@ -598,7 +588,7 @@ async function callLoyalty(op, data){
   let j = {};
   try { j = await resp.json(); } catch {}
 
-  // ⬇️ главное изменение: "пропускаем" полезные ошибки как обычный ответ
+  // "Пропускаем" полезные ошибки как обычный ответ
   if (!resp.ok) {
     if (j && (j.error === 'bot_mismatch' || j.error === 'initData signature invalid')) {
       return { ok:false, ...j };
@@ -615,7 +605,6 @@ function checkoutFlow(items, addr, totalRaw, bill){
   if (!items?.length){ toast('Корзина пуста'); return; }
   if (!addr){ toast('Укажите адрес доставки'); location.hash='#/account/addresses'; return; }
 
-  // защита: уже открыта модалка подтверждения?
   if (document.body.dataset.checkoutModalOpen === '1') return;
   document.body.dataset.checkoutModalOpen = '1';
 
@@ -691,7 +680,7 @@ function checkoutFlow(items, addr, totalRaw, bill){
     <button id="cfNext" class="pill primary">Далее к оплате</button>
   `;
   modal.classList.add('show');
-  window.lucide?.createIcons && lucide.createIcons();
+  try { window.lucide?.createIcons?.(); } catch {}
 
   // === выбор сохранённого адреса ===
   const changeLink = document.getElementById('cfChangeSaved');
@@ -719,7 +708,7 @@ function checkoutFlow(items, addr, totalRaw, bill){
     });
   }
 
-  // 🔧 фикс: безопасно вешаем обработчик на крестик модалки
+  // 🔧 фикс: обработчики
   const mc1 = document.getElementById('modalClose'); if (mc1) mc1.onclick = close;
   document.getElementById('cfCancel')?.addEventListener('click', close);
   document.getElementById('cfNext')?.addEventListener('click', ()=>{
@@ -757,18 +746,17 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
   const mt = document.getElementById('modalTitle');
   const ma = document.getElementById('modalActions');
 
-  // защита: помечаем «модалка открыта» и снимем флаг при закрытии
   document.body.dataset.checkoutModalOpen = '1';
 
   const pay = getPayRequisites();
 
-  // переменные для файла чека (предпросмотр/сжатие)
-  let shotDataUrl = '';   // data:image/jpeg;base64,...
+  // переменные для файла чека
+  let shotDataUrl = '';
   let shotBusy = false;
 
-  // idempotency: закрепляем orderId на всю попытку оформления, используем повторно при ретраях
+  // idempotency: закрепляем orderId на всю попытку оформления
   const orderId  = ensureDraftOrderId();
-  const publicId = ensureDraftPublicId(); // короткий ID для пользователя
+  const publicId = ensureDraftPublicId();
 
   mt.textContent = 'Оплата заказа';
   mb.innerHTML = `
@@ -791,7 +779,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
         <div>
           <div class="note-title">Перевод на карту</div>
 
-          <!-- Номер карты + ИКОНКА копирования в одной строке -->
+          <!-- Номер карты + ИКОНКА копирования -->
           <div class="copy-line" style="margin-top:4px">
             <div id="cardNumber" class="note-sub mono" style="user-select:all">${escapeHtml(pay.cardNumber)}</div>
             <button id="copyCardBtn" class="square-btn" type="button" aria-label="Скопировать номер" title="Скопировать номер" style="width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center">
@@ -829,7 +817,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
     <button id="payDone" class="pill primary">Подтвердить оплату</button>
   `;
   modal.classList.add('show');
-  window.lucide?.createIcons && lucide.createIcons();
+  try { window.lucide?.createIcons?.(); } catch {}
 
   // Копирование номера карты
   const copyBtn = document.getElementById('copyCardBtn');
@@ -857,10 +845,10 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
     if (ok){
       const icon = copyBtn.querySelector('i[data-lucide]');
       const prevIcon = icon?.getAttribute('data-lucide') || 'copy';
-      if (icon){ icon.setAttribute('data-lucide','check'); window.lucide?.createIcons && lucide.createIcons(); }
+      if (icon){ icon.setAttribute('data-lucide','check'); try{ window.lucide?.createIcons?.(); }catch{} }
       if (copyHint) copyHint.style.display = '';
       setTimeout(()=>{
-        if (icon){ icon.setAttribute('data-lucide', prevIcon); window.lucide?.createIcons && lucide.createIcons(); }
+        if (icon){ icon.setAttribute('data-lucide', prevIcon); try{ window.lucide?.createIcons?.(); }catch{} }
         if (copyHint) copyHint.style.display = 'none';
       }, 1400);
     }
@@ -902,7 +890,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
 
   clearBtn?.addEventListener('click', ()=>{
     clearShot();
-    fileInput.value = '';
+    if (fileInput) fileInput.value = '';
   });
 
   function clearShot(){
@@ -947,7 +935,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       const toSpend = Number(bill?.redeem || 0) | 0;
       let reserved = false;
 
-      // перед блоком "РЕЗЕРВ СПИСАНИЯ БАЛЛОВ"
+      // Перед резервом проверим Mini App окружение
       const tg = window?.Telegram?.WebApp;
       if (toSpend > 0 && !tg?.initData) {
         toast('Списать баллы можно только внутри Telegram-приложения. Откройте магазин через Telegram и повторите.');
@@ -956,10 +944,8 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
         return;
       }
 
-      // --- РЕЗЕРВ СПИСАНИЯ БАЛЛОВ (loyalty.reserveRedeem) — через лоадер ---
-      // На всякий случай подтягиваем свежие лимиты/баланс перед резервом (устраняет гонку)
+      // --- РЕЗЕРВ СПИСАНИЯ БАЛЛОВ ---
       try { await fetchMyLoyalty(); } catch {}
-
       try {
         if (toSpend > 0) {
           const r2 = await Loader.wrap(() => callLoyalty('reserveRedeem', {
@@ -985,24 +971,23 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
             __orderSubmitBusy = false;
             return;
           }
-
-          reserved = true; // резерв прошёл
+          reserved = true;
         }
-      } catch (e) {
+      } catch {
         toast('Не удалось связаться с сервером лояльности');
         setSubmitDisabled(false);
         __orderSubmitBusy = false;
         return;
       }
-      // --- КОНЕЦ БЛОКА РЕЗЕРВА ---
+      // --- КОНЕЦ РЕЗЕРВА ---
 
-      // Создание заказа — через лоадер
+      // Создание заказа
       let createdId = null;
       try{
         const first = items[0];
         createdId = await Loader.wrap(() => addOrder({
           id: orderId,
-          shortId: publicId,           // ← короткий публичный ID
+          shortId: publicId,
           cart: items.map(x=>({
             id: x.product.id,
             title: x.product.title,
@@ -1016,7 +1001,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
           size: first?.size || null,
           color: first?.color || null,
           link: first?.product?.id ? `#/product/${first.product.id}` : '',
-          total: toPay,                  // к оплате с учётом списания
+          total: toPay,
           currency: 'UZS',
           address,
           phone,
@@ -1028,7 +1013,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
           accepted: false
         }), 'Создаём заказ…');
       }catch(e){
-        // если заказ не создался — отменяем резерв (с лоадером для понятности)
+        // если заказ не создался — отменяем резерв
         if (reserved){
           try{ await Loader.wrap(() => callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'cancel' }), 'Откатываем баллы…'); }catch{}
         }
@@ -1036,13 +1021,12 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
         setSubmitDisabled(false); __orderSubmitBusy = false; return;
       }
 
-      // Финализируем списание и начисляем pending кешбэк/реф (через лоадер)
+      // Финализируем списание
       try{
         if (toSpend > 0 && reserved){
           await Loader.wrap(() => callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'commit' }), 'Финализируем оплату…');
         }
       }catch(e){
-        // откатываем резерв если не удалось финализировать/начислить (с лоадером)
         if (reserved){
           try{ await Loader.wrap(() => callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'cancel' }), 'Откатываем баллы…'); }catch{}
         }
@@ -1050,15 +1034,14 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
         setSubmitDisabled(false); __orderSubmitBusy = false; return;
       }
 
-      // Локальный кошелёк: больше НЕ трогаем (списание/начисление ведёт сервер)
       // Очищаем корзину и показываем подтверждение
       state.cart.items = [];
       persistCart(); updateCartBadge();
 
       close();
-      showOrderConfirmationModal(publicId); // показываем короткий ID пользователю
+      showOrderConfirmationModal(publicId);
 
-      // Сбросить idempotency ключи и черновик списания — следующая покупка получит новые
+      // Сбросить idempotency и черновики
       clearDraftOrderId();
       clearDraftPublicId();
       try{ sessionStorage.removeItem(KEY_REDEEM_DRAFT()); }catch{}
@@ -1075,7 +1058,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
 
   function close(){
     modal.classList.remove('show');
-    delete document.body.dataset.checkoutModalOpen; // ← снимаем флаг модалки
+    delete document.body.dataset.checkoutModalOpen;
   }
 }
 
@@ -1139,9 +1122,8 @@ function showOrderConfirmationModal(displayId){
   `;
 
   modal.classList.add('show');
-  window.lucide?.createIcons && lucide.createIcons();
+  try { window.lucide?.createIcons?.(); } catch {}
 
-  // 🔧 фикс: безопасно вешаем обработчик на крестик модалки
   const mc3 = document.getElementById('modalClose'); if (mc3) mc3.onclick = close;
   document.getElementById('okOrders')?.addEventListener('click', ()=>{
     close();

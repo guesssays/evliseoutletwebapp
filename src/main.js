@@ -28,6 +28,7 @@ import { renderFAQ } from './components/FAQ.js';
 import { renderNotifications } from './components/Notifications.js';
 import { ScrollReset } from './core/scroll-reset.js';
 import './core/navLoader.js';
+import './ui/icons-patch.js';
 
 // Вынесенный фикс-хедер товара
 import { deactivateProductFixHeader } from './components/ProductFixHeader.js';
