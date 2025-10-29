@@ -1,690 +1,2738 @@
 {
   "products": [
     {
-      "id": "14085517292716705",
+      "id": "14091752084078242",
+      "slug": "kurtka-metra",
+      "title": "Куртка MetrA",
+      "price": 799000,
+      "images": [
+        "data/wearimages/kurtka-metra/kurtka-metra-1.jpg",
+        "data/wearimages/kurtka-metra/kurtka-metra-2.jpg",
+        "data/wearimages/kurtka-metra/kurtka-metra-3.jpg",
+        "data/wearimages/kurtka-metra/kurtka-metra-4.jpg",
+        "data/wearimages/kurtka-metra/kurtka-metra-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/kurtka-metra/kurtka-metra-2.jpg",
+        "data/wearimages/kurtka-metra/kurtka-metra-3.jpg",
+        "data/wearimages/kurtka-metra/kurtka-metra-4.jpg",
+        "data/wearimages/kurtka-metra/kurtka-metra-5.jpg"
+      ],
+      "description": "Куртка MetrA\n\nРазмеры: M, L, XL, 2XL\n\nЦвета: черный, зелёный, фиолетовый \n\nЦена: 799.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный",
+        "Зелёный",
+        "Фиолетовый"
+      ],
+      "sizes": [
+        "M",
+        "L",
+        "XL",
+        "2XL"
+      ],
+      "category": "Куртки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14091751441210906",
+      "slug": "pukhovik-beaster",
+      "title": "Пуховик Beaster",
+      "price": 399000,
+      "images": [
+        "data/wearimages/pukhovik-beaster/pukhovik-beaster-1.jpg",
+        "data/wearimages/pukhovik-beaster/pukhovik-beaster-2.jpg",
+        "data/wearimages/pukhovik-beaster/pukhovik-beaster-3.jpg",
+        "data/wearimages/pukhovik-beaster/pukhovik-beaster-4.jpg",
+        "data/wearimages/pukhovik-beaster/pukhovik-beaster-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/pukhovik-beaster/pukhovik-beaster-2.jpg",
+        "data/wearimages/pukhovik-beaster/pukhovik-beaster-3.jpg",
+        "data/wearimages/pukhovik-beaster/pukhovik-beaster-4.jpg",
+        "data/wearimages/pukhovik-beaster/pukhovik-beaster-5.jpg"
+      ],
+      "description": "Пуховик Beaster \n\nРазмеры: S, M, L, XL\n\nЦвета: синий, жёлтый \n\nЦена: 399.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Синий",
+        "Жёлтый"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "category": "Новинки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14091750960004026",
+      "slug": "khudi-ids",
+      "title": "Худи IDS",
+      "price": 329000,
+      "images": [
+        "data/wearimages/khudi-ids/khudi-ids-1.jpg",
+        "data/wearimages/khudi-ids/khudi-ids-2.jpg",
+        "data/wearimages/khudi-ids/khudi-ids-3.jpg",
+        "data/wearimages/khudi-ids/khudi-ids-4.jpg",
+        "data/wearimages/khudi-ids/khudi-ids-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/khudi-ids/khudi-ids-2.jpg",
+        "data/wearimages/khudi-ids/khudi-ids-3.jpg",
+        "data/wearimages/khudi-ids/khudi-ids-4.jpg",
+        "data/wearimages/khudi-ids/khudi-ids-5.jpg"
+      ],
+      "description": "Худи IDS\n\nРазмеры:  M, L, XL, 2XL\n\nЦвета: черный\n\nЦена: 329.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный"
+      ],
+      "sizes": [
+        "M",
+        "L",
+        "XL",
+        "2XL"
+      ],
+      "category": "Худи",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [
+        "data/wearimages/khudi-ids/khudi-ids-5.jpg"
+      ],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089064189921202",
+      "slug": "khudi-erd",
+      "title": "Худи ERD",
+      "price": 309000,
+      "images": [
+        "data/wearimages/khudi-erd/khudi-erd-1.jpg",
+        "data/wearimages/khudi-erd/khudi-erd-2.jpg",
+        "data/wearimages/khudi-erd/khudi-erd-3.jpg",
+        "data/wearimages/khudi-erd/khudi-erd-4.jpg",
+        "data/wearimages/khudi-erd/khudi-erd-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/khudi-erd/khudi-erd-2.jpg",
+        "data/wearimages/khudi-erd/khudi-erd-3.jpg",
+        "data/wearimages/khudi-erd/khudi-erd-4.jpg",
+        "data/wearimages/khudi-erd/khudi-erd-5.jpg"
+      ],
+      "description": "Худи ERD\n\nРазмеры: S, M, L, XL, 2XL, 3XL\n\nЦвета: черный\n\nЦена: 309.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
+      "category": "Худи",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [
+        "data/wearimages/khudi-erd/khudi-erd-5.jpg"
+      ],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089063450503850",
+      "slug": "kurtka-mixgora",
+      "title": "Куртка MIXGORA",
+      "price": 399000,
+      "images": [
+        "data/wearimages/kurtka-mixgora/kurtka-mixgora-1.jpg",
+        "data/wearimages/kurtka-mixgora/kurtka-mixgora-2.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/kurtka-mixgora/kurtka-mixgora-2.jpg"
+      ],
+      "description": "Куртка MIXGORA \n\nРазмеры: M, L, XL, 2XL\n\nЦвета: серый \n\nЦена: 399.000 сум\n\nФото нет, сетки нет\n\nреальных фото нет",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Серый"
+      ],
+      "sizes": [
+        "M",
+        "L",
+        "XL",
+        "2XL"
+      ],
+      "category": "Куртки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089061374793362",
+      "slug": "dzhinsy-y2k",
+      "title": "Джинсы Y2K",
+      "price": 299000,
+      "images": [
+        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-1.jpg",
+        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-2.jpg",
+        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-3.jpg",
+        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-4.jpg",
+        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-2.jpg",
+        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-3.jpg",
+        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-4.jpg",
+        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-5.jpg"
+      ],
+      "description": "Джинсы Y2K \n\nРазмеры: S, M, L, XL, 2XL\n\nЦвета: черный, синий, розовый\n\nЦена: 299.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный",
+        "Синий",
+        "Розовый"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL"
+      ],
+      "category": "Джинсы",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [
+        "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-5.jpg"
+      ],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089060373749058",
+      "slug": "kurtka-f1",
+      "title": "Куртка F1",
+      "price": 549000,
+      "images": [
+        "data/wearimages/kurtka-f1/kurtka-f1-1.jpg",
+        "data/wearimages/kurtka-f1/kurtka-f1-2.jpg",
+        "data/wearimages/kurtka-f1/kurtka-f1-3.jpg",
+        "data/wearimages/kurtka-f1/kurtka-f1-4.jpg",
+        "data/wearimages/kurtka-f1/kurtka-f1-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/kurtka-f1/kurtka-f1-2.jpg",
+        "data/wearimages/kurtka-f1/kurtka-f1-3.jpg",
+        "data/wearimages/kurtka-f1/kurtka-f1-4.jpg",
+        "data/wearimages/kurtka-f1/kurtka-f1-5.jpg"
+      ],
+      "description": "Куртка F1\n\nРазмеры: M, L, XL, 2XL\n\nЦвета: черный\n\nЦена: 549.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный"
+      ],
+      "sizes": [
+        "M",
+        "L",
+        "XL",
+        "2XL"
+      ],
+      "category": "Куртки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089059124915306",
+      "slug": "svitshot-maxdepy",
+      "title": "Свитшот Maxdepy",
+      "price": 329000,
+      "images": [
+        "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-1.jpg",
+        "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-2.jpg",
+        "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-3.jpg",
+        "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-4.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-2.jpg",
+        "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-3.jpg",
+        "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-4.jpg"
+      ],
+      "description": "Свитшот Maxdepy\n\nРазмеры: S, M, L, XL, 2XL, 3XL\n\nЦвета: черный, белый \n\nЦена: 329.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный",
+        "Белый"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
+      "category": "Свитшоты",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089057691789274",
+      "slug": "kurtka-jeans",
+      "title": "Куртка Jeans",
+      "price": 409000,
+      "images": [
+        "data/wearimages/kurtka-jeans/kurtka-jeans-1.jpg",
+        "data/wearimages/kurtka-jeans/kurtka-jeans-2.jpg",
+        "data/wearimages/kurtka-jeans/kurtka-jeans-3.jpg",
+        "data/wearimages/kurtka-jeans/kurtka-jeans-4.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/kurtka-jeans/kurtka-jeans-2.jpg",
+        "data/wearimages/kurtka-jeans/kurtka-jeans-3.jpg",
+        "data/wearimages/kurtka-jeans/kurtka-jeans-4.jpg"
+      ],
+      "description": "Куртка Jeans\n\nРазмеры: S, M, L, XL, 2XL\n\nЦвета: синий \n\nЦена: 409.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Синий"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL"
+      ],
+      "category": "Куртки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [
+        "data/wearimages/kurtka-jeans/kurtka-jeans-4.jpg"
+      ],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089056726479346",
+      "slug": "kedy-xavier3",
+      "title": "Кеды Xavier3",
+      "price": 459000,
+      "images": [
+        "data/wearimages/kedy-xavier3/kedy-xavier3-1.jpg",
+        "data/wearimages/kedy-xavier3/kedy-xavier3-2.jpg",
+        "data/wearimages/kedy-xavier3/kedy-xavier3-3.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/kedy-xavier3/kedy-xavier3-2.jpg",
+        "data/wearimages/kedy-xavier3/kedy-xavier3-3.jpg"
+      ],
+      "description": "Кеды Xavier3 \n\nРазмеры: 36-44\n\nЦвета: бежевый, жёлтый , синий, бордовый\n\nЦена: 459.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Бежевый",
+        "Жёлтый",
+        "Синий",
+        "Бордовый"
+      ],
+      "sizes": [
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44"
+      ],
+      "category": "Кеды",
+      "sizeChartType": "shoes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "shoes",
+        "headers": [
+          "EU",
+          "Длина стопы (мм)"
+        ],
+        "rows": [
+          [
+            "40",
+            "250"
+          ],
+          [
+            "41",
+            "255"
+          ],
+          [
+            "42",
+            "260"
+          ],
+          [
+            "43",
+            "265"
+          ],
+          [
+            "44",
+            "270"
+          ],
+          [
+            "45",
+            "280"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089055591019258",
+      "slug": "kozhanka-dvukhstoronka",
+      "title": "Кожанка Двухсторонка",
+      "price": 649000,
+      "images": [
+        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-1.jpg",
+        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-2.jpg",
+        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-3.jpg",
+        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-4.jpg",
+        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-2.jpg",
+        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-3.jpg",
+        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-4.jpg",
+        "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-5.jpg"
+      ],
+      "description": "Кожанка Двухсторонка\n\nРазмеры: M, L, XL\n\nЦвета: черный\n\nЦена: 649.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный"
+      ],
+      "sizes": [
+        "M",
+        "L",
+        "XL"
+      ],
+      "category": "Новинки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089054715229746",
+      "slug": "bomber-greamreaper",
+      "title": "Бомбер GreamReaper",
+      "price": 499000,
+      "images": [
+        "data/wearimages/bomber-greamreaper/bomber-greamreaper-1.jpg",
+        "data/wearimages/bomber-greamreaper/bomber-greamreaper-2.jpg",
+        "data/wearimages/bomber-greamreaper/bomber-greamreaper-3.jpg",
+        "data/wearimages/bomber-greamreaper/bomber-greamreaper-4.jpg",
+        "data/wearimages/bomber-greamreaper/bomber-greamreaper-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/bomber-greamreaper/bomber-greamreaper-2.jpg",
+        "data/wearimages/bomber-greamreaper/bomber-greamreaper-3.jpg",
+        "data/wearimages/bomber-greamreaper/bomber-greamreaper-4.jpg",
+        "data/wearimages/bomber-greamreaper/bomber-greamreaper-5.jpg"
+      ],
+      "description": "Бомбер GreamReaper\n\nРазмеры: M, L, XL, 2XL, 3XL\n\nЦвета: черный\n\nЦена: 499.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный"
+      ],
+      "sizes": [
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
+      "category": "Новинки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089053831090978",
+      "slug": "sumka-god-s-plan",
+      "title": "Сумка God's Plan",
+      "price": 269000,
+      "images": [
+        "data/wearimages/sumka-god-s-plan/sumka-god-s-plan-1.jpg",
+        "data/wearimages/sumka-god-s-plan/sumka-god-s-plan-2.jpg",
+        "data/wearimages/sumka-god-s-plan/sumka-god-s-plan-3.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/sumka-god-s-plan/sumka-god-s-plan-2.jpg",
+        "data/wearimages/sumka-god-s-plan/sumka-god-s-plan-3.jpg"
+      ],
+      "description": "Сумка God's Plan\n\nРазмеры: \n\nЦвета: белый, розовый \n\nЦена: 269.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Белый",
+        "Розовый"
+      ],
+      "sizes": [
+        "ЦВЕТА: БЕЛЫЙ",
+        "РОЗОВЫЙ"
+      ],
+      "category": "Сумки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089052365673594",
+      "slug": "kurtka-pukhovik",
+      "title": "Куртка Пуховик",
+      "price": 549000,
+      "images": [
+        "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-1.jpg",
+        "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-2.jpg",
+        "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-3.jpg",
+        "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-4.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-2.jpg",
+        "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-3.jpg",
+        "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-4.jpg"
+      ],
+      "description": "Куртка Пуховик \n\nРазмеры: S, M, L, XL\n\nЦвета: черный\n\nЦена: 549.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "category": "Куртки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089051360497450",
+      "slug": "botinki-newrock",
+      "title": "Ботинки NewRock",
+      "price": 849000,
+      "images": [
+        "data/wearimages/botinki-newrock/botinki-newrock-1.jpg",
+        "data/wearimages/botinki-newrock/botinki-newrock-2.jpg",
+        "data/wearimages/botinki-newrock/botinki-newrock-3.jpg",
+        "data/wearimages/botinki-newrock/botinki-newrock-4.jpg",
+        "data/wearimages/botinki-newrock/botinki-newrock-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/botinki-newrock/botinki-newrock-2.jpg",
+        "data/wearimages/botinki-newrock/botinki-newrock-3.jpg",
+        "data/wearimages/botinki-newrock/botinki-newrock-4.jpg",
+        "data/wearimages/botinki-newrock/botinki-newrock-5.jpg"
+      ],
+      "description": "Ботинки NewRock\n\nРазмеры: 38-46\n\nЦвета: cерый, черный , фиолетовый\n\nЦена: 849.000 сум\n\nразмерная сетка от ньюроков",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Cерый",
+        "Черный",
+        "Фиолетовый"
+      ],
+      "sizes": [
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45",
+        "46"
+      ],
+      "category": "Ботинки",
+      "sizeChartType": "shoes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "shoes",
+        "headers": [
+          "EU",
+          "Длина стопы (мм)"
+        ],
+        "rows": [
+          [
+            "40",
+            "250"
+          ],
+          [
+            "41",
+            "255"
+          ],
+          [
+            "42",
+            "260"
+          ],
+          [
+            "43",
+            "265"
+          ],
+          [
+            "44",
+            "270"
+          ],
+          [
+            "45",
+            "280"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089050023885714",
+      "slug": "dzhinsy-baggy",
+      "title": "Джинсы Baggy",
+      "price": 349000,
+      "images": [
+        "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-1.jpg",
+        "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-2.jpg",
+        "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-3.jpg",
+        "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-4.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-2.jpg",
+        "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-3.jpg",
+        "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-4.jpg"
+      ],
+      "description": "Джинсы Baggy\n\nРазмеры: XS, S, M, L, XL, 2XL\n\nЦвета: синий\n\nЦена: 349.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Синий"
+      ],
+      "sizes": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL"
+      ],
+      "category": "Джинсы",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089049003497482",
+      "slug": "palto-osennee",
+      "title": "Пальто Осеннее",
+      "price": 549000,
+      "images": [
+        "data/wearimages/palto-osennee/palto-osennee-1.jpg",
+        "data/wearimages/palto-osennee/palto-osennee-2.jpg",
+        "data/wearimages/palto-osennee/palto-osennee-3.jpg",
+        "data/wearimages/palto-osennee/palto-osennee-4.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/palto-osennee/palto-osennee-2.jpg",
+        "data/wearimages/palto-osennee/palto-osennee-3.jpg",
+        "data/wearimages/palto-osennee/palto-osennee-4.jpg"
+      ],
+      "description": "Пальто Осеннее\n\nРазмеры: S, M, L, XL, 2XL, 3XL\n\nЦвета: черный, серый\n\nЦена: 549.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный",
+        "Серый"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
+      "category": "Новинки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089047933692530",
+      "slug": "lofery-classic",
+      "title": "Лоферы Classic",
+      "price": 399000,
+      "images": [
+        "data/wearimages/lofery-classic/lofery-classic-1.jpg",
+        "data/wearimages/lofery-classic/lofery-classic-2.jpg",
+        "data/wearimages/lofery-classic/lofery-classic-3.jpg",
+        "data/wearimages/lofery-classic/lofery-classic-4.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/lofery-classic/lofery-classic-2.jpg",
+        "data/wearimages/lofery-classic/lofery-classic-3.jpg",
+        "data/wearimages/lofery-classic/lofery-classic-4.jpg"
+      ],
+      "description": "Лоферы Classic \n\nРазмеры: 39-44\n\nЦвета: коричневый, бежевый\n\nЦена: 399.000 сум\n\nразмерной сетки нет",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Коричневый",
+        "Бежевый"
+      ],
+      "sizes": [
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44"
+      ],
+      "category": "Новинки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089046698319930",
+      "slug": "kozhanka-theblack",
+      "title": "Кожанка TheBlack",
+      "price": 469000,
+      "images": [
+        "data/wearimages/kozhanka-theblack/kozhanka-theblack-1.jpg",
+        "data/wearimages/kozhanka-theblack/kozhanka-theblack-2.jpg",
+        "data/wearimages/kozhanka-theblack/kozhanka-theblack-3.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/kozhanka-theblack/kozhanka-theblack-2.jpg",
+        "data/wearimages/kozhanka-theblack/kozhanka-theblack-3.jpg"
+      ],
+      "description": "Кожанка TheBlack\n\nРазмеры: S, M, L, XL\n\nЦвета: черный\n\nЦена: 469.000 сум\n\nразмерной сетки нет",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "category": "Новинки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [
+        "data/wearimages/kozhanka-theblack/kozhanka-theblack-3.jpg"
+      ],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089045582240474",
+      "slug": "palto-osennee-14089045582240474",
+      "title": "Пальто Осеннее",
+      "price": 569000,
+      "images": [
+        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-1.jpg",
+        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-2.jpg",
+        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-3.jpg",
+        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-4.jpg",
+        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-2.jpg",
+        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-3.jpg",
+        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-4.jpg",
+        "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-5.jpg"
+      ],
+      "description": "Пальто Осеннее\n\nРазмеры:  M, L, XL, 2XL, 3XL, 4XL, 5XL \n\nЦвета: черный, серый, бежевый\n\nЦена: 569.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный",
+        "Серый",
+        "Бежевый"
+      ],
+      "sizes": [
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL",
+        "4XL",
+        "5XL"
+      ],
+      "category": "Новинки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089044068253322",
+      "slug": "polo-coreevry",
+      "title": "Поло Coreevry",
+      "price": 369000,
+      "images": [
+        "data/wearimages/polo-coreevry/polo-coreevry-1.jpg",
+        "data/wearimages/polo-coreevry/polo-coreevry-2.jpg",
+        "data/wearimages/polo-coreevry/polo-coreevry-3.jpg",
+        "data/wearimages/polo-coreevry/polo-coreevry-4.jpg",
+        "data/wearimages/polo-coreevry/polo-coreevry-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/polo-coreevry/polo-coreevry-2.jpg",
+        "data/wearimages/polo-coreevry/polo-coreevry-3.jpg",
+        "data/wearimages/polo-coreevry/polo-coreevry-4.jpg",
+        "data/wearimages/polo-coreevry/polo-coreevry-5.jpg"
+      ],
+      "description": "Поло Coreevry\n\nРазмеры:  M, L, XL, 2XL, 3XL, 4XL \n\nЦвета: синий , зелёный, черный , бежевый\n\nЦена: 369.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Синий",
+        "Зелёный",
+        "Черный",
+        "Бежевый"
+      ],
+      "sizes": [
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL",
+        "4XL"
+      ],
+      "category": "Новинки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089041837821522",
+      "slug": "dzhinsy-meshkovatye",
+      "title": "Джинсы Мешковатые",
+      "price": 369000,
+      "images": [
+        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-1.jpg",
+        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-2.jpg",
+        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-3.jpg",
+        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-4.jpg",
+        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-2.jpg",
+        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-3.jpg",
+        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-4.jpg",
+        "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-5.jpg"
+      ],
+      "description": "Джинсы Мешковатые \n\nРазмеры: S, M, L, XL, 2XL, 3XL\n\nЦвета: синий\n\nЦена: 369.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Синий"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
+      "category": "Джинсы",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089036067180594",
+      "slug": "dzhinsy-onfire",
+      "title": "Джинсы OnFire",
+      "price": 369000,
+      "images": [
+        "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-1.jpg",
+        "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-2.jpg",
+        "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-3.jpg",
+        "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-4.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-2.jpg",
+        "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-3.jpg",
+        "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-4.jpg"
+      ],
+      "description": "Джинсы OnFire\n\nРазмеры: M, L, XL, 2XL, 3XL\n\nЦвета: черный, серый \n\nЦена: 369.000 сум\n\nРазмерная сетка от джинсы AstroBoy",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный",
+        "Серый"
+      ],
+      "sizes": [
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
+      "category": "Джинсы",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089034423513306",
+      "slug": "krosovki-styrsyn",
+      "title": "Кросовки Styrsyn",
+      "price": 549000,
+      "images": [
+        "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-1.jpg",
+        "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-2.jpg",
+        "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-3.jpg",
+        "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-4.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-2.jpg",
+        "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-3.jpg",
+        "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-4.jpg"
+      ],
+      "description": "Кросовки Styrsyn\n\nРазмеры: 36-44\n\nЦвета: черный\n\nЦена: 549.000 сум\n\nРазмерная сетка от ньюроков",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный"
+      ],
+      "sizes": [
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44"
+      ],
+      "category": "Новинки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089033130860018",
+      "slug": "shtany-stylish",
+      "title": "Штаны Stylish",
+      "price": 329000,
+      "images": [
+        "data/wearimages/shtany-stylish/shtany-stylish-1.jpg",
+        "data/wearimages/shtany-stylish/shtany-stylish-2.jpg",
+        "data/wearimages/shtany-stylish/shtany-stylish-3.jpg",
+        "data/wearimages/shtany-stylish/shtany-stylish-4.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/shtany-stylish/shtany-stylish-2.jpg",
+        "data/wearimages/shtany-stylish/shtany-stylish-3.jpg",
+        "data/wearimages/shtany-stylish/shtany-stylish-4.jpg"
+      ],
+      "description": "Штаны Stylish \n\nРазмеры: S, M, L, XL\n\nЦвета: серый \n\nЦена: 329.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Серый"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "category": "Штаны",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [
+        "data/wearimages/shtany-stylish/shtany-stylish-4.jpg"
+      ],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089031772780442",
+      "slug": "bomber-teplyi",
+      "title": "Бомбер теплый",
+      "price": 689000,
+      "images": [
+        "data/wearimages/bomber-teplyi/bomber-teplyi-1.jpg",
+        "data/wearimages/bomber-teplyi/bomber-teplyi-2.jpg",
+        "data/wearimages/bomber-teplyi/bomber-teplyi-3.jpg",
+        "data/wearimages/bomber-teplyi/bomber-teplyi-4.jpg",
+        "data/wearimages/bomber-teplyi/bomber-teplyi-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/bomber-teplyi/bomber-teplyi-2.jpg",
+        "data/wearimages/bomber-teplyi/bomber-teplyi-3.jpg",
+        "data/wearimages/bomber-teplyi/bomber-teplyi-4.jpg",
+        "data/wearimages/bomber-teplyi/bomber-teplyi-5.jpg"
+      ],
+      "description": "Бомбер теплый \n\nРазмеры: M, L, XL, 2XL, 3XL, 4XL \n\nЦвета: черный, зелёный, жёлтый \n\nЦена: 689.000 сум\n\nимеется утепленная версия и обычная",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный",
+        "Зелёный",
+        "Жёлтый"
+      ],
+      "sizes": [
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL",
+        "4XL"
+      ],
+      "category": "Новинки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089030494067394",
+      "slug": "kozhanka-snake",
+      "title": "Кожанка Snake",
+      "price": 549000,
+      "images": [
+        "data/wearimages/kozhanka-snake/kozhanka-snake-1.jpg",
+        "data/wearimages/kozhanka-snake/kozhanka-snake-2.jpg",
+        "data/wearimages/kozhanka-snake/kozhanka-snake-3.jpg",
+        "data/wearimages/kozhanka-snake/kozhanka-snake-4.jpg",
+        "data/wearimages/kozhanka-snake/kozhanka-snake-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/kozhanka-snake/kozhanka-snake-2.jpg",
+        "data/wearimages/kozhanka-snake/kozhanka-snake-3.jpg",
+        "data/wearimages/kozhanka-snake/kozhanka-snake-4.jpg",
+        "data/wearimages/kozhanka-snake/kozhanka-snake-5.jpg"
+      ],
+      "description": "Кожанка Snake\n\nРазмеры: M, L, XL, 2XL\n\nЦвета: черный\n\nЦена: 549.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный"
+      ],
+      "sizes": [
+        "M",
+        "L",
+        "XL",
+        "2XL"
+      ],
+      "category": "Новинки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089029623377282",
+      "slug": "kedy-venom",
+      "title": "Кеды Venom",
+      "price": 369000,
+      "images": [
+        "data/wearimages/kedy-venom/kedy-venom-1.jpg",
+        "data/wearimages/kedy-venom/kedy-venom-2.jpg",
+        "data/wearimages/kedy-venom/kedy-venom-3.jpg",
+        "data/wearimages/kedy-venom/kedy-venom-4.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/kedy-venom/kedy-venom-2.jpg",
+        "data/wearimages/kedy-venom/kedy-venom-3.jpg",
+        "data/wearimages/kedy-venom/kedy-venom-4.jpg"
+      ],
+      "description": "Кеды Venom\n\nРазмеры: 35-44\n\nЦвета: черный, белый, чёрно-белый \n\nЦена: 369.000 сум\n\nРазмерная сетка от ньюроков",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный",
+        "Белый",
+        "Чёрно-белый"
+      ],
+      "sizes": [
+        "35",
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44"
+      ],
+      "category": "Кеды",
+      "sizeChartType": "shoes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "shoes",
+        "headers": [
+          "EU",
+          "Длина стопы (мм)"
+        ],
+        "rows": [
+          [
+            "40",
+            "250"
+          ],
+          [
+            "41",
+            "255"
+          ],
+          [
+            "42",
+            "260"
+          ],
+          [
+            "43",
+            "265"
+          ],
+          [
+            "44",
+            "270"
+          ],
+          [
+            "45",
+            "280"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089027572942530",
+      "slug": "bomber-meam",
+      "title": "Бомбер Meam",
+      "price": 499000,
+      "images": [
+        "data/wearimages/bomber-meam/bomber-meam-1.jpg",
+        "data/wearimages/bomber-meam/bomber-meam-2.jpg",
+        "data/wearimages/bomber-meam/bomber-meam-3.jpg",
+        "data/wearimages/bomber-meam/bomber-meam-4.jpg",
+        "data/wearimages/bomber-meam/bomber-meam-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/bomber-meam/bomber-meam-2.jpg",
+        "data/wearimages/bomber-meam/bomber-meam-3.jpg",
+        "data/wearimages/bomber-meam/bomber-meam-4.jpg",
+        "data/wearimages/bomber-meam/bomber-meam-5.jpg"
+      ],
+      "description": "Бомбер Meam\n\nРазмеры: S,M, L, XL, 2XL, 3XL \n\nЦвета: черный, белый\n\nЦена: 499.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный",
+        "Белый"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
+      "category": "Новинки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089026748679914",
+      "slug": "bomber-fordream",
+      "title": "Бомбер ForDream",
+      "price": 599000,
+      "images": [
+        "data/wearimages/bomber-fordream/bomber-fordream-1.jpg",
+        "data/wearimages/bomber-fordream/bomber-fordream-2.jpg",
+        "data/wearimages/bomber-fordream/bomber-fordream-3.jpg",
+        "data/wearimages/bomber-fordream/bomber-fordream-4.jpg",
+        "data/wearimages/bomber-fordream/bomber-fordream-5.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/bomber-fordream/bomber-fordream-2.jpg",
+        "data/wearimages/bomber-fordream/bomber-fordream-3.jpg",
+        "data/wearimages/bomber-fordream/bomber-fordream-4.jpg",
+        "data/wearimages/bomber-fordream/bomber-fordream-5.jpg"
+      ],
+      "description": "Бомбер ForDream\n\nРазмеры: M, L, XL, 2XL, 3XL, 4XL, 5XL, 6XL, 7XL\n\nЦвета: черный, синий, зелёный \n\nЦена: 599.000 сум",
+      "material": "Хлопок/полиэстер",
+      "colors": [
+        "Черный",
+        "Синий",
+        "Зелёный"
+      ],
+      "sizes": [
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL",
+        "4XL",
+        "5XL",
+        "6XL",
+        "7XL"
+      ],
+      "category": "Новинки",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "14089025639578250",
       "slug": "khudi-ford",
-      "title": "Ford",
+      "title": "Худи Ford",
       "price": 349000,
       "images": [
         "data/wearimages/khudi-ford/khudi-ford-1.jpg",
         "data/wearimages/khudi-ford/khudi-ford-2.jpg",
         "data/wearimages/khudi-ford/khudi-ford-3.jpg",
-        "data/wearimages/khudi-ford/khudi-ford-4.jpg"
+        "data/wearimages/khudi-ford/khudi-ford-4.jpg",
+        "data/wearimages/khudi-ford/khudi-ford-5.jpg"
       ],
       "realPhotos": [
         "data/wearimages/khudi-ford/khudi-ford-2.jpg",
         "data/wearimages/khudi-ford/khudi-ford-3.jpg",
-        "data/wearimages/khudi-ford/khudi-ford-4.jpg"
+        "data/wearimages/khudi-ford/khudi-ford-4.jpg",
+        "data/wearimages/khudi-ford/khudi-ford-5.jpg"
       ],
-      "description": "Худи Ford\n\nВсе размеры доступны\n\nЦена: 349.000 сум\n\nПодробная информация: @evliseorder",
+      "description": "Худи Ford\n\nРазмеры:XS,  S, M, L, XL, 2XL, 3XL\n\nЦвета: серый\n\nЦена: 349.000 сум",
       "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#1e3a8a", "#6b7280", "#ffffff"],
-      "sizes": ["S","M","L","XL"],
+      "colors": [
+        "Серый"
+      ],
+      "sizes": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
       "category": "Худи",
-      "categoryId": "hoodies",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [
+        "data/wearimages/khudi-ford/khudi-ford-3.jpg"
+      ],
       "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
       }
     },
     {
-      "id": "14085504877390129",
-      "slug": "bomber-for-dream",
-      "title": "For Dream",
-      "price": 599000,
+      "id": "14088984580046962",
+      "slug": "botinki-rickowens",
+      "title": "Ботинки RickOwens",
+      "price": 959000,
       "images": [
-        "data/wearimages/bomber-for-dream/bomber-for-dream-1.jpg",
-        "data/wearimages/bomber-for-dream/bomber-for-dream-2.jpg",
-        "data/wearimages/bomber-for-dream/bomber-for-dream-3.jpg"
+        "data/wearimages/botinki-rickowens/botinki-rickowens-1.jpg",
+        "data/wearimages/botinki-rickowens/botinki-rickowens-2.jpg",
+        "data/wearimages/botinki-rickowens/botinki-rickowens-3.jpg",
+        "data/wearimages/botinki-rickowens/botinki-rickowens-4.jpg",
+        "data/wearimages/botinki-rickowens/botinki-rickowens-5.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/bomber-for-dream/bomber-for-dream-2.jpg",
-        "data/wearimages/bomber-for-dream/bomber-for-dream-3.jpg"
+        "data/wearimages/botinki-rickowens/botinki-rickowens-2.jpg",
+        "data/wearimages/botinki-rickowens/botinki-rickowens-3.jpg",
+        "data/wearimages/botinki-rickowens/botinki-rickowens-4.jpg",
+        "data/wearimages/botinki-rickowens/botinki-rickowens-5.jpg"
       ],
-      "description": "Бомбер For Dream \n\nВсе размеры доступны\n\nЦена: 599.000 сум\n\nПодробная информация: @evliseorder",
+      "description": "Ботинки RickOwens \n\nРазмеры: 36-45\n\nЦвета: черный\n\nЦена: 959.000 сум",
       "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#1f5132", "#b0a36f"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Бомберы",
-      "categoryId": "bombers",
+      "colors": [
+        "Черный"
+      ],
+      "sizes": [
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45"
+      ],
+      "category": "Ботинки",
+      "sizeChartType": "shoes",
+      "sizeChartImages": [
+        "data/wearimages/botinki-rickowens/botinki-rickowens-5.jpg"
+      ],
       "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
+        "type": "shoes",
+        "headers": [
+          "EU",
+          "Длина стопы (мм)"
+        ],
+        "rows": [
+          [
+            "40",
+            "250"
+          ],
+          [
+            "41",
+            "255"
+          ],
+          [
+            "42",
+            "260"
+          ],
+          [
+            "43",
+            "265"
+          ],
+          [
+            "44",
+            "270"
+          ],
+          [
+            "45",
+            "280"
+          ]
+        ]
       }
     },
     {
-      "id": "14085504705500801",
-      "slug": "bomber-meam",
-      "title": "Meam",
-      "price": 499000,
-      "images": [
-        "data/wearimages/bomber-meam/bomber-meam-1.jpg",
-        "data/wearimages/bomber-meam/bomber-meam-2.jpg"
-      ],
-      "realPhotos": ["data/wearimages/bomber-meam/bomber-meam-2.jpg"],
-      "description": "Бомбер Meam\n\nВсе размеры доступны\n\nЦена: 499.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#6b7280", "#1e3a8a"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Бомберы",
-      "categoryId": "bombers",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14082839450665489",
-      "slug": "kastom-kedy-venom",
-      "title": "Venom",
-      "price": 370000,
-      "images": [
-        "data/wearimages/kastom-kedy-venom/kastom-kedy-venom-1.jpg",
-        "data/wearimages/kastom-kedy-venom/kastom-kedy-venom-2.jpg"
-      ],
-      "realPhotos": ["data/wearimages/kastom-kedy-venom/kastom-kedy-venom-2.jpg"],
-      "description": "Кастом кеды Venom\n\nВсе размеры доступны\n\nЦена: 370.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#ffffff", "#b91c1c"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Обувь",
-      "categoryId": "shoes",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14082839344588145",
-      "slug": "kozhanka",
-      "title": "Bronx",
-      "price": 549000,
-      "images": [
-        "data/wearimages/kozhanka/kozhanka-1.jpg",
-        "data/wearimages/kozhanka/kozhanka-2.jpg"
-      ],
-      "realPhotos": ["data/wearimages/kozhanka/kozhanka-2.jpg"],
-      "description": "Кожанка \n\nВсе размеры доступны\n\nЦена: 549.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#7b3f00"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Куртки",
-      "categoryId": "jackets",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14082839327733609",
-      "slug": "uteplennyi-bomber",
-      "title": "Nord",
-      "price": 700000,
-      "images": [
-        "data/wearimages/uteplennyi-bomber/uteplennyi-bomber-1.jpg",
-        "data/wearimages/uteplennyi-bomber/uteplennyi-bomber-2.jpg",
-        "data/wearimages/uteplennyi-bomber/uteplennyi-bomber-3.jpg",
-        "data/wearimages/uteplennyi-bomber/uteplennyi-bomber-4.jpg"
-      ],
-      "realPhotos": [
-        "data/wearimages/uteplennyi-bomber/uteplennyi-bomber-2.jpg",
-        "data/wearimages/uteplennyi-bomber/uteplennyi-bomber-3.jpg",
-        "data/wearimages/uteplennyi-bomber/uteplennyi-bomber-4.jpg"
-      ],
-      "description": "Утеплённый бомбер \n\nВсе размеры доступны\n\nЦена: 700.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#556b2f", "#808080"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Бомберы",
-      "categoryId": "bombers",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14080684574002353",
-      "slug": "shtany",
-      "title": "Urban Fit",
+      "id": "14088983200817306",
+      "slug": "kardigan-dino",
+      "title": "Кардиган Dino",
       "price": 329000,
       "images": [
-        "data/wearimages/shtany/shtany-1.jpg",
-        "data/wearimages/shtany/shtany-2.jpg"
+        "data/wearimages/kardigan-dino/kardigan-dino-1.jpg",
+        "data/wearimages/kardigan-dino/kardigan-dino-2.jpg",
+        "data/wearimages/kardigan-dino/kardigan-dino-3.jpg",
+        "data/wearimages/kardigan-dino/kardigan-dino-4.jpg",
+        "data/wearimages/kardigan-dino/kardigan-dino-5.jpg"
       ],
-      "realPhotos": ["data/wearimages/shtany/shtany-2.jpg"],
-      "description": "Штаны \n\nВсе размеры доступны\n\nЦена: 329.000 сум\n\nПодробная информация: @evliseorder",
+      "realPhotos": [
+        "data/wearimages/kardigan-dino/kardigan-dino-2.jpg",
+        "data/wearimages/kardigan-dino/kardigan-dino-3.jpg",
+        "data/wearimages/kardigan-dino/kardigan-dino-4.jpg",
+        "data/wearimages/kardigan-dino/kardigan-dino-5.jpg"
+      ],
+      "description": "Кардиган Dino \n\nРазмеры: M, L, XL, 2XL\n\nЦвета: черный, белый, зелёный \n\nЦена: 329.000 сум",
       "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#616161", "#d1b892"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Штаны",
-      "categoryId": "pants",
+      "colors": [
+        "Черный",
+        "Белый",
+        "Зелёный"
+      ],
+      "sizes": [
+        "M",
+        "L",
+        "XL",
+        "2XL"
+      ],
+      "category": "Кардиганы",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [
+        "data/wearimages/kardigan-dino/kardigan-dino-5.jpg"
+      ],
       "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
       }
     },
     {
-      "id": "14080684453012945",
-      "slug": "krossovki-stursyn",
-      "title": "STURSYN",
-      "price": 549000,
-      "images": [
-        "data/wearimages/krossovki-stursyn/krossovki-stursyn-1.jpg",
-        "data/wearimages/krossovki-stursyn/krossovki-stursyn-2.jpg"
-      ],
-      "realPhotos": ["data/wearimages/krossovki-stursyn/krossovki-stursyn-2.jpg"],
-      "description": "Кроссовки STURSYN\n\nВсе размеры доступны\n\nЦена: 549.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#ffffff", "#000000", "#0ea5e9"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Обувь",
-      "categoryId": "shoes",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14080684219662305",
-      "slug": "dzhinsy",
-      "title": "Core Denim",
+      "id": "14088980905975450",
+      "slug": "dzhinsy-astroboy",
+      "title": "Джинсы AstroBoy",
       "price": 369000,
       "images": [
-        "data/wearimages/dzhinsy/dzhinsy-1.jpg",
-        "data/wearimages/dzhinsy/dzhinsy-2.jpg",
-        "data/wearimages/dzhinsy/dzhinsy-3.jpg"
+        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-1.jpg",
+        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-2.jpg",
+        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-3.jpg",
+        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-4.jpg",
+        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-5.jpg",
+        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-6.jpg",
+        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-7.jpg"
       ],
       "realPhotos": [
-        "data/wearimages/dzhinsy/dzhinsy-2.jpg",
-        "data/wearimages/dzhinsy/dzhinsy-3.jpg"
+        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-2.jpg",
+        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-3.jpg",
+        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-4.jpg",
+        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-5.jpg",
+        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-6.jpg",
+        "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-7.jpg"
       ],
-      "description": "Джинсы \n\nВсе размеры доступны\n\nЦена: 369.000 сум\n\nПодробная информация: @evliseorder",
+      "description": "Джинсы AstroBoy \n\nРазмеры: S,M,L,XL,2XL,3XL\n\nЦвета: черный, синий\n\nЦена: 369.000 сум",
       "material": "Хлопок/полиэстер",
-      "colors": ["#111827", "#3b82f6", "#60a5fa", "#93c5fd"],
-      "sizes": ["S","M","L","XL"],
+      "colors": [
+        "Черный",
+        "Синий"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
       "category": "Джинсы",
-      "categoryId": "jeans",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
       "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14079478202896961",
-      "slug": "dzhinsy-14079478202896961",
-      "title": "Slate Denim",
-      "price": 389000,
-      "images": [
-        "data/wearimages/dzhinsy-14079478202896961/dzhinsy-14079478202896961-1.jpg",
-        "data/wearimages/dzhinsy-14079478202896961/dzhinsy-14079478202896961-2.jpg"
-      ],
-      "realPhotos": ["data/wearimages/dzhinsy-14079478202896961/dzhinsy-14079478202896961-2.jpg"],
-      "description": "Джинсы \n\nВсе размеры доступны\n\nЦена: 389.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#111827", "#3b82f6", "#60a5fa", "#93c5fd"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Джинсы",
-      "categoryId": "jeans",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14079478015776985",
-      "slug": "polo",
-      "title": "Classic Knit",
-      "price": 369000,
-      "images": [
-        "data/wearimages/polo/polo-1.jpg",
-        "data/wearimages/polo/polo-2.jpg"
-      ],
-      "realPhotos": ["data/wearimages/polo/polo-2.jpg"],
-      "description": "Поло\n\nВсе размеры доступны\n\nЦена: 369.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#ffffff", "#000000", "#1e3a8a", "#166534"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Поло",
-      "categoryId": "polo",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14079478004724521",
-      "slug": "palto-na-osen",
-      "title": "Autumn",
-      "price": 569000,
-      "images": [
-        "data/wearimages/palto-na-osen/palto-na-osen-1.jpg",
-        "data/wearimages/palto-na-osen/palto-na-osen-2.jpg"
-      ],
-      "realPhotos": ["data/wearimages/palto-na-osen/palto-na-osen-2.jpg"],
-      "description": "Пальто на осень \n\nВсе размеры доступны\n\nЦена: 569.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#c8b796", "#000000", "#6b7280"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Пальто",
-      "categoryId": "coats",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14079404893618297",
-      "slug": "bomber-vetements",
-      "title": "VETEMENTS",
-      "price": 0,
-      "images": [
-        "data/wearimages/bomber-vetements/bomber-vetements-1.jpg",
-        "data/wearimages/bomber-vetements/bomber-vetements-2.jpg"
-      ],
-      "realPhotos": ["data/wearimages/bomber-vetements/bomber-vetements-2.jpg"],
-      "description": "Бомбер VETEMENTS\n\nВ наличии, размер М\n\nПодробная информация:  @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#b91c1c"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Бомберы",
-      "categoryId": "bombers",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14078068166127521",
-      "slug": "kozhanka-14078068166127521",
-      "title": "Rider",
-      "price": 469000,
-      "images": [
-        "data/wearimages/kozhanka-14078068166127521/kozhanka-14078068166127521-1.jpg",
-        "data/wearimages/kozhanka-14078068166127521/kozhanka-14078068166127521-2.jpg"
-      ],
-      "realPhotos": ["data/wearimages/kozhanka-14078068166127521/kozhanka-14078068166127521-2.jpg"],
-      "description": "Кожанка \n\nВсе размеры доступны\n\nЦена: 469.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#8b5a2b"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Куртки",
-      "categoryId": "jackets",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14078067812425497",
-      "slug": "lofery",
-      "title": "Kent",
-      "price": 449000,
-      "images": [
-        "data/wearimages/lofery/lofery-1.jpg",
-        "data/wearimages/lofery/lofery-2.jpg"
-      ],
-      "realPhotos": ["data/wearimages/lofery/lofery-2.jpg"],
-      "description": "Лоферы \n\nВсе размеры доступны\n\nЦена: 449.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#7b3f00", "#5b0f1b"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Обувь",
-      "categoryId": "shoes",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14077189334919817",
-      "slug": "dzhinsy-14077189334919817",
-      "title": "Indigo Taper",
-      "price": 349000,
-      "images": [
-        "data/wearimages/dzhinsy-14077189334919817/dzhinsy-14077189334919817-1.jpg",
-        "data/wearimages/dzhinsy-14077189334919817/dzhinsy-14077189334919817-2.jpg"
-      ],
-      "realPhotos": ["data/wearimages/dzhinsy-14077189334919817/dzhinsy-14077189334919817-2.jpg"],
-      "description": "Джинсы\n\nВсе размеры доступны\n\nЦена: 349.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#111827", "#3b82f6", "#60a5fa", "#93c5fd"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Джинсы",
-      "categoryId": "jeans",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14077189143236233",
-      "slug": "botinki",
-      "title": "Terra",
-      "price": 849000,
-      "images": [
-        "data/wearimages/botinki/botinki-1.jpg",
-        "data/wearimages/botinki/botinki-2.jpg",
-        "data/wearimages/botinki/botinki-3.jpg"
-      ],
-      "realPhotos": [
-        "data/wearimages/botinki/botinki-2.jpg",
-        "data/wearimages/botinki/botinki-3.jpg"
-      ],
-      "description": "Ботинки \n\nВсе размеры доступны\n\nЦена: 849.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#6b4226", "#4b5320"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Обувь",
-      "categoryId": "shoes",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14075876508243473",
-      "slug": "podborka-futbolok",
-      "title": "Базовый пак",
-      "price": 200000,
-      "images": [
-        "data/wearimages/podborka-futbolok/podborka-futbolok-1.jpg",
-        "data/wearimages/podborka-futbolok/podborka-futbolok-2.jpg",
-        "data/wearimages/podborka-futbolok/podborka-futbolok-3.jpg",
-        "data/wearimages/podborka-futbolok/podborka-futbolok-4.jpg",
-        "data/wearimages/podborka-futbolok/podborka-futbolok-5.jpg",
-        "data/wearimages/podborka-futbolok/podborka-futbolok-6.jpg"
-      ],
-      "realPhotos": [
-        "data/wearimages/podborka-futbolok/podborka-futbolok-2.jpg",
-        "data/wearimages/podborka-futbolok/podborka-futbolok-3.jpg",
-        "data/wearimages/podborka-futbolok/podborka-futbolok-4.jpg",
-        "data/wearimages/podborka-futbolok/podborka-futbolok-5.jpg",
-        "data/wearimages/podborka-futbolok/podborka-futbolok-6.jpg"
-      ],
-      "description": "Подборка футболок\n\nВсе размеры доступны\n\nЦена: 200.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#ffffff", "#000000", "#6b7280", "#ef4444", "#3b82f6", "#16a34a", "#f59e0b"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Футболки",
-      "categoryId": "tshirts",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14073336182825265",
-      "slug": "dvukhstoronniaia-kurtka",
-      "title": "Reverso",
-      "price": 649000,
-      "images": [
-        "data/wearimages/dvukhstoronniaia-kurtka/dvukhstoronniaia-kurtka-1.jpg",
-        "data/wearimages/dvukhstoronniaia-kurtka/dvukhstoronniaia-kurtka-2.jpg"
-      ],
-      "realPhotos": ["data/wearimages/dvukhstoronniaia-kurtka/dvukhstoronniaia-kurtka-2.jpg"],
-      "description": "Двухсторонняя куртка\n\nВсе размеры доступны\n\nЦена: 649.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#4b5320", "#6b7280"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Куртки",
-      "categoryId": "jackets",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14073335680346289",
-      "slug": "kollektsiia-futbolok-demonslayer",
-      "title": "DemonSlayer",
-      "price": 230000,
-      "images": [
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-1.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-2.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-3.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-4.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-5.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-6.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futbolok-demonslayer-7.jpg",
-        "data/wearimages/kollektsiia-futbolok-demonslayer/kollektsiia-futболок-demonslayer-8.jpg",
-        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-9.jpg",
-        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-10.jpg"
-      ],
-      "realPhotos": [
-        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-2.jpg",
-        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-3.jpg",
-        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-4.jpg",
-        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-5.jpg",
-        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-6.jpg",
-        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-7.jpg",
-        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-8.jpg",
-        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-9.jpg",
-        "data/wearimages/kollektsiia-futболок-demonslayer/kollektsiia-futболок-demonslayer-10.jpg"
-      ],
-      "description": "Коллекция футболок DemonSlayer \n\nВсе размеры доступны\n\nЦена: 230.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#ffffff", "#000000", "#6b7280", "#ef4444", "#3b82f6", "#16a34a", "#f59e0b", "#a855f7"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Футболки",
-      "categoryId": "tshirts",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14071685981116953",
-      "slug": "kollektsiia-kurtok",
-      "title": "Urban Set",
-      "price": 649000,
-      "images": [
-        "data/wearimages/kollektsiia-kurtok/kollektsiia-kurtok-1.jpg",
-        "data/wearimages/kollektsiia-kurtok/kollektsiia-kurtok-2.jpg"
-      ],
-      "realPhotos": ["data/wearimages/kollektsiia-kurtok/kollektsiia-kurtok-2.jpg"],
-      "description": "Коллекция курток \n\nВсе размеры доступны\n\nЦена: 649.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#b0a36f", "#1e3a8a"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Куртки",
-      "categoryId": "jackets",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14070286155063545",
-      "slug": "shtany-y2k",
-      "title": "Y2K",
-      "price": 299000,
-      "images": [
-        "data/wearimages/shtany-y2k/shtany-y2k-1.jpg",
-        "data/wearimages/shtany-y2k/shtany-y2k-2.jpg"
-      ],
-      "realPhotos": ["data/wearimages/shtany-y2k/shtany-y2k-2.jpg"],
-      "description": "Штаны Y2K \n\nВсе размеры доступны\n\nЦена: 299.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#6b7280", "#a3a380"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Штаны",
-      "categoryId": "pants",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "14070286006093521",
-      "slug": "kurtka-mixgora",
-      "title": "MIXGORA",
-      "price": 449000,
-      "images": [
-        "data/wearimages/kurtka-mixgora/kurtka-mixgora-1.jpg",
-        "data/wearimages/kurtka-mixgora/kurtka-mixgora-2.jpg"
-      ],
-      "realPhotos": ["data/wearimages/kurtka-mixgora/kurtka-mixgora-2.jpg"],
-      "description": "Куртка MIXGORA \n\nВсе размеры доступны\n\nЦена: 449.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#166534", "#d1b892"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Куртки",
-      "categoryId": "jackets",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "1784",
-      "slug": "palto",
-      "title": "Monaco",
-      "price": 569000,
-      "images": ["data/wearimages/palto/palto-1.jpg"],
-      "realPhotos": [],
-      "description": "Пальто\n\nВсе размеры доступны\n\nЦена: 569.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#c19a6b", "#6b7280"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Пальто",
-      "categoryId": "coats",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "1778",
-      "slug": "pukhovik-s-balaklavoi",
-      "title": "Arctic",
-      "price": 549000,
-      "images": ["data/wearimages/pukhovik-s-balaklavoi/pukhovik-s-balaklavoi-1.jpg"],
-      "realPhotos": [],
-      "description": "Пуховик с балаклавой \n\nВсе размеры доступны\n\nЦена: 549.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#6b7280", "#1e3a8a"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Куртки",
-      "categoryId": "jackets",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "1777",
-      "slug": "sumka-deathnote",
-      "title": "DeathNote",
-      "price": 270000,
-      "images": ["data/wearimages/sumka-deathnote/sumka-deathnote-1.jpg"],
-      "realPhotos": [],
-      "description": "Сумка DeathNote \n\nВсе размеры доступны\n\nЦена: 270.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#000000", "#ffffff"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Сумки",
-      "categoryId": "bags",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "1766",
-      "slug": "kedy-xavier3",
-      "title": "Xavier3",
-      "price": 499000,
-      "images": ["data/wearimages/kedy-xavier3/kedy-xavier3-1.jpg"],
-      "realPhotos": [],
-      "description": "Кеды Xavier3 \n\nВсе размеры доступны\n\nЦена: 499.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#ffffff", "#000000", "#6b7280"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Обувь",
-      "categoryId": "shoes",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "1755",
-      "slug": "kurtka-jeansstyle",
-      "title": "JeansStyle",
-      "price": 449000,
-      "images": ["data/wearimages/kurtka-jeansstyle/kurtka-jeansstyle-1.jpg"],
-      "realPhotos": [],
-      "description": "Куртка JeansStyle \n\nВсе размеры доступны\n\nЦена: 449.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#1e3a8a", "#000000"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Куртки",
-      "categoryId": "jackets",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
-      }
-    },
-    {
-      "id": "1754",
-      "slug": "svitshot-pushistik",
-      "title": "Пушистик",
-      "price": 369000,
-      "images": ["data/wearimages/svitshot-pushistik/svitshot-pushistik-1.jpg"],
-      "realPhotos": [],
-      "description": "Свитшот-пушистик \n\nВсе размеры доступны\n\nЦена: 369.000 сум\n\nПодробная информация: @evliseorder",
-      "material": "Хлопок/полиэстер",
-      "colors": ["#ffffff", "#f472b6", "#6b7280"],
-      "sizes": ["S","M","L","XL"],
-      "category": "Свитшоты",
-      "categoryId": "sweatshirts",
-      "sizeChart": {
-        "headers": ["INT","Грудь (см)","Рукав (см)","Длина (см)","Рост (см)","Вес (кг)"],
-        "rows": [["S","96–100","62","66","160–170","50–62"],["M","100–104","64","68","168–176","60–72"],["L","104–110","66","70","174–182","70–86"],["XL","110–116","68","72","180–188","84–100"]]
+        "type": "clothes",
+        "headers": [
+          "INT",
+          "Грудь (см)",
+          "Рукав (см)",
+          "Длина (см)",
+          "Рост (см)",
+          "Вес (кг)"
+        ],
+        "rows": [
+          [
+            "S",
+            "96–100",
+            "62",
+            "66",
+            "160–170",
+            "50–62"
+          ],
+          [
+            "M",
+            "100–104",
+            "64",
+            "68",
+            "168–176",
+            "60–72"
+          ],
+          [
+            "L",
+            "104–110",
+            "66",
+            "70",
+            "174–182",
+            "70–86"
+          ],
+          [
+            "XL",
+            "110–116",
+            "68",
+            "72",
+            "180–188",
+            "84–100"
+          ]
+        ]
       }
     }
   ],
   "categories": [
     {
-      "id": "tops",
-      "slug": "tops",
-      "name": "Верх",
-      "children": [
-        { "id": "hoodies",   "slug": "hoodies",   "name": "Худи" },
-        { "id": "sweatshirts","slug": "sweatshirts","name": "Свитшоты" },
-        { "id": "tshirts",   "slug": "tshirts",   "name": "Футболки" },
-        { "id": "polo",      "slug": "polo",      "name": "Поло" },
-        { "id": "bombers",   "slug": "bombers",   "name": "Бомберы" },
-        { "id": "jackets",   "slug": "jackets",   "name": "Куртки" },
-        { "id": "coats",     "slug": "coats",     "name": "Пальто" }
-      ]
+      "id": "new",
+      "slug": "new",
+      "name": "Новинки"
     },
     {
-      "id": "bottoms",
-      "slug": "bottoms",
-      "name": "Низ",
-      "children": [
-        { "id": "jeans", "slug": "jeans", "name": "Джинсы" },
-        { "id": "pants", "slug": "pants", "name": "Штаны" }
-      ]
+      "id": "kurtki",
+      "slug": "kurtki",
+      "name": "Куртки"
     },
     {
-      "id": "shoes",
-      "slug": "shoes",
-      "name": "Обувь",
-      "children": []
+      "id": "novinki",
+      "slug": "novinki",
+      "name": "Новинки"
     },
     {
-      "id": "bags",
-      "slug": "bags",
-      "name": "Сумки",
-      "children": []
+      "id": "khudi",
+      "slug": "khudi",
+      "name": "Худи"
     },
     {
-      "id": "misc",
-      "slug": "misc",
-      "name": "Разное",
-      "children": []
+      "id": "dzhinsy",
+      "slug": "dzhinsy",
+      "name": "Джинсы"
+    },
+    {
+      "id": "svitshoty",
+      "slug": "svitshoty",
+      "name": "Свитшоты"
+    },
+    {
+      "id": "kedy",
+      "slug": "kedy",
+      "name": "Кеды"
+    },
+    {
+      "id": "sumki",
+      "slug": "sumki",
+      "name": "Сумки"
+    },
+    {
+      "id": "botinki",
+      "slug": "botinki",
+      "name": "Ботинки"
+    },
+    {
+      "id": "shtany",
+      "slug": "shtany",
+      "name": "Штаны"
+    },
+    {
+      "id": "kardigany",
+      "slug": "kardigany",
+      "name": "Кардиганы"
     }
   ]
 }
