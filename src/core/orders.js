@@ -1,7 +1,7 @@
 // src/core/orders.js
 // Работа с заказами: клиент → сервер (remote-first) + локальный кэш.
 // Также включает admin token-хэндлинг и «лёгкий» список без paymentScreenshot.
-// Полный заказ (с чеком) подтягиваем по запросу getOrderById(id).
+// Полный заказ (с чеком) подтягиваем точечно через getOrderById(id).
 
 import { getUID } from './state.js';
 import { notifyStatusChanged } from './botNotify.js'; // если файла нет — можно убрать импорт
@@ -84,7 +84,7 @@ async function apiGetList(){
       return data.orders.map(normalizeOrder);
     }
     throw new Error('bad response');
-  }catch(e){
+  }catch{
     return getOrdersLocal().map(normalizeOrder);
   }
 }
@@ -187,20 +187,6 @@ export async function getOrderById(id, { updateCache = true } = {}) {
   }
   return one;
 }
-
-// === ДОБАВЬ это в src/core/orders.js ===
-// Получить полный заказ по id (с paymentScreenshot) и обновить локальный кэш этой записи
-export async function getOrderById(id, { updateCache = true } = {}) {
-  const one = await apiGetOne(id);
-  if (updateCache && one) {
-    const list = getOrdersLocal();
-    const i = list.findIndex(o => String(o.id) === String(id));
-    if (i > -1) list[i] = one; else list.unshift(one);
-    replaceOrdersCacheSilently(list);
-  }
-  return one;
-}
-
 
 export async function addOrder(order){
   const idLocal = order.id ?? String(Date.now());
