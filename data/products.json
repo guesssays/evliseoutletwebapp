@@ -3,7 +3,7 @@
     {
       "id": "14091752084078242",
       "slug": "kurtka-metra",
-      "title": "Куртка MetrA",
+      "title": "MetrA",
       "price": 799000,
       "images": [
         "data/wearimages/kurtka-metra/kurtka-metra-1.jpg",
@@ -40,7 +40,7 @@
     {
       "id": "14091751441210906",
       "slug": "pukhovik-beaster",
-      "title": "Пуховик Beaster",
+      "title": "Beaster",
       "price": 399000,
       "images": [
         "data/wearimages/pukhovik-beaster/pukhovik-beaster-1.jpg",
@@ -77,7 +77,7 @@
     {
       "id": "14091750960004026",
       "slug": "khudi-ids",
-      "title": "Худи IDS",
+      "title": "IDS",
       "price": 329000,
       "images": [
         "data/wearimages/khudi-ids/khudi-ids-1.jpg",
@@ -114,7 +114,7 @@
     {
       "id": "14089064189921202",
       "slug": "khudi-erd",
-      "title": "Худи ERD",
+      "title": "ERD",
       "price": 309000,
       "images": [
         "data/wearimages/khudi-erd/khudi-erd-1.jpg",
@@ -151,7 +151,7 @@
     {
       "id": "14089063450503850",
       "slug": "kurtka-mixgora",
-      "title": "Куртка MIXGORA",
+      "title": "MIXGORA",
       "price": 399000,
       "images": [
         "data/wearimages/kurtka-mixgora/kurtka-mixgora-1.jpg",
@@ -180,7 +180,7 @@
     {
       "id": "14089061374793362",
       "slug": "dzhinsy-y2k",
-      "title": "Джинсы Y2K",
+      "title": "Y2K",
       "price": 299000,
       "images": [
         "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-1.jpg",
@@ -217,7 +217,7 @@
     {
       "id": "14089060373749058",
       "slug": "kurtka-f1",
-      "title": "Куртка F1",
+      "title": "F1",
       "price": 549000,
       "images": [
         "data/wearimages/kurtka-f1/kurtka-f1-1.jpg",
@@ -254,7 +254,7 @@
     {
       "id": "14089059124915306",
       "slug": "svitshot-maxdepy",
-      "title": "Свитшот Maxdepy",
+      "title": "Maxdepy",
       "price": 329000,
       "images": [
         "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-1.jpg",
@@ -289,7 +289,7 @@
     {
       "id": "14089057691789274",
       "slug": "kurtka-jeans",
-      "title": "Куртка Jeans",
+      "title": "Jeans",
       "price": 409000,
       "images": [
         "data/wearimages/kurtka-jeans/kurtka-jeans-1.jpg",
@@ -324,7 +324,7 @@
     {
       "id": "14089056726479346",
       "slug": "kedy-xavier3",
-      "title": "Кеды Xavier3",
+      "title": "Xavier3",
       "price": 459000,
       "images": [
         "data/wearimages/kedy-xavier3/kedy-xavier3-1.jpg",
@@ -359,7 +359,7 @@
     {
       "id": "14089055591019258",
       "slug": "kozhanka-dvukhstoronka",
-      "title": "Кожанка Двухсторонка",
+      "title": "FlipSide",
       "price": 649000,
       "images": [
         "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-1.jpg",
@@ -396,7 +396,7 @@
     {
       "id": "14089054715229746",
       "slug": "bomber-greamreaper",
-      "title": "Бомбер GreamReaper",
+      "title": "GreamReaper",
       "price": 499000,
       "images": [
         "data/wearimages/bomber-greamreaper/bomber-greamreaper-1.jpg",
@@ -433,7 +433,7 @@
     {
       "id": "14089053831090978",
       "slug": "sumka-god-s-plan",
-      "title": "Сумка God's Plan",
+      "title": "God's Plan",
       "price": 269000,
       "images": [
         "data/wearimages/sumka-god-s-plan/sumka-god-s-plan-1.jpg",
@@ -466,7 +466,7 @@
     {
       "id": "14089052365673594",
       "slug": "kurtka-pukhovik",
-      "title": "Куртка Пуховик",
+      "title": "Downforce",
       "price": 549000,
       "images": [
         "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-1.jpg",
@@ -501,7 +501,7 @@
     {
       "id": "14089051360497450",
       "slug": "botinki-newrock",
-      "title": "Ботинки NewRock",
+      "title": "NewRock",
       "price": 849000,
       "images": [
         "data/wearimages/botinki-newrock/botinki-newrock-1.jpg",
@@ -540,7 +540,7 @@
     {
       "id": "14089050023885714",
       "slug": "dzhinsy-baggy",
-      "title": "Джинсы Baggy",
+      "title": "Baggy",
       "price": 349000,
       "images": [
         "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-1.jpg",
@@ -575,7 +575,7 @@
     {
       "id": "14089049003497482",
       "slug": "palto-osennee",
-      "title": "Пальто Осеннее",
+      "title": "Autumn Line",
       "price": 549000,
       "images": [
         "data/wearimages/palto-osennee/palto-osennee-1.jpg",
@@ -610,7 +610,7 @@
     {
       "id": "14089047933692530",
       "slug": "lofery-classic",
-      "title": "Лоферы Classic",
+      "title": "Classic",
       "price": 399000,
       "images": [
         "data/wearimages/lofery-classic/lofery-classic-1.jpg",
@@ -645,7 +645,7 @@
     {
       "id": "14089046698319930",
       "slug": "kozhanka-theblack",
-      "title": "Кожанка TheBlack",
+      "title": "TheBlack",
       "price": 469000,
       "images": [
         "data/wearimages/kozhanka-theblack/kozhanka-theblack-1.jpg",
@@ -678,7 +678,7 @@
     {
       "id": "14089045582240474",
       "slug": "palto-osennee-14089045582240474",
-      "title": "Пальто Осеннее",
+      "title": "Autumn Crest",
       "price": 569000,
       "images": [
         "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-1.jpg",
@@ -715,7 +715,7 @@
     {
       "id": "14089044068253322",
       "slug": "polo-coreevry",
-      "title": "Поло Coreevry",
+      "title": "Coreevry",
       "price": 369000,
       "images": [
         "data/wearimages/polo-coreevry/polo-coreevry-1.jpg",
@@ -752,7 +752,7 @@
     {
       "id": "14089041837821522",
       "slug": "dzhinsy-meshkovatye",
-      "title": "Джинсы Мешковатые",
+      "title": "Loose Fit",
       "price": 369000,
       "images": [
         "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-1.jpg",
@@ -789,7 +789,7 @@
     {
       "id": "14089036067180594",
       "slug": "dzhinsy-onfire",
-      "title": "Джинсы OnFire",
+      "title": "OnFire",
       "price": 369000,
       "images": [
         "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-1.jpg",
@@ -824,7 +824,7 @@
     {
       "id": "14089034423513306",
       "slug": "krosovki-styrsyn",
-      "title": "Кросовки Styrsyn",
+      "title": "Styrsyn",
       "price": 549000,
       "images": [
         "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-1.jpg",
@@ -850,7 +850,7 @@
     {
       "id": "14089033130860018",
       "slug": "shtany-stylish",
-      "title": "Штаны Stylish",
+      "title": "Stylish",
       "price": 329000,
       "images": [
         "data/wearimages/shtany-stylish/shtany-stylish-1.jpg",
@@ -876,7 +876,7 @@
     {
       "id": "14089031772780442",
       "slug": "bomber-teplyi",
-      "title": "Бомбер теплый",
+      "title": "Heatwave",
       "price": 689000,
       "images": [
         "data/wearimages/bomber-teplyi/bomber-teplyi-1.jpg",
@@ -904,7 +904,7 @@
     {
       "id": "14089030494067394",
       "slug": "kozhanka-snake",
-      "title": "Кожанка Snake",
+      "title": "Snake",
       "price": 549000,
       "images": [
         "data/wearimages/kozhanka-snake/kozhanka-snake-1.jpg",
@@ -932,7 +932,7 @@
     {
       "id": "14089029623377282",
       "slug": "kedy-venom",
-      "title": "Кеды Venom",
+      "title": "Venom",
       "price": 369000,
       "images": [
         "data/wearimages/kedy-venom/kedy-venom-1.jpg",
@@ -969,7 +969,7 @@
     {
       "id": "14089027572942530",
       "slug": "bomber-meam",
-      "title": "Бомбер Meam",
+      "title": "Meam",
       "price": 499000,
       "images": [
         "data/wearimages/bomber-meam/bomber-meam-1.jpg",
@@ -997,7 +997,7 @@
     {
       "id": "14089026748679914",
       "slug": "bomber-fordream",
-      "title": "Бомбер ForDream",
+      "title": "ForDream",
       "price": 599000,
       "images": [
         "data/wearimages/bomber-fordream/bomber-fordream-1.jpg",
@@ -1025,7 +1025,7 @@
     {
       "id": "14089025639578250",
       "slug": "khudi-ford",
-      "title": "Худи Ford",
+      "title": "Ford",
       "price": 349000,
       "images": [
         "data/wearimages/khudi-ford/khudi-ford-1.jpg",
@@ -1053,7 +1053,7 @@
     {
       "id": "14088984580046962",
       "slug": "botinki-rickowens",
-      "title": "Ботинки RickOwens",
+      "title": "RickOwens",
       "price": 959000,
       "images": [
         "data/wearimages/botinki-rickowens/botinki-rickowens-1.jpg",
@@ -1092,7 +1092,7 @@
     {
       "id": "14088983200817306",
       "slug": "kardigan-dino",
-      "title": "Кардиган Dino",
+      "title": "Dino",
       "price": 329000,
       "images": [
         "data/wearimages/kardigan-dino/kardigan-dino-1.jpg",
@@ -1120,7 +1120,7 @@
     {
       "id": "14088980905975450",
       "slug": "dzhinsy-astroboy",
-      "title": "Джинсы AstroBoy",
+      "title": "AstroBoy",
       "price": 369000,
       "images": [
         "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-1.jpg",
