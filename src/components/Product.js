@@ -9,6 +9,7 @@ import {
 } from './ProductFixHeader.js';
 import { ScrollReset } from '../core/scroll-reset.js';
 import { Loader } from '../ui/loader.js'; // ⬅️ новый лоадер
+import { toast } from '../core/toast.js';
 
 /* ====== КОНСТАНТЫ КЭШБЕКА/РЕФЕРАЛОВ ====== */
 const CASHBACK_RATE_BASE  = 0.05; // 5%
@@ -607,6 +608,8 @@ export async function renderProduct({id}){
         html: `<i data-lucide="shopping-bag"></i><span>${needPick ? 'Выберите размер' : 'Добавить в корзину&nbsp;|&nbsp;'+priceFmt(p.price)}</span>`,
         onClick(){
           if (needSize && !size){
+            // Новый «островной» тост при отсутствии выбора размера
+            toast('Выберите размер', { variant: 'info', icon: 'ruler' });
             document.getElementById('sizes')?.scrollIntoView({ behavior:'smooth', block:'center' });
             return;
           }
@@ -950,7 +953,11 @@ function openSizeCalculator(p){
   if (!modal || !mb || !mt || !ma) return;
 
   const chart = p.sizeChart;
-  if (!chart){ window.toast?.('Для этого товара таблица размеров недоступна'); return; }
+  if (!chart){
+    // ⬇️ новый тост API
+    toast('Для этого товара таблица размеров недоступна', { variant: 'warn', icon: 'ruler' });
+    return;
+  }
 
   const type = inferSizeChartType(chart.headers || []);
 

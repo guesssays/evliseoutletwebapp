@@ -11,6 +11,32 @@ import { toast } from '../core/toast.js';
 import { addOrder } from '../core/orders.js';
 import { getPayRequisites } from '../core/payments.js';
 
+// --- Унифицированные тосты (адаптер под новый/старый API) ---
+function toastEx(msg, type = 'info') {
+  try {
+    // Если toast — объект со специализированными методами
+    if (toast && typeof toast === 'object') {
+      const map = {
+        success: toast.ok || toast.success,
+        error: toast.err || toast.error,
+        warning: toast.warn || toast.warning,
+        info: toast.info
+      };
+      const fn = map[type];
+      if (typeof fn === 'function') return fn.call(toast, msg);
+      if (typeof toast.show === 'function') return toast.show({ title: msg, type });
+    }
+    // Если toast — функция с (msg, opts)
+    if (typeof toast === 'function') {
+      try { return toast(msg, { type }); } catch { return toast(msg); }
+    }
+  } catch {}
+}
+const tOk   = (m) => toastEx(m, 'success');
+const tErr  = (m) => toastEx(m, 'error');
+const tWarn = (m) => toastEx(m, 'warning');
+const tInfo = (m) => toastEx(m, 'info');
+
 // ⚠️ Убрали прямой импорт ../core/botNotify.js — используем безопасные заглушки.
 const notifyReferralJoined = (uid, payload) => {
   try { window.BotNotify?.notifyReferralJoined?.(uid, payload); } catch {}
@@ -529,7 +555,7 @@ export async function renderCart(){
       if (document.body.dataset.checkoutModalOpen === '1') return;
 
       const { disc, pay, err } = recalc();
-      if (err){ toast(err); return; }
+      if (err){ tWarn(err); return; }
       checkoutFlow(items, ad, totalRaw, { redeem: disc, toPay: pay });
     }
   });
@@ -562,7 +588,7 @@ function remove(productId,size,color){
     (a.size||null)===(size||null) &&
     (a.color||null)===(color||null)
   ));
-  persistCart(); updateCartBadge(); toast('Удалено'); renderCart();
+  persistCart(); updateCartBadge(); tOk('Удалено'); renderCart();
 }
 
 /* ====================== ЛОЯЛЬНОСТЬ: клиент ====================== */ 
@@ -602,8 +628,8 @@ async function callLoyalty(op, data){
    Новый сценарий чекаута
    ====================== */
 function checkoutFlow(items, addr, totalRaw, bill){
-  if (!items?.length){ toast('Корзина пуста'); return; }
-  if (!addr){ toast('Укажите адрес доставки'); location.hash='#/account/addresses'; return; }
+  if (!items?.length){ tInfo('Корзина пуста'); return; }
+  if (!addr){ tWarn('Укажите адрес доставки'); location.hash='#/account/addresses'; return; }
 
   if (document.body.dataset.checkoutModalOpen === '1') return;
   document.body.dataset.checkoutModalOpen = '1';
@@ -718,8 +744,8 @@ function checkoutFlow(items, addr, totalRaw, bill){
     const savePhone = document.getElementById('cfSavePhone')?.checked;
     const savePayer = document.getElementById('cfSavePayer')?.checked;
 
-    if (!phone){ toast('Укажите номер телефона'); return; }
-    if (!address){ toast('Укажите адрес'); return; }
+    if (!phone){ tWarn('Укажите номер телефона'); return; }
+    if (!address){ tWarn('Укажите адрес'); return; }
 
     if (!state.profile) state.profile = {};
     if (savePhone){ state.profile.phone = phone; }
@@ -866,7 +892,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
   fileInput?.addEventListener('change', async ()=>{
     const file = fileInput.files?.[0];
     if (!file){ clearShot(); return; }
-    if (!/^image\//i.test(file.type)){ toast('Загрузите изображение'); clearShot(); return; }
+    if (!/^image\//i.test(file.type)){ tWarn('Загрузите изображение'); clearShot(); return; }
 
     try{
       setSubmitDisabled(true);
@@ -880,7 +906,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       urlInput.value = '';
     }catch(err){
       console.error(err);
-      toast('Не удалось обработать изображение');
+      tErr('Не удалось обработать изображение');
       clearShot();
     }finally{
       shotBusy = false; busyBar.style.display='none';
@@ -913,7 +939,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
   document.getElementById('payDone')?.addEventListener('click', async ()=>{
     // блокируем повторный сабмит
     if (__orderSubmitBusy) return;
-    if (shotBusy){ toast('Подождите, изображение ещё обрабатывается'); return; }
+    if (shotBusy){ tWarn('Подождите, изображение ещё обрабатывается'); return; }
     __orderSubmitBusy = true;
     setSubmitDisabled(true);
 
@@ -924,10 +950,10 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       if (shotDataUrl){
         paymentScreenshot = shotDataUrl;
       }else if (urlRaw){
-        if (!/^https?:\/\//i.test(urlRaw)){ toast('Некорректный URL чека'); setSubmitDisabled(false); __orderSubmitBusy = false; return; }
+        if (!/^https?:\/\//i.test(urlRaw)){ tWarn('Некорректный URL чека'); setSubmitDisabled(false); __orderSubmitBusy = false; return; }
         paymentScreenshot = urlRaw;
       }else{
-        toast('Добавьте файл чека или укажите URL');
+        tWarn('Добавьте файл чека или укажите URL');
         setSubmitDisabled(false); __orderSubmitBusy = false; return;
       }
 
@@ -938,7 +964,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
       // Перед резервом проверим Mini App окружение
       const tg = window?.Telegram?.WebApp;
       if (toSpend > 0 && !tg?.initData) {
-        toast('Списать баллы можно только внутри Telegram-приложения. Откройте магазин через Telegram и повторите.');
+        tWarn('Списать баллы можно только внутри Telegram-приложения. Откройте магазин через Telegram и повторите.');
         setSubmitDisabled(false);
         __orderSubmitBusy = false;
         return;
@@ -966,7 +992,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
               reason === 'bot_mismatch'
                                       ? `Мини-приложение открыто в ${r2.clientBot || 'другом боте'}, а сервер ждёт ${r2.serverBot || 'другого бота'}. Откройте магазин через ${r2.serverBot || 'нужного бота'} и попробуйте снова.` :
               reason || 'Не удалось зарезервировать списание баллов';
-            toast(msg);
+            tErr(msg);
             setSubmitDisabled(false);
             __orderSubmitBusy = false;
             return;
@@ -974,7 +1000,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
           reserved = true;
         }
       } catch {
-        toast('Не удалось связаться с сервером лояльности');
+        tErr('Не удалось связаться с сервером лояльности');
         setSubmitDisabled(false);
         __orderSubmitBusy = false;
         return;
@@ -1017,7 +1043,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
         if (reserved){
           try{ await Loader.wrap(() => callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'cancel' }), 'Откатываем баллы…'); }catch{}
         }
-        toast('Не удалось создать заказ. Попробуйте ещё раз.');
+        tErr('Не удалось создать заказ. Попробуйте ещё раз.');
         setSubmitDisabled(false); __orderSubmitBusy = false; return;
       }
 
@@ -1030,7 +1056,7 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
         if (reserved){
           try{ await Loader.wrap(() => callLoyalty('finalizeRedeem', { uid: getUID(), orderId, action:'cancel' }), 'Откатываем баллы…'); }catch{}
         }
-        toast('Не удалось зафиксировать баллы — попробуйте ещё раз');
+        tErr('Не удалось зафиксировать баллы — попробуйте ещё раз');
         setSubmitDisabled(false); __orderSubmitBusy = false; return;
       }
 

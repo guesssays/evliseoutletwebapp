@@ -14,6 +14,31 @@ import {
 } from './core/state.js';
 
 import { toast } from './core/toast.js';
+
+// --- Унифицированные тосты (адаптер под новый/старый API) ---
+function toastEx(msg, type = 'info') {
+  try {
+    if (toast && typeof toast === 'object') {
+      const map = {
+        success: toast.ok || toast.success,
+        error: toast.err || toast.error,
+        warning: toast.warn || toast.warning,
+        info: toast.info
+      };
+      const fn = map[type];
+      if (typeof fn === 'function') return fn.call(toast, msg);
+      if (typeof toast.show === 'function') return toast.show({ title: msg, type });
+    }
+    if (typeof toast === 'function') {
+      try { return toast(msg, { type }); } catch { return toast(msg); }
+    }
+  } catch {}
+}
+const tOk   = (m) => toastEx(m, 'success');
+const tErr  = (m) => toastEx(m, 'error');
+const tWarn = (m) => toastEx(m, 'warning');
+const tInfo = (m) => toastEx(m, 'info');
+
 import { el, initTelegramChrome } from './core/utils.js';
 import { mountScrollTop } from './components/ScrollTop.js';
 import { renderHome, drawCategoriesChips } from './components/Home.js';
@@ -585,9 +610,10 @@ async function router(){
       return renderAdmin();
     }
     if (!canAccessAdmin()){
-      setAdminMode(false);
-      toast('Доступ в админ-панель ограничен');
-      location.hash = '#/admin-login';
+setAdminMode(false);
+tWarn('Доступ в админ-панель ограничен');
+location.hash = '#/admin-login';
+
       return;
     }
     return renderAdmin();
@@ -630,11 +656,12 @@ async function router(){
   }
 
   if (match('admin')){
-    if (!canAccessAdmin()){
-      toast('Доступ в админ-панель ограничен');
-      location.hash = '#/admin-login';
-      return;
-    }
+if (!canAccessAdmin()){
+  tWarn('Доступ в админ-панель ограничен');
+  location.hash = '#/admin-login';
+  return;
+}
+
     confirmAdminSwitch(()=>{
       setAdminMode(true);
       location.hash = '#/admin';
