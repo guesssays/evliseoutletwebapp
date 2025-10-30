@@ -1,6 +1,16 @@
 [build]
+  command = "node tools/versionize.mjs"
   publish = "."
-  functions = "netlify/functions"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=(), payment=(), fullscreen=*"
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' https://fonts.gstatic.com data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://cdn.jsdelivr.net; connect-src 'self' https://evliseoutlet.netlify.app https://*.netlify.app https://api.telegram.org https://cdn.jsdelivr.net; frame-ancestors 'self' https://t.me https://web.telegram.org https://telegram.org; base-uri 'self'; form-action 'self'"
+
 
 [build.environment]
   NODE_VERSION = "20"
