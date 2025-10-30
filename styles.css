@@ -780,12 +780,7 @@ body.admin-mode #scrollTopBtn{ display:none !important; }
   min-width:44px;
   flex-shrink:0;             /* и запрещаем сжатие самой кнопки */
 }
-/* === FIX: Telegram first-paint header visibility === */
-.tg-webapp .app-header{
-  opacity:1 !important;
-  transform:none !important;
-  visibility:visible !important;
-}
+
 
 /* на случай, если где-то остался .hidden */
 .tg-webapp .app-header.hidden{
@@ -850,4 +845,11 @@ body.admin-mode #scrollTopBtn{ display:none !important; }
   opacity: 0;
   visibility: hidden;               /* исключаем перекрытие "невидимым" хедером */
   pointer-events: none;
+}
+/* === OVERRIDE: разрешаем прятать статичный .app-header в Telegram === */
+.tg-webapp .app-header.hidden{
+  opacity: 0 !important;
+  transform: translateY(-8px) !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
