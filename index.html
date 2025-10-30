@@ -39,7 +39,7 @@
   <!-- ЕДИНЫЙ БИЛД-ШТАМП (обновляется versionize.mjs) -->
   <meta id="APP_BUILD" name="app-build" content="2025-10-30-21-13" />
 
-  <!-- Лёгкая телеметрия -->
+  <!-- Лёгкая телеметрия (без влияния на кэш) -->
   <script>
   (function(){
     if (sessionStorage.__diag_sent__) return;
@@ -65,6 +65,24 @@
   })();
   </script>
 
+  <!-- РАННИЙ роут-класс: .route-home / .route-other -->
+  <script>
+  (function routeClassSync(){
+    function isHome(h){ return h === '#/' || h === '#' || h === '' || h == null; }
+    function apply(){
+      var onHome = isHome(location.hash);
+      var de = document.documentElement;
+      if (onHome){ de.classList.add('route-home'); de.classList.remove('route-other'); }
+      else { de.classList.remove('route-home'); de.classList.add('route-other'); }
+    }
+    apply();
+    // максимально ранняя реакция на смену хеша
+    window.addEventListener('hashchange', apply, { passive:true });
+    // страховка для случаев программной смены до DOMContentLoaded
+    requestAnimationFrame(apply);
+  })();
+  </script>
+
   <!-- Fonts / styles -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
@@ -79,8 +97,12 @@
       --shadow: 0 10px 30px rgba(0,0,0,.18);
       --muted:#787676;
     }
-    [hidden]{ display:none !important; }
 
+    /* ==== Новый способ: по умолчанию скрыто, на главной показано ==== */
+    [data-home-only]{ display:none !important; }
+    .route-home [data-home-only]{ display:block !important; }
+
+    /* остальное без изменений */
     .app-header.hidden{
       transform:translateY(-100%);
       opacity:.0;

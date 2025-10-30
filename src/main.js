@@ -73,21 +73,6 @@ import {
 // Экран-мостик для браузера
 import { renderRefBridge } from './views/RefBridge.js';
 
-/* ------------------------------------------------------------------
-   HOME CHROME: управляем показом поиска/фильтров/категорий здесь (единственный источник)
-   ------------------------------------------------------------------ */
-function isHomeRouteHash(h) { return h === '#/' || h === '#'; }
-function isHomeNow() { return isHomeRouteHash(location.hash || '#/'); }
-function applyHomeChrome() {
-  const onHome = isHomeNow();
-  document.querySelectorAll('[data-home-only]').forEach(el => {
-    if (onHome) el.removeAttribute('hidden');
-    else el.setAttribute('hidden', '');
-  });
-}
-// применим сразу
-try { applyHomeChrome(); } catch {}
-
 /* ===== Кэшбек/Рефералы: локальные утилиты (дозревание pending) ===== */
 const POINTS_MATURITY_MS  = 24*60*60*1000;
 function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
@@ -249,7 +234,7 @@ async function serverPushFor(uid, notif){
 }
 async function syncMyNotifications(){
   const uid = getUID(); if (!uid) return;
-  try{ const items = await notifApiList(uid); mergeNotifsToLocal(items); updateNotifBadge?.(); }catch{}
+  try{ const items = await notifApiList(uid); mergeNotifsToLocal(items); updateCartBadge?.(); updateNotifBadge?.(); }catch{}
 }
 
 /* ---- Онбординг-уведомления для новых юзеров (один раз на UID) ---- */
@@ -295,7 +280,6 @@ ScrollReset.mount();
 function setAdminMode(on){
   document.body.classList.toggle('admin-mode', !!on);
   setTabbarMenu(on ? 'admin' : 'home');
-  applyHomeChrome();
 }
 function confirmAdminSwitch(onConfirm, onCancel){
   const modal = document.getElementById('modal');
@@ -433,8 +417,6 @@ function hideProductHeader(){
 
 /* ---------- РОУТЕР ---------- */
 async function router(){
-  applyHomeChrome();
-
   const path = (location.hash || '#/').slice(1);
   const clean = path.replace(/#.*/,'');
 
@@ -449,13 +431,13 @@ async function router(){
   const inAdmin = document.body.classList.contains('admin-mode');
 
   if (inAdmin){
-    if (parts.length===0 || parts[0] !== 'admin'){ location.hash = '#/admin'; applyHomeChrome(); return renderAdmin(); }
-    if (!canAccessAdmin()){ setAdminMode(false); tWarn('Доступ в админ-панель ограничен'); location.hash = '#/admin-login'; applyHomeChrome(); return; }
-    applyHomeChrome(); return renderAdmin();
+    if (parts.length===0 || parts[0] !== 'admin'){ location.hash = '#/admin'; return renderAdmin(); }
+    if (!canAccessAdmin()){ setAdminMode(false); tWarn('Доступ в админ-панель ограничен'); location.hash = '#/admin-login'; return; }
+    return renderAdmin();
   }
 
   if (parts.length===0) {
-    const res = renderHome(router); applyHomeChrome();
+    const res = renderHome(router);
     try { ScrollReset.request(document.getElementById('view')); } catch {}
     return res;
   }
@@ -466,43 +448,41 @@ async function router(){
     return params;
   };
 
-  const m1=match('category/:slug'); if (m1){ applyHomeChrome(); return renderCategory(m1); }
-  const m2=match('product/:id');   if (m2){ applyHomeChrome(); return renderProduct(m2); }
-  const m3=match('track/:id');     if (m3){ applyHomeChrome(); return renderTrack(m3); }
+  const m1=match('category/:slug'); if (m1){ return renderCategory(m1); }
+  const m2=match('product/:id');   if (m2){ return renderProduct(m2); }
+  const m3=match('track/:id');     if (m3){ return renderTrack(m3); }
 
-  if (match('favorites'))          { applyHomeChrome(); return renderFavorites(); }
-  if (match('cart'))               { applyHomeChrome(); return renderCart(); }
-  if (match('orders'))             { applyHomeChrome(); return renderOrders(); }
+  if (match('favorites'))          { return renderFavorites(); }
+  if (match('cart'))               { return renderCart(); }
+  if (match('orders'))             { return renderOrders(); }
 
-  if (match('account'))            { applyHomeChrome(); return renderAccount(); }
-  if (match('account/addresses'))  { applyHomeChrome(); return renderAddresses(); }
-  if (match('account/settings'))   { applyHomeChrome(); return renderSettings(); }
-  if (match('account/cashback'))   { applyHomeChrome(); return renderCashback(); }
-  if (match('account/referrals'))  { applyHomeChrome(); return renderReferrals(); }
+  if (match('account'))            { return renderAccount(); }
+  if (match('account/addresses'))  { return renderAddresses(); }
+  if (match('account/settings'))   { return renderSettings(); }
+  if (match('account/cashback'))   { return renderCashback(); }
+  if (match('account/referrals'))  { return renderReferrals(); }
 
   if (match('notifications')){
     await renderNotifications(updateNotifBadge);
     try { localStorage.setItem(k('notifs_unread'),'0'); } catch {}
     try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: 0 })); } catch {}
     await syncMyNotifications();
-    applyHomeChrome();
     return;
   }
 
-  if (match('ref')){ renderRefBridge(); applyHomeChrome(); return; }
+  if (match('ref')){ return renderRefBridge(); }
 
   if (match('admin')){
     if (!canAccessAdmin()){
-      tWarn('Доступ в админ-панель ограничен'); location.hash = '#/admin-login'; applyHomeChrome(); return;
+      tWarn('Доступ в админ-панель ограничен'); location.hash = '#/admin-login'; return;
     }
     confirmAdminSwitch(()=>{ setAdminMode(true); location.hash = '#/admin'; }, ()=>{ location.hash = '#/account'; });
-    applyHomeChrome();
     return;
   }
 
-  if (match('faq')) { applyHomeChrome(); return renderFAQ(); }
+  if (match('faq')) { return renderFAQ(); }
 
-  { const res = renderHome(router); applyHomeChrome(); try { ScrollReset.forceNow(); } catch {} return res; }
+  { const res = renderHome(router); try { ScrollReset.forceNow(); } catch {} return res; }
 }
 
 /* ===== серверная синхронизация снапшота корзины/избранного ===== */
@@ -576,7 +556,7 @@ async function init(){
   // После старта — попробовать привязать приглашение
   await tryBindPendingInviter();
 
-  window.addEventListener('hashchange', ()=>{ applyHomeChrome(); router(); });
+  window.addEventListener('hashchange', ()=>{ router(); });
 
   window.addEventListener('orders:updated', ()=>{
     const inAdmin = document.body.classList.contains('admin-mode');
