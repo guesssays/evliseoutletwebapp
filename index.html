@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -38,7 +39,7 @@
   <!-- ЕДИНЫЙ БИЛД-ШТАМП (обновляется versionize.mjs) -->
   <meta id="APP_BUILD" name="app-build" content="2025-10-30-21-13" />
 
-  <!-- Лёгкая телеметрия (без влияния на кэш) -->
+  <!-- Лёгкая телеметрия -->
   <script>
   (function(){
     if (sessionStorage.__diag_sent__) return;
@@ -78,8 +79,6 @@
       --shadow: 0 10px 30px rgba(0,0,0,.18);
       --muted:#787676;
     }
-
-    /* Универсальное скрытие по атрибуту */
     [hidden]{ display:none !important; }
 
     .app-header.hidden{
@@ -194,7 +193,7 @@
       <button id="btnFixFav" class="fixbtn" aria-label="В избранное" aria-pressed="false"><i data-lucide="heart"></i></button>
     </div>
 
-    <!-- Поиск + фильтры (ПОКАЗЫВАТЬ ТОЛЬКО НА ГЛАВНОЙ) -->
+    <!-- Поиск + фильтры (ТОЛЬКО НА ГЛАВНОЙ) -->
     <section class="section section-search" data-home-only>
       <div class="search-wrap">
         <i data-lucide="search" class="search-ico"></i>
@@ -332,55 +331,6 @@
     }
     document.getElementById('btnPhotoSearch')?.addEventListener('click', (e)=>{ e.preventDefault(); openPhotoSearchModal(); });
     try{ window.lucide?.createIcons?.(); }catch{}
-  })();
-  </script>
-
-  <!-- Показывать панель поиска/фильтров/категорий только на главной (жёсткий фикс первого входа) -->
-  <script>
-  (function(){
-    // 1) Нормализуем хэш в #/ при самом первом входе (без добавления лишней истории)
-    if (!location.hash || location.hash === '#') {
-      try { location.replace('#/'); } catch { location.hash = '#/'; }
-    }
-
-    function isHomeHash(h){ return h === '#/' || h === '#'; }
-
-    // Применение правила видимости
-    function applyHomeChrome(){
-      var onHome = isHomeHash(location.hash || '#/');
-      document.querySelectorAll('[data-home-only]').forEach(function(el){
-        if (onHome) el.removeAttribute('hidden');
-        else el.setAttribute('hidden','');
-      });
-    }
-
-    // 2) Сразу показываем (синхронно) — чтобы элементы были видимы уже на первом кадре
-    applyHomeChrome();
-
-    // 3) «Липкий» энфорсер на первый секундый интервал — гоняем ещё несколько кадров против гонок роутера
-    (function stickyEnforce(durationMs){
-      var until = performance.now() + (durationMs|0 || 1000);
-      function tick(){
-        applyHomeChrome();
-        if (performance.now() < until) requestAnimationFrame(tick);
-      }
-      requestAnimationFrame(tick);
-    })(1000);
-
-    // 4) Дублируем на ключевых событиях
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', applyHomeChrome, { once:true });
-    } else { setTimeout(applyHomeChrome, 0); }
-    window.addEventListener('load', applyHomeChrome);
-    window.addEventListener('hashchange', applyHomeChrome);
-    window.addEventListener('view:home-mounted', applyHomeChrome);
-    window.addEventListener('view:route-changed', applyHomeChrome);
-    window.addEventListener('view:product-mounted', applyHomeChrome);
-
-    // 5) На всякий: если таббар активирует «дом» программно — тоже обновим
-    try{
-      document.querySelector('[data-tab="home"]')?.addEventListener('click', ()=> setTimeout(applyHomeChrome, 0));
-    }catch{}
   })();
   </script>
 
