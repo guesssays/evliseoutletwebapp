@@ -719,13 +719,41 @@ function drawRelatedCards(list){
       const priceEl = node.querySelector('.price');
       if (priceEl) priceEl.textContent = priceFmt(p.price);
 
-      const favBtn = node.querySelector('button.fav, .fav');
-      if (favBtn){
-        const active = isFav(p.id);
-        favBtn.classList.toggle('active', active);
-        favBtn.setAttribute('aria-pressed', String(active));
-        favBtn.onclick = (ev)=>{ ev.preventDefault(); toggleFav(p.id); };
-      }
+const favBtn = node.querySelector('button.fav, .fav');
+if (favBtn){
+  const active = isFav(p.id);
+  favBtn.classList.toggle('active', active);
+  favBtn.setAttribute('aria-pressed', String(active));
+
+  // сделаем элемент «настоящей» кнопкой
+  try { favBtn.setAttribute('type','button'); favBtn.setAttribute('role','button'); } catch {}
+
+  // заранее включаем «тишину» для ScrollReset до любых жестов
+  favBtn.addEventListener('pointerdown', () => {
+    try { ScrollReset.quiet(900); } catch {}
+  }, { capture:true, passive:true });
+
+  // основной клик — глушим ВСЁ: и дефолт, и всплытие, и делегатов наверху
+  favBtn.addEventListener('click', (ev) => {
+    try {
+      ev.preventDefault();
+      ev.stopPropagation();
+      ev.stopImmediatePropagation?.();
+      ScrollReset.quiet(900);
+    } catch {}
+
+    const now = toggleFav(p.id);
+    favBtn.classList.toggle('active', now);
+    favBtn.setAttribute('aria-pressed', String(now));
+
+    // глобальный синк избранного
+    window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: p.id, active: now } }));
+  }, { passive:false, capture:false });
+
+  // дополнительный страховочный троттлер прокрутки
+  try { ScrollReset.guardNoResetClick(favBtn, { duration: 900, preventAnchorNav: true }); } catch {}
+}
+
 
       frag.appendChild(node);
     } else {
