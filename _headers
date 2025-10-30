@@ -2,11 +2,12 @@
 # БАЗОВЫЕ БЕЗОПАСНЫЕ ЗАГОЛОВКИ
 # -----------------------------
 /*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), fullscreen=*
-  Content-Security-Policy: frame-ancestors 'self' https://t.me https://web.telegram.org https://*.telegram.org
+  # CSP с поддержкой Telegram WebApp, inline-скриптов (для минимальных инлайнов) и внешних CDN
+  Content-Security-Policy: default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' https://fonts.gstatic.com data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://cdn.jsdelivr.net; connect-src 'self' https://api.telegram.org https://*.netlify.app https://*.netlify/functions https://*.evlise.* https://evlise-outlet.*; frame-ancestors 'self' https://t.me https://web.telegram.org https://*.telegram.org
 
 # -----------------------------
 # КЭШИРОВАНИЕ ДЛЯ SPA
@@ -20,7 +21,7 @@
 /index.html
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
-  # При необходимости можно разово включить очистку кэша на клиентах:
+  # Разовая тотальная очистка кэша у клиентов (раскомментируй при необходимости на один деплой):
   # Clear-Site-Data: "cache"
 
 # Любые *.html — тоже без кэша
@@ -33,7 +34,7 @@
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
 
-# CSS — без кэша (правки подтягиваются сразу) — ВАЖНО: без ведущего пробела!
+# CSS — без кэша, чтобы правки подтягивались сразу
 /styles.css
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
@@ -43,7 +44,7 @@
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
 
-# Статические ассеты (хэшируемые) — можно агрессивно кэшировать
+# Статические ассеты (версируемые/хэшируемые) — агрессивное кэширование
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
@@ -56,7 +57,7 @@
 /images/*
   Cache-Control: public, max-age=31536000, immutable
 
-# Данные каталога (если без хэша) — кэш на 5 минут
+# Данные каталога (если без хэша) — лёгкий кэш
 /data/*
   Cache-Control: public, max-age=300
 
