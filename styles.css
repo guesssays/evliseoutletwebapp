@@ -1104,3 +1104,81 @@ html.route-home .product-fixhdr{
   display:inline-block;
   transform: translateY(-.5px);
 }
+/* === Filters UI (compact, wrap, correct swatches) =================== */
+
+/* модалка: гарантированно помещается на экран */
+.modal-dialog{
+  max-height: 86vh;                 /* было 70vh только для body */
+  display: flex;
+  flex-direction: column;
+}
+.modal-head{ flex: 0 0 auto; }
+.modal-body{
+  flex: 1 1 auto;
+  max-height: none !important;      /* чтобы работал flex-скролл */
+  overflow: auto;
+}
+.modal-actions{ flex: 0 0 auto; }
+
+/* карточки секций в модалке */
+.filters-modal{ display:grid; gap:12px; }
+.filters-hint{ margin:2px 2px 4px; font-size:13px; color:var(--muted); }
+.filters-card{
+  border:1px solid var(--stroke); border-radius:16px; background:#fff; overflow:hidden;
+}
+.filters-card__head{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:10px 12px; border-bottom:1px solid var(--stroke);
+  background:linear-gradient(180deg, #fafafa 0%, #f7f7f7 100%);
+}
+.filters-card__title{ font-weight:800; }
+.filters-card__meta{ color:var(--muted); font-size:12px; }
+.filters-card__body{ padding:10px 12px 12px; }
+
+/* чип-бары: перенос по строкам, ровные зазоры — ничего не "липнет" */
+.chipbar--wrap{
+  display:flex; flex-wrap:wrap;
+  gap:8px 8px;                      /* вертикальный и горизонтальный */
+  overflow: visible;                /* снимаем горизонтальный скролл */
+  padding-bottom: 0;
+}
+
+/* чипы и свотчи */
+.chip--select{
+  display:inline-flex; align-items:center; gap:8px;
+  border-radius:14px;
+  transition: transform .06s ease, box-shadow .12s ease, background .18s ease;
+}
+.chip--select:active{ transform: translateY(1px); }
+.chip--select.active{ background:#121111; color:#fff; border-color:#121111; }
+.chip--select .swatch{
+  width:14px; height:14px; border-radius:50%;
+  border:1px solid rgba(0,0,0,.12);
+  background: var(--sw, #121111);
+}
+
+/* нижняя строка в модалке */
+.filters-inline{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:4px 2px 0;
+}
+.toggle{ display:inline-flex; align-items:center; gap:10px; }
+.toggle input[type="checkbox"]{ width:18px; height:18px; accent-color:#121111; margin:0; }
+.pill--ghost{ background:#fff; color:var(--text); border:1px solid var(--stroke); }
+.i-x::before{ content:"✕"; font-weight:800; display:inline-block; transform:translateY(-.5px); }
+
+/* активные пилюли над лентой: многорядная сетка с gap */
+#activeFilters{
+  display:flex; flex-wrap:wrap; gap:8px; padding:8px 18px 0;
+}
+.filter-chip{ position:relative; padding-right:30px; }
+.filter-chip .chip-x{
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  width:18px; height:18px; border-radius:50%;
+  display:grid; place-items:center;
+  background:rgba(0,0,0,.06); font-weight:800; line-height:1; cursor:pointer;
+}
+.filter-chip .chip-x:hover{ background:rgba(0,0,0,.10); }
+
+/* кнопка «Сбросить фильтры» прилипает вправо при наличии места */
+.pill--clear-all{ margin-left:auto; }
