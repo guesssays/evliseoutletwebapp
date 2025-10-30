@@ -168,6 +168,16 @@
 
   <!-- Telegram WebApp -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+(function(){
+  var isTG = !!(window.Telegram && Telegram.WebApp);
+  var ref = (document.referrer||'').toLowerCase();
+  if (isTG || ref.includes('t.me') || ref.includes('telegram')) {
+    document.documentElement.classList.add('tg-webapp');
+  }
+})();
+</script>
+
   <!-- Lucide -->
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.454.0/dist/umd/lucide.min.js" defer></script>
 
