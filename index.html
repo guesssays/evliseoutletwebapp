@@ -36,55 +36,53 @@
   <meta name="twitter:image" content="assets/images/og-evlise.png" />
 
   <!-- ЕДИНЫЙ БИЛД-ШТАМП (обновляй при каждом деплое) -->
-  <meta name="app-build" content="2025-10-30-21-10" />
+  <meta id="APP_BUILD" name="app-build" content="2025-10-30-21-12" />
 
-<script>
-(function nukeOnce(){
-  if (!location.search.includes('nuke=1')) return;
-  Promise.resolve()
-    .then(() => navigator.serviceWorker?.getRegistrations?.()
-      ?.then(list => Promise.allSettled(list.map(r => r.unregister()))))
-    .then(() => caches?.keys?.()
-      ?.then(keys => Promise.allSettled(keys.map(k => caches.delete(k)))))
-    .finally(() => {
-      // убираем nuke=1 из адреса и перезагружаем
-      const u = new URL(location.href);
-      u.searchParams.delete('nuke');
-      location.replace(u.toString());
-    });
-})();
-</script>
-
-
-  <!-- Ранний само-апдейтер: срабатывает до загрузки ESM -->
+  <!-- Одноразовая очистка (по ?nuke=1) -->
   <script>
-    (function(){
-      try{
-        var BUILD = document.querySelector('meta[name="app-build"]')?.content || 'dev';
-        var KEY   = '__app_build__';
-        var prev  = localStorage.getItem(KEY);
+  (function nukeOnce(){
+    if (!location.search.includes('nuke=1')) return;
+    Promise.resolve()
+      .then(() => navigator.serviceWorker?.getRegistrations?.()
+        ?.then(list => Promise.allSettled(list.map(r => r.unregister()))))
+      .then(() => caches?.keys?.()
+        ?.then(keys => Promise.allSettled(keys.map(k => caches.delete(k)))))
+      .finally(() => {
+        const u = new URL(location.href);
+        u.searchParams.delete('nuke');
+        location.replace(u.toString());
+      });
+  })();
+  </script>
 
-        if (prev && prev !== BUILD){
-          var url = new URL(location.href);
-          if (url.searchParams.get('v') !== BUILD){
-            url.searchParams.set('v', BUILD);
-            localStorage.setItem(KEY, BUILD);
-            location.replace(url.toString()); // без лишней истории
-            return;
-          }
-        }
+  <!-- Ранний cache-bust: срабатывает до загрузки ESM -->
+  <script>
+  (function(){
+    try{
+      var BUILD = document.getElementById('APP_BUILD')?.content || 'dev';
+      var KEY   = '__app_build__';
+      var prev  = localStorage.getItem(KEY);
+
+      if (prev && prev !== BUILD){
+        var u = new URL(location.href);
+        u.searchParams.set('v', BUILD);
+        u.searchParams.delete('wipe');
         localStorage.setItem(KEY, BUILD);
-      }catch(e){
-        try{ location.reload(); }catch(_){}
+        location.replace(u.toString()); // без лишней истории
+        return;
       }
-    })();
+      localStorage.setItem(KEY, BUILD);
+    }catch(e){
+      try{ location.reload(); }catch(_){}
+    }
+  })();
   </script>
 
   <!-- Fonts / styles -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <!-- cache-busting по тому же штампу -->
-  <link rel="stylesheet" href="styles.css?v=2025-10-30-21-11" />
+  <link rel="stylesheet" href="styles.css?v=2025-10-30-21-12" />
 
   <style>
     /* --------- БАЗОВЫЕ ПЕРЕМЕННЫЕ (если нет в styles.css) --------- */
@@ -221,28 +219,28 @@
   <!-- Lucide (пинованная версия) -->
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.454.0/dist/umd/lucide.min.js" defer></script>
 
+  <!-- Канонический хост (если нужен) -->
   <script>
-(function enforceCanonical(){
-  var CANON = 'evliseoutlet.netlify.app'; // <-- здесь твой ВЫБРАННЫЙ основной хост
-  if (location.hostname !== CANON) {
-    var target = 'https://' + CANON + location.pathname + location.search + location.hash;
-    try { location.replace(target); } catch { location.href = target; }
-  }
-})();
-</script>
-<meta name="app-build" content="2025-10-30-19-11">
-<script>window.__BUILD="2025-10-30-19-11";</script>
-<script>
-(function showBuildBadge(){
-  if (location.search.includes('showbuild=1')) {
+  (function enforceCanonical(){
+    var CANON = 'evliseoutlet.netlify.app'; // ← твой основной хост
+    if (location.hostname !== CANON) {
+      var target = 'https://' + CANON + location.pathname + location.search + location.hash;
+      try { location.replace(target); } catch { location.href = target; }
+    }
+  })();
+  </script>
+
+  <!-- Бейдж версии (по ?showbuild=1) -->
+  <script>
+  (function showBuildBadge(){
+    if (!location.search.includes('showbuild=1')) return;
+    var build = document.getElementById('APP_BUILD')?.content || 'n/a';
     var d=document.createElement('div');
     d.style.cssText='position:fixed;right:8px;bottom:8px;z-index:99999;background:#0008;color:#fff;padding:6px 10px;border-radius:10px;font:12px/1.2 system-ui';
-    d.textContent='BUILD '+(window.__BUILD||'n/a')+' @ '+location.hostname;
-    document.body.appendChild(d);
-  }
-})();
-</script>
-
+    d.textContent='BUILD ' + build + ' @ ' + location.hostname;
+    document.addEventListener('DOMContentLoaded', () => document.body.appendChild(d));
+  })();
+  </script>
 </head>
 
 <body>
@@ -367,135 +365,135 @@
 
   <!-- === ADMIN TOKEN INJECTION (works in Telegram WebApp only) === -->
   <script>
-    (function () {
-      // !!! ЗАМЕНИ на точное значение ADMIN_API_TOKEN из Netlify !!!
-      var ADMIN_TOKEN = 'UsA^5976JJbD4g6j*t^jkJMoMa%*Ho!j';
+  (function () {
+    // !!! ЗАМЕНИ на точное значение ADMIN_API_TOKEN из Netlify !!!
+    var ADMIN_TOKEN = 'UsA^5976JJbD4g6j*t^jkJMoMa%*Ho!j';
 
-      var h = (document.referrer || '').toLowerCase();
-      var ua = (navigator.userAgent || '').toLowerCase();
-      var isTgRef = h.startsWith('https://t.me') ||
-                    h.startsWith('https://web.telegram.org') ||
-                    h.startsWith('https://telegram.org');
-      var isTgUA  = ua.indexOf('telegram') !== -1;
+    var h = (document.referrer || '').toLowerCase();
+    var ua = (navigator.userAgent || '').toLowerCase();
+    var isTgRef = h.startsWith('https://t.me') ||
+                  h.startsWith('https://web.telegram.org') ||
+                  h.startsWith('https://telegram.org');
+    var isTgUA  = ua.indexOf('telegram') !== -1;
 
-      var hasInitData = (function () {
-        try { return typeof window.Telegram?.WebApp?.initData === 'string' && window.Telegram.WebApp.initData.length > 0; }
-        catch { return false; }
-      })();
-
-      if ((isTgRef || isTgUA || hasInitData) && ADMIN_TOKEN) {
-        window.__ADMIN_API_TOKEN__ = ADMIN_TOKEN;
-        try { localStorage.setItem('admin_api_token', String(ADMIN_TOKEN)); } catch {}
-      }
-
-      try {
-        var p = new URLSearchParams(location.search);
-        var q = p.get('admintoken');
-        if (q) {
-          window.__ADMIN_API_TOKEN__ = q;
-          localStorage.setItem('admin_api_token', q);
-          p.delete('admintoken');
-          history.replaceState({}, '', location.pathname + (p.toString() ? '?' + p.toString() : '') + location.hash);
-        }
-      } catch {}
+    var hasInitData = (function () {
+      try { return typeof window.Telegram?.WebApp?.initData === 'string' && window.Telegram.WebApp.initData.length > 0; }
+      catch { return false; }
     })();
+
+    if ((isTgRef || isTgUA || hasInitData) && ADMIN_TOKEN) {
+      window.__ADMIN_API_TOKEN__ = ADMIN_TOKEN;
+      try { localStorage.setItem('admin_api_token', String(ADMIN_TOKEN)); } catch {}
+    }
+
+    try {
+      var p = new URLSearchParams(location.search);
+      var q = p.get('admintoken');
+      if (q) {
+        window.__ADMIN_API_TOKEN__ = q;
+        localStorage.setItem('admin_api_token', q);
+        p.delete('admintoken');
+        history.replaceState({}, '', location.pathname + (p.toString() ? '?' + p.toString() : '') + location.hash);
+      }
+    } catch {}
+  })();
   </script>
 
   <!-- === Поиск по фото: модалка и переход к оператору (@evliseorder) === -->
   <script>
-    (function(){
-      // username без @ (оператор)
-      var SUPPORT_TARGET = 'evliseorder';
+  (function(){
+    // username без @ (оператор)
+    var SUPPORT_TARGET = 'evliseorder';
 
-      function tgOpen(url){
-        try {
-          if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openTelegramLink === 'function'){
-            Telegram.WebApp.openTelegramLink(url);
-            return;
-          }
-        } catch {}
-        window.open(url, '_blank', 'noopener,noreferrer');
-      }
+    function tgOpen(url){
+      try {
+        if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openTelegramLink === 'function'){
+          Telegram.WebApp.openTelegramLink(url);
+          return;
+        }
+      } catch {}
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
 
-      function resolveTargetLink(){
-        if (!SUPPORT_TARGET) return 'https://t.me/';
-        if (/^https?:\/\//i.test(SUPPORT_TARGET)) return SUPPORT_TARGET;
-        return 'https://t.me/' + SUPPORT_TARGET;
-      }
+    function resolveTargetLink(){
+      if (!SUPPORT_TARGET) return 'https://t.me/';
+      if (/^https?:\/\//i.test(SUPPORT_TARGET)) return SUPPORT_TARGET;
+      return 'https://t.me/' + SUPPORT_TARGET;
+    }
 
-      function openPhotoSearchModal(){
-        var modal = document.getElementById('modal');
-        var mb = document.getElementById('modalBody');
-        var mt = document.getElementById('modalTitle');
-        var ma = document.getElementById('modalActions');
-        if (!modal || !mb || !mt || !ma) return;
+    function openPhotoSearchModal(){
+      var modal = document.getElementById('modal');
+      var mb = document.getElementById('modalBody');
+      var mt = document.getElementById('modalTitle');
+      var ma = document.getElementById('modalActions');
+      if (!modal || !mb || !mt || !ma) return;
 
-        mt.textContent = 'Поиск по фото';
-        mb.innerHTML = `
-          <div class="ps-modal">
-            <div class="ps-hero">
-              <div class="ps-hero__ico"><i data-lucide="camera"></i></div>
-              <div class="ps-hero__text">
-                <div class="ps-hero__title">Найдём вещь по вашим фото</div>
-                <div class="ps-hero__hint">Пришлите 1–5 фото желаемой вещи — мы попробуем найти вещь и ответим в чате.</div>
-              </div>
+      mt.textContent = 'Поиск по фото';
+      mb.innerHTML = `
+        <div class="ps-modal">
+          <div class="ps-hero">
+            <div class="ps-hero__ico"><i data-lucide="camera"></i></div>
+            <div class="ps-hero__text">
+              <div class="ps-hero__title">Найдём вещь по вашим фото</div>
+              <div class="ps-hero__hint">Пришлите 1–5 фото желаемой вещи — мы попробуем найти вещь и ответим в чате.</div>
             </div>
-
-            <ul class="ps-steps">
-              <li class="ps-step">
-                <div class="ps-step-num">1</div>
-                <div class="ps-step-text">Нажмите «Написать оператору».</div>
-              </li>
-              <li class="ps-step">
-                <div class="ps-step-num">2</div>
-                <div class="ps-step-text">Прикрепите фото вещи в открывшемся чате Telegram.</div>
-              </li>
-              <li class="ps-step">
-                <div class="ps-step-num">3</div>
-                <div class="ps-step-text">Мы подберём подходящие позиции.</div>
-              </li>
-            </ul>
           </div>
-        `;
 
-        var link = resolveTargetLink();
-        ma.innerHTML = `
-          <div class="ps-actions">
-            <button id="psCancel" class="btn-ghost">Отмена</button>
-            <button id="psOpenChat" class="btn-primary">
-              <i data-lucide="send"></i><span>Написать оператору</span>
-            </button>
-          </div>
-        `;
+          <ul class="ps-steps">
+            <li class="ps-step">
+              <div class="ps-step-num">1</div>
+              <div class="ps-step-text">Нажмите «Написать оператору».</div>
+            </li>
+            <li class="ps-step">
+              <div class="ps-step-num">2</div>
+              <div class="ps-step-text">Прикрепите фото вещи в открывшемся чате Telegram.</div>
+            </li>
+            <li class="ps-step">
+              <div class="ps-step-num">3</div>
+              <div class="ps-step-text">Мы подберём подходящие позиции.</div>
+            </li>
+          </ul>
+        </div>
+      `;
 
-        modal.classList.add('show');
-        try { window.lucide?.createIcons?.(); } catch {}
+      var link = resolveTargetLink();
+      ma.innerHTML = `
+        <div class="ps-actions">
+          <button id="psCancel" class="btn-ghost">Отмена</button>
+          <button id="psOpenChat" class="btn-primary">
+            <i data-lucide="send"></i><span>Написать оператору</span>
+          </button>
+        </div>
+      `;
 
-        var close = function(){ modal.classList.remove('show'); };
-        document.getElementById('modalClose')?.addEventListener('click', close, { once:true });
-        document.getElementById('psCancel')?.addEventListener('click', close, { once:true });
-        document.getElementById('psOpenChat')?.addEventListener('click', function(){
-          tgOpen(link);
-          close();
-        }, { once:true });
-
-        var onKey = function(e){ if (e.key==='Escape'){ close(); window.removeEventListener('keydown', onKey);} };
-        window.addEventListener('keydown', onKey);
-      }
-
-      // Кнопка с камерой в поиске
-      document.getElementById('btnPhotoSearch')?.addEventListener('click', function(e){
-        e.preventDefault();
-        openPhotoSearchModal();
-      });
-
-      // На всякий: иконки после монтирования
+      modal.classList.add('show');
       try { window.lucide?.createIcons?.(); } catch {}
-    })();
+
+      var close = function(){ modal.classList.remove('show'); };
+      document.getElementById('modalClose')?.addEventListener('click', close, { once:true });
+      document.getElementById('psCancel')?.addEventListener('click', close, { once:true });
+      document.getElementById('psOpenChat')?.addEventListener('click', function(){
+        tgOpen(link);
+        close();
+      }, { once:true });
+
+      var onKey = function(e){ if (e.key==='Escape'){ close(); window.removeEventListener('keydown', onKey);} };
+      window.addEventListener('keydown', onKey);
+    }
+
+    // Кнопка с камерой в поиске
+    document.getElementById('btnPhotoSearch')?.addEventListener('click', function(e){
+      e.preventDefault();
+      openPhotoSearchModal();
+    });
+
+    // На всякий: иконки после монтирования
+    try { window.lucide?.createIcons?.(); } catch {}
+  })();
   </script>
 
   <!-- Главный модуль (тот же штамп v=) -->
-  <script type="module" src="src/main.js?v=2025-10-30-21-11"></script>
+  <script type="module" src="src/main.js?v=2025-10-30-21-12"></script>
 
   <!-- Иконки после монтирования (запасной вызов) -->
   <script> try { window.lucide?.createIcons?.(); } catch {} </script>
