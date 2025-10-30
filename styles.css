@@ -827,3 +827,27 @@ body.admin-mode #scrollTopBtn{ display:none !important; }
 @media (max-width:360px){
   .section.section-search{ gap:8px !important; }
 }
+/* === FIX: product fixed header must be above everything === */
+:root{
+  /* было 80 — ниже app-header:110 */
+  --z-fixhdr: 140;
+}
+
+/* принудительно выше любых локальных слоёв/трансформов */
+#productFixHdr,
+.product-fixhdr{
+  z-index: var(--z-fixhdr) !important;
+  isolation: isolate;               /* собственный контекст, чтобы ничего не "пробивало" */
+  pointer-events: none;             /* контейнер не ловит клики... */
+}
+#productFixHdr .fixbtn,
+.product-fixhdr .fixbtn{
+  pointer-events: auto;             /* ...а кнопки ловят */
+}
+
+/* на всякий пожарный — если где-то есть агрессивные стили */
+.app-header.hidden{
+  opacity: 0;
+  visibility: hidden;               /* исключаем перекрытие "невидимым" хедером */
+  pointer-events: none;
+}
