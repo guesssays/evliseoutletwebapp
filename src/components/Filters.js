@@ -19,9 +19,9 @@ function ensureFilters() {
   return state.filters;
 }
 
+/* ЖЁСТКИЙ сброс (без протяжки старых значений) */
 function resetAllFilters() {
   state.filters = {
-    ...ensureFilters(),
     subcats: [],
     size: [],
     sizeClothes: [],
@@ -30,6 +30,35 @@ function resetAllFilters() {
     maxPrice: null,
     inStock: false,
   };
+}
+
+/* Нейтрализуем любые «внешние» сужения ленты (категории/URL/DOM) */
+function _clearExternalCategoryNarrowing() {
+  try {
+    // 1) Если Home хранит выбранную категорию в состоянии — очистим
+    if (state.ui?.home?.selectedCategory) state.ui.home.selectedCategory = null;
+    if ('currentCategory' in state) state.currentCategory = null;
+    if ('currentCategorySlug' in state) state.currentCategorySlug = null;
+
+    // 2) Снимем active у чипов категорий (если они уже отрисованы)
+    const catHost = document.getElementById('catChips');
+    if (catHost) {
+      catHost.querySelectorAll('.chip.active').forEach(b => b.classList.remove('active'));
+    }
+
+    // 3) Обновим hash, чтобы рут-страница не несла параметров категории
+    if (typeof location !== 'undefined') {
+      const pure = '#/home';
+      if (!location.hash || location.hash !== pure) {
+        history.replaceState({}, '', pure);
+      }
+    }
+  } catch {}
+}
+
+/* Безопасный ре-рендер Home */
+function rerenderHome(router) {
+  try { (router || window.appRouter)?.(); } catch {}
 }
 
 /* ===== категории ===== */
@@ -174,8 +203,6 @@ export function applyFilters(list){
       if (!sizes.some(s => wantForThisProduct.includes(s))) return false;
     }
 
-    // Цвет полностью убран
-
     if (f.minPrice != null && p.price < f.minPrice) return false;
     if (f.maxPrice != null && p.price > f.maxPrice) return false;
     if (f.inStock && p.soldOut) return false;
@@ -208,7 +235,7 @@ function chipGroup(items, selected, key){
 }
 const count = a => (Array.isArray(a)?a.length:0);
 
-/* ===== модалка фильтров (цвет убран, ряды — в одну строку со скроллом) ===== */
+/* ===== модалка фильтров (ряды — одна строка со скроллом) ===== */
 export function openFilterModal(router){
   ensureFilters();
 
@@ -261,7 +288,6 @@ export function openFilterModal(router){
           </div>
           <div class="filters-card__body">
             <div class="chipbar chipbar--scroll" id="fSizesShoes">${chipGroup(allSizesShoes, initialShoes, 'size-shoes')}</div>
-            <div class="filters-note">Если выбрать размер обуви без категории — покажем всю обувь с этим размером.</div>
           </div>
         </section>
 
@@ -292,7 +318,8 @@ export function openFilterModal(router){
         state.filters.size = []; // legacy off
 
         closeModal();
-        try { (router || window.appRouter)?.(); } catch {}
+        _clearExternalCategoryNarrowing();   // <— важно
+        rerenderHome(router);
         renderActiveFilterChips();
       }}
     ],
@@ -309,14 +336,15 @@ export function openFilterModal(router){
       el('#clearBtn').onclick = ()=>{
         resetAllFilters();
         closeModal();
-        try { window.appRouter?.(); } catch {}
+        _clearExternalCategoryNarrowing();   // <— важно
+        rerenderHome(router);
         renderActiveFilterChips();
       };
     }
   });
 }
 
-/* ===== активные чипы над лентой (цвет убран, фикс делегирования) ===== */
+/* ===== активные пилюли над лентой ===== */
 export function renderActiveFilterChips(){
   ensureFilters();
 
@@ -327,7 +355,7 @@ export function renderActiveFilterChips(){
   bar.onclick = (e)=>{
     const x = e.target.closest('.chip-x');
     if (x) {
-      const host = x.closest('.filter-chip');
+      const host = x.closest('.filter-pill');
       if (host) {
         const type = host.getAttribute('data-type');
         if (type === 'subcats')      state.filters.subcats = [];
@@ -335,7 +363,8 @@ export function renderActiveFilterChips(){
         if (type === 'sizeShoes')    state.filters.sizeShoes = [];
         if (type === 'inStock')      state.filters.inStock = false;
 
-        try { window.appRouter?.(); } catch {}
+        _clearExternalCategoryNarrowing();   // <— важно
+        rerenderHome();
         renderActiveFilterChips();
       }
       return;
@@ -343,36 +372,32 @@ export function renderActiveFilterChips(){
     const clear = e.target.closest('.pill--clear-all');
     if (clear) {
       resetAllFilters();
-      try { window.appRouter?.(); } catch {}
+      _clearExternalCategoryNarrowing();     // <— важно
+      rerenderHome();
       renderActiveFilterChips();
     }
   };
 
-  const pushChip=(label, type)=>{
+  const pushPill=(label, type)=>{
     const node = document.createElement('button');
-    node.className = 'chip active filter-chip';
+    node.className = 'pill pill--ghost filter-pill';
     node.setAttribute('data-type', type);
-    node.textContent = label;
-    const close = document.createElement('span');
-    close.className = 'chip-x';
-    close.setAttribute('aria-label', 'Убрать фильтр');
-    close.innerHTML = '&times;';
-    node.appendChild(close);
+    node.innerHTML = `<span class="pill-text">${label}</span><span class="chip-x" aria-label="Убрать фильтр">×</span>`;
     bar.appendChild(node);
   };
 
   if (state.filters.subcats?.length) {
     const labels = state.filters.subcats.map(categoryNameBySlug);
-    pushChip('Категория: ' + labels.join(', '), 'subcats');
+    pushPill('Категория: ' + labels.join(', '), 'subcats');
   }
   if (state.filters.sizeClothes?.length) {
-    pushChip('Размер (одежда): ' + state.filters.sizeClothes.join(', '), 'sizeClothes');
+    pushPill('Размер (одежда): ' + state.filters.sizeClothes.join(', '), 'sizeClothes');
   }
   if (state.filters.sizeShoes?.length) {
-    pushChip('Размер (обувь): ' + state.filters.sizeShoes.join(', '), 'sizeShoes');
+    pushPill('Размер (обувь): ' + state.filters.sizeShoes.join(', '), 'sizeShoes');
   }
   if (state.filters.inStock) {
-    pushChip('Только в наличии', 'inStock');
+    pushPill('Только в наличии', 'inStock');
   }
 
   const hasAny =

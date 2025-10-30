@@ -1196,3 +1196,39 @@ html.route-home .product-fixhdr{
 .chipbar--scroll .chip{
   flex: 0 0 auto;                /* не сжимать, листаем вправо */
 }
+/* === [Filters Active Pills] single-line scroll & distinct style === */
+#activeFilters{
+  display: flex !important;
+  flex-wrap: nowrap !important;      /* одна строка */
+  gap: 8px !important;
+  padding: 8px 18px 0 !important;
+  overflow-x: auto !important;       /* горизонтальная прокрутка */
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin;
+}
+
+#activeFilters .filter-pill{
+  flex: 0 0 auto;                    /* не сжимать, листаем вправо */
+  background: #fff;
+  border: 1px solid var(--stroke);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 10px 32px 10px 14px;      /* место под крестик */
+  font-weight: 800;
+}
+
+#activeFilters .filter-pill .chip-x{
+  position: absolute;
+  right: 8px; top: 50%; transform: translateY(-50%);
+  width: 18px; height: 18px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(0,0,0,.06);
+  font-weight: 800; line-height: 1; cursor: pointer;
+}
+#activeFilters .filter-pill .chip-x:hover{ background: rgba(0,0,0,.10); }
+
+/* кнопка «Сбросить фильтры» визуально в том же стиле и тоже скроллится */
+#activeFilters .pill--clear-all{
+  flex: 0 0 auto;
+}
