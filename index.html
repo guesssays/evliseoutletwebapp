@@ -2,47 +2,6 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-
-  <!-- HARD UPGRADE BOOTSTRAP (works even on very old cached HTML) -->
-<script>
-(function(){
-  // 1) Жёсткая "эпоха" — меняй цифру при любом важном релизе
-  var EPOCH = '2025-10-30-21-12';      // совпадает с <meta id="APP_BUILD">
-  var KEY   = '__app_epoch__';
-
-  // 2) Уже проходили эту эпоху? Ничего не делаем
-  try { if (localStorage.getItem(KEY) === EPOCH) return; } catch (_) {}
-
-  // 3) По возможности зачистим SW и CacheStorage (тихо)
-  try {
-    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
-      navigator.serviceWorker.getRegistrations().then(function(list){
-        list.forEach(function(r){ try{ r.unregister(); }catch(_){ } });
-      });
-    }
-  } catch(_) {}
-  try {
-    if (window.caches && caches.keys) {
-      caches.keys().then(function(keys){ keys.forEach(function(k){ try{ caches.delete(k); }catch(_){ } }); });
-    }
-  } catch(_) {}
-
-  // 4) Перезагрузим тот же адрес, но с твёрдым build-параметром и флагом nuke=1
-  try {
-    var build = (document.getElementById('APP_BUILD')||{}).content || EPOCH;
-    var u = new URL(location.href);
-    u.searchParams.set('v', build);
-    u.searchParams.set('nuke', '1');
-    u.searchParams.set('r', String(Math.random()).slice(2)); // уникальность
-    // Запоминаем "эпоху" до перехода (если не получится — попробуем ещё раз на след. старте)
-    try { localStorage.setItem(KEY, EPOCH); } catch(_){}
-    location.replace(u.toString());
-  } catch(_) { /* в безвыходной ситуации — обычный reload */
-    try { location.reload(true); } catch(__) {}
-  }
-})();
-</script>
-
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
   <title>EVLISE OUTLET — интернет-магазин одежды</title>
@@ -76,70 +35,32 @@
   <meta name="twitter:description" content="Стильные вещи по Outlet-ценам. Смотрите каталог и заказывайте в пару кликов." />
   <meta name="twitter:image" content="assets/images/og-evlise.png" />
 
-  <!-- ЕДИНЫЙ БИЛД-ШТАМП -->
+  <!-- ЕДИНЫЙ БИЛД-ШТАМП (обновляется versionize.mjs) -->
   <meta id="APP_BUILD" name="app-build" content="2025-10-30-21-12" />
-<script>
-(function(){
-  // Отправим первичную телеметрию только 1 раз за сессию
-  if (sessionStorage.__diag_sent__) return;
-  sessionStorage.__diag_sent__ = '1';
-  const payload = {
-    ts: Date.now(),
-    href: location.href,
-    host: location.host,
-    path: location.pathname,
-    search: location.search,
-    hash: location.hash,
-    ref: document.referrer || '',
-    ua: navigator.userAgent,
-    tg: !!window.Telegram && !!Telegram.WebApp,
-    tg_ver: (window.Telegram && Telegram.WebApp && Telegram.WebApp.version) || '',
-    build: document.querySelector('meta[name="app-build"]')?.content || '',
-  };
-  fetch('/.netlify/functions/diag', {
-    method:'POST',
-    headers:{'content-type':'application/json'},
-    body: JSON.stringify(payload)
-  }).catch(()=>{});
-})();
-</script>
 
-  <!-- Одноразовая очистка (по ?nuke=1) -->
-  <script>
-  (function nukeOnce(){
-    if (!location.search.includes('nuke=1')) return;
-    Promise.resolve()
-      .then(() => navigator.serviceWorker?.getRegistrations?.()
-        ?.then(list => Promise.allSettled(list.map(r => r.unregister()))))
-      .then(() => caches?.keys?.()
-        ?.then(keys => Promise.allSettled(keys.map(k => caches.delete(k)))) )
-      .finally(() => {
-        const u = new URL(location.href);
-        u.searchParams.delete('nuke');
-        location.replace(u.toString());
-      });
-  })();
-  </script>
-
-  <!-- Ранний cache-bust -->
+  <!-- Лёгкая телеметрия (без влияния на кэш) -->
   <script>
   (function(){
-    try{
-      var BUILD = document.getElementById('APP_BUILD')?.content || 'dev';
-      var KEY   = '__app_build__';
-      var prev  = localStorage.getItem(KEY);
-      if (prev && prev !== BUILD){
-        var u = new URL(location.href);
-        u.searchParams.set('v', BUILD);
-        u.searchParams.delete('wipe');
-        localStorage.setItem(KEY, BUILD);
-        location.replace(u.toString());
-        return;
-      }
-      localStorage.setItem(KEY, BUILD);
-    }catch(e){
-      try{ location.reload(); }catch(_){}
-    }
+    if (sessionStorage.__diag_sent__) return;
+    sessionStorage.__diag_sent__ = '1';
+    const payload = {
+      ts: Date.now(),
+      href: location.href,
+      host: location.host,
+      path: location.pathname,
+      search: location.search,
+      hash: location.hash,
+      ref: document.referrer || '',
+      ua: navigator.userAgent,
+      tg: !!window.Telegram && !!Telegram.WebApp,
+      tg_ver: (window.Telegram && Telegram.WebApp && Telegram.WebApp.version) || '',
+      build: document.querySelector('meta[name="app-build"]')?.content || '',
+    };
+    fetch('/.netlify/functions/diag', {
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body: JSON.stringify(payload)
+    }).catch(()=>{});
   })();
   </script>
 
@@ -214,8 +135,6 @@
     document.addEventListener('DOMContentLoaded', () => document.body.appendChild(d));
   })();
   </script>
-
-  
 </head>
 
 <body>
@@ -365,7 +284,7 @@
   })();
   </script>
 
-  <!-- ВХОД: обычный модуль, без import.meta -->
+  <!-- ВХОД: обычный модуль (версионируется versionize.mjs) -->
   <script type="module" src="src/main.js?v=2025-10-30-21-12"></script>
 </body>
 </html>

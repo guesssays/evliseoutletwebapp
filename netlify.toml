@@ -1,5 +1,5 @@
 [build]
-  command = "node tools/versionize.mjs"
+  command = "COMMIT_REF=$COMMIT_REF node tools/versionize.mjs"
   publish = "."
 
 [[headers]]
