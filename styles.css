@@ -983,3 +983,26 @@ html body #scrollTopBtn i{
 @media (prefers-color-scheme: dark){
   html body #scrollTopBtn{ color:#fff !important; }
 }
+/* === ScrollTop: принудительно чёрная стрелка (поверх всех тем) === */
+html body #scrollTopBtn{
+  color:#121111 !important;           /* базовый цвет элемента */
+}
+
+/* красим именно линии иконки, чтобы не зависеть от currentColor */
+html body #scrollTopBtn svg,
+html body #scrollTopBtn svg *,
+html body #scrollTopBtn i{
+  stroke: #121111 !important;         /* чёрный штрих */
+  fill: none !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  stroke-width: 2.4 !important;
+}
+
+/* если где-то выше остались правила "в тёмной теме сделать белым" — глушим их */
+@media (prefers-color-scheme: dark){
+  html body #scrollTopBtn{ color:#121111 !important; }
+  html body #scrollTopBtn svg,
+  html body #scrollTopBtn svg *,
+  html body #scrollTopBtn i{ stroke:#121111 !important; }
+}
