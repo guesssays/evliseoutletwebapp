@@ -38,6 +38,24 @@
   <!-- ЕДИНЫЙ БИЛД-ШТАМП (обновляй при каждом деплое) -->
   <meta name="app-build" content="2025-10-30-21-10" />
 
+<script>
+(function nukeOnce(){
+  if (!location.search.includes('nuke=1')) return;
+  Promise.resolve()
+    .then(() => navigator.serviceWorker?.getRegistrations?.()
+      ?.then(list => Promise.allSettled(list.map(r => r.unregister()))))
+    .then(() => caches?.keys?.()
+      ?.then(keys => Promise.allSettled(keys.map(k => caches.delete(k)))))
+    .finally(() => {
+      // убираем nuke=1 из адреса и перезагружаем
+      const u = new URL(location.href);
+      u.searchParams.delete('nuke');
+      location.replace(u.toString());
+    });
+})();
+</script>
+
+
   <!-- Ранний само-апдейтер: срабатывает до загрузки ESM -->
   <script>
     (function(){
