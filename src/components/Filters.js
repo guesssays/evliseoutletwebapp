@@ -48,6 +48,15 @@ function _clearExternalCategoryNarrowing() {
   } catch {}
 }
 
+/* На всякий случай — сразу подсветим, что мы на home (для классов route-*) */
+function _ensureHomeClasses(){
+  try{
+    const de = document.documentElement;
+    de.classList.add('route-home');
+    de.classList.remove('route-other');
+  } catch {}
+}
+
 /* Мягкий ре-рендер Home (если роутер под рукой) */
 function _rerenderHomeSoft(router) {
   try {
@@ -61,26 +70,28 @@ function _rerenderHomeSoft(router) {
    1) снимаем внешние сужения
    2) если есть appRouter — дергаем его
    3) дополнительно эмулируем hashchange для router'ов, которые слушают событие
+   ВАЖНО: домашний хэш — это "#/" (а не "#/home"), иначе скрываются блоки data-home-only.
 */
 function _refreshListHard(router){
   _clearExternalCategoryNarrowing();
 
   // Попробуем мягко
-  if (_rerenderHomeSoft(router)) return;
+  if (_rerenderHomeSoft(router)) {
+    _ensureHomeClasses();
+    return;
+  }
 
   try {
-    const HOME = '#/home';
-    // Если уже на home — прокинем хэш-событие, чтобы словил слушатель
+    const HOME = '#/';  // <-- фикс: был "#/home"
     if (location.hash === HOME) {
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     } else {
-      // Переключим на home без истории и тоже дадим событие
       history.replaceState({}, '', HOME);
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     }
   } catch {}
 
-  // На всякий — ещё одна попытка ручного вызова роутера
+  _ensureHomeClasses(); // на всякий — сразу вернуть классы home
   try { window.appRouter?.(); } catch {}
 }
 
