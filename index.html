@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
   <title>EVLISE OUTLET — интернет-магазин одежды</title>
   <meta name="description" content="EVLISE OUTLET — стильная женская и мужская одежда со скидками. Новинки, акции и быстрый заказ прямо в Telegram WebApp." />
   <meta name="theme-color" content="#121111" />
@@ -98,11 +99,13 @@
     #scrollTopBtn{ position:fixed; right:16px; bottom:calc(var(--tabbar-h) + var(--safe) + 16px); width:48px; height:48px; border-radius:14px;
       border:1px solid var(--stroke); background:#fff; box-shadow:var(--shadow); display:inline-flex; align-items:center; justify-content:center; z-index:125; }
     #scrollTopBtn[hidden]{ display:none!important } @media (prefers-color-scheme:dark){ #scrollTopBtn{ background:#0b1220; color:#fff } }
+
     .section-search .search-wrap{ position:relative } .section-search .search{ width:100%; padding-right:44px }
     .search-photo{ position:absolute; right:8px; top:50%; transform:translateY(-50%); width:36px; height:36px; border-radius:10px;
       border:1px solid var(--stroke); background:#fff; display:inline-flex; align-items:center; justify-content:center; box-shadow:var(--shadow) }
     @media (prefers-color-scheme:dark){ .search-photo{ background:#0b1220; color:#fff } }
     .search-photo i{ pointer-events:none }
+
     .ps-modal{ display:flex; flex-direction:column; gap:14px }
     .ps-hero{ display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--stroke); border-radius:14px; background:rgba(0,0,0,.02) }
     @media (prefers-color-scheme:dark){ .ps-hero{ background:rgba(255,255,255,.03) } }
@@ -123,7 +126,7 @@
   <!-- Lucide -->
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.454.0/dist/umd/lucide.min.js" defer></script>
 
-  <!-- Канонический хост (если нужен) -->
+  <!-- Канонический хост — всегда evliseoutlet.netlify.app -->
   <script>
   (function enforceCanonical(){
     var CANON = 'evliseoutlet.netlify.app';
@@ -149,8 +152,11 @@
 
 <body>
   <div id="app">
+    <!-- Статичный хедер -->
     <header class="app-header" role="banner">
-      <div class="hdr-left"><div class="brand"><span class="app-title" aria-label="EVLISE OUTLET">EVLISE OUTLET</span></div></div>
+      <div class="hdr-left">
+        <div class="brand"><span class="app-title" aria-label="EVLISE OUTLET">EVLISE OUTLET</span></div>
+      </div>
       <div class="hdr-right">
         <button id="openNotifications" class="icon-btn notif-btn" aria-label="Уведомления" aria-live="polite" aria-atomic="true">
           <i data-lucide="bell"></i><b id="notifBadge" class="badge" hidden>0</b>
@@ -158,11 +164,13 @@
       </div>
     </header>
 
+    <!-- Фикс-хедер товара -->
     <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
       <button id="btnFixBack" class="fixbtn" aria-label="Назад"><i data-lucide="arrow-left"></i></button>
       <button id="btnFixFav" class="fixbtn" aria-label="В избранное" aria-pressed="false"><i data-lucide="heart"></i></button>
     </div>
 
+    <!-- Поиск + фильтры -->
     <section class="section section-search">
       <div class="search-wrap">
         <i data-lucide="search" class="search-ico"></i>
@@ -172,13 +180,22 @@
       <button id="openFilters" class="square-btn" aria-label="Открыть фильтры"><i data-lucide="sliders-horizontal"></i></button>
     </section>
 
+    <!-- Категории -->
     <section class="section"><div class="chipbar" id="catChips" aria-label="Категории"></div></section>
+
+    <!-- Активные фильтры -->
     <section class="section" id="activeFilters" aria-live="polite"></section>
+
+    <!-- Контент -->
     <main id="view" class="view"></main>
 
+    <!-- Модалка -->
     <div id="modal" class="modal" aria-hidden="true">
       <div class="modal-dialog" role="dialog" aria-modal="true">
-        <div class="modal-head"><div id="modalTitle"></div><button id="modalClose" class="icon-btn" aria-label="Закрыть"><i data-lucide="x"></i></button></div>
+        <div class="modal-head">
+          <div id="modalTitle"></div>
+          <button id="modalClose" class="icon-btn" aria-label="Закрыть"><i data-lucide="x"></i></button>
+        </div>
         <div id="modalBody" class="modal-body"></div>
         <div id="modalActions" class="modal-actions"></div>
       </div>
@@ -186,28 +203,51 @@
 
     <div id="toastWrap" class="toast-wrap"></div>
 
+    <!-- Нижний таббар -->
     <nav class="tabbar" role="tablist" aria-label="Основная навигация">
       <div class="tabbar-inner">
-        <a href="#/" data-tab="home" class="tab active" role="tab" aria-selected="true"><i data-lucide="home"></i><span>Главная</span></a>
-        <a href="#/favorites" data-tab="saved" class="tab" role="tab" aria-selected="false"><i data-lucide="heart"></i><span>Избранное</span></a>
-        <a href="#/cart" data-tab="cart" class="tab badge-wrap" role="tab" aria-selected="false"><i data-lucide="shopping-bag"></i><span>Корзина</span><b id="cartBadge" class="badge" hidden></b></a>
-        <a href="#/account" data-tab="account" class="tab" role="tab" aria-selected="false"><i data-lucide="user-round"></i><span>Аккаунт</span></a>
+        <a href="#/" data-tab="home" class="tab active" role="tab" aria-selected="true">
+          <i data-lucide="home"></i><span>Главная</span>
+        </a>
+        <a href="#/favorites" data-tab="saved" class="tab" role="tab" aria-selected="false">
+          <i data-lucide="heart"></i><span>Избранное</span>
+        </a>
+        <a href="#/cart" data-tab="cart" class="tab badge-wrap" role="tab" aria-selected="false">
+          <i data-lucide="shopping-bag"></i><span>Корзина</span>
+          <b id="cartBadge" class="badge" hidden></b>
+        </a>
+        <a href="#/account" data-tab="account" class="tab" role="tab" aria-selected="false">
+          <i data-lucide="user-round"></i><span>Аккаунт</span>
+        </a>
       </div>
     </nav>
 
-    <button id="scrollTopBtn" class="icon-btn" aria-label="Наверх" hidden><i data-lucide="chevrons-up"></i></button>
+    <!-- Кнопка «вверх» -->
+    <button id="scrollTopBtn" class="icon-btn" aria-label="Наверх" hidden>
+      <i data-lucide="chevrons-up"></i>
+    </button>
 
+    <!-- Шаблоны -->
     <template id="product-card">
-      <a class="card" href="#"><div class="card-img">
-        <img loading="lazy" alt=""><button class="fav" aria-label="В избранное" aria-pressed="false"><i data-lucide="heart"></i></button>
-      </div><div class="card-body"><div class="title"></div><div class="subtitle"></div>
-        <div class="price-row"><div class="price"></div></div></div></a>
+      <a class="card" href="#">
+        <div class="card-img">
+          <img loading="lazy" alt="">
+          <button class="fav" aria-label="В избранное" aria-pressed="false">
+            <i data-lucide="heart"></i>
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="title"></div>
+          <div class="subtitle"></div>
+          <div class="price-row"><div class="price"></div></div>
+        </div>
+      </a>
     </template>
 
     <template id="filter-chip"><span class="chip chip-mini"></span></template>
   </div>
 
-  <!-- ADMIN TOKEN INJECTION -->
+  <!-- ADMIN TOKEN INJECTION (только в Telegram-вью) -->
   <script>
   (function(){
     var ADMIN_TOKEN = 'UsA^5976JJbD4g6j*t^jkJMoMa%*Ho!j';
@@ -257,8 +297,7 @@
   })();
   </script>
 
-<!-- ЗАМЕНИ вот этим один блок с динамическим import -->
-<script type="module" src="src/main.js?v=2025-10-30-21-12"></script>
-
+  <!-- ВХОД: обычный модуль, без import.meta -->
+  <script type="module" src="src/main.js?v=2025-10-30-21-12"></script>
 </body>
 </html>
