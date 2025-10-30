@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-
   <title>EVLISE OUTLET — интернет-магазин одежды</title>
   <meta name="description" content="EVLISE OUTLET — стильная женская и мужская одежда со скидками. Новинки, акции и быстрый заказ прямо в Telegram WebApp." />
   <meta name="theme-color" content="#121111" />
@@ -35,7 +34,7 @@
   <meta name="twitter:description" content="Стильные вещи по Outlet-ценам. Смотрите каталог и заказывайте в пару кликов." />
   <meta name="twitter:image" content="assets/images/og-evlise.png" />
 
-  <!-- ЕДИНЫЙ БИЛД-ШТАМП (обновляй при каждом деплое) -->
+  <!-- ЕДИНЫЙ БИЛД-ШТАМП -->
   <meta id="APP_BUILD" name="app-build" content="2025-10-30-21-12" />
 
   <!-- Одноразовая очистка (по ?nuke=1) -->
@@ -46,7 +45,7 @@
       .then(() => navigator.serviceWorker?.getRegistrations?.()
         ?.then(list => Promise.allSettled(list.map(r => r.unregister()))))
       .then(() => caches?.keys?.()
-        ?.then(keys => Promise.allSettled(keys.map(k => caches.delete(k)))))
+        ?.then(keys => Promise.allSettled(keys.map(k => caches.delete(k)))) )
       .finally(() => {
         const u = new URL(location.href);
         u.searchParams.delete('nuke');
@@ -55,20 +54,19 @@
   })();
   </script>
 
-  <!-- Ранний cache-bust: срабатывает до загрузки ESM -->
+  <!-- Ранний cache-bust -->
   <script>
   (function(){
     try{
       var BUILD = document.getElementById('APP_BUILD')?.content || 'dev';
       var KEY   = '__app_build__';
       var prev  = localStorage.getItem(KEY);
-
       if (prev && prev !== BUILD){
         var u = new URL(location.href);
         u.searchParams.set('v', BUILD);
         u.searchParams.delete('wipe');
         localStorage.setItem(KEY, BUILD);
-        location.replace(u.toString()); // без лишней истории
+        location.replace(u.toString());
         return;
       }
       localStorage.setItem(KEY, BUILD);
@@ -81,148 +79,54 @@
   <!-- Fonts / styles -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <!-- cache-busting по тому же штампу -->
   <link rel="stylesheet" href="styles.css?v=2025-10-30-21-12" />
 
   <style>
-    /* --------- БАЗОВЫЕ ПЕРЕМЕННЫЕ (если нет в styles.css) --------- */
-    :root{
-      --safe: env(safe-area-inset-bottom, 0px);
-      --safe-top: env(safe-area-inset-top, 0px);
-      --stroke: rgba(15,23,42,.14);
-      --tabbar-h: 92px; /* синхронизировано со styles.css */
-      --shadow: 0 10px 30px rgba(0,0,0,.18);
-      --muted: #787676;
-    }
-
-    /* Скрытие/появление штатного верхнего хедера */
-    .app-header.hidden{
-      transform: translateY(-100%);
-      opacity: 0;
-      pointer-events: none;
-      transition: transform .18s ease, opacity .18s ease;
-    }
-
-    /* --------- ФИКС-ХЕДЕР ТОВАРА (визуал) --------- */
-    .product-fixhdr{
-      position: fixed;
-      left: 0; right: 0;
-      top: calc(var(--safe-top) + 8px);
-      height: 56px;
-      display: none;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 8px;
-      pointer-events: none; /* кликабельны только кнопки */
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
-      z-index: 120;
-    }
-    .product-fixhdr.show{ display: flex; }
-    .product-fixhdr .fixbtn{
-      pointer-events: auto;
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 44px; height: 44px; border-radius: 999px;
-      border: 1px solid var(--stroke);
-      background: rgba(255,255,255,.85);
-      backdrop-filter: saturate(1.3) blur(8px);
-      -webkit-backdrop-filter: saturate(1.3) blur(8px);
-      box-shadow: var(--shadow);
-      color: #111;
-    }
-    @media (prefers-color-scheme:dark){
-      .product-fixhdr .fixbtn{ background: rgba(11,18,32,.7); color: #fff; }
-    }
-    #btnFixBack{ margin-left: 8px; }
-    #btnFixFav{ margin-right: 8px; }
+    :root{ --safe: env(safe-area-inset-bottom, 0px); --safe-top: env(safe-area-inset-top, 0px);
+      --stroke: rgba(15,23,42,.14); --tabbar-h: 92px; --shadow: 0 10px 30px rgba(0,0,0,.18); --muted:#787676; }
+    .app-header.hidden{ transform:translateY(-100%); opacity:.0; pointer-events:none; transition:transform .18s ease, opacity .18s ease; }
+    .product-fixhdr{ position:fixed; left:0; right:0; top:calc(var(--safe-top) + 8px); height:56px; display:none;
+      align-items:center; justify-content:space-between; padding:0 8px; pointer-events:none; background:transparent!important;
+      border:none!important; box-shadow:none!important; z-index:120; }
+    .product-fixhdr.show{ display:flex; }
+    .product-fixhdr .fixbtn{ pointer-events:auto; display:inline-flex; align-items:center; justify-content:center;
+      width:44px; height:44px; border-radius:999px; border:1px solid var(--stroke); background:rgba(255,255,255,.85);
+      backdrop-filter:saturate(1.3) blur(8px); -webkit-backdrop-filter:saturate(1.3) blur(8px); box-shadow:var(--shadow); color:#111; }
+    @media (prefers-color-scheme:dark){ .product-fixhdr .fixbtn{ background:rgba(11,18,32,.7); color:#fff; } }
+    #btnFixBack{ margin-left:8px } #btnFixFav{ margin-right:8px }
     #btnFixFav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none; }
-
-    /* --------- КНОПКА «НАВЕРХ» (визуал) --------- */
-    #scrollTopBtn{
-      position: fixed;
-      right: 16px;
-      bottom: calc(var(--tabbar-h) + var(--safe) + 16px);
-      width: 48px; height: 48px;
-      border-radius: 14px;
-      border: 1px solid var(--stroke);
-      background: #fff;
-      box-shadow: var(--shadow);
-      display: inline-flex; align-items: center; justify-content: center;
-      z-index: 125;
-    }
-    #scrollTopBtn[hidden]{ display: none !important; }
-    @media (prefers-color-scheme:dark){
-      #scrollTopBtn{ background:#0b1220; color:#fff; }
-    }
-
-    /* === Поиск с иконкой камеры === */
-    .section-search .search-wrap{ position: relative; }
-    .section-search .search{ width: 100%; padding-right: 44px; }
-    .search-photo{
-      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
-      width: 36px; height: 36px; border-radius: 10px;
-      border: 1px solid var(--stroke); background: #fff;
-      display: inline-flex; align-items: center; justify-content: center;
-      box-shadow: var(--shadow);
-    }
-    @media (prefers-color-scheme:dark){
-      .search-photo{ background:#0b1220; color:#fff; }
-    }
-    .search-photo i{ pointer-events:none; }
-
-    /* === Photo Search Modal (лаконичный контент + выравнивание) === */
-    .ps-modal{ display:flex; flex-direction:column; gap:14px; }
-    .ps-hero{
-      display:flex; align-items:center; gap:12px;
-      padding:12px; border:1px solid var(--stroke); border-radius:14px;
-      background:rgba(0,0,0,.02);
-    }
-    @media (prefers-color-scheme:dark){ .ps-hero{ background:rgba(255,255,255,.03); } }
-    .ps-hero__ico{
-      width:40px; height:40px; border-radius:12px;
-      display:inline-flex; align-items:center; justify-content:center;
-      border:1px solid var(--stroke); background:#fff; box-shadow:var(--shadow);
-      flex:0 0 auto;
-    }
-    @media (prefers-color-scheme:dark){ .ps-hero__ico{ background:#0b1220; color:#fff; } }
-    .ps-hero__text{ display:flex; flex-direction:column; line-height:1.24; }
-    .ps-hero__title{ font-weight:700; font-size:16px; }
-    .ps-hero__hint{ color:var(--muted); font-size:13px; }
-
-    .ps-steps{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px; }
-    .ps-step{
-      display:flex; gap:10px; align-items:flex-start;
-      padding:10px 12px; border:1px dashed var(--stroke); border-radius:12px;
-    }
-    .ps-step-num{
-      flex:0 0 auto; width:22px; height:22px; border-radius:999px;
-      display:inline-flex; align-items:center; justify-content:center;
-      border:1px solid var(--stroke); font-size:12px;
-      background:#fff;
-    }
-    @media (prefers-color-scheme:dark){ .ps-step-num{ background:#0b1220; color:#fff; } }
-    .ps-step-text{ line-height:1.28; font-size:14px; }
-
-    .ps-actions{ display:flex; gap:10px; justify-content:flex-end; align-items:center; margin-top:4px; }
-    .ps-actions .btn-primary{
-      padding:10px 14px; border-radius:12px; display:inline-flex; align-items:center; gap:8px;
-    }
-    .ps-actions .btn-ghost{
-      padding:10px 12px; border:1px solid var(--stroke); background:transparent; border-radius:12px;
-    }
+    #scrollTopBtn{ position:fixed; right:16px; bottom:calc(var(--tabbar-h) + var(--safe) + 16px); width:48px; height:48px; border-radius:14px;
+      border:1px solid var(--stroke); background:#fff; box-shadow:var(--shadow); display:inline-flex; align-items:center; justify-content:center; z-index:125; }
+    #scrollTopBtn[hidden]{ display:none!important } @media (prefers-color-scheme:dark){ #scrollTopBtn{ background:#0b1220; color:#fff } }
+    .section-search .search-wrap{ position:relative } .section-search .search{ width:100%; padding-right:44px }
+    .search-photo{ position:absolute; right:8px; top:50%; transform:translateY(-50%); width:36px; height:36px; border-radius:10px;
+      border:1px solid var(--stroke); background:#fff; display:inline-flex; align-items:center; justify-content:center; box-shadow:var(--shadow) }
+    @media (prefers-color-scheme:dark){ .search-photo{ background:#0b1220; color:#fff } }
+    .search-photo i{ pointer-events:none }
+    .ps-modal{ display:flex; flex-direction:column; gap:14px }
+    .ps-hero{ display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--stroke); border-radius:14px; background:rgba(0,0,0,.02) }
+    @media (prefers-color-scheme:dark){ .ps-hero{ background:rgba(255,255,255,.03) } }
+    .ps-hero__ico{ width:40px; height:40px; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--stroke); background:#fff; box-shadow:var(--shadow); flex:0 0 auto }
+    @media (prefers-color-scheme:dark){ .ps-hero__ico{ background:#0b1220; color:#fff } }
+    .ps-hero__text{ display:flex; flex-direction:column; line-height:1.24 } .ps-hero__title{ font-weight:700; font-size:16px } .ps-hero__hint{ color:var(--muted); font-size:13px }
+    .ps-steps{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px }
+    .ps-step{ display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px dashed var(--stroke); border-radius:12px }
+    .ps-step-num{ flex:0 0 auto; width:22px; height:22px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--stroke); font-size:12px; background:#fff }
+    @media (prefers-color-scheme:dark){ .ps-step-num{ background:#0b1220; color:#fff } }
+    .ps-actions{ display:flex; gap:10px; justify-content:flex-end; align-items:center; margin-top:4px }
+    .ps-actions .btn-primary{ padding:10px 14px; border-radius:12px; display:inline-flex; align-items:center; gap:8px }
+    .ps-actions .btn-ghost{ padding:10px 12px; border:1px solid var(--stroke); background:transparent; border-radius:12px }
   </style>
 
   <!-- Telegram WebApp -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-  <!-- Lucide (пинованная версия) -->
+  <!-- Lucide -->
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.454.0/dist/umd/lucide.min.js" defer></script>
 
   <!-- Канонический хост (если нужен) -->
   <script>
   (function enforceCanonical(){
-    var CANON = 'evliseoutlet.netlify.app'; // ← твой основной хост
+    var CANON = 'evliseoutlet.netlify.app';
     if (location.hostname !== CANON) {
       var target = 'https://' + CANON + location.pathname + location.search + location.hash;
       try { location.replace(target); } catch { location.href = target; }
@@ -245,69 +149,36 @@
 
 <body>
   <div id="app">
-    <!-- Статичный хедер -->
     <header class="app-header" role="banner">
-      <div class="hdr-left">
-        <div class="brand">
-          <span class="app-title" aria-label="EVLISE OUTLET">EVLISE OUTLET</span>
-        </div>
-      </div>
+      <div class="hdr-left"><div class="brand"><span class="app-title" aria-label="EVLISE OUTLET">EVLISE OUTLET</span></div></div>
       <div class="hdr-right">
-        <button
-          id="openNotifications"
-          class="icon-btn notif-btn"
-          aria-label="Уведомления"
-          aria-live="polite"
-          aria-atomic="true">
-          <i data-lucide="bell"></i>
-          <b id="notifBadge" class="badge" hidden>0</b>
+        <button id="openNotifications" class="icon-btn notif-btn" aria-label="Уведомления" aria-live="polite" aria-atomic="true">
+          <i data-lucide="bell"></i><b id="notifBadge" class="badge" hidden>0</b>
         </button>
       </div>
     </header>
 
-    <!-- Фикс-хедер товара -->
     <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
-      <button id="btnFixBack" class="fixbtn" aria-label="Назад">
-        <i data-lucide="arrow-left"></i>
-      </button>
-      <button id="btnFixFav" class="fixbtn" aria-label="В избранное" aria-pressed="false">
-        <i data-lucide="heart"></i>
-      </button>
+      <button id="btnFixBack" class="fixbtn" aria-label="Назад"><i data-lucide="arrow-left"></i></button>
+      <button id="btnFixFav" class="fixbtn" aria-label="В избранное" aria-pressed="false"><i data-lucide="heart"></i></button>
     </div>
 
-    <!-- Поиск + фильтры -->
     <section class="section section-search">
       <div class="search-wrap">
         <i data-lucide="search" class="search-ico"></i>
         <input id="searchInput" class="search" placeholder="Поиск одежды…" />
-        <!-- Новое: кнопка камеры -->
-        <button id="btnPhotoSearch" class="search-photo" aria-label="Поиск по фото">
-          <i data-lucide="camera"></i>
-        </button>
+        <button id="btnPhotoSearch" class="search-photo" aria-label="Поиск по фото"><i data-lucide="camera"></i></button>
       </div>
-      <button id="openFilters" class="square-btn" aria-label="Открыть фильтры">
-        <i data-lucide="sliders-horizontal"></i>
-      </button>
+      <button id="openFilters" class="square-btn" aria-label="Открыть фильтры"><i data-lucide="sliders-horizontal"></i></button>
     </section>
 
-    <!-- Категории -->
-    <section class="section">
-      <div class="chipbar" id="catChips" aria-label="Категории"></div>
-    </section>
-
-    <!-- Активные фильтры -->
+    <section class="section"><div class="chipbar" id="catChips" aria-label="Категории"></div></section>
     <section class="section" id="activeFilters" aria-live="polite"></section>
-
-    <!-- Контент -->
     <main id="view" class="view"></main>
 
-    <!-- Модалка -->
     <div id="modal" class="modal" aria-hidden="true">
       <div class="modal-dialog" role="dialog" aria-modal="true">
-        <div class="modal-head">
-          <div id="modalTitle"></div>
-          <button id="modalClose" class="icon-btn" aria-label="Закрыть"><i data-lucide="x"></i></button>
-        </div>
+        <div class="modal-head"><div id="modalTitle"></div><button id="modalClose" class="icon-btn" aria-label="Закрыть"><i data-lucide="x"></i></button></div>
         <div id="modalBody" class="modal-body"></div>
         <div id="modalActions" class="modal-actions"></div>
       </div>
@@ -315,187 +186,83 @@
 
     <div id="toastWrap" class="toast-wrap"></div>
 
-    <!-- Нижний таббар -->
     <nav class="tabbar" role="tablist" aria-label="Основная навигация">
       <div class="tabbar-inner">
-        <a href="#/" data-tab="home" class="tab active" role="tab" aria-selected="true">
-          <i data-lucide="home"></i><span>Главная</span>
-        </a>
-        <a href="#/favorites" data-tab="saved" class="tab" role="tab" aria-selected="false">
-          <i data-lucide="heart"></i><span>Избранное</span>
-        </a>
-        <a href="#/cart" data-tab="cart" class="tab badge-wrap" role="tab" aria-selected="false">
-          <i data-lucide="shopping-bag"></i><span>Корзина</span>
-          <b id="cartBadge" class="badge" hidden></b>
-        </a>
-        <a href="#/account" data-tab="account" class="tab" role="tab" aria-selected="false">
-          <i data-lucide="user-round"></i><span>Аккаунт</span>
-        </a>
+        <a href="#/" data-tab="home" class="tab active" role="tab" aria-selected="true"><i data-lucide="home"></i><span>Главная</span></a>
+        <a href="#/favorites" data-tab="saved" class="tab" role="tab" aria-selected="false"><i data-lucide="heart"></i><span>Избранное</span></a>
+        <a href="#/cart" data-tab="cart" class="tab badge-wrap" role="tab" aria-selected="false"><i data-lucide="shopping-bag"></i><span>Корзина</span><b id="cartBadge" class="badge" hidden></b></a>
+        <a href="#/account" data-tab="account" class="tab" role="tab" aria-selected="false"><i data-lucide="user-round"></i><span>Аккаунт</span></a>
       </div>
     </nav>
 
-    <!-- Кнопка «вверх» -->
-    <button id="scrollTopBtn" class="icon-btn" aria-label="Наверх" hidden>
-      <i data-lucide="chevrons-up"></i>
-    </button>
+    <button id="scrollTopBtn" class="icon-btn" aria-label="Наверх" hidden><i data-lucide="chevrons-up"></i></button>
 
-    <!-- Шаблоны -->
     <template id="product-card">
-      <a class="card" href="#">
-        <div class="card-img">
-          <img loading="lazy" alt="">
-          <button class="fav" aria-label="В избранное" aria-pressed="false">
-            <i data-lucide="heart"></i>
-          </button>
-        </div>
-        <div class="card-body">
-          <div class="title"></div>
-          <div class="subtitle"></div>
-          <div class="price-row">
-            <div class="price"></div>
-          </div>
-        </div>
-      </a>
+      <a class="card" href="#"><div class="card-img">
+        <img loading="lazy" alt=""><button class="fav" aria-label="В избранное" aria-pressed="false"><i data-lucide="heart"></i></button>
+      </div><div class="card-body"><div class="title"></div><div class="subtitle"></div>
+        <div class="price-row"><div class="price"></div></div></div></a>
     </template>
 
-    <template id="filter-chip">
-      <span class="chip chip-mini"></span>
-    </template>
+    <template id="filter-chip"><span class="chip chip-mini"></span></template>
   </div>
 
-  <!-- === ADMIN TOKEN INJECTION (works in Telegram WebApp only) === -->
-  <script>
-  (function () {
-    // !!! ЗАМЕНИ на точное значение ADMIN_API_TOKEN из Netlify !!!
-    var ADMIN_TOKEN = 'UsA^5976JJbD4g6j*t^jkJMoMa%*Ho!j';
-
-    var h = (document.referrer || '').toLowerCase();
-    var ua = (navigator.userAgent || '').toLowerCase();
-    var isTgRef = h.startsWith('https://t.me') ||
-                  h.startsWith('https://web.telegram.org') ||
-                  h.startsWith('https://telegram.org');
-    var isTgUA  = ua.indexOf('telegram') !== -1;
-
-    var hasInitData = (function () {
-      try { return typeof window.Telegram?.WebApp?.initData === 'string' && window.Telegram.WebApp.initData.length > 0; }
-      catch { return false; }
-    })();
-
-    if ((isTgRef || isTgUA || hasInitData) && ADMIN_TOKEN) {
-      window.__ADMIN_API_TOKEN__ = ADMIN_TOKEN;
-      try { localStorage.setItem('admin_api_token', String(ADMIN_TOKEN)); } catch {}
-    }
-
-    try {
-      var p = new URLSearchParams(location.search);
-      var q = p.get('admintoken');
-      if (q) {
-        window.__ADMIN_API_TOKEN__ = q;
-        localStorage.setItem('admin_api_token', q);
-        p.delete('admintoken');
-        history.replaceState({}, '', location.pathname + (p.toString() ? '?' + p.toString() : '') + location.hash);
-      }
-    } catch {}
-  })();
-  </script>
-
-  <!-- === Поиск по фото: модалка и переход к оператору (@evliseorder) === -->
+  <!-- ADMIN TOKEN INJECTION -->
   <script>
   (function(){
-    // username без @ (оператор)
-    var SUPPORT_TARGET = 'evliseorder';
-
-    function tgOpen(url){
-      try {
-        if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openTelegramLink === 'function'){
-          Telegram.WebApp.openTelegramLink(url);
-          return;
-        }
-      } catch {}
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
-
-    function resolveTargetLink(){
-      if (!SUPPORT_TARGET) return 'https://t.me/';
-      if (/^https?:\/\//i.test(SUPPORT_TARGET)) return SUPPORT_TARGET;
-      return 'https://t.me/' + SUPPORT_TARGET;
-    }
-
-    function openPhotoSearchModal(){
-      var modal = document.getElementById('modal');
-      var mb = document.getElementById('modalBody');
-      var mt = document.getElementById('modalTitle');
-      var ma = document.getElementById('modalActions');
-      if (!modal || !mb || !mt || !ma) return;
-
-      mt.textContent = 'Поиск по фото';
-      mb.innerHTML = `
-        <div class="ps-modal">
-          <div class="ps-hero">
-            <div class="ps-hero__ico"><i data-lucide="camera"></i></div>
-            <div class="ps-hero__text">
-              <div class="ps-hero__title">Найдём вещь по вашим фото</div>
-              <div class="ps-hero__hint">Пришлите 1–5 фото желаемой вещи — мы попробуем найти вещь и ответим в чате.</div>
-            </div>
-          </div>
-
-          <ul class="ps-steps">
-            <li class="ps-step">
-              <div class="ps-step-num">1</div>
-              <div class="ps-step-text">Нажмите «Написать оператору».</div>
-            </li>
-            <li class="ps-step">
-              <div class="ps-step-num">2</div>
-              <div class="ps-step-text">Прикрепите фото вещи в открывшемся чате Telegram.</div>
-            </li>
-            <li class="ps-step">
-              <div class="ps-step-num">3</div>
-              <div class="ps-step-text">Мы подберём подходящие позиции.</div>
-            </li>
-          </ul>
-        </div>
-      `;
-
-      var link = resolveTargetLink();
-      ma.innerHTML = `
-        <div class="ps-actions">
-          <button id="psCancel" class="btn-ghost">Отмена</button>
-          <button id="psOpenChat" class="btn-primary">
-            <i data-lucide="send"></i><span>Написать оператору</span>
-          </button>
-        </div>
-      `;
-
-      modal.classList.add('show');
-      try { window.lucide?.createIcons?.(); } catch {}
-
-      var close = function(){ modal.classList.remove('show'); };
-      document.getElementById('modalClose')?.addEventListener('click', close, { once:true });
-      document.getElementById('psCancel')?.addEventListener('click', close, { once:true });
-      document.getElementById('psOpenChat')?.addEventListener('click', function(){
-        tgOpen(link);
-        close();
-      }, { once:true });
-
-      var onKey = function(e){ if (e.key==='Escape'){ close(); window.removeEventListener('keydown', onKey);} };
-      window.addEventListener('keydown', onKey);
-    }
-
-    // Кнопка с камерой в поиске
-    document.getElementById('btnPhotoSearch')?.addEventListener('click', function(e){
-      e.preventDefault();
-      openPhotoSearchModal();
-    });
-
-    // На всякий: иконки после монтирования
-    try { window.lucide?.createIcons?.(); } catch {}
+    var ADMIN_TOKEN = 'UsA^5976JJbD4g6j*t^jkJMoMa%*Ho!j';
+    var h=(document.referrer||'').toLowerCase(), ua=(navigator.userAgent||'').toLowerCase();
+    var isTgRef = h.startsWith('https://t.me') || h.startsWith('https://web.telegram.org') || h.startsWith('https://telegram.org');
+    var isTgUA  = ua.includes('telegram');
+    var hasInitData = (()=>{ try{ return typeof window.Telegram?.WebApp?.initData==='string' && Telegram.WebApp.initData.length>0 }catch{ return false } })();
+    if ((isTgRef||isTgUA||hasInitData) && ADMIN_TOKEN){ window.__ADMIN_API_TOKEN__=ADMIN_TOKEN; try{ localStorage.setItem('admin_api_token', String(ADMIN_TOKEN)); }catch{} }
+    try{
+      var p = new URLSearchParams(location.search); var q=p.get('admintoken');
+      if(q){ window.__ADMIN_API_TOKEN__=q; localStorage.setItem('admin_api_token', q); p.delete('admintoken');
+        history.replaceState({},'',location.pathname+(p.toString()?('?'+p.toString()):'')+location.hash); }
+    }catch{}
   })();
   </script>
 
-  <!-- Главный модуль (тот же штамп v=) -->
-  <script type="module" src="src/main.js?v=2025-10-30-21-12"></script>
+  <!-- Поиск по фото (модалка) -->
+  <script>
+  (function(){
+    var SUPPORT_TARGET='evliseorder';
+    function tgOpen(url){
+      try{ if(window.Telegram?.WebApp?.openTelegramLink){ Telegram.WebApp.openTelegramLink(url); return; } }catch{}
+      window.open(url,'_blank','noopener,noreferrer');
+    }
+    function resolveTargetLink(){ if(!SUPPORT_TARGET) return 'https://t.me/'; if(/^https?:\/\//i.test(SUPPORT_TARGET)) return SUPPORT_TARGET; return 'https://t.me/'+SUPPORT_TARGET; }
+    function openPhotoSearchModal(){
+      var modal=document.getElementById('modal'), mb=document.getElementById('modalBody'), mt=document.getElementById('modalTitle'), ma=document.getElementById('modalActions');
+      if(!modal||!mb||!mt||!ma) return;
+      mt.textContent='Поиск по фото';
+      mb.innerHTML=`<div class="ps-modal"><div class="ps-hero"><div class="ps-hero__ico"><i data-lucide="camera"></i></div>
+      <div class="ps-hero__text"><div class="ps-hero__title">Найдём вещь по вашим фото</div><div class="ps-hero__hint">Пришлите 1–5 фото желаемой вещи — мы попробуем найти вещь и ответим в чате.</div></div></div>
+      <ul class="ps-steps"><li class="ps-step"><div class="ps-step-num">1</div><div class="ps-step-text">Нажмите «Написать оператору».</div></li>
+      <li class="ps-step"><div class="ps-step-num">2</div><div class="ps-step-text">Прикрепите фото вещи в открывшемся чате Telegram.</div></li>
+      <li class="ps-step"><div class="ps-step-num">3</div><div class="ps-step-text">Мы подберём подходящие позиции.</div></li></ul></div>`;
+      var link=resolveTargetLink();
+      ma.innerHTML=`<div class="ps-actions"><button id="psCancel" class="btn-ghost">Отмена</button>
+      <button id="psOpenChat" class="btn-primary"><i data-lucide="send"></i><span>Написать оператору</span></button></div>`;
+      modal.classList.add('show'); try{ window.lucide?.createIcons?.(); }catch{}
+      var close=()=>modal.classList.remove('show');
+      document.getElementById('modalClose')?.addEventListener('click', close, {once:true});
+      document.getElementById('psCancel')?.addEventListener('click', close, {once:true});
+      document.getElementById('psOpenChat')?.addEventListener('click', ()=>{ tgOpen(link); close(); }, {once:true});
+      var onKey=(e)=>{ if(e.key==='Escape'){ close(); window.removeEventListener('keydown', onKey);} }; window.addEventListener('keydown', onKey);
+    }
+    document.getElementById('btnPhotoSearch')?.addEventListener('click', (e)=>{ e.preventDefault(); openPhotoSearchModal(); });
+    try{ window.lucide?.createIcons?.(); }catch{}
+  })();
+  </script>
 
-  <!-- Иконки после монтирования (запасной вызов) -->
-  <script> try { window.lucide?.createIcons?.(); } catch {} </script>
+  <!-- ВАЖНО: новый вход, чтобы сломать модульный кеш -->
+  <script type="module">
+    const V = document.getElementById('APP_BUILD')?.content || Date.now();
+    // на всякий случай пробросим помощник для динамических импортов:
+    window.__importV__ = (p) => import(p + (p.includes('?')?'&':'?') + 'v=' + encodeURIComponent(V));
+    import('/src/main.v2.js?v=' + encodeURIComponent(V));
+  </script>
 </body>
 </html>

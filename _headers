@@ -40,6 +40,11 @@
 /*.css
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
+  
+/*.js
+  Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
+
 
 # Статические ассеты (версируемые/хэшируемые) — агрессивное кэширование
 /assets/*
