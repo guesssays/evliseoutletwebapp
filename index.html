@@ -118,23 +118,7 @@
       pointer-events:none;
       transition:transform .18s ease, opacity .18s ease;
     }
-    .product-fixhdr{
-      position:fixed; left:0; right:0; top:calc(var(--safe-top) + 8px); height:56px; display:none;
-      align-items:center; justify-content:space-between; padding:0 8px; pointer-events:none; background:transparent!important;
-      border:none!important; box-shadow:none!important; z-index:120;
-    }
-    .product-fixhdr.show{ display:flex; }
-    .product-fixhdr .fixbtn{
-      pointer-events:auto; display:inline-flex; align-items:center; justify-content:center;
-      width:44px; height:44px; border-radius:999px; border:1px solid var(--stroke); background:rgba(255,255,255,.85);
-      backdrop-filter:saturate(1.3) blur(8px); -webkit-backdrop-filter:saturate(1.3) blur(8px); box-shadow:var(--shadow); color:#111;
-    }
-    @media (prefers-color-scheme:dark){
-      .product-fixhdr .fixbtn{ background:rgba(11,18,32,.7); color:#fff; }
-    }
-    #btnFixBack{ margin-left:8px }
-    #btnFixFav{ margin-right:8px }
-    #btnFixFav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none; }
+
 
     #scrollTopBtn{
       position:fixed; right:16px; bottom:calc(var(--tabbar-h) + var(--safe) + 16px);
