@@ -128,7 +128,7 @@ export function mountScrollTop(threshold = 400) {
     btn.setAttribute('hidden', '');
     btn.setAttribute('aria-hidden', 'true');
     btn.setAttribute('inert', '');
-    // страховка на случай специфичных стилей
+    // скрываем надёжно
     btn.style.display = 'none';
   };
 
@@ -136,9 +136,10 @@ export function mountScrollTop(threshold = 400) {
     btn.removeAttribute('hidden');
     btn.removeAttribute('aria-hidden');
     btn.removeAttribute('inert');
-    // принудительно, если где-то задано display:none
-    btn.style.display = 'flex';
+    // даём управлять отображением CSS (grid/flex) — убираем инлайн
+    btn.style.removeProperty('display');
   };
+
 
   const update = () => {
     // ТОЛЬКО на главной

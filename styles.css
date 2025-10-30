@@ -917,3 +917,37 @@ body.admin-mode #scrollTopBtn{ display:none !important; }
 @media (prefers-color-scheme: dark){
   #scrollTopBtn{ color:#fff !important; }
 }
+/* === ScrollTop (final override): контраст, центрирование, сдвиг === */
+
+/* чутка левее и гарантированное центрирование для flex/grid */
+#scrollTopBtn{
+  right: 10px !important;                 /* было 14px */
+  align-items: center !important;         /* центрирование при display:flex */
+  justify-content: center !important;     /* центрирование при display:flex */
+  color: #1a1a1a !important;              /* заметная стрелка в светлой теме */
+}
+
+/* очень узкие экраны: ещё на пару пикселей */
+@media (max-width: 380px){
+  #scrollTopBtn{ right: 8px !important; }
+}
+
+/* сама иконка — без базовой линии, толще штрих и микро-юстировка */
+#scrollTopBtn i,
+#scrollTopBtn svg{
+  width: 22px;
+  height: 22px;
+  display: block;                          /* убирает baseline-люфт */
+  stroke: currentColor !important;
+  fill: none !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  stroke-width: 2.4 !important;            /* толще, заметнее */
+  transform: translateY(-0.5px);           /* оптический центр */
+  pointer-events: none;
+}
+
+/* тёмная тема — стрелка белая (поверх «стекла») */
+@media (prefers-color-scheme: dark){
+  #scrollTopBtn{ color:#fff !important; }
+}
