@@ -70,27 +70,62 @@
   <link rel="stylesheet" href="styles.css?v=2025-10-30-21-12" />
 
   <style>
-    :root{ --safe: env(safe-area-inset-bottom, 0px); --safe-top: env(safe-area-inset-top, 0px);
-      --stroke: rgba(15,23,42,.14); --tabbar-h: 92px; --shadow: 0 10px 30px rgba(0,0,0,.18); --muted:#787676; }
-    .app-header.hidden{ transform:translateY(-100%); opacity:.0; pointer-events:none; transition:transform .18s ease, opacity .18s ease; }
-    .product-fixhdr{ position:fixed; left:0; right:0; top:calc(var(--safe-top) + 8px); height:56px; display:none;
-      align-items:center; justify-content:space-between; padding:0 8px; pointer-events:none; background:transparent!important;
-      border:none!important; box-shadow:none!important; z-index:120; }
-    .product-fixhdr.show{ display:flex; }
-    .product-fixhdr .fixbtn{ pointer-events:auto; display:inline-flex; align-items:center; justify-content:center;
-      width:44px; height:44px; border-radius:999px; border:1px solid var(--stroke); background:rgba(255,255,255,.85);
-      backdrop-filter:saturate(1.3) blur(8px); -webkit-backdrop-filter:saturate(1.3) blur(8px); box-shadow:var(--shadow); color:#111; }
-    @media (prefers-color-scheme:dark){ .product-fixhdr .fixbtn{ background:rgba(11,18,32,.7); color:#fff; } }
-    #btnFixBack{ margin-left:8px } #btnFixFav{ margin-right:8px }
-    #btnFixFav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none; }
-    #scrollTopBtn{ position:fixed; right:16px; bottom:calc(var(--tabbar-h) + var(--safe) + 16px); width:48px; height:48px; border-radius:14px;
-      border:1px solid var(--stroke); background:#fff; box-shadow:var(--shadow); display:inline-flex; align-items:center; justify-content:center; z-index:125; }
-    #scrollTopBtn[hidden]{ display:none!important } @media (prefers-color-scheme:dark){ #scrollTopBtn{ background:#0b1220; color:#fff } }
+    :root{
+      --safe: env(safe-area-inset-bottom, 0px);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --stroke: rgba(15,23,42,.14);
+      --tabbar-h: 92px;
+      --shadow: 0 10px 30px rgba(0,0,0,.18);
+      --muted:#787676;
+    }
 
-    .section-search .search-wrap{ position:relative } .section-search .search{ width:100%; padding-right:44px }
-    .search-photo{ position:absolute; right:8px; top:50%; transform:translateY(-50%); width:36px; height:36px; border-radius:10px;
-      border:1px solid var(--stroke); background:#fff; display:inline-flex; align-items:center; justify-content:center; box-shadow:var(--shadow) }
-    @media (prefers-color-scheme:dark){ .search-photo{ background:#0b1220; color:#fff } }
+    /* Универсальное скрытие по атрибуту */
+    [hidden]{ display:none !important; }
+
+    .app-header.hidden{
+      transform:translateY(-100%);
+      opacity:.0;
+      pointer-events:none;
+      transition:transform .18s ease, opacity .18s ease;
+    }
+    .product-fixhdr{
+      position:fixed; left:0; right:0; top:calc(var(--safe-top) + 8px); height:56px; display:none;
+      align-items:center; justify-content:space-between; padding:0 8px; pointer-events:none; background:transparent!important;
+      border:none!important; box-shadow:none!important; z-index:120;
+    }
+    .product-fixhdr.show{ display:flex; }
+    .product-fixhdr .fixbtn{
+      pointer-events:auto; display:inline-flex; align-items:center; justify-content:center;
+      width:44px; height:44px; border-radius:999px; border:1px solid var(--stroke); background:rgba(255,255,255,.85);
+      backdrop-filter:saturate(1.3) blur(8px); -webkit-backdrop-filter:saturate(1.3) blur(8px); box-shadow:var(--shadow); color:#111;
+    }
+    @media (prefers-color-scheme:dark){
+      .product-fixhdr .fixbtn{ background:rgba(11,18,32,.7); color:#fff; }
+    }
+    #btnFixBack{ margin-left:8px }
+    #btnFixFav{ margin-right:8px }
+    #btnFixFav.active .lucide-heart{ color:#ff4d5a; fill:currentColor; stroke:none; }
+
+    #scrollTopBtn{
+      position:fixed; right:16px; bottom:calc(var(--tabbar-h) + var(--safe) + 16px);
+      width:48px; height:48px; border-radius:14px;
+      border:1px solid var(--stroke); background:#fff; box-shadow:var(--shadow);
+      display:inline-flex; align-items:center; justify-content:center; z-index:125;
+    }
+    #scrollTopBtn[hidden]{ display:none!important }
+    @media (prefers-color-scheme:dark){
+      #scrollTopBtn{ background:#0b1220; color:#fff }
+    }
+
+    .section-search .search-wrap{ position:relative }
+    .section-search .search{ width:100%; padding-right:44px }
+    .search-photo{
+      position:absolute; right:8px; top:50%; transform:translateY(-50%); width:36px; height:36px; border-radius:10px;
+      border:1px solid var(--stroke); background:#fff; display:inline-flex; align-items:center; justify-content:center; box-shadow:var(--shadow)
+    }
+    @media (prefers-color-scheme:dark){
+      .search-photo{ background:#0b1220; color:#fff }
+    }
     .search-photo i{ pointer-events:none }
 
     .ps-modal{ display:flex; flex-direction:column; gap:14px }
@@ -98,7 +133,9 @@
     @media (prefers-color-scheme:dark){ .ps-hero{ background:rgba(255,255,255,.03) } }
     .ps-hero__ico{ width:40px; height:40px; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--stroke); background:#fff; box-shadow:var(--shadow); flex:0 0 auto }
     @media (prefers-color-scheme:dark){ .ps-hero__ico{ background:#0b1220; color:#fff } }
-    .ps-hero__text{ display:flex; flex-direction:column; line-height:1.24 } .ps-hero__title{ font-weight:700; font-size:16px } .ps-hero__hint{ color:var(--muted); font-size:13px }
+    .ps-hero__text{ display:flex; flex-direction:column; line-height:1.24 }
+    .ps-hero__title{ font-weight:700; font-size:16px }
+    .ps-hero__hint{ color:var(--muted); font-size:13px }
     .ps-steps{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px }
     .ps-step{ display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px dashed var(--stroke); border-radius:12px }
     .ps-step-num{ flex:0 0 auto; width:22px; height:22px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--stroke); font-size:12px; background:#fff }
@@ -157,8 +194,8 @@
       <button id="btnFixFav" class="fixbtn" aria-label="В избранное" aria-pressed="false"><i data-lucide="heart"></i></button>
     </div>
 
-    <!-- Поиск + фильтры -->
-    <section class="section section-search">
+    <!-- Поиск + фильтры (ПОКАЗЫВАТЬ ТОЛЬКО НА ГЛАВНОЙ) -->
+    <section class="section section-search" data-home-only>
       <div class="search-wrap">
         <i data-lucide="search" class="search-ico"></i>
         <input id="searchInput" class="search" placeholder="Поиск одежды…" />
@@ -167,11 +204,13 @@
       <button id="openFilters" class="square-btn" aria-label="Открыть фильтры"><i data-lucide="sliders-horizontal"></i></button>
     </section>
 
-    <!-- Категории -->
-    <section class="section"><div class="chipbar" id="catChips" aria-label="Категории"></div></section>
+    <!-- Категории (ТОЛЬКО НА ГЛАВНОЙ) -->
+    <section class="section" data-home-only>
+      <div class="chipbar" id="catChips" aria-label="Категории"></div>
+    </section>
 
-    <!-- Активные фильтры -->
-    <section class="section" id="activeFilters" aria-live="polite"></section>
+    <!-- Активные фильтры (ТОЛЬКО НА ГЛАВНОЙ) -->
+    <section class="section" id="activeFilters" aria-live="polite" data-home-only></section>
 
     <!-- Контент -->
     <main id="view" class="view"></main>
@@ -241,12 +280,20 @@
     var h=(document.referrer||'').toLowerCase(), ua=(navigator.userAgent||'').toLowerCase();
     var isTgRef = h.startsWith('https://t.me') || h.startsWith('https://web.telegram.org') || h.startsWith('https://telegram.org');
     var isTgUA  = ua.includes('telegram');
-    var hasInitData = (()=>{ try{ return typeof window.Telegram?.WebApp?.initData==='string' && Telegram.WebApp.initData.length>0 }catch{ return false } })();
-    if ((isTgRef||isTgUA||hasInitData) && ADMIN_TOKEN){ window.__ADMIN_API_TOKEN__=ADMIN_TOKEN; try{ localStorage.setItem('admin_api_token', String(ADMIN_TOKEN)); }catch{} }
+    var hasInitData = (function(){ try{ return typeof window.Telegram?.WebApp?.initData==='string' && Telegram.WebApp.initData.length>0 }catch{ return false } })();
+    if ((isTgRef||isTgUA||hasInitData) && ADMIN_TOKEN){
+      window.__ADMIN_API_TOKEN__=ADMIN_TOKEN;
+      try{ localStorage.setItem('admin_api_token', String(ADMIN_TOKEN)); }catch{}
+    }
     try{
-      var p = new URLSearchParams(location.search); var q=p.get('admintoken');
-      if(q){ window.__ADMIN_API_TOKEN__=q; localStorage.setItem('admin_api_token', q); p.delete('admintoken');
-        history.replaceState({},'',location.pathname+(p.toString()?('?'+p.toString()):'')+location.hash); }
+      var p = new URLSearchParams(location.search);
+      var q=p.get('admintoken');
+      if(q){
+        window.__ADMIN_API_TOKEN__=q;
+        localStorage.setItem('admin_api_token', q);
+        p.delete('admintoken');
+        history.replaceState({},'',location.pathname+(p.toString()?('?'+p.toString()):'')+location.hash);
+      }
     }catch{}
   })();
   </script>
@@ -259,7 +306,11 @@
       try{ if(window.Telegram?.WebApp?.openTelegramLink){ Telegram.WebApp.openTelegramLink(url); return; } }catch{}
       window.open(url,'_blank','noopener,noreferrer');
     }
-    function resolveTargetLink(){ if(!SUPPORT_TARGET) return 'https://t.me/'; if(/^https?:\/\//i.test(SUPPORT_TARGET)) return SUPPORT_TARGET; return 'https://t.me/'+SUPPORT_TARGET; }
+    function resolveTargetLink(){
+      if(!SUPPORT_TARGET) return 'https://t.me/';
+      if(/^https?:\/\//i.test(SUPPORT_TARGET)) return SUPPORT_TARGET;
+      return 'https://t.me/'+SUPPORT_TARGET;
+    }
     function openPhotoSearchModal(){
       var modal=document.getElementById('modal'), mb=document.getElementById('modalBody'), mt=document.getElementById('modalTitle'), ma=document.getElementById('modalActions');
       if(!modal||!mb||!mt||!ma) return;
@@ -281,6 +332,28 @@
     }
     document.getElementById('btnPhotoSearch')?.addEventListener('click', (e)=>{ e.preventDefault(); openPhotoSearchModal(); });
     try{ window.lucide?.createIcons?.(); }catch{}
+  })();
+  </script>
+
+  <!-- Показывать панель поиска/фильтров/категорий только на главной -->
+  <script>
+  (function(){
+    function isHome(){
+      var h = location.hash || '#/';
+      return h === '#/' || h === '#';
+    }
+    function applyHomeChrome(){
+      var onHome = isHome();
+      document.querySelectorAll('[data-home-only]').forEach(function(el){
+        if (onHome) el.removeAttribute('hidden');
+        else el.setAttribute('hidden','');
+      });
+    }
+    document.addEventListener('DOMContentLoaded', applyHomeChrome);
+    window.addEventListener('hashchange', applyHomeChrome);
+    window.addEventListener('view:home-mounted', applyHomeChrome);
+    window.addEventListener('view:product-mounted', applyHomeChrome);
+    window.addEventListener('view:route-changed', applyHomeChrome);
   })();
   </script>
 

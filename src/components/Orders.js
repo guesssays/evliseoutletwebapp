@@ -15,10 +15,9 @@ function getStatusLabel(s) {
 /* ===== helpers for short ids ===== */
 function getDisplayId(o){
   const sid = o?.shortId || o?.code;
-  if (sid) return String(sid).toUpperCase(); // нормализуем отображение
+  if (sid) return String(sid).toUpperCase();
   const full = String(o?.id ?? '');
   if (!full) return '';
-  // как fallback — последние 6 символов в верхнем регистре
   return full.slice(-6).toUpperCase();
 }
 
@@ -30,11 +29,9 @@ function matchesAnyId(o, val){
   const idFull = String(o?.id || '');
   const short  = String(o?.shortId || o?.code || '').toUpperCase();
 
-  // точные совпадения
-  if (idFull && idFull === needleRaw) return true; // длинный id без преобразований
-  if (short && short === needle) return true;      // shortId/code без учёта регистра
+  if (idFull && idFull === needleRaw) return true;
+  if (short && short === needle) return true;
 
-  // совпадение по «хвосту» длинного id (последние 6 символов), тоже без регистра
   if (idFull) {
     const tail6 = idFull.slice(-6).toUpperCase();
     if (needle === tail6) return true;
@@ -42,11 +39,23 @@ function matchesAnyId(o, val){
   return false;
 }
 
+/* === общая помощь: при клике по ссылкам трекинга — держать активным таб "account" === */
+function keepAccountTabOnTrackLinks(root=document){
+  try{
+    const links = root.querySelectorAll('a[href^="#/track/"]');
+    links.forEach(a => {
+      a.addEventListener('click', () => window.setTabbarMenu?.('account'), { once:false });
+    });
+  }catch{}
+}
+
 export async function renderOrders(){
+  // 🔒 всегда фиксируем активный таббар на "Аккаунт" для этой секции
+  window.setTabbarMenu?.('account');
+
   const v = document.getElementById('view');
   const myUid = getUID?.() || '';
 
-  // если по какой-то причине нет UID — покажем заглушку
   if (!myUid) {
     v.innerHTML = `
       <div class="section-title" style="display:flex;align-items:center;gap:10px">
@@ -58,6 +67,8 @@ export async function renderOrders(){
       </section>`;
     window.lucide?.createIcons && lucide.createIcons();
     document.getElementById('ordersBack')?.addEventListener('click', ()=> history.back());
+    // страхуемся: даже с заглушкой не переключаем таб
+    window.setTabbarMenu?.('account');
     return;
   }
 
@@ -84,6 +95,8 @@ export async function renderOrders(){
       </section>`;
     window.lucide?.createIcons && lucide.createIcons();
     document.getElementById('ordersBack')?.addEventListener('click', ()=> history.back());
+    // держим активным "Аккаунт"
+    window.setTabbarMenu?.('account');
     return;
   }
 
@@ -107,6 +120,12 @@ export async function renderOrders(){
 
   window.lucide?.createIcons && lucide.createIcons();
   document.getElementById('ordersBack')?.addEventListener('click', ()=> history.back());
+
+  // 💡 при клике на «Подробнее» и вообще все переходы на #/track/... — не менять таб
+  keepAccountTabOnTrackLinks(v);
+
+  // И дополнительно страхуемся от любых внешних перерисовок
+  window.setTabbarMenu?.('account');
 }
 
 function groupBlock(title, list){
@@ -128,15 +147,15 @@ function orderCard(o){
   const displayId = getDisplayId(o);
   const link = `#/track/${encodeURIComponent(displayId)}`;
 
-  let actionHtml = `<a class="pill" href="${link}">Подробнее</a>`;
+  let actionHtml = `<a class="pill" href="${link}" data-keep-tab="account">Подробнее</a>`;
   if (o?.status === 'выдан'){
     actionHtml = `
-      <a class="pill" href="${link}" style="display:inline-flex;align-items:center;gap:6px">
+      <a class="pill" href="${link}" data-keep-tab="account" style="display:inline-flex;align-items:center;gap:6px">
         <i data-lucide="check-circle"></i><span>Детали</span>
       </a>`;
   } else if (o?.status === 'отменён'){
     actionHtml = `
-      <a class="pill outline" href="${link}" style="display:inline-flex;align-items:center;gap:6px">
+      <a class="pill outline" href="${link}" data-keep-tab="account" style="display:inline-flex;align-items:center;gap:6px">
         <i data-lucide="x-circle"></i><span>Детали</span>
       </a>`;
   }
@@ -161,6 +180,9 @@ function orderCard(o){
 }
 
 export async function renderTrack({id}){
+  // 🔒 экран деталей заказа — тоже всегда «Аккаунт»
+  window.setTabbarMenu?.('account');
+
   const v = document.getElementById('view');
   const myUid = getUID?.() || '';
 
@@ -172,7 +194,6 @@ export async function renderTrack({id}){
     list = [];
   }
 
-  // поддерживаем и длинный id, и shortId/code, и «хвост» длинного id
   const o = list.find(x => matchesAnyId(x, id));
   if(!o){
     v.innerHTML = `
@@ -184,6 +205,8 @@ export async function renderTrack({id}){
     `;
     window.lucide?.createIcons && lucide.createIcons();
     document.getElementById('trackBackNF')?.addEventListener('click', ()=> history.back());
+    // страхуемся: активная вкладка — аккаунт
+    window.setTabbarMenu?.('account');
     return;
   }
 
@@ -202,71 +225,32 @@ export async function renderTrack({id}){
     <style>
       .order-detail-page{overflow-x:hidden; max-width:100%;}
       .order-detail-page *{box-sizing:border-box;}
-
-      .track-head{
-        display:grid;
-        grid-template-columns: 1fr auto;
-        align-items:center;
-        gap:8px;
-      }
+      .track-head{ display:grid; grid-template-columns: 1fr auto; align-items:center; gap:8px; }
       .track-status{font-weight:800;text-align:right}
       @media (max-width: 480px){
         .track-head{grid-template-columns: 1fr; gap:4px;}
         .track-status{text-align:left}
       }
-
-      .progress-bar{
-        width:100%; overflow:hidden; border-radius:999px;
-        height:8px; background:var(--border, rgba(0,0,0,.08));
-      }
-      .progress-bar b{
-        display:block; height:100%; background:var(--primary,#111);
-        transition:width .25s ease;
-      }
+      .progress-bar{ width:100%; overflow:hidden; border-radius:999px; height:8px; background:var(--border, rgba(0,0,0,.08)); }
+      .progress-bar b{ display:block; height:100%; background:var(--primary,#111); transition:width .25s ease; }
       .progress-list{display:grid; gap:8px}
       .progress-item{display:flex; align-items:center; gap:8px; min-width:0}
       .progress-label{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%}
-
-      /* список позиций */
-      .order-item{
-        display:grid;
-        grid-template-columns: 56px minmax(0,1fr) auto;
-        gap:10px;
-        align-items:center;
-        margin-top:10px;
-        width:100%;
-      }
+      .order-item{ display:grid; grid-template-columns: 56px minmax(0,1fr) auto; gap:10px; align-items:center; margin-top:10px; width:100%; }
       .order-item .cart-img img{width:56px;height:56px;object-fit:cover;border-radius:10px}
       .order-item__meta .cart-title{word-break:break-word; overflow-wrap:anywhere}
       .order-item__meta .cart-sub{color:var(--muted); font-size:.92rem; overflow-wrap:anywhere; display:flex; align-items:center; gap:6px; flex-wrap:wrap}
       .order-item__qty-inline{white-space:nowrap; color:var(--muted)}
       .order-item__sum{justify-self:end; font-weight:700; padding-left:8px; white-space:nowrap}
-
-      @media (max-width: 420px){
-        .order-item{ grid-template-columns: 56px minmax(0,1fr) auto; }
-      }
-
+      @media (max-width: 420px){ .order-item{ grid-template-columns: 56px minmax(0,1fr) auto; } }
       .kv{display:block; width:100%;}
       .kv__row{display:grid; grid-template-columns:minmax(80px, 40%) minmax(0,1fr); gap:10px; align-items:start; margin:6px 0}
       .kv__row dt{color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
       .kv__row dd{margin:0; word-break:break-word; overflow-wrap:anywhere}
-
       .subsection-title{font-weight:700;margin:10px 0 6px}
       .pill, .btn{max-width:100%; white-space:nowrap; text-overflow:ellipsis; overflow:hidden}
-
-      /* Кнопка "Назад к заказам": по центру + стрелка */
-      .back-wrap{
-        margin-top:12px;
-        display:flex;
-        justify-content:center;
-        align-items:center;
-        width:100%;
-      }
-      .back-btn{
-        display:inline-flex;
-        align-items:center;
-        gap:8px;
-      }
+      .back-wrap{ margin-top:12px; display:flex; justify-content:center; align-items:center; width:100%; }
+      .back-btn{ display:inline-flex; align-items:center; gap:8px; }
     </style>
 
     <div class="section-title" style="display:flex;align-items:center;gap:10px">
@@ -281,7 +265,6 @@ export async function renderTrack({id}){
 
       ${o.status!=='отменён' ? `
         <div class="progress-bar" aria-label="Прогресс заказа"><b style="width:${progress}%"></b></div>
-
         <div class="progress-list" style="margin-top:12px" role="list">
           ${steps.map((s,i)=>`
             <div class="progress-item ${i<curIdx?'is-done':''} ${i===curIdx?'is-current':''}" role="listitem" aria-current="${i===curIdx?'step':'false'}">
@@ -300,7 +283,7 @@ export async function renderTrack({id}){
         </div>
       `}
 
-      ${itemsHtml}
+      ${itemsBlock(o)}
 
       <div class="kv" style="margin-top:12px">
         <div class="kv__row">
@@ -325,6 +308,9 @@ export async function renderTrack({id}){
     </section>`;
   window.lucide?.createIcons && lucide.createIcons();
   document.getElementById('trackBack')?.addEventListener('click', ()=> history.back());
+
+  // Подстраховка: если кто-то перерисовал таббар — возвращаем «Аккаунт»
+  window.setTabbarMenu?.('account');
 }
 
 function itemsBlock(o){
@@ -388,9 +374,7 @@ function colorNameFromValue(raw){
   if (!raw) return '';
   const v = String(raw).trim().toLowerCase();
 
-  // Явные имена на русском/английском
   const dict = {
-    // base
     'black':'чёрный','white':'белый','red':'красный','green':'зелёный','blue':'синий',
     'yellow':'жёлтый','orange':'оранжевый','purple':'фиолетовый','violet':'фиолетовый',
     'pink':'розовый','brown':'коричневый','gray':'серый','grey':'серый','beige':'бежевый',
@@ -399,7 +383,6 @@ function colorNameFromValue(raw){
     'lime':'лаймовый','cyan':'голубой','magenta':'пурпурный','tan':'светло-коричневый',
     'ivory':'слоновая кость','cream':'кремовый','khaki':'хаки','mustard':'горчичный',
     'lavender':'лавандовый','mint':'мятный','peach':'персиковый','coral':'коралловый',
-    // ru duplicates
     'черный':'чёрный','чёрный':'чёрный','белый':'белый','красный':'красный','зелёный':'зелёный','зеленый':'зелёный',
     'синий':'синий','голубой':'голубой','жёлтый':'жёлтый','желтый':'жёлтый','оранжевый':'оранжевый','фиолетовый':'фиолетовый',
     'розовый':'розовый','коричневый':'коричневый','серый':'серый','бежевый':'бежевый','бордовый':'бордовый',
@@ -408,7 +391,6 @@ function colorNameFromValue(raw){
 
   if (dict[v]) return dict[v];
 
-  // Частые сокращения артикулов
   const short = {
     'bk':'чёрный','bl':'синий','blu':'синий','blk':'чёрный','wht':'белый','wh':'белый',
     'gr':'серый','gry':'серый','gy':'серый','rd':'красный','gn':'зелёный','grn':'зелёный',
@@ -417,14 +399,12 @@ function colorNameFromValue(raw){
   };
   if (short[v]) return short[v];
 
-  // HEX → ближайшее имя
   const hex = normalizeHex(v);
   if (hex){
     const name = hexToRuName(hex);
     if (name) return name;
   }
 
-  // rgb(a)
   if (v.startsWith('rgb')){
     const hexFromRgb = rgbToHex(v);
     if (hexFromRgb){
@@ -433,7 +413,6 @@ function colorNameFromValue(raw){
     }
   }
 
-  // Составные "blue/white"
   if (v.includes('/') || v.includes('-')){
     const parts = v.split(/[/\-]/).map(s=>s.trim()).filter(Boolean);
     const mapped = parts.map(p => colorNameFromValue(p));
@@ -453,7 +432,6 @@ function normalizeHex(v){
   return '#'+h;
 }
 
-// Небольшая карта ближайших цветов
 const HEX_MAP = [
   ['#000000','чёрный'],
   ['#ffffff','белый'],
@@ -483,7 +461,6 @@ const HEX_MAP = [
 function hexToRuName(hex){
   const exact = HEX_MAP.find(([h]) => h === hex.toLowerCase());
   if (exact) return exact[1];
-
   const [r,g,b] = hexToRGB(hex);
   let best = { dist: Infinity, name: '' };
   for (const [h, name] of HEX_MAP){

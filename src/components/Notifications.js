@@ -4,6 +4,26 @@ import { k, getUID, getNotifications as getList, setNotifications as setList } f
 const ENDPOINT = '/.netlify/functions/notifs';
 const FETCH_TIMEOUT_MS = 10000;
 
+/* ===== Таббар: снять выделение со всех вкладок ===== */
+function clearActiveTabbar(){
+  // 1) Публичный API, если есть
+  try { window.setTabbarMenu?.(null); } catch {}
+  try { window.setTabbarMenu?.(''); } catch {}
+  try { window.setTabbarMenu?.('none'); } catch {}
+
+  // 2) Через событие (если таббар подписан на него)
+  try { window.dispatchEvent(new CustomEvent('tabbar:set', { detail: { key: null } })); } catch {}
+
+  // 3) Жёстко через DOM (на случай чужих реализаций)
+  try {
+    document.querySelectorAll('.tabbar .tab, .tabbar a, .tabbar button').forEach(el=>{
+      el.classList.remove('active','current','is-active','selected');
+      el.setAttribute?.('aria-current','false');
+      el.setAttribute?.('aria-selected','false');
+    });
+  } catch {}
+}
+
 /* ===== Общий таймаут (как в других модулях) ===== */
 function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
   return new Promise((resolve, reject) => {
@@ -39,6 +59,9 @@ export async function renderNotifications(onAfterMarkRead){
   const v = document.getElementById('view');
   if (!v) return;
 
+  // 🔒 На экране уведомлений вкладка в таббаре НЕ должна быть выделена
+  clearActiveTabbar();
+
   // 1) получаем список (сервер → локаль)
   let list = await fetchServerListSafe().catch(()=>null);
   if (!Array.isArray(list)) list = getList();
@@ -60,18 +83,19 @@ export async function renderNotifications(onAfterMarkRead){
     `;
   }
 
+  // На случай, если где-то в коде после рендера снова подсветили вкладку — снимем ещё раз.
+  clearActiveTabbar();
+
   // 2) помечаем прочитанными: сначала сервер, затем локальный кэш и DOM
   const serverItems = await markAllServerSafe().catch(()=>null);
 
   if (Array.isArray(serverItems)) {
-    // сервер — источник истины
     const norm = serverItems.map(n => normalize({ ...n, read: true }));
     const sorted = norm.sort((a,b)=> (b.ts||0)-(a.ts||0));
     setList(sorted);
-    applyDomReadState(sorted);         // ← мгновенно в DOM
+    applyDomReadState(sorted);
     updateUnreadBadge(unreadCount(sorted)); // будет 0
   } else {
-    // оффлайн-фолбэк: локально всё отметить
     const updated = list.map(n => normalize({ ...n, read: true }));
     setList(updated);
     applyDomReadState(updated);
@@ -127,7 +151,6 @@ async function fetchServerListSafe(){
     const items = Array.isArray(j.items) ? j.items : [];
     const norm = items.map(normalize).sort((a,b)=> (b.ts||0)-(a.ts||0));
     setList(norm);
-    // не трогаем read здесь — пометим централизованно в renderNotifications
     return norm;
   }catch{
     return null;
@@ -146,8 +169,6 @@ async function markAllServerSafe(){
     const headers = { 'Content-Type':'application/json' };
     if (hasInit) headers['X-Tg-Init-Data'] = initData;
 
-    // РАНЬШЕ: только markmine → markseen при hasInit
-    // ТЕПЕРЬ: добавили публичный fallback { op:'markAll', uid }, даже если hasInit=true
     const attempts = hasInit
       ? [ { op:'markmine' }, { op:'markseen' }, { op:'markAll', uid } ]
       : [ { op:'markAll', uid } ];
@@ -164,7 +185,6 @@ async function markAllServerSafe(){
         'items:', Array.isArray(j?.items) ? j.items.length : 'no items');
 
       if (r.ok && j?.ok !== false){
-        // Сервер вернул актуальные элементы (уже read:true) — используем их.
         return Array.isArray(j.items) ? j.items : [];
       }
     }
@@ -175,7 +195,6 @@ async function markAllServerSafe(){
     return null;
   }
 }
-
 
 /* ===== моментальное обновление DOM после read ===== */
 function applyDomReadState(list){
