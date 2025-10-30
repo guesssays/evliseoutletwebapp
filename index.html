@@ -257,12 +257,8 @@
   })();
   </script>
 
-  <!-- ВАЖНО: новый вход, чтобы сломать модульный кеш -->
-  <script type="module">
-    const V = document.getElementById('APP_BUILD')?.content || Date.now();
-    // на всякий случай пробросим помощник для динамических импортов:
-    window.__importV__ = (p) => import(p + (p.includes('?')?'&':'?') + 'v=' + encodeURIComponent(V));
-    import('/src/main.v2.js?v=' + encodeURIComponent(V));
-  </script>
+<!-- ЗАМЕНИ вот этим один блок с динамическим import -->
+<script type="module" src="src/main.js?v=2025-10-30-21-12"></script>
+
 </body>
 </html>

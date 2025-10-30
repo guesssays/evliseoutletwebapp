@@ -14,12 +14,13 @@
 /
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
-
+  Clear-Site-Data: "cache"
+  
 /index.html
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
   # Разовая тотальная очистка кэша у клиентов (раскомментируй при необходимости на один деплой):
-  # Clear-Site-Data: "cache"
+   Clear-Site-Data: "cache"
 
 # Любые *.html — тоже без кэша
 /*.html
@@ -40,7 +41,7 @@
 /*.css
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
-  
+
 /*.js
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
