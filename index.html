@@ -2,6 +2,47 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
+
+  <!-- HARD UPGRADE BOOTSTRAP (works even on very old cached HTML) -->
+<script>
+(function(){
+  // 1) Жёсткая "эпоха" — меняй цифру при любом важном релизе
+  var EPOCH = '2025-10-30-21-12';      // совпадает с <meta id="APP_BUILD">
+  var KEY   = '__app_epoch__';
+
+  // 2) Уже проходили эту эпоху? Ничего не делаем
+  try { if (localStorage.getItem(KEY) === EPOCH) return; } catch (_) {}
+
+  // 3) По возможности зачистим SW и CacheStorage (тихо)
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+      navigator.serviceWorker.getRegistrations().then(function(list){
+        list.forEach(function(r){ try{ r.unregister(); }catch(_){ } });
+      });
+    }
+  } catch(_) {}
+  try {
+    if (window.caches && caches.keys) {
+      caches.keys().then(function(keys){ keys.forEach(function(k){ try{ caches.delete(k); }catch(_){ } }); });
+    }
+  } catch(_) {}
+
+  // 4) Перезагрузим тот же адрес, но с твёрдым build-параметром и флагом nuke=1
+  try {
+    var build = (document.getElementById('APP_BUILD')||{}).content || EPOCH;
+    var u = new URL(location.href);
+    u.searchParams.set('v', build);
+    u.searchParams.set('nuke', '1');
+    u.searchParams.set('r', String(Math.random()).slice(2)); // уникальность
+    // Запоминаем "эпоху" до перехода (если не получится — попробуем ещё раз на след. старте)
+    try { localStorage.setItem(KEY, EPOCH); } catch(_){}
+    location.replace(u.toString());
+  } catch(_) { /* в безвыходной ситуации — обычный reload */
+    try { location.reload(true); } catch(__) {}
+  }
+})();
+</script>
+
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
   <title>EVLISE OUTLET — интернет-магазин одежды</title>
