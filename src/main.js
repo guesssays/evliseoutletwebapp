@@ -270,6 +270,25 @@ migrateGuestWalletOnce();
 /* ---------- персональные данные ---------- */
 loadCart(); loadAddresses(); loadProfile(); loadFavorites();
 updateCartBadge(); initTelegramChrome();
+// --- Telegram WebApp first-frame fix: показываем хедер сразу в вебвью
+try {
+  const tg = window.Telegram?.WebApp;
+  if (tg) {
+    tg.ready?.();              // сообщает Telegram, что UI готов
+    tg.expand?.();             // просим максимальную высоту
+  }
+} catch {}
+
+requestAnimationFrame(() => {
+  // Снимаем любые возможные скрывающие классы и прокидываем reflow
+  const hdr = document.querySelector('.app-header');
+  if (hdr) {
+    hdr.classList.remove('hidden');
+    // пинок слоя: иногда помогает избежать «застрявшего» translateY на первом кадре
+    // eslint-disable-next-line no-unused-expressions
+    hdr.offsetHeight;
+  }
+});
 
 /* Кнопка "Наверх" */
 mountScrollTop();
