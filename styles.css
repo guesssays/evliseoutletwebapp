@@ -865,7 +865,7 @@ body.admin-mode #scrollTopBtn{ display:none !important; }
 /* === SCROLL-TOP tune (вставь/обнови в styles.css) === */
 :root{
   /* было: 26px */
-  --scrolltop-gap: 12px; /* ниже — ближе к таббару */
+  --scrolltop-gap: 8px; /* ниже — ближе к таббару */
 }
 
 /* при желании — чуть “стекляннее” блик (не обязательно) */
