@@ -1006,3 +1006,19 @@ html body #scrollTopBtn i{
   html body #scrollTopBtn svg *,
   html body #scrollTopBtn i{ stroke:#121111 !important; }
 }
+/* === FIX: уведомления кликаются — контейнер фикс-хедера сквозной === */
+#productFixHdr,
+.product-fixhdr{
+  pointer-events: none !important;      /* контейнер не ловит клики */
+}
+
+#productFixHdr .fixbtn,
+.product-fixhdr .fixbtn{
+  pointer-events: auto !important;      /* но сами кнопки ловят */
+}
+
+/* дома/не на карточке товара — вообще убираем слой */
+html.route-home #productFixHdr,
+html.route-home .product-fixhdr{
+  display: none !important;
+}
