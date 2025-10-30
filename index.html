@@ -335,18 +335,17 @@
   })();
   </script>
 
-  <!-- Показывать панель поиска/фильтров/категорий только на главной (фикс первого входа) -->
+  <!-- Показывать панель поиска/фильтров/категорий только на главной (жёсткий фикс первого входа) -->
   <script>
   (function(){
-    // 1) Нормализуем хэш при самом первом входе (без добавления записи в историю)
+    // 1) Нормализуем хэш в #/ при самом первом входе (без добавления лишней истории)
     if (!location.hash || location.hash === '#') {
       try { location.replace('#/'); } catch { location.hash = '#/'; }
     }
 
-    function isHomeHash(h){
-      return h === '#/' || h === '#';
-    }
+    function isHomeHash(h){ return h === '#/' || h === '#'; }
 
+    // Применение правила видимости
     function applyHomeChrome(){
       var onHome = isHomeHash(location.hash || '#/');
       document.querySelectorAll('[data-home-only]').forEach(function(el){
@@ -355,21 +354,33 @@
       });
     }
 
-    // 2) Запускаем немедленно, чтобы элементы были видимы уже при первом кадре
+    // 2) Сразу показываем (синхронно) — чтобы элементы были видимы уже на первом кадре
     applyHomeChrome();
 
-    // 3) Дублируем после готовности DOM (на случай, если HTML дорендерится позже)
+    // 3) «Липкий» энфорсер на первый секундый интервал — гоняем ещё несколько кадров против гонок роутера
+    (function stickyEnforce(durationMs){
+      var until = performance.now() + (durationMs|0 || 1000);
+      function tick(){
+        applyHomeChrome();
+        if (performance.now() < until) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    })(1000);
+
+    // 4) Дублируем на ключевых событиях
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', applyHomeChrome, { once:true });
-    } else {
-      setTimeout(applyHomeChrome, 0);
-    }
-
-    // 4) Поддерживаем любые переходы роутера
+    } else { setTimeout(applyHomeChrome, 0); }
+    window.addEventListener('load', applyHomeChrome);
     window.addEventListener('hashchange', applyHomeChrome);
     window.addEventListener('view:home-mounted', applyHomeChrome);
     window.addEventListener('view:route-changed', applyHomeChrome);
     window.addEventListener('view:product-mounted', applyHomeChrome);
+
+    // 5) На всякий: если таббар активирует «дом» программно — тоже обновим
+    try{
+      document.querySelector('[data-tab="home"]')?.addEventListener('click', ()=> setTimeout(applyHomeChrome, 0));
+    }catch{}
   })();
   </script>
 

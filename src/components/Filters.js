@@ -26,12 +26,14 @@ function categoryNameBySlug(slug) {
   return slug || '';
 }
 
-/* ===== определение «обувных» категорий ===== */
-const SHOES_SLUG_HINTS = ['shoe', 'shoes', 'sneaker', 'sneakers', 'boots', 'obuv', 'kross', 'kedi'];
-function buildShoesCategorySet() {
-  const set = new Set();
+/* ===== определение «обувных» категорий (ЛЕНИВО, на актуальном state) ===== */
+const SHOES_SLUG_HINTS = ['shoe', 'shoes', 'sneaker', 'sneakers', 'boots', 'obuv', 'kross', 'kedi', 'kedy', 'krossovki', 'botinki'];
+const SHOES_CAT_FALLBACK = new Set(['kedy', 'krossovki', 'botinki']); // явные слаги из вашей иерархии
+
+function buildShoesCategorySetNow() {
+  const set = new Set([...SHOES_CAT_FALLBACK]);
   for (const grp of state.categories || []) {
-    const grpIsShoes = /обув/i.test(grp.name || '');
+    const grpIsShoes = /обув/i.test(grp.name || '') || SHOES_SLUG_HINTS.some(h => String(grp.slug||'').includes(h));
     for (const ch of grp.children || []) {
       const slug = String(ch.slug || '');
       const name = String(ch.name || '');
@@ -44,14 +46,27 @@ function buildShoesCategorySet() {
   }
   return set;
 }
-const SHOES_CATS = buildShoesCategorySet();
+
 function isShoesProduct(p) {
   if (!p) return false;
+  // 1) Прямые признаки
   if (p.kind === 'shoes') return true;
-  return SHOES_CATS.has(p.categoryId);
+  if (p.sizeChartType === 'shoes') return true;
+  if (p.sizeChart && p.sizeChart.type === 'shoes') return true;
+
+  // 2) Категория
+  const cats = buildShoesCategorySetNow();
+  if (cats.has(p.categoryId)) return true;
+
+  // 3) Хинты по слагам/названиям на всякий случай
+  const slug = String(p.slug || '').toLowerCase();
+  const cat  = String(p.categoryId || '').toLowerCase();
+  if (SHOES_SLUG_HINTS.some(h => slug.includes(h) || cat.includes(h))) return true;
+
+  return false;
 }
 
-/* ===== сортировка цветов для отображения ===== */
+/* ===== отображаемые цвета ===== */
 const COLOR_MAP = {
   '#000000': 'чёрный', black: 'чёрный',
   '#ffffff': 'белый',  white: 'белый',
@@ -71,7 +86,7 @@ function colorLabel(c=''){
 }
 
 /* ===== сортировка размеров ===== */
-// Одежда: алфавитные + числовые (числа идут по возрастанию)
+// Одежда
 const SIZE_RANK_MAP = {
   'xxs': 10, 'xs': 20, 's': 30, 'm': 40, 'l': 50,
   'xl': 60, 'xxl': 70, '2xl': 70, '3xl': 80, '4xl': 90, '5xl': 100, '6xl': 110, '7xl': 120
@@ -83,12 +98,9 @@ function clothingKey(x) {
   const raw = String(x);
   const k = normalizeSizeToken(raw);
   if (k in SIZE_RANK_MAP) return { group: 0, val: SIZE_RANK_MAP[k], raw };
-  // «universal», «one size»
-  if (/(one|uni|free)/i.test(k)) return { group: 2, val: Number.POSITIVE_INFINITY, raw };
-  // числовые размеры: 40, 42, 44...
+  if (/(one|uni|free)/i.test(k)) return { group: 2, val: Number.POSITIVE_INFINITY, raw }; // one size / universal
   const num = parseFloat(k.replace(',', '.').match(/\d+(\.\d+)?/)?.[0] ?? NaN);
   if (!Number.isNaN(num)) return { group: 1, val: num, raw };
-  // fallback: строка
   return { group: 3, val: raw.localeCompare.bind(raw), raw };
 }
 function sortClothingSizes(arr) {
@@ -103,24 +115,21 @@ function sortClothingSizes(arr) {
   });
 }
 
-// Обувь: приводим к числу (учитываем диапазоны «40-41» как 40.5, дроби «40.5», слеш «43/44»)
+// Обувь
 function shoesNumeric(x='') {
   const s = String(x).trim().toLowerCase();
-  // 43-44
-  let m = s.match(/^(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)/);
+  let m = s.match(/^(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)/); // 43-44
   if (m) {
     const a = parseFloat(m[1].replace(',', '.'));
     const b = parseFloat(m[2].replace(',', '.'));
     return (a + b) / 2;
   }
-  // 43/44
-  m = s.match(/^(\d+(?:[.,]\d+)?)\s*\/\s*(\d+(?:[.,]\d+)?)/);
+  m = s.match(/^(\d+(?:[.,]\d+)?)\s*\/\s*(\d+(?:[.,]\d+)?)/);    // 43/44
   if (m) {
     const a = parseFloat(m[1].replace(',', '.'));
     const b = parseFloat(m[2].replace(',', '.'));
     return (a + b) / 2;
   }
-  // обычное число
   const n = parseFloat(s.replace(',', '.').match(/\d+(\.\d+)?/)?.[0] ?? NaN);
   return Number.isNaN(n) ? Number.POSITIVE_INFINITY : n;
 }
@@ -148,7 +157,6 @@ export function applyFilters(list){
       if (!p.categoryId || !subcats.includes(p.categoryId)) return false;
     }
 
-    // Размеры: выбираем соответствующую группу
     const sizes = (p.sizes || []).map(norm);
     const productIsShoes = isShoesProduct(p);
 
@@ -182,10 +190,8 @@ function collectSizes() {
     for (const s of (p.sizes || [])) target.add(s);
   }
 
-  // если почему-то одна из групп пуста — подстрахуемся общим списком
-  if (!clothes.size && (state.products || []).length) {
-    for (const p of state.products) for (const s of (p.sizes || [])) clothes.add(s);
-  }
+  // Если по какой-то причине одна из групп пустая — НЕ подмешиваем другую.
+  // Лучше показать пусто, чем смешивать типы и путать пользователя.
 
   return {
     clothes: sortClothingSizes([...clothes]),
