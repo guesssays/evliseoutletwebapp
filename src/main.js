@@ -274,17 +274,15 @@ updateCartBadge(); initTelegramChrome();
 try {
   const tg = window.Telegram?.WebApp;
   if (tg) {
-    tg.ready?.();              // сообщает Telegram, что UI готов
-    tg.expand?.();             // просим максимальную высоту
+    tg.ready?.();
+    tg.expand?.();
   }
 } catch {}
 
 requestAnimationFrame(() => {
-  // Снимаем любые возможные скрывающие классы и прокидываем reflow
   const hdr = document.querySelector('.app-header');
   if (hdr) {
     hdr.classList.remove('hidden');
-    // пинок слоя: иногда помогает избежать «застрявшего» translateY на первом кадре
     // eslint-disable-next-line no-unused-expressions
     hdr.offsetHeight;
   }

@@ -2,7 +2,6 @@
 import { state, isFav, toggleFav } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { applyFilters } from './Filters.js';
-import { ScrollReset } from '../core/scroll-reset.js';
 
 function findCategoryBySlug(slug){
   for (const g of state.categories){
@@ -97,11 +96,10 @@ export function drawProducts(list){
     if (!t) continue;
     const node = t.content.firstElementChild.cloneNode(true);
 
-    // ⛔ На фазе capture не глушим всплытие — только запрещаем переход по <a>
+    // На фазе capture запрещаем переход по <a> если клик по .fav, но всплытие не глушим.
     node.addEventListener('click', (e) => {
       if (e.target?.closest?.('.fav')) {
-        e.preventDefault(); // якорь не переходит
-        // НЕ вызываем stopPropagation / stopImmediatePropagation — даём событию дойти до делегата
+        e.preventDefault();
       }
     }, { capture: true, passive: false });
 
@@ -136,8 +134,8 @@ export function drawProducts(list){
 
   grid.appendChild(frag);
 
-  // 🛡️ Лёгкая защита от перехода по ссылке при клике на .fav:
-  // только preventDefault, БЕЗ остановки всплытия — чтобы ниже сработал делегат.
+  // Лёгкая защита от перехода при клике на .fav: только preventDefault,
+  // без остановки всплытия — ниже сработает делегат.
   if (!grid.dataset.anchorGuard) {
     grid.addEventListener('click', (e) => {
       if (e.target?.closest?.('.fav, button.fav')) {
@@ -147,16 +145,13 @@ export function drawProducts(list){
     grid.dataset.anchorGuard = '1';
   }
 
-  // --- Делегированный обработчик сердечек ---
+  // --- Делегированный обработчик сердечек (без ScrollReset) ---
   if (!grid.dataset.favHandlerBound) {
     grid.addEventListener('click', (ev) => {
       const favBtn = ev.target.closest('.fav, button.fav');
       if (!favBtn) return;
 
       ev.preventDefault(); // отрубили переход по <a>
-      // НЕ вызываем stopImmediatePropagation — нам это не нужно
-
-      try { ScrollReset.quiet(900); } catch {}
 
       const card = favBtn.closest('.card, a.card');
       const href = card?.getAttribute('href') || '';
@@ -170,6 +165,7 @@ export function drawProducts(list){
 
       try {
         window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: pid, active: now } }));
+        window.dispatchEvent(new CustomEvent('favorites:updated'));
       } catch {}
 
       const gridEl = favBtn.closest('#productGrid');

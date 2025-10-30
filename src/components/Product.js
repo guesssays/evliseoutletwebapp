@@ -212,8 +212,8 @@ export async function renderProduct({id}){
         try { ScrollReset.quiet(400); } catch {}
         history.back();
       },
+      // 💔 Без ScrollReset внутри избранного:
       onFavToggle: () => {
-        try { ScrollReset.quiet(900); } catch {}
         const now = toggleFav(p.id);
         const heroFav = document.getElementById('favBtn');
         if (heroFav) {
@@ -221,7 +221,9 @@ export async function renderProduct({id}){
           heroFav.setAttribute('aria-pressed', now ? 'true' : 'false');
         }
         setFixFavActive(now);
-        window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: p.id, active: now } }));
+        // Синхро-события для других экранов/сервисов
+        try { window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: p.id, active: now } })); } catch {}
+        try { window.dispatchEvent(new CustomEvent('favorites:updated')); } catch {}
       },
       showThreshold: 20,
     });
@@ -546,37 +548,29 @@ export async function renderProduct({id}){
     window.addEventListener('fav:changed', onFavSync);
 
     const favBtn = document.getElementById('favBtn');
-if (favBtn) {
-  try { favBtn.setAttribute('type','button'); favBtn.setAttribute('role','button'); } catch {}
-  favBtn.addEventListener('click', (e) => {
-    try {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation?.();
-    } catch {}
-    try { ScrollReset.quiet(900); } catch {}
+    if (favBtn) {
+      try { favBtn.setAttribute('type','button'); favBtn.setAttribute('role','button'); } catch {}
+      favBtn.addEventListener('click', (e) => {
+        try {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation?.();
+        } catch {}
 
-    const nowActive = toggleFav(p.id);
+        const nowActive = toggleFav(p.id);
 
-    favBtn.classList.toggle('active', nowActive);
-    favBtn.setAttribute('aria-pressed', String(nowActive));
-    setFixFavActive(nowActive);
+        favBtn.classList.toggle('active', nowActive);
+        favBtn.setAttribute('aria-pressed', String(nowActive));
+        setFixFavActive(nowActive);
 
-    window.dispatchEvent(new CustomEvent('fav:changed', {
-      detail: { id: p.id, active: nowActive }
-    }));
-  }, { passive:false, capture:false });
+        // глобальные события
+        try { window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: p.id, active: nowActive } })); } catch {}
+        try { window.dispatchEvent(new CustomEvent('favorites:updated')); } catch {}
+      }, { passive:false, capture:false });
 
-  try { ScrollReset.guardNoResetClick(favBtn, { duration: 900, preventAnchorNav: true }); } catch {}
-
-    // глушим навигационные жесты в самом начале
-  favBtn.addEventListener('pointerdown', () => {
-    try { ScrollReset.quiet(900); } catch {}
-  }, { passive:true, capture:true });
-}
-
-
-
+      // Больше НИКАКИХ ScrollReset.* около сердечка
+      // и никаких guardNoResetClick.
+    }
 
     // Галерея
     const thumbs = document.getElementById('thumbs');
@@ -697,15 +691,12 @@ function drawRelatedCards(list){
     if (t && t.content?.firstElementChild){
       const node = t.content.firstElementChild.cloneNode(true);
       // node — это <a href="#/product/...">
-// На фазе захвата глушим любые клики, пришедшие с .fav
-// На фазе захвата запрещаем переход, если клик пришёл по .fav,
-// но НЕ останавливаем всплытие — делегат/обработчик на кнопке должен сработать.
-node.addEventListener('click', (e) => {
-  if (e.target?.closest?.('.fav')) {
-    e.preventDefault();
-  }
-}, { capture: true, passive: false });
-
+      // На фазе capture запрещаем переход, если клик пришёл по .fav, но не останавливаем всплытие.
+      node.addEventListener('click', (e) => {
+        if (e.target?.closest?.('.fav')) {
+          e.preventDefault();
+        }
+      }, { capture: true, passive: false });
 
       node.href = `#/product/${p.id}`;
 
@@ -730,34 +721,28 @@ node.addEventListener('click', (e) => {
       const priceEl = node.querySelector('.price');
       if (priceEl) priceEl.textContent = priceFmt(p.price);
 
-const favBtn = node.querySelector('button.fav, .fav');
-if (favBtn){
-  const active = isFav(p.id);
-  favBtn.classList.toggle('active', active);
-  favBtn.setAttribute('aria-pressed', String(active));
-  try { favBtn.setAttribute('type','button'); favBtn.setAttribute('role','button'); } catch {}
+      const favBtn = node.querySelector('button.fav, .fav');
+      if (favBtn){
+        const active = isFav(p.id);
+        favBtn.classList.toggle('active', active);
+        favBtn.setAttribute('aria-pressed', String(active));
+        try { favBtn.setAttribute('type','button'); favBtn.setAttribute('role','button'); } catch {}
 
-  // ❗ Никаких capture/kill со stopImmediatePropagation — только обычный click.
-  favBtn.addEventListener('click', (e) => {
-    e.preventDefault();       // не переходим по <a>
-    e.stopPropagation();      // чтобы не улететь в навигацию родителя
-    try { ScrollReset.quiet(900); } catch {}
+        // Только локальный click без ScrollReset
+        favBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
 
-    const now = toggleFav(p.id);
-    favBtn.classList.toggle('active', now);
-    favBtn.setAttribute('aria-pressed', String(now));
+          const now = toggleFav(p.id);
+          favBtn.classList.toggle('active', now);
+          favBtn.setAttribute('aria-pressed', String(now));
 
-    window.dispatchEvent(new CustomEvent('fav:changed', {
-      detail: { id: p.id, active: now }
-    }));
+          try { window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: p.id, active: now } })); } catch {}
+          try { window.dispatchEvent(new CustomEvent('favorites:updated')); } catch {}
 
-    return false;
-  }, { passive:false });
-
-  try { ScrollReset.guardNoResetClick(favBtn, { duration: 900 }); } catch {}
-}
-
-
+          return false;
+        }, { passive:false });
+      }
 
       frag.appendChild(node);
     } else {
