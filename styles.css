@@ -1247,3 +1247,34 @@ html.route-home .product-fixhdr{
 
 /* модалка/затемнение поверх всего */
 .modal{ z-index: var(--z-modal) !important; }
+/* === HOTFIX: уведомления в .app-header кликаются на всех страницах === */
+
+/* 1) Хедер — свой стек + выше контента */
+.app-header{
+  isolation: isolate;             /* свой stacking context */
+  z-index: 130 !important;        /* выше сеток/героев, ниже фикс-хедера и модалок */
+  pointer-events: auto !important;
+}
+
+/* 2) Кнопка уведомлений — приоритет внутри хедера */
+.hdr-right{ position: relative; z-index: 2; }
+#openNotifications{ position: relative; z-index: 3; pointer-events: auto !important; }
+
+/* 3) Фикс-хедер товара не перехватывает клики поверх хедера */
+#productFixHdr,
+.product-fixhdr{
+  pointer-events: none !important;
+}
+#productFixHdr .fixbtn,
+.product-fixhdr .fixbtn{
+  pointer-events: auto !important;
+}
+
+/* 4) На всякий случай снимаем "слои" с верхних секций контента */
+.view,
+.product,
+.gallery,
+.gallery-main{
+  position: relative;
+  z-index: 0 !important;
+}

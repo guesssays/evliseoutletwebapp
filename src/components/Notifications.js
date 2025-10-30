@@ -68,15 +68,13 @@ export async function renderNotifications(onAfterMarkRead){
 
   list = list.slice().sort((a,b)=> (b.ts||0) - (a.ts||0));
 
-  // первичный рендер
+  // первичный рендер — ⛔ без заголовка «Уведомления»
   if (!list.length){
     v.innerHTML = `
-      <div class="section-title">Уведомления</div>
       <div class="notes-empty">Пока нет уведомлений. Мы сообщим, когда появятся новости или акции.</div>
     `;
   } else {
     v.innerHTML = `
-      <div class="section-title">Уведомления</div>
       <section class="notes" id="notesList">
         ${list.map(n=> noteTpl(n)).join('')}
       </section>

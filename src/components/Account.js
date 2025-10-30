@@ -187,11 +187,11 @@ export function renderAccount(){
 
   // ⚠️ раньше тут был settleMatured(); теперь показываем серверный баланс
   const ref = readRefProfile();
-  const hasBoost = !!ref.firstOrderBoost && !ref.firstOrderDone; // <-- фикс: это флаг, а не функция
+  const hasBoost = !!ref.firstOrderBoost && !ref.firstOrderDone; // <-- флаг
 
+  // ⛔ УБРАН заголовок «Личный кабинет»
   v.innerHTML = `
     <section class="section" style="padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));">
-      <div class="section-title">Личный кабинет</div>
 
       <style>
         .account-card{
@@ -220,10 +220,7 @@ export function renderAccount(){
           border:1px solid rgba(0,0,0,.08);
         }
 
-        .points-top{
-          display:flex; align-items:center; justify-content:flex-start; gap:8px;
-          white-space:nowrap; min-width:0;
-        }
+        .points-top{ display:flex; align-items:center; justify-content:flex-start; gap:8px; white-space:nowrap; min-width:0; }
         .points-title{
           display:flex; align-items:center; gap:6px;
           font-weight:700; letter-spacing:.2px;
@@ -232,10 +229,7 @@ export function renderAccount(){
         }
         .points-title i{ width:18px; height:18px; flex:0 0 auto; }
 
-        .points-row{
-          margin-top:10px;
-          display:grid; grid-template-columns: 1fr; gap:8px;
-        }
+        .points-row{ margin-top:10px; display:grid; grid-template-columns: 1fr; gap:8px; }
         .points-chip{
           display:flex; align-items:center; gap:8px;
           padding:8px 10px; border-radius:10px; border:1px solid rgba(0,0,0,.06);
@@ -245,10 +239,7 @@ export function renderAccount(){
         .points-chip .label{ font-size:12px; color:var(--muted,#6b7280); white-space:nowrap; }
         .points-chip .val{ margin-left:auto; font-weight:800; white-space:nowrap; }
 
-        .points-actions{
-          margin-top:10px; display:flex; gap:8px; align-items:stretch;
-          flex-wrap:nowrap; min-width:0;
-        }
+        .points-actions{ margin-top:10px; display:flex; gap:8px; align-items:stretch; flex-wrap:nowrap; min-width:0; }
         .points-actions .pill{
           height:36px; padding:0 10px;
           display:inline-flex; align-items:center; justify-content:center; gap:8px;
@@ -269,11 +260,7 @@ export function renderAccount(){
           .points-actions .primary:hover{ filter:brightness(.98); }
           .points-actions .pill:not(.primary):hover{ filter:brightness(.98); }
         }
-
-        @media (min-width: 420px){
-          .points-row{ grid-template-columns: 1fr 1fr; }
-        }
-
+        @media (min-width: 420px){ .points-row{ grid-template-columns: 1fr 1fr; } }
         @media (max-width: 360px){
           .points-actions{ gap:6px; }
           .points-actions .pill{ height:34px; padding:0 8px; font-size:12px; }
