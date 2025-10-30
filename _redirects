@@ -1,9 +1,6 @@
-# любые http -> https
-http://evliseoutlet.netlify.app/* https://evliseoutlet.netlify.app/:splat 301!
-http://evlise-outlet.netlify.app/* https://evliseoutlet.netlify.app/:splat 301!
+# http -> https
+http://evliseoutlet.netlify.app/*      https://evliseoutlet.netlify.app/:splat 301!
+http://evlise-outlet.netlify.app/*     https://evliseoutlet.netlify.app/:splat 301!
 
-# c дефисом -> без дефиса
-https://evlise-outlet.netlify.app/* https://evliseoutlet.netlify.app/:splat 301!
-
-# если есть кастомные домены *.evlise.* — тоже в канонический хост:
-https://*.evlise.*/* https://evliseoutlet.netlify.app/:splat 301!
+# дефисный хост -> канон
+https://evlise-outlet.netlify.app/*    https://evliseoutlet.netlify.app/:splat 301!
