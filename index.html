@@ -37,6 +37,31 @@
 
   <!-- ЕДИНЫЙ БИЛД-ШТАМП -->
   <meta id="APP_BUILD" name="app-build" content="2025-10-30-21-12" />
+<script>
+(function(){
+  // Отправим первичную телеметрию только 1 раз за сессию
+  if (sessionStorage.__diag_sent__) return;
+  sessionStorage.__diag_sent__ = '1';
+  const payload = {
+    ts: Date.now(),
+    href: location.href,
+    host: location.host,
+    path: location.pathname,
+    search: location.search,
+    hash: location.hash,
+    ref: document.referrer || '',
+    ua: navigator.userAgent,
+    tg: !!window.Telegram && !!Telegram.WebApp,
+    tg_ver: (window.Telegram && Telegram.WebApp && Telegram.WebApp.version) || '',
+    build: document.querySelector('meta[name="app-build"]')?.content || '',
+  };
+  fetch('/.netlify/functions/diag', {
+    method:'POST',
+    headers:{'content-type':'application/json'},
+    body: JSON.stringify(payload)
+  }).catch(()=>{});
+})();
+</script>
 
   <!-- Одноразовая очистка (по ?nuke=1) -->
   <script>
@@ -148,6 +173,8 @@
     document.addEventListener('DOMContentLoaded', () => document.body.appendChild(d));
   })();
   </script>
+
+  
 </head>
 
 <body>
