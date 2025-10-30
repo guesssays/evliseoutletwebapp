@@ -1278,3 +1278,51 @@ html.route-home .product-fixhdr{
   position: relative;
   z-index: 0 !important;
 }
+/* === FAVORITES: изоляция перерисовки только для сердечек ================= */
+
+/* Кнопки избранного (все варианты) — свой композитный слой */
+.card .fav,
+.hero-fav,
+#btnFixFav {
+  contain: layout paint;       /* ограничиваем область перерисовки рамками кнопки */
+  isolation: isolate;          /* отдельный stacking context */
+  transform: translateZ(0);    /* уводим в композитинг (GPU) */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  overflow: clip;              /* отсечь всё за пределами кнопки */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Внутренняя иконка — тоже в мини-слое, без влияния на лэйаут */
+.card .fav .lucide-heart,
+.hero-fav .lucide-heart,
+#btnFixFav .lucide-heart {
+  display: inline-block;
+  will-change: transform, opacity;
+  transition: transform .15s ease, opacity .15s ease;
+  pointer-events: none;        /* событие ловит именно кнопка */
+}
+
+/* Активное состояние — меняем только «дешёвые» свойства */
+.card .fav.active .lucide-heart,
+.hero-fav.active .lucide-heart,
+#btnFixFav.active .lucide-heart {
+  color:#ff4d5a;
+  fill: currentColor;
+  stroke: none;
+  transform: scale(1.06);      /* лёгкий отклик, без рефлоу */
+}
+
+/* Защита от каскадных эффектов карточки при наведении/клике */
+.card:hover .fav,
+.card:active .fav { filter: none; box-shadow: none; }
+
+/* На случай глобальных .card .active {...} — не трогать layout карточки */
+.card .fav.active ~ * { filter: none; }
+
+/* Уважение системных настроек «меньше анимации» */
+@media (prefers-reduced-motion: reduce) {
+  .card .fav .lucide-heart,
+  .hero-fav .lucide-heart,
+  #btnFixFav .lucide-heart { transition: none; }
+}
