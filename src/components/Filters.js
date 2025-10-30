@@ -35,30 +35,53 @@ function resetAllFilters() {
 /* Нейтрализуем любые «внешние» сужения ленты (категории/URL/DOM) */
 function _clearExternalCategoryNarrowing() {
   try {
-    // 1) Если Home хранит выбранную категорию в состоянии — очистим
     if (state.ui?.home?.selectedCategory) state.ui.home.selectedCategory = null;
     if ('currentCategory' in state) state.currentCategory = null;
     if ('currentCategorySlug' in state) state.currentCategorySlug = null;
 
-    // 2) Снимем active у чипов категорий (если они уже отрисованы)
     const catHost = document.getElementById('catChips');
     if (catHost) {
       catHost.querySelectorAll('.chip.active').forEach(b => b.classList.remove('active'));
     }
 
-    // 3) Обновим hash, чтобы рут-страница не несла параметров категории
-    if (typeof location !== 'undefined') {
-      const pure = '#/home';
-      if (!location.hash || location.hash !== pure) {
-        history.replaceState({}, '', pure);
-      }
-    }
+    // hash оставим на усмотрение _refreshListHard (там единая логика)
   } catch {}
 }
 
-/* Безопасный ре-рендер Home */
-function rerenderHome(router) {
-  try { (router || window.appRouter)?.(); } catch {}
+/* Мягкий ре-рендер Home (если роутер под рукой) */
+function _rerenderHomeSoft(router) {
+  try {
+    const r = (router || window.appRouter);
+    if (typeof r === 'function') { r(); return true; }
+  } catch {}
+  return false;
+}
+
+/* ЖЁСТКИЙ рефреш ленты Home — гарантированно
+   1) снимаем внешние сужения
+   2) если есть appRouter — дергаем его
+   3) дополнительно эмулируем hashchange для router'ов, которые слушают событие
+*/
+function _refreshListHard(router){
+  _clearExternalCategoryNarrowing();
+
+  // Попробуем мягко
+  if (_rerenderHomeSoft(router)) return;
+
+  try {
+    const HOME = '#/home';
+    // Если уже на home — прокинем хэш-событие, чтобы словил слушатель
+    if (location.hash === HOME) {
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    } else {
+      // Переключим на home без истории и тоже дадим событие
+      history.replaceState({}, '', HOME);
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    }
+  } catch {}
+
+  // На всякий — ещё одна попытка ручного вызова роутера
+  try { window.appRouter?.(); } catch {}
 }
 
 /* ===== категории ===== */
@@ -318,8 +341,7 @@ export function openFilterModal(router){
         state.filters.size = []; // legacy off
 
         closeModal();
-        _clearExternalCategoryNarrowing();   // <— важно
-        rerenderHome(router);
+        _refreshListHard(router);     // <— ключевое
         renderActiveFilterChips();
       }}
     ],
@@ -332,12 +354,11 @@ export function openFilterModal(router){
         });
       });
 
-      // Единый исправленный «Сбросить всё»
+      // Единый «Сбросить всё»
       el('#clearBtn').onclick = ()=>{
         resetAllFilters();
         closeModal();
-        _clearExternalCategoryNarrowing();   // <— важно
-        rerenderHome(router);
+        _refreshListHard(router);     // <— ключевое
         renderActiveFilterChips();
       };
     }
@@ -363,8 +384,7 @@ export function renderActiveFilterChips(){
         if (type === 'sizeShoes')    state.filters.sizeShoes = [];
         if (type === 'inStock')      state.filters.inStock = false;
 
-        _clearExternalCategoryNarrowing();   // <— важно
-        rerenderHome();
+        _refreshListHard();          // <— ключевое
         renderActiveFilterChips();
       }
       return;
@@ -372,8 +392,7 @@ export function renderActiveFilterChips(){
     const clear = e.target.closest('.pill--clear-all');
     if (clear) {
       resetAllFilters();
-      _clearExternalCategoryNarrowing();     // <— важно
-      rerenderHome();
+      _refreshListHard();            // <— ключевое
       renderActiveFilterChips();
     }
   };

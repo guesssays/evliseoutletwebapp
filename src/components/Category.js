@@ -3,8 +3,10 @@ import { state } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { isFav, toggleFav } from '../core/state.js';
 
+const DEFAULT_SLUG = 'all';
+
 function findCategoryBySlug(slug){
-  for (const g of state.categories){
+  for (const g of state.categories || []){
     if (g.slug === slug) return g;
     for (const ch of (g.children||[])){
       if (ch.slug === slug) return ch;
@@ -25,15 +27,21 @@ function categoryNameBySlug(slug){
   return c?.name || '';
 }
 
+function categoryLabel(slug){
+  if (!slug || slug === DEFAULT_SLUG) return 'Все товары';
+  if (slug === 'new') return 'Новинки';
+  return categoryNameBySlug(slug) || 'Все товары';
+}
+
 function drawProducts(list){
   const grid = document.getElementById('productGrid');
   if (!grid) return;
   grid.innerHTML='';
 
-  const q = (state.filters.query||'').trim().toLowerCase();
-  const filtered = list.filter(p=>
-    p.title.toLowerCase().includes(q) ||
-    (p.subtitle||'').toLowerCase().includes(q)
+  const q = (state.filters?.query||'').trim().toLowerCase();
+  const filtered = (list||[]).filter(p=>
+    String(p.title||'').toLowerCase().includes(q) ||
+    String(p.subtitle||'').toLowerCase().includes(q)
   );
 
   const frag = document.createDocumentFragment();
@@ -45,9 +53,9 @@ function drawProducts(list){
     node.href = `#/product/${p.id}`;
 
     const im = node.querySelector('img');
-    if (im){ im.src = p.images?.[0] || ''; im.alt = p.title; }
+    if (im){ im.src = p.images?.[0] || ''; im.alt = p.title || ''; }
 
-    node.querySelector('.title')?.append(p.title);
+    node.querySelector('.title')?.append(p.title || '');
 
     const subEl = node.querySelector('.subtitle');
     if (subEl) {
@@ -73,33 +81,39 @@ function drawProducts(list){
   }
 
   grid.appendChild(frag);
-  window.lucide?.createIcons && lucide.createIcons();
+  try { window.lucide?.createIcons?.(); } catch {}
 }
 
 /**
- * Рендер экрана категории по slug: агрегируем дочерние подкатегории.
- * Допустимы только группы: tops, bottoms, shoes, bags, misc (+ спец: all/new).
+ * Рендер экрана категории по slug:
+ *  - 'all'  → Все товары (дефолт)
+ *  - 'new'  → Новинки (первые 24)
+ *  - иные   → агрегируем дочерние подкатегории
  * @param {{slug:string}} params
  */
 export function renderCategory(params){
-  const slug = params?.slug || 'all';
+  const slug = params?.slug || DEFAULT_SLUG;
+  state.filters = state.filters || {};
   state.filters.category = slug;
 
-v.innerHTML = `
-  <div class="section">
-    <h2 style="margin:8px 12px">${categoryNameBySlug(slug) || 'Категория'}</h2>
-  </div>
-  <div class="grid home-bottom-pad" id="productGrid"></div>
-`;
+  const v = document.getElementById('view');
+  if (!v) return;
+
+  v.innerHTML = `
+    <div class="section">
+      <h2 style="margin:8px 12px">${categoryLabel(slug)}</h2>
+    </div>
+    <div class="grid home-bottom-pad" id="productGrid"></div>
+  `;
 
   let list;
   if (slug === 'all') {
-    list = state.products;
+    list = state.products || [];
   } else if (slug === 'new') {
-    list = state.products.slice(0, 24);
+    list = (state.products || []).slice(0, 24);
   } else {
     const pool = new Set(expandSlugs(slug));
-    list = state.products.filter(p => pool.has(p.categoryId));
+    list = (state.products || []).filter(p => pool.has(p.categoryId));
   }
 
   drawProducts(list);
