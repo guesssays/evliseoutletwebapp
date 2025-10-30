@@ -335,25 +335,41 @@
   })();
   </script>
 
-  <!-- Показывать панель поиска/фильтров/категорий только на главной -->
+  <!-- Показывать панель поиска/фильтров/категорий только на главной (фикс первого входа) -->
   <script>
   (function(){
-    function isHome(){
-      var h = location.hash || '#/';
+    // 1) Нормализуем хэш при самом первом входе (без добавления записи в историю)
+    if (!location.hash || location.hash === '#') {
+      try { location.replace('#/'); } catch { location.hash = '#/'; }
+    }
+
+    function isHomeHash(h){
       return h === '#/' || h === '#';
     }
+
     function applyHomeChrome(){
-      var onHome = isHome();
+      var onHome = isHomeHash(location.hash || '#/');
       document.querySelectorAll('[data-home-only]').forEach(function(el){
         if (onHome) el.removeAttribute('hidden');
         else el.setAttribute('hidden','');
       });
     }
-    document.addEventListener('DOMContentLoaded', applyHomeChrome);
+
+    // 2) Запускаем немедленно, чтобы элементы были видимы уже при первом кадре
+    applyHomeChrome();
+
+    // 3) Дублируем после готовности DOM (на случай, если HTML дорендерится позже)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyHomeChrome, { once:true });
+    } else {
+      setTimeout(applyHomeChrome, 0);
+    }
+
+    // 4) Поддерживаем любые переходы роутера
     window.addEventListener('hashchange', applyHomeChrome);
     window.addEventListener('view:home-mounted', applyHomeChrome);
-    window.addEventListener('view:product-mounted', applyHomeChrome);
     window.addEventListener('view:route-changed', applyHomeChrome);
+    window.addEventListener('view:product-mounted', applyHomeChrome);
   })();
   </script>
 
