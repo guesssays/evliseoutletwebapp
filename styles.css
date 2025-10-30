@@ -1232,3 +1232,18 @@ html.route-home .product-fixhdr{
 #activeFilters .pill--clear-all{
   flex: 0 0 auto;
 }
+/* === MINI PATCH: корректная иерархия слоёв для затемнения === */
+:root{
+  /* хедер ниже модалки/затемнения, но выше контента */
+  --z-app-header: 60;
+  --z-scrolltop: 120;
+  --z-fixhdr: 140;  /* фикс-хедер товара поверх обычного */
+  --z-toast: 150;
+  --z-modal: 200;   /* модалка/затемнение — САМЫЙ верхний слой */
+}
+
+/* принудительно вернуть хедер к переменной (ранний хотфикс ставил 110) */
+.app-header{ z-index: var(--z-app-header) !important; }
+
+/* модалка/затемнение поверх всего */
+.modal{ z-index: var(--z-modal) !important; }

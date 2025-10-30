@@ -90,6 +90,23 @@
   window.addEventListener('load', apply);               // Telegram иногда меняет хэш на load
 })();
 </script>
+<script>
+/* Гарантируем видимость верхнего бара при первом входе (включая Telegram кнопки) */
+(function ensureTopbarOnFirstOpen(){
+  function showIfHome(){
+    var de  = document.documentElement;
+    var onHome = de.classList.contains('route-home');
+    if (!onHome) return;
+    var hdr = document.querySelector('.app-header');
+    if (hdr) hdr.classList.remove('hidden');      // снять «невидимость»
+    // data-home-only уже управляются через .route-home/.route-other
+  }
+  // как можно раньше + на основных событиях
+  showIfHome();
+  document.addEventListener('DOMContentLoaded', showIfHome, { once:true });
+  window.addEventListener('load', showIfHome, { once:true });
+})();
+</script>
 
 
   <!-- Fonts / styles -->
