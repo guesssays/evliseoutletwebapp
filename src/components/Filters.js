@@ -3,6 +3,35 @@ import { state } from '../core/state.js';
 import { openModal, closeModal } from '../core/modal.js';
 import { el } from '../core/utils.js';
 
+/* ===== базовое состояние фильтров ===== */
+function ensureFilters() {
+  if (!state.filters || typeof state.filters !== 'object') {
+    state.filters = {
+      subcats: [],
+      size: [],            // legacy (не используем, но храним пустым ради совместимости)
+      sizeClothes: [],
+      sizeShoes: [],
+      minPrice: null,
+      maxPrice: null,
+      inStock: false,
+    };
+  }
+  return state.filters;
+}
+
+function resetAllFilters() {
+  state.filters = {
+    ...ensureFilters(),
+    subcats: [],
+    size: [],
+    sizeClothes: [],
+    sizeShoes: [],
+    minPrice: null,
+    maxPrice: null,
+    inStock: false,
+  };
+}
+
 /* ===== категории ===== */
 function allSubcategories() {
   const list = [];
@@ -12,7 +41,9 @@ function allSubcategories() {
     }
   }
   if (!list.length) {
-    const uniq = Array.from(new Set((state.products || []).map(p => p.categoryId).filter(Boolean)));
+    const uniq = Array.from(new Set((state.products || [])
+      .map(p => p.categoryId)
+      .filter(Boolean)));
     return uniq.map(slug => ({ value: slug, label: slug }));
   }
   return list;
@@ -33,7 +64,8 @@ const SHOES_CAT_FALLBACK = new Set(['kedy','krossovki','botinki']);
 function buildShoesCategorySetNow() {
   const set = new Set([...SHOES_CAT_FALLBACK]);
   for (const grp of state.categories || []) {
-    const grpIsShoes = /обув/i.test(grp.name || '') || SHOES_SLUG_HINTS.some(h => String(grp.slug||'').includes(h));
+    const grpIsShoes = /обув/i.test(grp.name || '') ||
+      SHOES_SLUG_HINTS.some(h => String(grp.slug||'').includes(h));
     for (const ch of grp.children || []) {
       const slug = String(ch.slug || '');
       const name = String(ch.name || '');
@@ -72,45 +104,6 @@ function isShoesProduct(p) {
   return false;
 }
 
-/* ===== цвета (label + swatch) ===== */
-const COLOR_MAP = {
-  '#000000':'чёрный', black:'чёрный', 'черный':'чёрный', 'чёрный':'чёрный',
-  '#ffffff':'белый',  white:'белый', 'белый':'белый',
-  '#1e3a8a':'тёмно-синий', '#3b82f6':'синий', '#60a5fa':'голубой',
-  '#93c5fd':'светло-голубой', '#0ea5e9':'голубой',
-  '#6b7280':'серый', '#808080':'серый', '#111827':'графит', '#616161':'серый',
-  '#b91c1c':'красный', '#ef4444':'красный', '#f472b6':'розовый', '#a855f7':'фиолетовый',
-  '#16a34a':'зелёный', '#166534':'тёмно-зелёный',
-  '#556b2f':'хаки', '#4b5320':'оливковый', '#1f5132':'тёмно-зелёный',
-  '#7b3f00':'коричневый', '#8b5a2b':'коричневый', '#6b4226':'коричневый',
-  '#b0a36f':'бежевый', '#c8b796':'бежевый', '#d1b892':'бежевый', '#c19a6b':'бежевый',
-  '#a3a380':'оливковый',
-  // удобные названия → хексы
-  'красный':'#ef4444','розовый':'#f472b6','фиолетовый':'#a855f7',
-  'зелёный':'#16a34a','зеленый':'#16a34a','тёмно-зелёный':'#166534','темно-зелёный':'#166534',
-  'синий':'#3b82f6','голубой':'#60a5fa','тёмно-синий':'#1e3a8a','темно-синий':'#1e3a8a',
-  'серый':'#6b7280','графит':'#111827','хаки':'#556b2f','оливковый':'#4b5320',
-  'коричневый':'#7b3f00','бежевый':'#c19a6b'
-};
-function colorLabel(c=''){
-  const k = String(c).toLowerCase().trim();
-  return COLOR_MAP[k] || (k.startsWith('#') ? k : k.replace(/^#/, ''));
-}
-function colorSwatch(c=''){
-  const k = String(c).toLowerCase().trim();
-  if (k.startsWith('#') || k.startsWith('rgb')) return k;
-  // обратный поиск по известным названиям
-  for (const [hexOrName, label] of Object.entries(COLOR_MAP)) {
-    if (k === label || k === hexOrName) {
-      return hexOrName.startsWith('#') ? hexOrName : (COLOR_MAP[hexOrName] && hexOrName.startsWith('#') ? hexOrName : '#121111');
-    }
-  }
-  // если пришло «Белый/Черный» и т.п.
-  if (/бел/i.test(k) || k === 'white') return '#ffffff';
-  if (/черн|чёрн|black/i.test(k)) return '#000000';
-  return '#121111';
-}
-
 /* ===== сортировка размеров ===== */
 const SIZE_RANK_MAP = { 'xxs':10, 'xs':20, 's':30, 'm':40, 'l':50, 'xl':60, 'xxl':70, '2xl':70, '3xl':80, '4xl':90, '5xl':100, '6xl':110, '7xl':120 };
 function normalizeSizeToken(x='') { return String(x).trim().toLowerCase().replace(/\s+/g, ''); }
@@ -144,16 +137,16 @@ function sortShoesSizes(arr) {
   return [...arr].sort((a,b)=>{ const na = shoesNumeric(a), nb = shoesNumeric(b); if (na !== nb) return na - nb; return String(a).localeCompare(String(b)); });
 }
 
-/* ===== фильтрация ===== */
+/* ===== фильтрация (БЕЗ цвета) ===== */
 export function applyFilters(list){
-  const f = state.filters || {};
+  ensureFilters();
+  const f = state.filters;
   const subcats = Array.isArray(f.subcats) ? f.subcats : [];
 
   const norm = v => String(v ?? '').trim().toLowerCase();
   const wantSizeLegacy  = (f.size || []).map(norm);
   const wantClothes     = (f.sizeClothes || []).map(norm);
   const wantShoes       = (f.sizeShoes || []).map(norm);
-  const wantColors      = (f.colors || []).map(norm);
 
   const shoesCats = buildShoesCategorySetNow();
   const shoesMode = wantShoes.length > 0 && wantClothes.length === 0 && wantSizeLegacy.length === 0;
@@ -181,10 +174,7 @@ export function applyFilters(list){
       if (!sizes.some(s => wantForThisProduct.includes(s))) return false;
     }
 
-    if (wantColors.length){
-      const colors = (p.colors || []).map(norm);
-      if (!colors.some(c => wantColors.includes(c))) return false;
-    }
+    // Цвет полностью убран
 
     if (f.minPrice != null && p.price < f.minPrice) return false;
     if (f.maxPrice != null && p.price > f.maxPrice) return false;
@@ -209,23 +199,21 @@ function collectSizes() {
 }
 
 /* ===== helpers ===== */
-function chipGroup(items, selected, key, {withSwatch=false} = {}){
+function chipGroup(items, selected, key){
   return items.map(v=>{
     const val   = (typeof v === 'object') ? v.value : v;
     const label = (typeof v === 'object') ? v.label : v;
-    const sw = withSwatch ? `<span class="swatch" style="--sw:${colorSwatch(val)}"></span>` : '';
-    return `<button class="chip chip--select ${selected.includes(val)?'active':''}" data-${key}="${val}">${sw}${label}</button>`;
+    return `<button class="chip chip--select ${selected.includes(val)?'active':''}" data-${key}="${val}">${label}</button>`;
   }).join('');
 }
 const count = a => (Array.isArray(a)?a.length:0);
 
-/* ===== модалка фильтров ===== */
+/* ===== модалка фильтров (цвет убран, ряды — в одну строку со скроллом) ===== */
 export function openFilterModal(router){
+  ensureFilters();
+
   const cats = allSubcategories();
   const { clothes: allSizesClothes, shoes: allSizesShoes } = collectSizes();
-
-  const allColorsRaw = Array.from(new Set((state.products || []).flatMap(p=>p.colors||[])));
-  const allColors = allColorsRaw.map(v => ({ value: v, label: colorLabel(v) }));
 
   // начальные значения (совместимость с legacy size)
   const selClothes = state.filters.sizeClothes || [];
@@ -237,14 +225,13 @@ export function openFilterModal(router){
   const selCatsCount   = count(state.filters.subcats);
   const selClothCount  = count(initialClothes);
   const selShoesCount  = count(initialShoes);
-  const selColorCount  = count(state.filters.colors);
 
   openModal({
     title: 'Фильтры',
     body: `
       <div class="filters-modal">
         <div class="filters-hint">
-          Выберите категории, размеры или цвета. Нажмите «Сбросить» для очистки.
+          Выберите категории и размеры. Нажмите «Сбросить» для очистки.
         </div>
 
         <section class="filters-card">
@@ -253,7 +240,7 @@ export function openFilterModal(router){
             <div class="filters-card__meta">${selCatsCount ? `${selCatsCount} выбрано` : 'Не выбрано'}</div>
           </div>
           <div class="filters-card__body">
-            <div class="chipbar chipbar--wrap" id="fCats">${chipGroup(cats, state.filters.subcats || [], 'cat')}</div>
+            <div class="chipbar chipbar--scroll" id="fCats">${chipGroup(cats, state.filters.subcats || [], 'cat')}</div>
           </div>
         </section>
 
@@ -263,7 +250,7 @@ export function openFilterModal(router){
             <div class="filters-card__meta">${selClothCount ? `${selClothCount} выбрано` : 'Не выбрано'}</div>
           </div>
           <div class="filters-card__body">
-            <div class="chipbar chipbar--wrap" id="fSizesClothes">${chipGroup(allSizesClothes, initialClothes, 'size-clothes')}</div>
+            <div class="chipbar chipbar--scroll" id="fSizesClothes">${chipGroup(allSizesClothes, initialClothes, 'size-clothes')}</div>
           </div>
         </section>
 
@@ -273,23 +260,8 @@ export function openFilterModal(router){
             <div class="filters-card__meta">${selShoesCount ? `${selShoesCount} выбрано` : 'Не выбрано'}</div>
           </div>
           <div class="filters-card__body">
-            <div class="chipbar chipbar--wrap" id="fSizesShoes">${chipGroup(allSizesShoes, initialShoes, 'size-shoes')}</div>
+            <div class="chipbar chipbar--scroll" id="fSizesShoes">${chipGroup(allSizesShoes, initialShoes, 'size-shoes')}</div>
             <div class="filters-note">Если выбрать размер обуви без категории — покажем всю обувь с этим размером.</div>
-          </div>
-        </section>
-
-        <section class="filters-card">
-          <div class="filters-card__head">
-            <div class="filters-card__title">Цвет</div>
-            <div class="filters-card__meta">${selColorCount ? `${selColorCount} выбрано` : 'Не выбрано'}</div>
-          </div>
-          <div class="filters-card__body">
-            <div class="chipbar chipbar--wrap" id="fColors">
-              ${allColors.map(({value,label})=>`
-                <button class="chip chip--select ${ (state.filters.colors||[]).includes(value)?'active':''}" data-color="${value}">
-                  <span class="swatch" style="--sw:${colorSwatch(value)}"></span>${label}
-                </button>`).join('')}
-            </div>
           </div>
         </section>
 
@@ -307,35 +279,35 @@ export function openFilterModal(router){
     actions: [
       { label: 'Отмена', variant: 'secondary', onClick: closeModal },
       { label: 'Применить', onClick: ()=>{
+        ensureFilters();
         state.filters.inStock = el('#fStock').checked;
-        const pick=(sel,attr)=> Array.from(el(sel).querySelectorAll('.chip.active')).map(b=>b.getAttribute(attr));
+        const pick=(sel,attr)=>{
+          const host = el(sel);
+          if (!host) return [];
+          return Array.from(host.querySelectorAll('.chip.active')).map(b=>b.getAttribute(attr));
+        };
         state.filters.subcats     = pick('#fCats','data-cat');
         state.filters.sizeClothes = pick('#fSizesClothes','data-size-clothes');
         state.filters.sizeShoes   = pick('#fSizesShoes','data-size-shoes');
-        state.filters.colors      = pick('#fColors','data-color');
         state.filters.size = []; // legacy off
-        closeModal(); router(); renderActiveFilterChips();
+
+        closeModal();
+        try { (router || window.appRouter)?.(); } catch {}
+        renderActiveFilterChips();
       }}
     ],
     onOpen: ()=>{
-      ['#fCats','#fSizesClothes','#fSizesShoes','#fColors'].forEach(s=>{
-        el(s).addEventListener('click', e=>{
+      ['#fCats','#fSizesClothes','#fSizesShoes'].forEach(selector=>{
+        const host = el(selector); if (!host) return;
+        host.addEventListener('click', e=>{
           const btn = e.target.closest('.chip'); if(!btn) return;
           btn.classList.toggle('active');
         });
       });
+
+      // Единый исправленный «Сбросить всё»
       el('#clearBtn').onclick = ()=>{
-        state.filters = {
-          ...state.filters,
-          subcats: [],
-          size: [],
-          sizeClothes: [],
-          sizeShoes: [],
-          colors: [],
-          minPrice: null,
-          maxPrice: null,
-          inStock: false
-        };
+        resetAllFilters();
         closeModal();
         try { window.appRouter?.(); } catch {}
         renderActiveFilterChips();
@@ -344,23 +316,25 @@ export function openFilterModal(router){
   });
 }
 
-/* ===== активные чипы над лентой ===== */
+/* ===== активные чипы над лентой (цвет убран, фикс делегирования) ===== */
 export function renderActiveFilterChips(){
+  ensureFilters();
+
   const bar = el('#activeFilters'); if (!bar) return;
   bar.innerHTML='';
 
-  // делегирование кликов по панели — мгновенный сброс без событий-посредников
+  // делегирование кликов по панели — мгновенный сброс конкретного фильтра
   bar.onclick = (e)=>{
     const x = e.target.closest('.chip-x');
     if (x) {
       const host = x.closest('.filter-chip');
       if (host) {
         const type = host.getAttribute('data-type');
-        if (type === 'subcats') state.filters.subcats = [];
-        if (type === 'sizeClothes') state.filters.sizeClothes = [];
-        if (type === 'sizeShoes')   state.filters.sizeShoes = [];
-        if (type === 'colors')      state.filters.colors = [];
-        if (type === 'inStock')     state.filters.inStock = false;
+        if (type === 'subcats')      state.filters.subcats = [];
+        if (type === 'sizeClothes')  state.filters.sizeClothes = [];
+        if (type === 'sizeShoes')    state.filters.sizeShoes = [];
+        if (type === 'inStock')      state.filters.inStock = false;
+
         try { window.appRouter?.(); } catch {}
         renderActiveFilterChips();
       }
@@ -368,17 +342,7 @@ export function renderActiveFilterChips(){
     }
     const clear = e.target.closest('.pill--clear-all');
     if (clear) {
-      state.filters = {
-        ...state.filters,
-        subcats: [],
-        size: [],
-        sizeClothes: [],
-        sizeShoes: [],
-        colors: [],
-        minPrice: null,
-        maxPrice: null,
-        inStock: false
-      };
+      resetAllFilters();
       try { window.appRouter?.(); } catch {}
       renderActiveFilterChips();
     }
@@ -407,9 +371,6 @@ export function renderActiveFilterChips(){
   if (state.filters.sizeShoes?.length) {
     pushChip('Размер (обувь): ' + state.filters.sizeShoes.join(', '), 'sizeShoes');
   }
-  if (state.filters.colors?.length) {
-    pushChip('Цвет: ' + state.filters.colors.map(colorLabel).join(', '), 'colors');
-  }
   if (state.filters.inStock) {
     pushChip('Только в наличии', 'inStock');
   }
@@ -418,7 +379,6 @@ export function renderActiveFilterChips(){
     (state.filters.subcats?.length) ||
     (state.filters.sizeClothes?.length) ||
     (state.filters.sizeShoes?.length) ||
-    (state.filters.colors?.length) ||
     state.filters.inStock;
 
   if (hasAny) {

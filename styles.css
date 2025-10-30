@@ -1182,3 +1182,17 @@ html.route-home .product-fixhdr{
 
 /* кнопка «Сбросить фильтры» прилипает вправо при наличии места */
 .pill--clear-all{ margin-left:auto; }
+/* === Filters (modal): one-line rows with horizontal scroll === */
+.chipbar--scroll{
+  display: flex;
+  flex-wrap: nowrap;             /* одна строка */
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-bottom: 6px;           /* небольшой отступ под скролл */
+}
+.chipbar--scroll .chip{
+  flex: 0 0 auto;                /* не сжимать, листаем вправо */
+}
