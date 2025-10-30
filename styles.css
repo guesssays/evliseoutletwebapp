@@ -881,3 +881,39 @@ body.admin-mode #scrollTopBtn{ display:none !important; }
 @media (prefers-color-scheme: dark){
   #scrollTopBtn{ color:#fff !important; }
 }
+/* === ScrollTop: иконка темнее, идеально по центру, кнопка левее === */
+
+/* смещаем кнопку на пару пикселей ближе к центру */
+#scrollTopBtn{
+  right: 10px !important; /* было 14px */
+}
+
+/* на очень узких экранах — ещё на пиксель-два */
+@media (max-width: 380px){
+  #scrollTopBtn{ right: 8px !important; }  /* было 10px */
+}
+
+/* делаем саму стрелку заметнее на светлом фоне и выравниваем */
+#scrollTopBtn i,
+#scrollTopBtn svg{
+  width: 22px;
+  height: 22px;
+  display: block;              /* убираем inline-baseline люфт */
+  stroke: currentColor;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.25;          /* чуть толще линии, лучше читается */
+  transform: translateY(-0.5px); /* микро-юстировка по оптике */
+  pointer-events: none;
+}
+
+/* светлая тема: тёмная стрелка (чётко на белом стекле) */
+#scrollTopBtn{
+  color: #1a1a1a;              /* темнее var(--text), лучше контраст */
+}
+
+/* тёмная тема: стрелка остаётся белой */
+@media (prefers-color-scheme: dark){
+  #scrollTopBtn{ color:#fff !important; }
+}
