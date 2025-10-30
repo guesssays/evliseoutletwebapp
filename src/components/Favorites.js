@@ -8,18 +8,22 @@ export function renderFavorites(){
   const list = state.products.filter(p => favIds.has(String(p.id)));
 
   const header = `
-    <div class="section-title" style="display:flex;align-items:center;gap:10px">
-      <button class="square-btn" id="favBack"><i data-lucide="chevron-left"></i></button>
-      Избранное
+    <div class="page-title">
+      <button class="square-btn" id="favBack" aria-label="Назад">
+        <i data-lucide="chevron-left"></i>
+      </button>
+      <h1>Избранное</h1>
     </div>
   `;
 
   if (!list.length){
     v.innerHTML = `
-      ${header}
-      <section class="checkout">
-        <div class="cart-sub">Список избранного пуст</div>
-      </section>
+      <div class="view">
+        ${header}
+        <section class="checkout">
+          <div class="cart-sub">Список избранного пуст</div>
+        </section>
+      </div>
     `;
     window.lucide?.createIcons && lucide.createIcons();
     document.getElementById('favBack')?.addEventListener('click', ()=> history.back());
@@ -27,8 +31,10 @@ export function renderFavorites(){
   }
 
   v.innerHTML = `
-    ${header}
-    <div class="grid" id="productGrid" data-fav-mode="1"></div>
+    <div class="view">
+      ${header}
+      <div class="grid" id="productGrid" data-fav-mode="1"></div>
+    </div>
   `;
   drawProducts(list);
 

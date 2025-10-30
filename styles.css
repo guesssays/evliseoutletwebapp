@@ -1278,3 +1278,21 @@ html.route-home .product-fixhdr{
   position: relative;
   z-index: 0 !important;
 }
+/* === Favorites page title alignment === */
+.page-title{
+  /* такие же боковые отступы, как у .view/.grid */
+  margin: 10px 18px 14px;        /* ↑чуть больше низ для зазора над сеткой */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.page-title .square-btn{
+  /* микро-сдвиг стрелки левее, чтобы визуально совпасть с сеткой */
+  margin-left: -4px;
+}
+.page-title h1{
+  margin: 0;
+  font-weight: 800;
+  font-size: 24px;               /* как .section-title */
+  line-height: 1.2;
+}
