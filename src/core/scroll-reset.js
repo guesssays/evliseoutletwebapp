@@ -1,14 +1,15 @@
 // src/core/scroll-reset.js
-// Сброс скролла «ТОЛЬКО ПРИ НАВИГАЦИИ» (hash-router).
-// — Игнорирует любые клики/кнопки/локальные перерисовки на странице.
-// — Срабатывает при реальном изменении route-ключа (части после "#/").
-// — Без правок других файлов.
+// Сброс скролла «ТОЛЬКО ПРИ НАВИГАЦИИ» + анти-фликер:
+// — сброс выполняется максимум ОДИН раз на каждую реальную смену route;
+// — локальные клики/перерисовки не способны его вызвать.
 
 const NAV_WINDOW_MS_DEFAULT = 1800;
 
-// ====== внутренняя «эпоха» навигации и окна разрешения ======
-let __navEpoch = 0;                         // увеличивается при реальной навигации
-let __allowScrollResetUntil = 0;            // окно, когда разрешён сброс
+// ===== навигационные флаги/эпохи =====
+let __navEpoch = 0;               // инкремент при реальной смене маршрута
+let __lastResetEpoch = -1;        // для анти-фликера: когда последний раз сбрасывали
+let __allowScrollResetUntil = 0;  // «окно» разрешения после навигации
+
 function _openNavWindow(ms = NAV_WINDOW_MS_DEFAULT) {
   __allowScrollResetUntil = Date.now() + Math.max(0, ms|0);
 }
@@ -17,14 +18,14 @@ function _isResetAllowed(explicitAllowFlag) {
   return Date.now() <= __allowScrollResetUntil;
 }
 
-// ====== глобальная «тишина» вокруг пользовательских жестов ======
-let __quietUntil = 0;                       // абсолютное «не трогать»
-let __suppressUntil = 0;                    // мягкая задержка (перенос request)
-let __lastUserScrollAt = 0;                 // реальные жесты прокрутки
-let __lastPointerAt = 0;                    // последний pointerdown
-let __lastRouteChangeAt = 0;                // последний зафиксированный роут-чейндж
+// ===== тихие окна/жесты пользователя =====
+let __quietUntil = 0;
+let __suppressUntil = 0;
+let __lastUserScrollAt = 0;
+let __lastPointerAt = 0;
+let __lastRouteChangeAt = 0;
 
-function _now() { return Date.now(); }
+function _now(){ return Date.now(); }
 function _remain(ts){ return Math.max(0, ts - _now()); }
 function _quiet(ms){ __sessionId++; __quietUntil = _now() + Math.max(0, ms|0); }
 function _suppress(ms){ __suppressUntil = _now() + Math.max(0, ms|0); }
@@ -35,29 +36,25 @@ function _suppress(ms){ __suppressUntil = _now() + Math.max(0, ms|0); }
 window.addEventListener('keydown', (e) => {
   const k = e.key;
   if (k === 'PageDown' || k === 'PageUp' || k === 'Home' || k === 'End' || k === ' ' ||
-      k === 'ArrowDown' || k === 'ArrowUp') {
-    __lastUserScrollAt = _now();
-  }
+      k === 'ArrowDown' || k === 'ArrowUp') __lastUserScrollAt = _now();
 }, { capture:true });
 
-// Любой «намеренный» пользователем контакт с экраном — включаем тишину.
-// Если за ним сразу следует навигация — пробиваем тишину (см. hashchange).
 ['pointerdown','mousedown','touchstart'].forEach(t => {
   window.addEventListener(t, () => {
     __lastPointerAt = _now();
-    _quiet(900);              // жёсткая тишина ~1с
-    _suppress(1200);          // мягкая задержка чуть дольше
+    _quiet(900);
+    _suppress(1200);
   }, { capture:true, passive:true });
 });
 
-// ====== токен отмены коротких циклов ======
+// ===== токены отмены =====
 let __sessionId = 0;
 function _newToken(){
   const id = ++__sessionId;
   return { id, get cancelled(){ return id !== __sessionId; } };
 }
 
-// ====== цели скролла ======
+// ===== цели скролла =====
 function _targets() {
   const list = new Set();
   try { const se = document.scrollingElement; if (se) list.add(se); } catch {}
@@ -111,33 +108,36 @@ function _afterImagesIn(el, token) {
   });
 }
 
-// ====== детектор «реальной» навигации для hash-router ======
+// ===== детектор реальной навигации (hash-router) =====
 function _routeKeyFromHash(h){
-  // нормализуем: '#/cart?x=1' -> 'cart'; '#/' -> '' (home); '#' или '' -> null (не страница)
   if (!h) return null;
-  if (h === '#' || h === '#!' ) return null;
-  if (!h.startsWith('#/')) return null;            // любые служебные/telegram-хэши — не считаем страницей
+  if (h === '#' || h === '#!') return null;
+  if (!h.startsWith('#/')) return null;
   const s = h.slice(2);
   const q = s.indexOf('?');
-  const core = (q >= 0 ? s.slice(0,q) : s).replace(/^\/+|\/+$/g,''); // обрежем слэши
-  return core; // '' для home, 'cart', 'favorites', 'product/123', ...
+  const core = (q >= 0 ? s.slice(0,q) : s).replace(/^\/+|\/+$/g,'');
+  return core; // '' (home), 'cart', 'favorites', 'product/123', ...
 }
-
 let __lastRouteKey = _routeKeyFromHash(location.hash);
 
-// Пробиваем «тишину», если действительно изменилась страница
+// одноразовый сброс на новую навигацию
 function _onRouteChanged(){
   __navEpoch++;
   __lastRouteChangeAt = _now();
   _openNavWindow(NAV_WINDOW_MS_DEFAULT);
-  // Разрешаем немедленный сброс даже если тишина включена кликом прямо перед переходом
   __quietUntil = 0;
   __suppressUntil = 0;
+
+  // фиксируем, что следующий сброс будет «за эту навигацию»
+  const myEpoch = __navEpoch;
 
   const token = _newToken();
   queueMicrotask(() => {
     if (token.cancelled) return;
+    // Если кто-то успел уже «съесть» этот epoch — не повторяем
+    if (__lastResetEpoch >= myEpoch) return;
     _scheduleShort(token);
+    __lastResetEpoch = myEpoch;      // <<— отметили: сброс применён для текущего route
     if (_nearTop()) return;
     _afterImagesIn(document.getElementById('view'), token)
       .then(()=>{ if (!token.cancelled && !_userHasScrolledRecently()) _scheduleShort(token); })
@@ -145,30 +145,23 @@ function _onRouteChanged(){
   });
 }
 
-// Основной слушатель навигации (hashchange)
 window.addEventListener('hashchange', () => {
   const newKey = _routeKeyFromHash(location.hash);
   const oldKey = __lastRouteKey;
   __lastRouteKey = newKey;
 
-  // Не считаем навигацией:
-  // 1) Нажатия ведут на '#' (href="#") → null
-  // 2) Меняется хэш, но routeKey остаётся тем же (локальные якоря/параметры) → игнор
   const isRealNav =
     newKey !== oldKey &&
-    !(newKey === null && (oldKey === null || oldKey === '')); // пустышки не триггерим
+    !(newKey === null && (oldKey === null || oldKey === ''));
 
   if (!isRealNav) return;
 
-  // Если навигация случилась сразу после pointerdown — снимаем «тишину»
   if ((_now() - __lastPointerAt) <= 450) {
-    __quietUntil = 0;
-    __suppressUntil = 0;
+    __quietUntil = 0; __suppressUntil = 0;
   }
   _onRouteChanged();
 }, { capture:true });
 
-// На случай, если где-то используется history.pushState/replaceState (SPA без hashchange)
 (function patchHistory(){
   const H = history;
   const wrap = (fn) => function(...args){
@@ -187,17 +180,14 @@ window.addEventListener('hashchange', () => {
   try{ H.replaceState = wrap(H.replaceState.bind(H)); }catch{}
 })();
 
-// ====== Публичное API (совместимо с прежним кодом), но с «умом» ======
+// ===== публичное API (c одноразовым барьером) =====
 let __pendingTimer = null;
 
 export const ScrollReset = {
-  /**
-   * Мягкий запрос сброса. Теперь он выполнится ТОЛЬКО если:
-   *  - мы в окне навигации (открытом по реальной смене route), или
-   *  - явно allow:true (ручной вызов), И
-   *  - нет активной жёсткой «тишины».
-   */
   request(containerEl, opts = {}) {
+    // анти-фликер: сбрасывать можно ТОЛЬКО если есть «новая навигация», ещё не «съеденная»
+    if (__navEpoch <= __lastResetEpoch) return;
+
     if (_remain(__quietUntil) > 0) return;
     const allow = !!opts.allow;
     if (!_isResetAllowed(allow)) return;
@@ -213,6 +203,9 @@ export const ScrollReset = {
       return;
     }
 
+    // мы действительно будем сбрасывать — фиксируем epoch заранее
+    __lastResetEpoch = __navEpoch;
+
     const token = _newToken();
     queueMicrotask(() => {
       if (token.cancelled) return;
@@ -224,60 +217,56 @@ export const ScrollReset = {
     });
   },
 
-  /**
-   * Принудительный немедленный сброс.
-   * По умолчанию уважает навигационное окно и «тихие» флаги — чтобы
-   * случайные клики не запускали скролл. Для системных сценариев (напр.,
-   * pageshow/bfcache/первый рендер) мы вызываем его сами.
-   */
   forceNow(opts = {}) {
+    // анти-фликер: вне новой навигации не даём сбросить
     const allow = (opts.allow === true);
+    if (__navEpoch <= __lastResetEpoch && !allow) return;
+
     const ignoreUserScroll = (opts.ignoreUserScroll === true);
     if (_remain(__quietUntil) > 0) return;
     if (_remain(__suppressUntil) > 0 && !allow) return;
     if (!_isResetAllowed(allow)) return;
     if (!ignoreUserScroll && _userHasScrolledRecently()) return;
+
+    __lastResetEpoch = __navEpoch;
+
     const token = _newToken();
     _scheduleShort(token);
   },
 
-  // Управляющие окна (оставлены для совместимости)
-  suppress(ms = 300) { _suppress(ms); if (__pendingTimer){ clearTimeout(__pendingTimer); __pendingTimer=null; } },
-  quiet(ms = 600) { _quiet(ms); if (__pendingTimer){ clearTimeout(__pendingTimer); __pendingTimer=null; } },
-  allow(ms = NAV_WINDOW_MS_DEFAULT) { _openNavWindow(ms); },
+  suppress(ms = 300){ _suppress(ms); if (__pendingTimer){ clearTimeout(__pendingTimer); __pendingTimer=null; } },
+  quiet(ms = 600){ _quiet(ms); if (__pendingTimer){ clearTimeout(__pendingTimer); __pendingTimer=null; } },
+  allow(ms = NAV_WINDOW_MS_DEFAULT){ _openNavWindow(ms); },
 
-  /**
-   * Умный mount:
-   *  - отключаем нативное восстановление
-   *  - первый вход: мягкий сброс (в окне allow)
-   *  - возврат из bfcache: мягкий сброс
-   */
   mount() {
     try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch {}
 
-    // инициализируем «текущий маршрут» и даём короткое системное окно на старт
+    // стартовая «эпоха» (первый экран) и одноразовый системный сброс
     __lastRouteKey = _routeKeyFromHash(location.hash);
+    __navEpoch = 0;
     _openNavWindow(900);
-    const sysToken = _newToken();
+
+    // системный мягкий сброс на первом входе:
+    const token = _newToken();
     queueMicrotask(() => {
-      if (sysToken.cancelled) return;
-      // Системный сброс на первом входе: игнорируем пользовательскую прокрутку
+      if (token.cancelled) return;
+      // считаем старт как «эпоху 0», отметим, что её мы уже «съели» — чтобы клики после старта не мигали
+      __lastResetEpoch = __navEpoch;
       this.forceNow({ allow:true, ignoreUserScroll:true });
     });
 
-    // bfcache
     window.addEventListener('pageshow', (e) => {
       if (e && e.persisted) {
         _openNavWindow(NAV_WINDOW_MS_DEFAULT);
+        // новая «эпоха» для bfcache-возврата
+        __navEpoch++;
+        __lastResetEpoch = __navEpoch - 1;
         this.forceNow({ allow:true, ignoreUserScroll:true });
+        __lastResetEpoch = __navEpoch;
       }
     });
   },
 
-  /**
-   * Старый helper: приглушить ресеты вокруг клика (оставлен для обратной совместимости).
-   * Теперь глобальные обработчики уже делают это автоматически, так что вызывать не обязательно.
-   */
   guardNoResetClick(el, opts = {}) {
     if (!el) return () => {};
     const dur = Number.isFinite(opts.duration) ? Math.max(0, opts.duration|0) : 900;
@@ -297,7 +286,7 @@ export const ScrollReset = {
   }
 };
 
-// Глобальный канал: принудительный скролл вверх (уважает окна)
+// Глобальный канал: принудительный скролл вверх (уважает окна и epoch)
 window.addEventListener('client:scroll:top', () =>
   ScrollReset.forceNow({ allow:true, ignoreUserScroll:true })
 );
