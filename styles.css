@@ -951,3 +951,35 @@ body.admin-mode #scrollTopBtn{ display:none !important; }
 @media (prefers-color-scheme: dark){
   #scrollTopBtn{ color:#fff !important; }
 }
+/* === SCROLLTOP — финальный оверрайд контраста и позиции === */
+
+/* двигаем кнопку ЛЕВЕЕ от правого края (right больше) и задаём явный цвет */
+html body #scrollTopBtn{
+  right: 22px !important;            /* было 10–14px → теперь заметно левее */
+  color: #121111 !important;         /* светлая тема — чёрная стрелка */
+  align-items: center !important;     /* идеальное центрирование */
+  justify-content: center !important;
+}
+
+/* очень узкие экраны — чуть меньше вынос */
+@media (max-width: 380px){
+  html body #scrollTopBtn{ right: 18px !important; }
+}
+
+/* сама иконка: толще штрих, без fill, строго currentColor */
+html body #scrollTopBtn svg,
+html body #scrollTopBtn i{
+  display: block !important;          /* убирает baseline-люфт */
+  stroke: currentColor !important;
+  fill: none !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  stroke-width: 2.4 !important;       /* контрастнее */
+  transform: translateY(-0.5px);      /* оптический центр */
+  pointer-events: none;
+}
+
+/* тёмная тема — оставляем белую стрелку */
+@media (prefers-color-scheme: dark){
+  html body #scrollTopBtn{ color:#fff !important; }
+}
