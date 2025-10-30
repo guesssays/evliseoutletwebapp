@@ -73,6 +73,26 @@ import {
 // Экран-мостик для браузера
 import { renderRefBridge } from './views/RefBridge.js';
 
+/* ------------------------------------------------------------------
+   HOME CHROME: управляем показом поиска/фильтров/категорий в самом main.js
+   ------------------------------------------------------------------ */
+function isHomeRouteHash(h) {
+  return h === '#/' || h === '#';
+}
+function isHomeNow() {
+  const h = location.hash || '#/';
+  return isHomeRouteHash(h);
+}
+function applyHomeChrome() {
+  const onHome = isHomeNow();
+  document.querySelectorAll('[data-home-only]').forEach(el => {
+    if (onHome) el.removeAttribute('hidden');
+    else el.setAttribute('hidden', '');
+  });
+}
+// мгновенно применим при загрузке модуля (до любых рендеров)
+try { applyHomeChrome(); } catch {}
+
 /* ===== Кэшбек/Рефералы: локальные утилиты (дозревание локальных pending) ===== */
 const POINTS_MATURITY_MS  = 24*60*60*1000;
 function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
@@ -127,7 +147,6 @@ function settleMatured(){
   if (changed){ w.pending=keep; writeWallet(w); }
 }
 
-
 function makeDisplayOrderIdFromParts(orderId, shortId) {
   const s = String(shortId || '').trim();
   if (s) return s.toUpperCase();
@@ -137,7 +156,6 @@ function makeDisplayOrderIdFromParts(orderId, shortId) {
 function makeDisplayOrderId(order) {
   return makeDisplayOrderIdFromParts(order?.id, order?.shortId);
 }
-
 
 const NOTIF_API = '/.netlify/functions/notifs';
 const USER_JOIN_API = '/.netlify/functions/user-join';
@@ -242,7 +260,6 @@ function mergeNotifsToLocal(serverItems){
     setNotifications([...byId.values()].sort((a,b)=> (b.ts||0)-(a.ts||0)));
   }
 }
-
 
 async function serverPushFor(uid, notif){
   const safe = {
@@ -360,6 +377,8 @@ ScrollReset.mount();
 function setAdminMode(on){
   document.body.classList.toggle('admin-mode', !!on);
   setTabbarMenu(on ? 'admin' : 'home');
+  // при смене режима тоже корректируем домашний хром
+  applyHomeChrome();
 }
 function confirmAdminSwitch(onConfirm, onCancel){
   const modal = document.getElementById('modal');
@@ -578,9 +597,11 @@ function forceZeroUnreadBadge(){
 
 /* ---------- РОУТЕР ---------- */
 async function router(){
+  // Сразу синхронизируем видимость домашнего хрома с текущим hash
+  applyHomeChrome();
+
   const path = (location.hash || '#/').slice(1);
   const clean = path.replace(/#.*/,'');
-  const inAdmin = document.body.classList.contains('admin-mode');
 
   const parts = path.split('/').filter(Boolean);
   const map = {
@@ -588,6 +609,39 @@ async function router(){
     '/admin':'admin'
   };
 
+  setTabbarMenu(map[clean] || 'home');
+  hideProductHeader();
+
+  try { ScrollReset.forceNow(); } catch {}
+
+  const inAdmin = document.body.classList.contains('admin-mode');
+
+  // Админ-режим
+  if (inAdmin){
+    if (parts.length===0 || parts[0] !== 'admin'){
+      location.hash = '#/admin';
+      applyHomeChrome(); // админка не «дом»
+      return renderAdmin();
+    }
+    if (!canAccessAdmin()){
+      setAdminMode(false);
+      tWarn('Доступ в админ-панель ограничен');
+      location.hash = '#/admin-login';
+      applyHomeChrome();
+      return;
+    }
+    applyHomeChrome();
+    return renderAdmin();
+  }
+
+  if (parts.length===0) {
+    const res = renderHome(router);
+    applyHomeChrome(); // после рендера дома
+    try { ScrollReset.request(document.getElementById('view')); } catch {}
+    return res;
+  }
+
+  // параметры
   const match = (pattern) => {
     const p = pattern.split('/').filter(Boolean); if (p.length !== parts.length) return null;
     const params = {};
@@ -598,69 +652,41 @@ async function router(){
     return params;
   };
 
-  setTabbarMenu(map[clean] || (inAdmin ? 'admin' : 'home'));
-  hideProductHeader();
+  const m1=match('category/:slug'); if (m1){ applyHomeChrome(); return renderCategory(m1); }
+  const m2=match('product/:id');   if (m2){ applyHomeChrome(); return renderProduct(m2); }
+  const m3=match('track/:id');     if (m3){ applyHomeChrome(); return renderTrack(m3); }
 
-  try { ScrollReset.forceNow(); } catch {}
+  if (match('favorites'))          { applyHomeChrome(); return renderFavorites(); }
+  if (match('cart'))               { applyHomeChrome(); return renderCart(); }
+  if (match('orders'))             { applyHomeChrome(); return renderOrders(); }
 
-  // Админ-режим
-  if (inAdmin){
-    if (parts.length===0 || parts[0] !== 'admin'){
-      location.hash = '#/admin';
-      return renderAdmin();
-    }
-    if (!canAccessAdmin()){
-setAdminMode(false);
-tWarn('Доступ в админ-панель ограничен');
-location.hash = '#/admin-login';
-
-      return;
-    }
-    return renderAdmin();
-  }
-
-  if (parts.length===0) {
-    const res = renderHome(router);
-    try { ScrollReset.request(document.getElementById('view')); } catch {}
-    return res;
-  }
-
-  const m1=match('category/:slug'); if (m1) return renderCategory(m1);
-  const m2=match('product/:id');   if (m2) return renderProduct(m2);
-  const m3=match('track/:id');     if (m3) return renderTrack(m3);
-
-  if (match('favorites'))          return renderFavorites();
-  if (match('cart'))               return renderCart();
-  if (match('orders'))             return renderOrders();
-
-  if (match('account'))            return renderAccount();
-  if (match('account/addresses'))  return renderAddresses();
-  if (match('account/settings'))   return renderSettings();
-  if (match('account/cashback'))   return renderCashback();
-  if (match('account/referrals'))  return renderReferrals();
+  if (match('account'))            { applyHomeChrome(); return renderAccount(); }
+  if (match('account/addresses'))  { applyHomeChrome(); return renderAddresses(); }
+  if (match('account/settings'))   { applyHomeChrome(); return renderSettings(); }
+  if (match('account/cashback'))   { applyHomeChrome(); return renderCashback(); }
+  if (match('account/referrals'))  { applyHomeChrome(); return renderReferrals(); }
 
   if (match('notifications')){
-    // 1) Рендерим экран: внутри он вызывает markAll и шлёт событие с новым количеством
     await renderNotifications(updateNotifBadge);
-    // 2) На случай сетевых задержек / фолбэка — жёстко обнулим локальный счётчик и бейдж
     forceZeroUnreadBadge();
-    // 3) Дополнительно подтянем актуальный список (если на сервере только что появились новые)
     await syncMyNotifications();
+    applyHomeChrome();
     return;
   }
 
-  // Новый мостик: #/ref[?ref=...|&start=ref_<uid>]
   if (match('ref')){
     renderRefBridge();
+    applyHomeChrome();
     return;
   }
 
   if (match('admin')){
-if (!canAccessAdmin()){
-  tWarn('Доступ в админ-панель ограничен');
-  location.hash = '#/admin-login';
-  return;
-}
+    if (!canAccessAdmin()){
+      tWarn('Доступ в админ-панель ограничен');
+      location.hash = '#/admin-login';
+      applyHomeChrome();
+      return;
+    }
 
     confirmAdminSwitch(()=>{
       setAdminMode(true);
@@ -668,13 +694,15 @@ if (!canAccessAdmin()){
     }, ()=>{
       location.hash = '#/account';
     });
+    applyHomeChrome();
     return;
   }
 
-  if (match('faq')) return renderFAQ();
+  if (match('faq')) { applyHomeChrome(); return renderFAQ(); }
 
   {
     const res = renderHome(router);
+    applyHomeChrome();
     try { ScrollReset.forceNow(); } catch {}
     return res;
   }
@@ -771,7 +799,7 @@ async function init(){
   // 1) После старта UI — пробуем привязать pending-инвайтера (когда уже есть наш UID)
   await tryBindPendingInviter();
 
-  window.addEventListener('hashchange', router);
+  window.addEventListener('hashchange', ()=>{ applyHomeChrome(); router(); });
 
   window.addEventListener('orders:updated', ()=>{
     const inAdmin = document.body.classList.contains('admin-mode');
@@ -810,7 +838,7 @@ async function init(){
       order?.cart?.[0]?.name ||
       order?.title ||
       'товар';
-    const extra = Math.max(0, (order?.cart?.length || 0) - 1);
+  const extra = Math.max(0, (order?.cart?.length || 0) - 1);
     return extra > 0 ? `${firstTitle} + ещё ${extra}` : firstTitle;
   }
 
@@ -946,7 +974,7 @@ async function ensureUserJoinReported(){
       username: String(tgUser.username || '').trim(),
     };
 
-    const r = await fetch(USER_JOIN_API, {
+    const r = await fetch('/.netlify/functions/user-join', {
       method: 'POST',
       headers: { 'Content-Type':'application/json' },
       body: JSON.stringify(payload),
