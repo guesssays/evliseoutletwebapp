@@ -853,3 +853,12 @@ body.admin-mode #scrollTopBtn{ display:none !important; }
   visibility: hidden !important;
   pointer-events: none !important;
 }
+/* === Product: небольшой отступ от верхней границы экрана === */
+/* Учитываем вырез/статус-бар через --safe-top, чтобы на iOS/Android не залипало под челку */
+.product{
+  padding-top: calc(10px + var(--safe-top));
+}
+
+@media (max-width: 380px){
+  .product{ padding-top: calc(8px + var(--safe-top)); }
+}
