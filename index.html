@@ -38,7 +38,8 @@
   <!-- Fonts / styles -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=2025-10-28-15-07" />
+  <!-- ⬇️ обновлённый cache-busting параметр -->
+  <link rel="stylesheet" href="styles.css?v=2025-10-30-19-10" />
 
   <style>
     /* --------- БАЗОВЫЕ ПЕРЕМЕННЫЕ (если нет в styles.css) --------- */
@@ -73,6 +74,7 @@
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
+      z-index: 120;
     }
     .product-fixhdr.show{ display: flex; }
     .product-fixhdr .fixbtn{
@@ -104,6 +106,7 @@
       background: #fff;
       box-shadow: var(--shadow);
       display: inline-flex; align-items: center; justify-content: center;
+      z-index: 125;
     }
     #scrollTopBtn[hidden]{ display: none !important; }
     @media (prefers-color-scheme:dark){
@@ -163,7 +166,7 @@
       padding:10px 14px; border-radius:12px; display:inline-flex; align-items:center; gap:8px;
     }
     .ps-actions .btn-ghost{
-      padding:10px 12px; border-radius:12px; border:1px solid var(--stroke); background:transparent;
+      padding:10px 12px; border:1px solid var(--stroke); background:transparent; border-radius:12px;
     }
   </style>
 
@@ -423,8 +426,8 @@
     })();
   </script>
 
-  <!-- Главный модуль -->
-  <script type="module" src="src/main.js?v=2025-10-28-15-07"></script>
+  <!-- Главный модуль (⬇️ обновлённый cache-busting параметр) -->
+  <script type="module" src="src/main.js?v=2025-10-30-19-10"></script>
 
   <!-- Иконки после монтирования (запасной вызов) -->
   <script> try { window.lucide?.createIcons?.(); } catch {} </script>

@@ -1,7 +1,6 @@
 # -----------------------------
 # БАЗОВЫЕ БЕЗОПАСНЫЕ ЗАГОЛОВКИ
 # -----------------------------
-
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
@@ -21,6 +20,8 @@
 /index.html
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
+  # При необходимости можно разово включить очистку кэша на клиентах:
+  # Clear-Site-Data: "cache"
 
 # Любые *.html — тоже без кэша
 /*.html
@@ -32,8 +33,13 @@
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
 
-# CSS — без кэша (правки подтягиваются сразу)
- /styles.css
+# CSS — без кэша (правки подтягиваются сразу) — ВАЖНО: без ведущего пробела!
+/styles.css
+  Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
+
+# На всякий: любые отдельные .css тоже без кэша
+/*.css
   Cache-Control: no-store, no-cache, must-revalidate
   Pragma: no-cache
 
@@ -63,8 +69,3 @@
 
 /assets/images/*
   Cache-Control: public, max-age=31536000, immutable
-
-# -----------------------------
-# ФУНКЦИИ
-# -----------------------------
-# Для /.netlify/functions/* — CORS/Cache-Control выставляйте в коде функций.
