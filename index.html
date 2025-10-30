@@ -91,104 +91,28 @@
 })();
 </script>
 <script>
-/* Гарантируем видимость верхнего бара при первом входе (любой маршрут, включая уведомления) */
+/* Гарантируем видимость верхнего бара при первом входе (включая Telegram кнопки) */
 (function ensureTopbarOnFirstOpen(){
-  var booted = false;
-  function showOnce(){
-    if (booted) return;
+  function showIfHome(){
+    var de  = document.documentElement;
+    var onHome = de.classList.contains('route-home');
+    if (!onHome) return;
     var hdr = document.querySelector('.app-header');
-    if (hdr) {
-      hdr.classList.remove('hidden');     // снять возможную невидимость
-      // на случай, если где-то ставили style="display:none"
-      hdr.style.removeProperty('display');
-      hdr.style.removeProperty('visibility');
-      document.documentElement.setAttribute('data-hdr-boot', '1');
-      booted = true;
-    }
+    if (hdr) hdr.classList.remove('hidden');      // снять «невидимость»
+    // data-home-only уже управляются через .route-home/.route-other
   }
-  // максимально рано
-  showOnce();
-  document.addEventListener('readystatechange', showOnce, { once:true });
-  document.addEventListener('DOMContentLoaded', showOnce, { once:true });
-  window.addEventListener('load', showOnce, { once:true });
+  // как можно раньше + на основных событиях
+  showIfHome();
+  document.addEventListener('DOMContentLoaded', showIfHome, { once:true });
+  window.addEventListener('load', showIfHome, { once:true });
 })();
 </script>
-
 
 
   <!-- Fonts / styles -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=2025-10-30-21-15" />
-<!-- BOOT PATCH: topbar must be visible on first paint, incl. Telegram deep links -->
-<style id="topbar-boot-patch">
-  /* 1) Убиваем конфликтующие правила в самом конце каскада */
-  .tg-webapp .app-header.hidden{
-    opacity:1 !important;
-    transform:none !important;
-    visibility:visible !important;
-    pointer-events:auto !important;
-  }
-</style>
-<script>
-(function ensureTopbar(){
-  var hdr, mo, tries = 0, MAX = 20;
-
-  function unhide(){
-    hdr = hdr || document.querySelector('.app-header');
-    if (!hdr) return;
-    if (hdr.classList.contains('hidden')) hdr.classList.remove('hidden');
-    hdr.style.removeProperty('display');
-    hdr.style.removeProperty('visibility');
-    hdr.style.removeProperty('opacity');
-    hdr.style.removeProperty('transform');
-    // рефлоу, чтобы Telegram точно перерисовал
-    void hdr.offsetHeight;
-  }
-
-  function tick(){
-    unhide();
-    // иногда какой-то код может снова навесить .hidden — следим первые ~2 сек
-    if (++tries < MAX) setTimeout(tick, 100);
-    else cleanup();
-  }
-
-  function cleanup(){
-    try { mo && mo.disconnect(); } catch{}
-    // этот стиль можно оставить — он безвреден; если хочешь — снимай:
-    // var tag=document.getElementById('topbar-boot-patch'); tag?.parentNode?.removeChild(tag);
-  }
-
-  // Стартуем как можно раньше
-  unhide();
-  if (document.readyState !== 'complete') {
-    document.addEventListener('DOMContentLoaded', unhide, {once:true});
-    window.addEventListener('load', unhide, {once:true});
-  }
-  // Telegram часто меняет #хэш после открытия web_app
-  window.addEventListener('hashchange', unhide, {once:true});
-
-  // На всякий — наблюдаем за классами шапки и сразу снимаем .hidden
-  try{
-    mo = new MutationObserver(unhide);
-    mo.observe(document.documentElement, {subtree:true, attributes:true, attributeFilter:['class']});
-    hdr = document.querySelector('.app-header');
-    if (hdr) mo.observe(hdr, {attributes:true, attributeFilter:['class','style']});
-  }catch{}
-
-  // Пульс на первые ~2 секунды
-  tick();
-
-  // Если вдруг поверх залип глобальный лоадер — снимем
-  setTimeout(function(){
-    var gl = document.getElementById('globalLoader');
-    if (gl && !gl.hasAttribute('hidden')) {
-      gl.setAttribute('hidden','');
-      gl.classList.remove('is-visible','has-progress','gl--compact');
-    }
-  }, 800);
-})();
-</script>
 
   <style>
     :root{

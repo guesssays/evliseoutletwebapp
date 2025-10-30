@@ -783,7 +783,11 @@ body.admin-mode #scrollTopBtn{ display:none !important; }
 
 
 /* на случай, если где-то остался .hidden */
-
+.tg-webapp .app-header.hidden{
+  opacity:1 !important;
+  transform:none !important;
+  visibility:visible !important;
+}
 /* === HARD-FIX: search row single-line, no wrap (final authority) === */
 .section.section-search{
   display:flex !important;
@@ -842,7 +846,13 @@ body.admin-mode #scrollTopBtn{ display:none !important; }
   visibility: hidden;               /* исключаем перекрытие "невидимым" хедером */
   pointer-events: none;
 }
-
+/* === OVERRIDE: разрешаем прятать статичный .app-header в Telegram === */
+.tg-webapp .app-header.hidden{
+  opacity: 0 !important;
+  transform: translateY(-8px) !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
 /* === Product: небольшой отступ от верхней границы экрана === */
 /* Учитываем вырез/статус-бар через --safe-top, чтобы на iOS/Android не залипало под челку */
 .product{
@@ -1268,5 +1278,3 @@ html.route-home .product-fixhdr{
   position: relative;
   z-index: 0 !important;
 }
-/* либо совсем убери механику скрытия через .hidden, если она не нужна */
-.app-header.hidden{ opacity:0; transform:translateY(-8px); pointer-events:none; visibility:hidden; }
