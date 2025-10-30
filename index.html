@@ -65,23 +65,32 @@
   })();
   </script>
 
-  <!-- РАННИЙ роут-класс: .route-home / .route-other -->
-  <script>
-  (function routeClassSync(){
-    function isHome(h){ return h === '#/' || h === '#' || h === '' || h == null; }
-    function apply(){
-      var onHome = isHome(location.hash);
-      var de = document.documentElement;
-      if (onHome){ de.classList.add('route-home'); de.classList.remove('route-other'); }
-      else { de.classList.remove('route-home'); de.classList.add('route-other'); }
-    }
-    apply();
-    // максимально ранняя реакция на смену хеша
-    window.addEventListener('hashchange', apply, { passive:true });
-    // страховка для случаев программной смены до DOMContentLoaded
-    requestAnimationFrame(apply);
-  })();
-  </script>
+<script>
+/* Ранний и устойчивый к Telegram-хэшу детектор home-страницы */
+(function routeClassSync(){
+  var de = document.documentElement;
+
+  function isHomeHash(h){
+    if (!h || h === '#') return true;             // пусто → home
+    if (/^#tgwebapp/i.test(h)) return true;       // Telegram: #tgWebAppData=... → home
+    if (!h.startsWith('#/')) return true;         // любой хэш без '/': считаем home
+    // на роутере у нас home — это ровно '#/' (или '#/?...')
+    return (h === '#/' || h.startsWith('#/?'));
+  }
+
+  function apply(){
+    var onHome = isHomeHash(location.hash);
+    de.classList.toggle('route-home',  onHome);
+    de.classList.toggle('route-other', !onHome);
+  }
+
+  apply();                                 // как можно раньше
+  window.addEventListener('hashchange', apply, { passive:true });
+  document.addEventListener('DOMContentLoaded', apply); // на всякий случай
+  window.addEventListener('load', apply);               // Telegram иногда меняет хэш на load
+})();
+</script>
+
 
   <!-- Fonts / styles -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -98,9 +107,9 @@
       --muted:#787676;
     }
 
-    /* ==== Новый способ: по умолчанию скрыто, на главной показано ==== */
-    [data-home-only]{ display:none !important; }
-    .route-home [data-home-only]{ display:block !important; }
+/* стало (вставь/замени в твоём <style> в head): */
+[data-home-only]{ display:block !important; }
+.route-other [data-home-only]{ display:none !important; }
 
     /* остальное без изменений */
     .app-header.hidden{

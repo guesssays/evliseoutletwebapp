@@ -793,3 +793,37 @@ body.admin-mode #scrollTopBtn{ display:none !important; }
   transform:none !important;
   visibility:visible !important;
 }
+/* === HARD-FIX: search row single-line, no wrap (final authority) === */
+.section.section-search{
+  display:flex !important;
+  align-items:center !important;
+  gap:10px !important;
+  flex-wrap:nowrap !important;     /* запрещаем перенос */
+  min-width:0 !important;          /* контейнер сам может сжиматься */
+}
+
+.section.section-search .search-wrap{
+  flex:1 1 auto !important;
+  min-width:0 !important;          /* критично: позволяет инпуту ужиматься */
+  position:relative;
+}
+
+.section.section-search .search{
+  width:100% !important;
+  min-width:0 !important;
+  padding-right:44px !important;   /* место под кнопку камеры */
+}
+
+#openFilters{
+  flex:0 0 44px !important;        /* фиксированная ширина */
+  width:44px !important;
+  height:44px !important;
+  max-width:44px !important;
+  min-width:44px !important;
+  flex-shrink:0 !important;         /* не даём сжиматься */
+}
+
+/* на очень узких экранах немного уменьшим зазор */
+@media (max-width:360px){
+  .section.section-search{ gap:8px !important; }
+}
