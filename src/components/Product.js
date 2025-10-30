@@ -698,16 +698,14 @@ function drawRelatedCards(list){
       const node = t.content.firstElementChild.cloneNode(true);
       // node — это <a href="#/product/...">
 // На фазе захвата глушим любые клики, пришедшие с .fav
+// На фазе захвата запрещаем переход, если клик пришёл по .fav,
+// но НЕ останавливаем всплытие — делегат/обработчик на кнопке должен сработать.
 node.addEventListener('click', (e) => {
-  const favInside = e.target && e.target.closest && e.target.closest('.fav');
-  if (favInside) {
-    // Полностью отменяем переход по ссылке:
+  if (e.target?.closest?.('.fav')) {
     e.preventDefault();
-    e.stopImmediatePropagation();
-    e.cancelBubble = true;
-    return false;
   }
 }, { capture: true, passive: false });
+
 
       node.href = `#/product/${p.id}`;
 
@@ -739,42 +737,26 @@ if (favBtn){
   favBtn.setAttribute('aria-pressed', String(active));
   try { favBtn.setAttribute('type','button'); favBtn.setAttribute('role','button'); } catch {}
 
-  // Глушим тапы/клики на всех фазах, чтобы ни один делегат не схватил событие
-  const kill = (e) => {
-    try {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation?.();
-      e.cancelBubble = true;
-    } catch {}
-    return false;
-  };
-
-  // Фаза захвата — прежде чем событие пойдёт наверх
-  ['click','pointerdown','pointerup','mousedown','mouseup','touchstart','touchend'].forEach(t=>{
-    favBtn.addEventListener(t, kill, { capture:true, passive:false });
-  });
-
-  // Основной обработчик клика (на bubbling уже ничего не дойдёт, но пусть будет)
+  // ❗ Никаких capture/kill со stopImmediatePropagation — только обычный click.
   favBtn.addEventListener('click', (e) => {
-    kill(e);
+    e.preventDefault();       // не переходим по <a>
+    e.stopPropagation();      // чтобы не улететь в навигацию родителя
     try { ScrollReset.quiet(900); } catch {}
+
     const now = toggleFav(p.id);
     favBtn.classList.toggle('active', now);
     favBtn.setAttribute('aria-pressed', String(now));
-    window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: p.id, active: now } }));
+
+    window.dispatchEvent(new CustomEvent('fav:changed', {
+      detail: { id: p.id, active: now }
+    }));
+
     return false;
   }, { passive:false });
 
-  // Подавляем «пробел/enter» как навигацию
-  favBtn.addEventListener('keydown', (e)=>{
-    const k = e.key;
-    if (k === 'Enter' || k === ' ') kill(e);
-  }, { capture:true });
-
-  // Доп. «тишина» для ScrollReset
   try { ScrollReset.guardNoResetClick(favBtn, { duration: 900 }); } catch {}
 }
+
 
 
       frag.appendChild(node);

@@ -29,8 +29,6 @@ export function renderHome(router){
   drawCategoriesChips(router);
   drawProducts(state.products);
   try { window.dispatchEvent(new CustomEvent('view:home-mounted')); } catch {}
-
-  // ⛔ локальная кнопка «вверх» — не нужна (ScrollTop.js уже смонтирован)
 }
 
 /** Рендер чипов категорий (верхние группы + «Все», «Новинки»). */
@@ -71,10 +69,7 @@ export function drawCategoriesChips(router){
         list = state.products.filter(p => pool.has(p.categoryId));
       }
 
-      // Далее drawProducts сам применит остальные фильтры
       drawProducts(list);
-
-      // прокрутим к началу списка для UX
       try { (document.scrollingElement || document.documentElement).scrollTo({top:0, behavior:'smooth'}); } catch {}
     });
     wrap.dataset.bound = '1';
@@ -87,10 +82,7 @@ export function drawProducts(list){
   if (!grid) return;
   grid.innerHTML='';
 
-  // 1) применяем выбранные фильтры (категории/размер/цвет/цена/наличие)
   const base = applyFilters(Array.isArray(list) ? list : []);
-
-  // 2) затем текстовый поиск
   const q = (state.filters.query||'').trim().toLowerCase();
   const filtered = q
     ? base.filter(p =>
@@ -105,18 +97,14 @@ export function drawProducts(list){
     if (!t) continue;
     const node = t.content.firstElementChild.cloneNode(true);
 
-    // 🔒 Глушим клики по .fav на фазе захвата у самой ссылки (<a>), чтобы не допустить навигацию
+    // ⛔ На фазе capture не глушим всплытие — только запрещаем переход по <a>
     node.addEventListener('click', (e) => {
-      const favInside = e.target && e.target.closest && e.target.closest('.fav');
-      if (favInside) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        e.cancelBubble = true;
-        return false;
+      if (e.target?.closest?.('.fav')) {
+        e.preventDefault(); // якорь не переходит
+        // НЕ вызываем stopPropagation / stopImmediatePropagation — даём событию дойти до делегата
       }
     }, { capture: true, passive: false });
 
-    // ВАЖНО: сохраняем id карточки сразу, чтобы делегат мог его считать
     node.href = `#/product/${p.id}`;
     node.dataset.id = String(p.id);
 
@@ -135,8 +123,6 @@ export function drawProducts(list){
     const priceEl = node.querySelector('.price');
     if (priceEl) priceEl.textContent = priceFmt(p.price);
 
-    // Кнопка «избранное»: только выставляем состояние и aria,
-    // обработчик клика — ТОЛЬКО делегированный ниже.
     const favBtn = node.querySelector('.fav, button.fav');
     if (favBtn){
       const active = isFav(p.id);
@@ -150,35 +136,28 @@ export function drawProducts(list){
 
   grid.appendChild(frag);
 
-  // 🛡️ Доп. capture-страховка на весь grid: если клик пришёл с .fav — не даём всплыть до якорей
+  // 🛡️ Лёгкая защита от перехода по ссылке при клике на .fav:
+  // только preventDefault, БЕЗ остановки всплытия — чтобы ниже сработал делегат.
   if (!grid.dataset.anchorGuard) {
     grid.addEventListener('click', (e) => {
       if (e.target?.closest?.('.fav, button.fav')) {
         e.preventDefault();
-        e.stopImmediatePropagation();
-        e.cancelBubble = true;
-        return false;
       }
     }, { capture: true, passive: false });
     grid.dataset.anchorGuard = '1';
   }
 
-  // --- ГЛОБАЛЬНЫЙ делегированный обработчик кликов по сердечкам ---
+  // --- Делегированный обработчик сердечек ---
   if (!grid.dataset.favHandlerBound) {
     grid.addEventListener('click', (ev) => {
       const favBtn = ev.target.closest('.fav, button.fav');
       if (!favBtn) return;
 
-      // не даём якорю/картам перехватить клик
-      try {
-        ev.preventDefault();
-        ev.stopPropagation();
-        ev.stopImmediatePropagation?.();
-      } catch {}
+      ev.preventDefault(); // отрубили переход по <a>
+      // НЕ вызываем stopImmediatePropagation — нам это не нужно
 
       try { ScrollReset.quiet(900); } catch {}
 
-      // найдём карточку и productId
       const card = favBtn.closest('.card, a.card');
       const href = card?.getAttribute('href') || '';
       let pid = card?.dataset?.id || '';
@@ -186,17 +165,13 @@ export function drawProducts(list){
       if (!pid) return;
 
       const now = toggleFav(pid);
-
-      // мгновенно подсветим кнопку
       favBtn.classList.toggle('active', now);
       favBtn.setAttribute('aria-pressed', String(now));
 
-      // глобальный синк (карточка товара / фикс-хедер и т.д.)
       try {
         window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: pid, active: now } }));
       } catch {}
 
-      // режим «Избранное»: удаляем карточку при снятии из избранного
       const gridEl = favBtn.closest('#productGrid');
       if (gridEl && gridEl.dataset.favMode === '1' && !now) {
         card?.remove();
