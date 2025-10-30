@@ -105,6 +105,17 @@ export function drawProducts(list){
     if (!t) continue;
     const node = t.content.firstElementChild.cloneNode(true);
 
+    // 🔒 Глушим клики по .fav на фазе захвата у самой ссылки (<a>), чтобы не допустить навигацию
+    node.addEventListener('click', (e) => {
+      const favInside = e.target && e.target.closest && e.target.closest('.fav');
+      if (favInside) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        e.cancelBubble = true;
+        return false;
+      }
+    }, { capture: true, passive: false });
+
     // ВАЖНО: сохраняем id карточки сразу, чтобы делегат мог его считать
     node.href = `#/product/${p.id}`;
     node.dataset.id = String(p.id);
@@ -138,6 +149,19 @@ export function drawProducts(list){
   }
 
   grid.appendChild(frag);
+
+  // 🛡️ Доп. capture-страховка на весь grid: если клик пришёл с .fav — не даём всплыть до якорей
+  if (!grid.dataset.anchorGuard) {
+    grid.addEventListener('click', (e) => {
+      if (e.target?.closest?.('.fav, button.fav')) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        e.cancelBubble = true;
+        return false;
+      }
+    }, { capture: true, passive: false });
+    grid.dataset.anchorGuard = '1';
+  }
 
   // --- ГЛОБАЛЬНЫЙ делегированный обработчик кликов по сердечкам ---
   if (!grid.dataset.favHandlerBound) {

@@ -696,6 +696,19 @@ function drawRelatedCards(list){
     const t = document.getElementById('product-card');
     if (t && t.content?.firstElementChild){
       const node = t.content.firstElementChild.cloneNode(true);
+      // node — это <a href="#/product/...">
+// На фазе захвата глушим любые клики, пришедшие с .fav
+node.addEventListener('click', (e) => {
+  const favInside = e.target && e.target.closest && e.target.closest('.fav');
+  if (favInside) {
+    // Полностью отменяем переход по ссылке:
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    e.cancelBubble = true;
+    return false;
+  }
+}, { capture: true, passive: false });
+
       node.href = `#/product/${p.id}`;
 
       const im = node.querySelector('img');
@@ -724,34 +737,43 @@ if (favBtn){
   const active = isFav(p.id);
   favBtn.classList.toggle('active', active);
   favBtn.setAttribute('aria-pressed', String(active));
-
-  // сделаем элемент «настоящей» кнопкой
   try { favBtn.setAttribute('type','button'); favBtn.setAttribute('role','button'); } catch {}
 
-  // заранее включаем «тишину» для ScrollReset до любых жестов
-  favBtn.addEventListener('pointerdown', () => {
-    try { ScrollReset.quiet(900); } catch {}
-  }, { capture:true, passive:true });
-
-  // основной клик — глушим ВСЁ: и дефолт, и всплытие, и делегатов наверху
-  favBtn.addEventListener('click', (ev) => {
+  // Глушим тапы/клики на всех фазах, чтобы ни один делегат не схватил событие
+  const kill = (e) => {
     try {
-      ev.preventDefault();
-      ev.stopPropagation();
-      ev.stopImmediatePropagation?.();
-      ScrollReset.quiet(900);
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation?.();
+      e.cancelBubble = true;
     } catch {}
+    return false;
+  };
 
+  // Фаза захвата — прежде чем событие пойдёт наверх
+  ['click','pointerdown','pointerup','mousedown','mouseup','touchstart','touchend'].forEach(t=>{
+    favBtn.addEventListener(t, kill, { capture:true, passive:false });
+  });
+
+  // Основной обработчик клика (на bubbling уже ничего не дойдёт, но пусть будет)
+  favBtn.addEventListener('click', (e) => {
+    kill(e);
+    try { ScrollReset.quiet(900); } catch {}
     const now = toggleFav(p.id);
     favBtn.classList.toggle('active', now);
     favBtn.setAttribute('aria-pressed', String(now));
-
-    // глобальный синк избранного
     window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: p.id, active: now } }));
-  }, { passive:false, capture:false });
+    return false;
+  }, { passive:false });
 
-  // дополнительный страховочный троттлер прокрутки
-  try { ScrollReset.guardNoResetClick(favBtn, { duration: 900, preventAnchorNav: true }); } catch {}
+  // Подавляем «пробел/enter» как навигацию
+  favBtn.addEventListener('keydown', (e)=>{
+    const k = e.key;
+    if (k === 'Enter' || k === ' ') kill(e);
+  }, { capture:true });
+
+  // Доп. «тишина» для ScrollReset
+  try { ScrollReset.guardNoResetClick(favBtn, { duration: 900 }); } catch {}
 }
 
 
