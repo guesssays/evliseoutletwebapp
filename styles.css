@@ -862,3 +862,22 @@ body.admin-mode #scrollTopBtn{ display:none !important; }
 @media (max-width: 380px){
   .product{ padding-top: calc(8px + var(--safe-top)); }
 }
+/* === SCROLL-TOP tune (вставь/обнови в styles.css) === */
+:root{
+  /* было: 26px */
+  --scrolltop-gap: 12px; /* ниже — ближе к таббару */
+}
+
+/* при желании — чуть “стекляннее” блик (не обязательно) */
+#scrollTopBtn{
+  background: linear-gradient(180deg, rgba(255,255,255,.82) 0%, rgba(255,255,255,.66) 100%);
+  backdrop-filter: saturate(1.2) blur(12px);
+  -webkit-backdrop-filter: saturate(1.2) blur(12px);
+  border: 1px solid rgba(255,255,255,.70);
+  box-shadow: 0 12px 36px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.40);
+}
+
+/* уже есть в твоём файле, но на всякий — иконка белая в dark */
+@media (prefers-color-scheme: dark){
+  #scrollTopBtn{ color:#fff !important; }
+}
