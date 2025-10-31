@@ -180,15 +180,16 @@ function makeStartAppRootBtn(text){
 }
 
 function kbForType(t){
-  if (!BOT_USERNAME) return null; // Без имени бота не строим кнопку, чтобы не сломать сообщение
+  if (!BOT_USERNAME) return null; // Без имени бота не строим кнопку
 
+  // ВЕРНУЛИ исходные тексты кнопок
   const mainText =
-    t === 'cashbackMatured'       ? 'Открыть приложение' :
-    t === 'referralJoined'        ? 'Открыть приложение' :
-    t === 'referralOrderCashback' ? 'Открыть приложение' :
-    t === 'cartReminder'          ? 'Открыть приложение' :
-    t === 'favReminder'           ? 'Открыть приложение' :
-                                    'Открыть приложение';
+    t === 'cashbackMatured'       ? 'Перейти к оплате' :
+    t === 'referralJoined'        ? 'Мои рефералы' :
+    t === 'referralOrderCashback' ? 'Мой кэшбек' :
+    t === 'cartReminder'          ? 'Оформить заказ' :
+    t === 'favReminder'           ? 'Открыть избранное' :
+                                    'Мои заказы';
 
   const btn = makeStartAppRootBtn(mainText);
   return btn ? [ [ btn ] ] : null;
