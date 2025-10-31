@@ -1653,3 +1653,86 @@ html.route-home .product-fixhdr{
 /* ====== Производительность: быстрый mount секций ====== */
 #view > * { content-visibility: auto; contain-intrinsic-size: 800px; }
 .admin-list-mini, .product-grid, .orders-list { content-visibility: auto; contain-intrinsic-size: 1200px; }
+/* === Skeleton grid (карточки-заглушки для ленты) =================== */
+:root{
+  --skel-base: #eee;
+  --skel-lite: #f6f6f6;
+  --skel-dark: rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --skel-base: #2a2a2a;
+    --skel-lite: #1b1b1b;
+    --skel-dark: rgba(255,255,255,.08);
+  }
+}
+
+/* сама карточка-скелет не интерактивна */
+.card.is-skeleton{
+  pointer-events: none;
+}
+
+/* область изображения карточки: видимый фон, чтобы «пятно» сразу было */
+.card.is-skeleton .card-img{
+  background: var(--skel-lite);
+  position: relative;
+  overflow: hidden;
+}
+
+/* универсальный блок-скелет */
+.skel{
+  display: block;
+  position: relative;
+  background: var(--skel-base);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* размеры конкретных полосок */
+.skel-img{ position:absolute; inset:0; border-radius: 22px; }
+.skel-title{ height:18px; width:70%; margin:10px 6px 6px; }
+.skel-sub{   height:14px; width:45%; margin:0 6px 8px; opacity:.85; }
+.skel-price{ height:18px; width:82px; }
+.skel-chip{  height:22px; width:64px; border-radius:999px; }
+
+/* лёгкий шиммер — без лишней яркости */
+.skel::after{
+  content:"";
+  position:absolute; inset:0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,255,255,.35) 40%,
+    rgba(255,255,255,.55) 50%,
+    rgba(255,255,255,.35) 60%,
+    transparent 100%
+  );
+  animation: skel-shimmer 1.2s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+@media (prefers-color-scheme: dark){
+  .skel::after{
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255,255,255,.10) 40%,
+      rgba(255,255,255,.16) 50%,
+      rgba(255,255,255,.10) 60%,
+      transparent 100%
+    );
+    mix-blend-mode: normal;
+  }
+}
+
+@keyframes skel-shimmer{
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* чуть приглушим текстовые скелеты внутри карточки */
+.card.is-skeleton .card-body{ padding:10px 6px; }
+.card.is-skeleton .price-row{ display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
+
+/* чтобы любые тени/стекла вокруг не «съедали» скелет */
+.card.is-skeleton,
+.card.is-skeleton .card-img,
+.card.is-skeleton .skel{ will-change: transform, opacity; }
