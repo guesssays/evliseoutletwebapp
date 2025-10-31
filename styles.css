@@ -1424,3 +1424,40 @@ html.route-home .product-fixhdr{
   border: 1px solid var(--neutral-border) !important;
   box-shadow: none !important;
 }
+/* === Telegram Top Inset (глобальный отступ сверху) =============== */
+:root{
+  --safe-top: env(safe-area-inset-top, 0px);
+  /* базовая высота «кнопочной» зоны Telegram; можно подстроить 48–60px */
+  --tg-topbar: 56px;
+}
+
+/* spacer в потоке: даёт контенту отъехать вниз */
+#tgTopInset{
+  height: 0;         /* по умолчанию — 0 в обычном браузере */
+}
+
+/* только внутри Telegram WebApp — добавляем реальный отступ */
+.tg-webapp #tgTopInset{
+  height: calc(var(--safe-top) + var(--tg-topbar));
+}
+
+/* статичный хедер убираем везде на всякий случай */
+.app-header{ display:none !important; }
+
+/* секции/контент уже учитывают spacer, не дублируем большие паддинги сверху */
+.tg-webapp .section,
+.tg-webapp .view,
+.tg-webapp .checkout{ 
+  /* ничего не добавляем сверху специально — spacer уже вставлен */
+}
+
+/* product-экран: маленький внутренний зазор, БЕЗ safe-top — чтобы не удваивать */
+.tg-webapp .product{
+  padding-top: 8px !important;
+}
+
+/* фикс-хедер товара оставляем поверх, кнопки уже учитывают var(--safe-top) */
+:root{ --z-fixhdr: 140; }
+#productFixHdr, .product-fixhdr{ z-index: var(--z-fixhdr) !important; }
+#btnFixBack{ left:12px; top: calc(6px + var(--safe-top)); }
+#btnFixFav{  right:12px; top: calc(6px + var(--safe-top)); }

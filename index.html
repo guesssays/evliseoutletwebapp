@@ -64,51 +64,30 @@
   })();
   </script>
 
-<script>
-/* Ранний и устойчивый к Telegram-хэшу детектор home-страницы */
-(function routeClassSync(){
-  var de = document.documentElement;
+  <script>
+  /* Ранний и устойчивый к Telegram-хэшу детектор home-страницы */
+  (function routeClassSync(){
+    var de = document.documentElement;
 
-  function isHomeHash(h){
-    if (!h || h === '#') return true;
-    if (/^#tgwebapp/i.test(h)) return true;
-    if (!h.startsWith('#/')) return true;
-    return (h === '#/' || h.startsWith('#/?'));
-  }
-
-  function apply(){
-    var onHome = isHomeHash(location.hash);
-    de.classList.toggle('route-home',  onHome);
-    de.classList.toggle('route-other', !onHome);
-  }
-
-  apply();
-  window.addEventListener('hashchange', apply, { passive:true });
-  document.addEventListener('DOMContentLoaded', apply);
-  window.addEventListener('load', apply);
-})();
-</script>
-<script>
-/* Гарантируем видимость верхнего бара при первом входе (любой маршрут, включая уведомления) */
-(function ensureTopbarOnFirstOpen(){
-  var booted = false;
-  function showOnce(){
-    if (booted) return;
-    var hdr = document.querySelector('.app-header');
-    if (hdr) {
-      hdr.classList.remove('hidden');
-      hdr.style.removeProperty('display');
-      hdr.style.removeProperty('visibility');
-      document.documentElement.setAttribute('data-hdr-boot', '1');
-      booted = true;
+    function isHomeHash(h){
+      if (!h || h === '#') return true;
+      if (/^#tgwebapp/i.test(h)) return true;
+      if (!h.startsWith('#/')) return true;
+      return (h === '#/' || h.startsWith('#/?'));
     }
-  }
-  showOnce();
-  document.addEventListener('readystatechange', showOnce, { once:true });
-  document.addEventListener('DOMContentLoaded', showOnce, { once:true });
-  window.addEventListener('load', showOnce, { once:true });
-})();
-</script>
+
+    function apply(){
+      var onHome = isHomeHash(location.hash);
+      de.classList.toggle('route-home',  onHome);
+      de.classList.toggle('route-other', !onHome);
+    }
+
+    apply();
+    window.addEventListener('hashchange', apply, { passive:true });
+    document.addEventListener('DOMContentLoaded', apply);
+    window.addEventListener('load', apply);
+  })();
+  </script>
 
   <!-- Fonts / styles -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -123,17 +102,23 @@
       --tabbar-h: 92px;
       --shadow: 0 10px 30px rgba(0,0,0,.18);
       --muted:#787676;
+
+      /* spacer под верхние кнопки Telegram */
+      --tg-topbar: 56px; /* при желании 52–60px */
     }
 
     /* показ секций только на главной */
     [data-home-only]{ display:block !important; }
     .route-other [data-home-only]{ display:none !important; }
 
+    /* === Spacer под кнопки Telegram (глобально) === */
+    #tgTopInset{ height:0; }
+    .tg-webapp #tgTopInset{ height: calc(var(--safe-top) + var(--tg-topbar)); }
+
+    /* статичный app-header больше не используется */
+    .app-header{ display:none !important; }
+
     /* === Уведомления (новая система "точек") === */
-    .app-header .notif-btn { display:none !important; } /* прячем колокольчик */
- 
-
-
     .badge-wrap{ position:relative } /* чтобы не сломать бейдж корзины */
 
     .section-search .search-wrap{ position:relative }
@@ -162,22 +147,19 @@
     .ps-actions{ display:flex; gap:10px; justify-content:flex-end; align-items:center; margin-top:4px }
     .ps-actions .btn-primary{ padding:10px 14px; border-radius:12px; display:inline-flex; align-items:center; gap:8px }
     .ps-actions .btn-ghost{ padding:10px 12px; border:1px solid var(--stroke); background:transparent; border-radius:12px }
-
-
-
   </style>
 
   <!-- Telegram WebApp -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script>
-(function(){
-  var isTG = !!(window.Telegram && Telegram.WebApp);
-  var ref = (document.referrer||'').toLowerCase();
-  if (isTG || ref.includes('t.me') || ref.includes('telegram')) {
-    document.documentElement.classList.add('tg-webapp');
-  }
-})();
-</script>
+  (function(){
+    var isTG = !!(window.Telegram && Telegram.WebApp);
+    var ref = (document.referrer||'').toLowerCase();
+    if (isTG || ref.includes('t.me') || ref.includes('telegram')) {
+      document.documentElement.classList.add('tg-webapp');
+    }
+  })();
+  </script>
 
   <!-- Lucide -->
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.454.0/dist/umd/lucide.min.js" defer></script>
@@ -208,10 +190,8 @@
 
 <body>
   <div id="app">
-    <!-- Статичный хедер -->
-    <header class="app-header" role="banner">
-
-    </header>
+    <!-- Глобальный верхний отступ под кнопки Telegram -->
+    <div id="tgTopInset" aria-hidden="true"></div>
 
     <!-- Фикс-хедер товара -->
     <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">

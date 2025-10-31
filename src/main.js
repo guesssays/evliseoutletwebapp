@@ -535,15 +535,6 @@ try {
   if (tg) { tg.ready?.(); tg.expand?.(); }
 } catch {}
 
-requestAnimationFrame(() => {
-  const hdr = document.querySelector('.app-header');
-  if (hdr) {
-    hdr.classList.remove('hidden');
-    // eslint-disable-next-line no-unused-expressions
-    hdr.offsetHeight;
-  }
-});
-
 /* Кнопка "Наверх" */
 mountScrollTop();
 /* Глобальный анти-скролл */
@@ -686,7 +677,7 @@ document.addEventListener('click', (e)=>{ if (e.target.closest('#openNotificatio
 /* ---------- фикс-хедер товара: скрытие вне карточки ---------- */
 function hideProductHeader(){
   try { deactivateProductFixHeader(); } catch {}
-  const stat = document.querySelector('.app-header'); if (stat) stat.classList.remove('hidden');
+  // Статичный app-header удалён — здесь больше ничего не трогаем
 }
 
 /* ---------- РОУТЕР ---------- */
