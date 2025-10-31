@@ -13,6 +13,7 @@ import {
 } from './core/state.js';
 
 import { toast } from './core/toast.js';
+import { fetchMyLoyalty, getLocalLoyalty } from './core/loyalty.js';
 
 // --- Унифицированные тосты ---
 function toastEx(msg, type = 'info') {
@@ -203,6 +204,31 @@ function getTgInitDataRaw(){
       : '';
   } catch { return ''; }
 }
+
+/* ---- Первичная инициализация unseen-флагов по данным сервера ---- */
+async function primeUnseenFromServer(){
+  try {
+    // 1) Подтянем баланс/историю (сервер → локальный кеш)
+    await fetchMyLoyalty();
+  } catch {}
+  const b = (function(){ try { return getLocalLoyalty(); } catch { return {}; } })();
+  const avail = Number(b?.available || 0);
+  const pend  = Number(b?.pending   || 0);
+
+  // 2) Заказы уже в state.orders после getOrders()
+  const hasOrders = Array.isArray(state.orders) && state.orders.length > 0;
+
+  // 3) Ставим флаги (не трогаем, если пользователь уже был в соответствующих разделах и вы их там очищаете)
+  try {
+    if (hasOrders) setUnseen(kinds.orders, true);
+    if (avail > 0 || pend > 0) setUnseen(kinds.cashback, true);
+    // Рефералы по желанию: если у вас есть локальный список/счётчик — можно аналогично подсветить kinds.referrals
+  } catch {}
+
+  // 4) Перерисуем точки
+  try { paintAccountDot(); paintAccountButtonsDots(); } catch {}
+}
+
 
 async function notifApiList(uid){
   const url = `${NOTIF_API}?op=list&uid=${encodeURIComponent(uid)}`;
@@ -534,7 +560,7 @@ async function router(){
   }
 
   if (match('account'))            {
-    const res = renderAccount();
+    const res = renderAccount(); 
     paintAccountDotsSafe();
     return res;
   }
@@ -617,6 +643,8 @@ async function init(){
   }catch{ state.products = []; state.categories = []; }
 
   try{ state.orders = await getOrders(); }catch{ state.orders = []; }
+await primeUnseenFromServer();
+
 
   pruneCartAgainstProducts(state.products);
   updateCartBadge();
