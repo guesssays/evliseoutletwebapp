@@ -1547,15 +1547,15 @@ html.route-home .product-fixhdr{
 
 /* 4) маппинг для старого имени переменной (как и было) */
 :root{ --toastTop: var(--toast-top); }
-/* === Favorites: выравнивание заголовка и стрелки по левому краю сетки === */
+/* === FIX: favorites header back button stays inside the screen === */
 .page-title{
-  /* те же поля, что у .view/.grid → левая линия x = 18px */
   padding: 0 18px !important;
   margin: 10px 0 14px !important;
   position: relative;
   display: flex;
   align-items: center;
-  min-height: 44px; /* под кнопку */
+  min-height: 44px;
+  overflow: visible; /* на всякий случай, чтобы иконка не обрезалась */
 }
 
 .page-title h1{
@@ -1563,25 +1563,22 @@ html.route-home .product-fixhdr{
   font-weight: 800;
   font-size: 24px;
   line-height: 1.2;
-  /* ВАЖНО: текст начинается ровно на x = 18px, как и сетка товаров */
 }
 
+/* Кнопка: фиксируем по левой «линией контента» и убираем X-сдвиг */
 .page-title .square-btn{
-  /* Кнопка не влияет на поток и не сдвигает заголовок */
   position: absolute !important;
-  left: 18px;                 /* привязываемся к той же линии, что и контент */
-  top: 50%;
+  left: max(18px, calc(env(safe-area-inset-left, 0px) + 12px)) !important;
+  top: 50% !important;
   width: 44px; height: 44px;
-  transform: translate(calc(-100% - 10px), -50%); 
-  /* выносим кнопку ровно на свою ширину + стандартный зазор 10px влево,
-     чтобы визуально стать «перед» заголовком, но не забрать его место */
+  transform: translateY(-50%) !important; /* ← удалили translateX */
   display: grid; place-items: center;
   z-index: 1;
 }
 
-/* На очень узких дисплеях можно чуть уменьшить вынос, чтобы не упереться в край экрана */
+/* Очень узкие экраны — слегка прижимаем, но не выходим за край */
 @media (max-width: 360px){
   .page-title .square-btn{
-    transform: translate(calc(-100% - 8px), -50%);
+    left: max(12px, calc(env(safe-area-inset-left, 0px) + 10px)) !important;
   }
 }
