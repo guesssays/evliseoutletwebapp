@@ -264,29 +264,41 @@ function getTgInitDataRaw(){
   } catch { return ''; }
 }
 
-/* ---- Первичная инициализация unseen-флагов по данным сервера ---- */
+// === ЗАМЕНА primeUnseenFromServer (main.js) =========================
 async function primeUnseenFromServer(){
-  try {
-    // 1) Подтянем баланс/историю (сервер → локальный кеш)
-    await fetchMyLoyalty();
-  } catch {}
+  // 0) Подтянем свежие данные (баланс/история/заказы), но флаги не трогаем
+  try { await fetchMyLoyalty(); } catch {}
   const b = (function(){ try { return getLocalLoyalty(); } catch { return {}; } })();
-  const avail = Number(b?.available || 0);
-  const pend  = Number(b?.pending   || 0);
+  try { state.orders = Array.isArray(state.orders) ? state.orders : []; } catch {}
 
-  // 2) Заказы уже в state.orders после getOrders()
-  const hasOrders = Array.isArray(state.orders) && state.orders.length > 0;
+  // 1) Если хоть одно непрочитанное уведомление есть — mergeNotifsToLocal сам поднимет нужные флаги
+  // (это уже делается в syncMyNotifications()/mergeNotifsToLocal)
 
-  // 3) Ставим флаги (не трогаем, если пользователь уже был в соответствующих разделах и вы их там очищаете)
-  try {
-    if (hasOrders) setUnseen(kinds.orders, true);
-    if (avail > 0 || pend > 0) setUnseen(kinds.cashback, true);
-    // Рефералы по желанию: если у вас есть локальный список/счётчик — можно аналогично подсветить kinds.referrals
-  } catch {}
+  // 2) Bootstrap флагов — ТОЛЬКО при самом первом запуске для данного UID,
+  //    и только если у нас ещё нет локальной карты флагов.
+  const uid = getUID?.() || 'guest';
+  const BOOT_KEY = `unseen_bootstrapped__${uid}`;
+  const hasBoot = localStorage.getItem(BOOT_KEY) === '1';
 
-  // 4) Перерисуем точки
+  const current = (function(){
+    try { return JSON.parse(localStorage.getItem(k('unseen_flags')) || '{}') || {}; }
+    catch { return {}; }
+  })();
+
+  if (!hasBoot && Object.keys(current).length === 0) {
+    // Мягкий онбординг: никакие флаги НЕ поднимаем насильно.
+    // Хотите приветственные точки — добавьте их один раз вручную ниже (закомментировано).
+    // setUnseen(kinds.orders,    true);
+    // setUnseen(kinds.cashback,  (Number(b?.available||0) > 0 || Number(b?.pending||0) > 0));
+    // setUnseen(kinds.referrals, false);
+
+    localStorage.setItem(BOOT_KEY, '1');
+  }
+
+  // 3) Перерисуем точки по текущему состоянию (ничего не поднимаем насильно)
   try { paintAccountDot(); paintAccountButtonsDots(); } catch {}
 }
+
 
 
 async function notifApiList(uid){
@@ -693,13 +705,22 @@ if (match('account/referrals')) {
   });
   return r;
 }
-  if (match('notifications')){
-    await renderNotifications(updateNotifBadge);
-    try { localStorage.setItem(k('notifs_unread'),'0'); } catch {}
-    try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: 0 })); } catch {}
-    await syncMyNotifications();
-    return;
-  }
+// В роутере, ветка 'notifications'
+if (match('notifications')){
+  await renderNotifications(updateNotifBadge);
+
+  // помечаем ВСЕ уведомления как прочитанные
+  try { await notifApiMarkAll(getUID()); } catch {}
+
+  // локально обнулим счётчик и перерисуем
+  try { localStorage.setItem(k('notifs_unread'),'0'); } catch {}
+  try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: 0 })); } catch {}
+
+  // подтянем свежий список (уже без непрочитанных), чтобы mergeNotifs не поднял точки заново
+  await syncMyNotifications();
+  return;
+}
+
 
   if (match('ref')){ return renderRefBridge(); }
 

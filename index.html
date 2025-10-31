@@ -123,7 +123,6 @@
       --tabbar-h: 92px;
       --shadow: 0 10px 30px rgba(0,0,0,.18);
       --muted:#787676;
-      --dot: #ff3b30;
     }
 
     /* показ секций только на главной */
@@ -133,8 +132,7 @@
     /* === Уведомления (новая система "точек") === */
     .app-header .notif-btn { display:none !important; } /* прячем колокольчик */
  
-    .tabbar .tab{ position:relative } /* якорь для позиции .dot на табах */
-    /* точка внутри плиток/кнопок аккаунта — небольшой сдвиг */
+
 
     .badge-wrap{ position:relative } /* чтобы не сломать бейдж корзины */
 
@@ -165,12 +163,7 @@
     .ps-actions .btn-primary{ padding:10px 14px; border-radius:12px; display:inline-flex; align-items:center; gap:8px }
     .ps-actions .btn-ghost{ padding:10px 12px; border:1px solid var(--stroke); background:transparent; border-radius:12px }
 
-    /* якоря для .dot */
-.tabbar .tab,
-.menu .menu-item {
-  position: relative;
-  overflow: visible; /* чтобы точка не обрезалась рамкой/скруглениями */
-}
+
 
   </style>
 
