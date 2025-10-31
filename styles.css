@@ -1547,3 +1547,41 @@ html.route-home .product-fixhdr{
 
 /* 4) маппинг для старого имени переменной (как и было) */
 :root{ --toastTop: var(--toast-top); }
+/* === Favorites: выравнивание заголовка и стрелки по левому краю сетки === */
+.page-title{
+  /* те же поля, что у .view/.grid → левая линия x = 18px */
+  padding: 0 18px !important;
+  margin: 10px 0 14px !important;
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 44px; /* под кнопку */
+}
+
+.page-title h1{
+  margin: 0 !important;
+  font-weight: 800;
+  font-size: 24px;
+  line-height: 1.2;
+  /* ВАЖНО: текст начинается ровно на x = 18px, как и сетка товаров */
+}
+
+.page-title .square-btn{
+  /* Кнопка не влияет на поток и не сдвигает заголовок */
+  position: absolute !important;
+  left: 18px;                 /* привязываемся к той же линии, что и контент */
+  top: 50%;
+  width: 44px; height: 44px;
+  transform: translate(calc(-100% - 10px), -50%); 
+  /* выносим кнопку ровно на свою ширину + стандартный зазор 10px влево,
+     чтобы визуально стать «перед» заголовком, но не забрать его место */
+  display: grid; place-items: center;
+  z-index: 1;
+}
+
+/* На очень узких дисплеях можно чуть уменьшить вынос, чтобы не упереться в край экрана */
+@media (max-width: 360px){
+  .page-title .square-btn{
+    transform: translate(calc(-100% - 8px), -50%);
+  }
+}
