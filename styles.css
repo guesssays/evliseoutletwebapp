@@ -1582,3 +1582,33 @@ html.route-home .product-fixhdr{
     left: max(12px, calc(env(safe-area-inset-left, 0px) + 10px)) !important;
   }
 }
+/* === FIX: отступ под кнопку "назад" в .page-title === */
+:root{
+  --back-btn-w: 44px;   /* ширина квадратной кнопки */
+  --back-btn-gap: 10px; /* зазор между кнопкой и текстом */
+}
+
+/* резервируем место слева под кнопку */
+.page-title{
+  padding-left: calc(18px + var(--back-btn-w) + var(--back-btn-gap)) !important;
+}
+
+/* сама кнопка остаётся на «линии контента» */
+.page-title .square-btn{
+  position: absolute !important;
+  left: max(18px, calc(env(safe-area-inset-left, 0px) + 12px)) !important;
+  top: 50% !important;
+  width: var(--back-btn-w);
+  height: var(--back-btn-w);
+  transform: translateY(-50%) !important;
+  z-index: 1;
+}
+
+/* очень узкие экраны — чуть уменьшаем зазор, чтобы тексту было место */
+@media (max-width: 360px){
+  :root{ --back-btn-gap: 8px; }
+  .page-title{ padding-left: calc(12px + var(--back-btn-w) + var(--back-btn-gap)) !important; }
+  .page-title .square-btn{
+    left: max(12px, calc(env(safe-area-inset-left, 0px) + 10px)) !important;
+  }
+}
