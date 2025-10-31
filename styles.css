@@ -40,7 +40,7 @@ img,video{ max-width:100%; height:auto; display:block; }
   z-index: var(--z-app-header);
   backdrop-filter:saturate(1.2) blur(6px);
   background:linear-gradient(180deg, rgba(255,255,255,.92) 0%, rgba(255,255,255,.82) 100%);
-  padding:14px 18px 10px;
+  padding: 8px 18px 8px;
   display:flex; justify-content:space-between; align-items:center; gap:10px;
   border-bottom:1px solid var(--stroke);
   transition: opacity .18s ease, transform .18s ease, visibility .18s ease;

@@ -131,6 +131,8 @@
 
     /* === Уведомления (новая система "точек") === */
     .app-header .notif-btn { display:none !important; } /* прячем колокольчик */
+ 
+
 
     .badge-wrap{ position:relative } /* чтобы не сломать бейдж корзины */
 
@@ -161,44 +163,12 @@
     .ps-actions .btn-primary{ padding:10px 14px; border-radius:12px; display:inline-flex; align-items:center; gap:8px }
     .ps-actions .btn-ghost{ padding:10px 12px; border:1px solid var(--stroke); background:transparent; border-radius:12px }
 
-    /* ==== ПУСТОЙ СТАТИЧНЫЙ ХЕДЕР: без названия, выше по высоте ==== */
-    .app-header{
-      /* делаем пустую полосу-хедер */
-      min-height: 76px;                 /* увеличенная высота */
-      padding: 0;
-      border-bottom: 1px solid var(--stroke);
-      background: transparent;
-    }
-    /* учитываем безопасную область сверху в Telegram/на айфонах */
-    .tg-webapp .app-header{
-      padding-top: var(--safe-top);
-      min-height: calc(76px + var(--safe-top));
-    }
+
+
   </style>
 
   <!-- Telegram WebApp -->
-<!-- Telegram WebApp -->
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script>
-(function ensureTgExpand(){
-  function go(){
-    try{
-      var tg = window.Telegram && Telegram.WebApp;
-      if (!tg) return;
-      tg.ready && tg.ready();
-      tg.expand && tg.expand();
-    }catch{}
-  }
-  // максимально рано
-  if (document.readyState === 'complete' || document.readyState === 'interactive') go();
-  else document.addEventListener('DOMContentLoaded', go);
-  // подстраховки на случай поздней инициализации
-  setTimeout(go, 300);
-  document.addEventListener('visibilitychange', function(){ if (!document.hidden) go(); });
-})();
-</script>
-
-  
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script>
 (function(){
   var isTG = !!(window.Telegram && Telegram.WebApp);
@@ -238,8 +208,10 @@
 
 <body>
   <div id="app">
-    <!-- Статичный хедер (пустой) -->
-    <header class="app-header" role="banner" aria-label="Верхняя панель"></header>
+    <!-- Статичный хедер -->
+    <header class="app-header" role="banner">
+
+    </header>
 
     <!-- Фикс-хедер товара -->
     <div id="productFixHdr" class="product-fixhdr" aria-hidden="true">
