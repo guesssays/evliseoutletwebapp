@@ -1296,246 +1296,34 @@ html.route-home .product-fixhdr{
   font-size: 24px;               /* как .section-title */
   line-height: 1.2;
 }
-/* База точки: компактная с «кольцом», одинаково красиво в светлой/тёмной теме */
-:root{ --dot:#ff3b30; --dot-ring:#fff; }
-@media (prefers-color-scheme:dark){
-  :root{ --dot-ring:#0b1220; } /* фон карточки/страницы в тёмной теме */
-}
 
-.dot{
-  position:absolute;
-  width:9px; height:9px; border-radius:999px;
-  background:var(--dot);
-  box-shadow: 0 0 0 2px var(--dot-ring), 0 2px 6px rgba(0,0,0,.18);
-  pointer-events:none;
-  z-index: 1; /* поверх рамок/иконок, но не выше модалок */
-}
-
-/* Якоря, чтобы .dot не обрезалась скруглениями */
-.tabbar .tab,
-.menu .menu-item { position: relative; overflow: visible; }
-
-/* Позиции по умолчанию (например, на табах) — чуть отступив от краёв */
-.tabbar .tab .dot{ top:-3px; right:-3px; }
-
-/* >>> Точки в меню вкладки «Аккаунт»: выше и правее — «почти в угол» */
-.menu .menu-item .acc-dot{
-  top:-8px;
-  right:-8px;
-}
-
-/* Микротюнинг для очень узких экранов: чуть меньше сдвиг, чтобы не «съезжали» за радиус */
-@media (max-width: 360px){
-  .menu .menu-item .acc-dot{ top:-7px; right:-7px; }
-}
-/* === Compact Dots (final override) ================================== */
+/* === NOTIFY DOTS — SINGLE SOURCE OF TRUTH ==================== */
 :root{
-  --dot-size: 6px;         /* было 9px */
-  --dot-ring-w: 1.5px;     /* тоньше «кольцо» вокруг точки */
-  --dot-color: #ff3b30;    /* как и раньше */
+  --dot-size: 8px;          /* единый размер точки */
+  --dot-ring: #fff;         /* кольцо в светлой теме */
 }
 @media (prefers-color-scheme: dark){
-  :root{ --dot-ring:#0b1220; }
-}
-@media (prefers-color-scheme: light){
-  :root{ --dot-ring:#fff; }
+  :root{ --dot-ring: #0b1220; }
 }
 
-/* сама точка: меньше, современный мягкий шэдоу */
-.dot{
+/* якоря, чтобы точка не обрезалась */
+.tabbar .tab,
+.menu .menu-item{
+  position: relative;
+  overflow: visible;
+}
+
+/* сама точка: одинаково для .dot и .acc-dot */
+:where(.dot, .acc-dot){
+  position: absolute;
+  top: -3px;
+  right: -3px;
   width: var(--dot-size);
   height: var(--dot-size);
   border-radius: 999px;
-  background: var(--dot-color);
+  background: #ff3b30;
   box-shadow:
-    0 0 0 var(--dot-ring-w) var(--dot-ring),
-    0 1px 3px rgba(0,0,0,.16);   /* деликатнее тень */
+    0 0 0 2px var(--dot-ring),
+    0 1px 3px rgba(0,0,0,.16);
   pointer-events: none;
-  z-index: 1;
-}
-
-/* позиционирование — ближе к углу, но без выхода за радиусы */
-.tabbar .tab .dot{
-  top: -2px;     /* было -3px */
-  right: -2px;   /* было -3px */
-}
-
-/* «Аккаунт»/меню — тоже компактнее */
-.menu .menu-item .acc-dot{
-  top: -6px;     /* было -8px */
-  right: -6px;   /* было -8px */
-}
-
-/* очень узкие экраны — ещё чуть ближе к углу */
-@media (max-width: 360px){
-  .menu .menu-item .acc-dot{ top: -5px; right: -5px; }
-}
-/* === MINI-SHRINK PACK (final override) ===================== */
-/* 1) ScrollTop — компактнее */
-#scrollTopBtn{
-  width: 44px !important;
-  height: 44px !important;
-  right: 18px !important;                    /* аккуратнее у края */
-}
-#scrollTopBtn i,
-#scrollTopBtn svg{
-  width: 18px !important;
-  height: 18px !important;
-  stroke-width: 2.1 !important;
-}
-
-/* 2) Фикс-кнопки на странице товара и геро-кнопки */
-#productFixHdr .fixbtn,
-.product-fixhdr .fixbtn,
-.hero-btn{
-  width: 40px !important;
-  height: 40px !important;
-  border-radius: 999px !important;
-}
-#productFixHdr .fixbtn i, #productFixHdr .fixbtn svg,
-.product-fixhdr .fixbtn i, .product-fixhdr .fixbtn svg,
-.hero-btn i, .hero-btn svg{
-  width: 18px !important;
-  height: 18px !important;
-}
-
-/* 3) Сердечко на карточках каталога */
-.card .fav{
-  width: 34px !important;
-  height: 34px !important;
-  border-radius: 999px !important;
-}
-.card .fav i,
-.card .fav svg{
-  width: 17px !important;
-  height: 17px !important;
-}
-
-/* 4) Точки-индикаторы (notification dots) — реально маленькие */
-:root{
-  --dot-size: 5px !important;     /* было 9 → 5 */
-  --dot-ring-w: 1px !important;    /* тоньше кольцо */
-}
-.dot{
-  width: var(--dot-size) !important;
-  height: var(--dot-size) !important;
-  box-shadow:
-    0 0 0 var(--dot-ring-w) var(--dot-ring, #fff),
-    0 1px 2px rgba(0,0,0,.14) !important;
-}
-.tabbar .tab .dot{ top: -2px !important; right: -2px !important; }
-.menu .menu-item .acc-dot{ top: -5px !important; right: -5px !important; }
-
-/* 5) Бейджи-числа — аккуратнее */
-.badge{
-  font-size: 10px !important;
-  padding: 2px 5px !important;
-  border-radius: 999px !important;
-}
-
-/* 6) Таббар — капельку компактнее (но тапы ≥40px) */
-.tabbar .tab{
-  min-width: 56px !important;     /* было 64 */
-  height: 48px !important;        /* было 52 */
-  gap: 3px !important;
-}
-.tabbar .tab i{ width: 22px !important; height: 22px !important; }
-.tabbar .tab span{ font-size: 11px !important; }
-
-/* 7) Превью «больших» превьюшек, если надо компактнее на мелких экранах */
-@media (max-width: 380px){
-  .thumb{ width: 58px !important; height: 58px !important; }
-}
-/* === NOTIFY DOTS — FINAL STANDARD SIZE ================================== */
-/* Единые переменные */
-:root{
-  --dot-size: 8px;          /* стандартный размер точки */
-  --dot-ring-w: 2px;        /* ширина белого/тёмного кольца */
-  --dot-color: #ff3b30;     /* цвет точки */
-}
-
-/* Размер и оформление — одинаково для всех вариантов (.dot и .acc-dot) */
-.dot,
-.acc-dot{
-  width: var(--dot-size) !important;
-  height: var(--dot-size) !important;
-  border-radius: 999px !important;
-  background: var(--dot-color) !important;
-  box-shadow:
-    0 0 0 var(--dot-ring-w) var(--dot-ring, #fff),
-    0 1px 3px rgba(0,0,0,.16) !important;
-  pointer-events: none !important;
-  z-index: 1 !important;
-}
-
-/* Позиционирование по умолчанию на табах */
-.tabbar .tab .dot,
-.tabbar .tab .acc-dot{
-  top: -3px !important;
-  right: -3px !important;
-}
-
-/* Позиционирование в меню «Аккаунт» (те же отступы, чтобы не казалось больше) */
-.menu .menu-item .dot,
-.menu .menu-item .acc-dot{
-  top: -3px !important;
-  right: -3px !important;
-}
-
-/* Тёмная тема — корректное кольцо вокруг точки */
-@media (prefers-color-scheme: dark){
-  :root{ --dot-ring: #0b1220; }
-}
-@media (prefers-color-scheme: light){
-  :root{ --dot-ring: #fff; }
-}
-/* === NOTIFY DOTS — HARD LOCK (single source of truth) =================== */
-:root{
-  --dot-size-std: 8px;         /* единый размер точки */
-  --dot-ring-std: 2px;         /* ширина «кольца» вокруг точки */
-  --dot-color-std: #ff3b30;    /* цвет точки */
-}
-
-/* якоря, чтобы точка не обрезалась и позиционировалась от нужного контейнера */
-html body .tabbar .tab,
-html body .menu .menu-item{
-  position: relative !important;
-  overflow: visible !important;
-}
-
-/* сама точка — ОДИНАКОВО для .dot и .acc-dot */
-html body :where(.dot, .acc-dot){
-  width: var(--dot-size-std) !important;
-  height: var(--dot-size-std) !important;
-  border-radius: 999px !important;
-  background: var(--dot-color-std) !important;
-
-  /* аккуратное «кольцо» и лёгкая тень */
-  box-shadow:
-    0 0 0 var(--dot-ring-std) var(--dot-ring, #fff),
-    0 1px 3px rgba(0,0,0,.16) !important;
-
-  display: block !important;
-  position: absolute !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  transform: none !important;
-  pointer-events: none !important;
-}
-
-/* единая позиция точки — «почти угол» и для табов, и для пунктов меню */
-html body .tabbar .tab :where(.dot, .acc-dot),
-html body .menu .menu-item :where(.dot, .acc-dot){
-  top: -3px !important;
-  right: -3px !important;
-  left: auto !important;
-  bottom: auto !important;
-}
-
-/* корректное «кольцо» в тёмной/светлой теме */
-@media (prefers-color-scheme: dark){
-  :root{ --dot-ring: #0b1220; }
-}
-@media (prefers-color-scheme: light){
-  :root{ --dot-ring: #fff; }
 }

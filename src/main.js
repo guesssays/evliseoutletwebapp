@@ -671,13 +671,15 @@ async function router(){
 // --- стало ---
 if (match('orders')) {
   const r = renderOrders();
-  queueMicrotask(() => {
+  queueMicrotask(async () => {
     clearUnseen(kinds.orders);
-    // на экране заказов в меню аккаунта кнопок нет — достаточно таббара
     paintAccountDot();
+    try { await notifApiMarkAll(getUID()); } catch {}
+    await syncMyNotifications(); // подтянуть уже прочитанные
   });
   return r;
 }
+
 
   if (match('account'))            {
     const res = renderAccount(); 
@@ -690,21 +692,26 @@ if (match('orders')) {
 // --- стало ---
 if (match('account/cashback')) {
   const r = renderCashback();
-  queueMicrotask(() => {
+  queueMicrotask(async () => {
     clearUnseen(kinds.cashback);
     paintAccountDot();
-    // кнопки с точками появятся при возврате в /account — там они перечитаются
+    try { await notifApiMarkAll(getUID()); } catch {}
+    await syncMyNotifications();
   });
   return r;
 }
+
 if (match('account/referrals')) {
   const r = renderReferrals();
-  queueMicrotask(() => {
+  queueMicrotask(async () => {
     clearUnseen(kinds.referrals);
     paintAccountDot();
+    try { await notifApiMarkAll(getUID()); } catch {}
+    await syncMyNotifications();
   });
   return r;
 }
+
 // В роутере, ветка 'notifications'
 if (match('notifications')){
   await renderNotifications(updateNotifBadge);
