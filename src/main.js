@@ -128,6 +128,32 @@ const kinds = {
   cashback:  'unseen_cashback',
   referrals: 'unseen_referrals',
 };
+function classifyNotif(n){
+  const icon  = String(n.icon||'').toLowerCase();
+  const title = String(n.title||'').toLowerCase();
+  const sub   = String(n.sub||'').toLowerCase();
+
+  if (
+    icon.includes('package') || icon.includes('truck') || icon.includes('refresh') ||
+    icon.includes('shield')  || icon.includes('x-circle') ||
+    title.includes('заказ')  || sub.includes('заказ')
+  ){
+    return kinds.orders;
+  }
+  if (
+    icon.includes('coin') || icon.includes('wallet') || icon.includes('gift') ||
+    icon.includes('check') ||
+    title.includes('кэшбек') || title.includes('балл') ||
+    sub.includes('кэшбек')   || sub.includes('балл')
+  ){
+    return kinds.cashback;
+  }
+  if (icon.includes('users') || title.includes('реферал') || sub.includes('реферал')){
+    return kinds.referrals;
+  }
+  return null;
+}
+
 function flagKey(){ return k('unseen_flags'); }
 function readFlags(){
   try { return JSON.parse(localStorage.getItem(flagKey())||'{}')||{}; } catch { return {}; }
@@ -269,7 +295,6 @@ async function notifApiMarkAll(uid){
   throw new Error('notif mark error');
 }
 
-/* Не «раз-прочитываем» локальные уведомления */
 function mergeNotifsToLocal(serverItems){
   const local = getNotifications();
   const byId = new Map(local.map(n => [String(n.id), n]));
@@ -290,7 +315,7 @@ function mergeNotifsToLocal(serverItems){
         sub: String(s.sub || ''),
       });
       changed = true;
-    }else{
+    } else {
       const next = { ...prev, ...s, read: nextRead, id: sid, ts: s.ts || prev.ts || Date.now() };
       if (JSON.stringify(next) !== JSON.stringify(prev)){
         byId.set(sid, next);
@@ -298,29 +323,74 @@ function mergeNotifsToLocal(serverItems){
       }
     }
   }
-  if (changed) setNotifications([...byId.values()].sort((a,b)=> (b.ts||0)-(a.ts||0)));
+
+  if (changed){
+    setNotifications(
+      [...byId.values()].sort((a,b) => (b.ts||0) - (a.ts||0))
+    );
+  }
+
+  // Поднять unseen-флаги по непрочитанным
+  try{
+    const all = [...byId.values()];
+    let seenOrders=false, seenCashback=false, seenRefs=false;
+    for (const n of all){
+      if (n.read) continue;
+      const k = classifyNotif(n);
+      if (k === kinds.orders)    seenOrders = true;
+      if (k === kinds.cashback)  seenCashback = true;
+      if (k === kinds.referrals) seenRefs = true;
+    }
+    if (seenOrders)   setUnseen(kinds.orders, true);
+    if (seenCashback) setUnseen(kinds.cashback, true);
+    if (seenRefs)     setUnseen(kinds.referrals, true);
+
+    paintAccountDot();
+    paintAccountButtonsDots();
+  } catch {}
 }
+
 
 async function serverPushFor(uid, notif){
   const safe = {
-    id: notif.id || Date.now(),
-    ts: notif.ts || Date.now(),
+    id:   notif.id || Date.now(),
+    ts:   notif.ts || Date.now(),
     read: !!notif.read,
     icon: notif.icon || 'bell',
     title: String(notif.title || ''),
-    sub: String(notif.sub || '')
+    sub:   String(notif.sub   || '')
   };
-  try{ await notifApiAdd(uid, safe); }
-  catch{
+
+  try {
+    await notifApiAdd(uid, safe);
+  } catch {
+    // оффлайн/ошибка: локальный пуш только для текущего пользователя
     if (String(uid) === String(getUID?.())){
-      const cache = getNotifications(); cache.push(safe); setNotifications(cache);
+      const cache = getNotifications();
+      cache.push(safe);
+      setNotifications(cache);
     }
   }
+
+  // Поднять соответствующий флаг для текущего пользователя
+  try{
+    const kind = classifyNotif(safe);
+    if (String(uid) === String(getUID?.()) && kind) setUnseen(kind, true);
+  } catch {}
 }
+
 async function syncMyNotifications(){
   const uid = getUID(); if (!uid) return;
-  try{ const items = await notifApiList(uid); mergeNotifsToLocal(items); updateCartBadge?.(); updateNotifBadge?.(); }catch{}
+  try{
+    const items = await notifApiList(uid);
+    mergeNotifsToLocal(items);
+    updateCartBadge?.();
+    updateNotifBadge?.();
+    paintAccountDot();
+    paintAccountButtonsDots();
+  } catch {}
 }
+
 
 /* ---- Онбординг-уведомления для новых юзеров (один раз на UID) ---- */
 async function ensureOnboardingNotifsOnce(){

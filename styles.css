@@ -313,7 +313,7 @@ img,video{ max-width:100%; height:auto; display:block; }
   background:#ff5966; color:#fff; font-size:11px; line-height:1;
   border-radius:999px; padding:3px 6px; box-shadow:0 2px 10px rgba(0,0,0,.18);
 }
-.dot{ display:none !important; }
+
 
 .tabbar .btn { height:64px; }
 
