@@ -6,10 +6,10 @@
 //   ALT_TG_BOT_TOKENS
 //   ADMIN_API_TOKEN
 //   ADMIN_CHAT_ID
-//   BOT_USERNAME               // например: EvliSeOutletBot  (без @) — обязательно для startapp
+//   BOT_USERNAME               // например: EvliSeOutletBot (без @) — обязательно для startapp
 //   ALLOWED_ORIGINS
 //
-// Примечание: для стабильного Full Screen используем deep-link tg://resolve?...&startapp
+// Примечание: для стабильного Full Screen используем ТОЛЬКО deep-link tg://resolve?...&startapp
 // Никаких web_app-кнопок и https-fallback-ов.
 //
 // Заголовки: X-Tg-Init-Data, X-Bot-Username (диагностика), X-Internal-Auth (внутр. вызовы)
@@ -166,43 +166,31 @@ function makeDisplayOrderId(orderId, shortId){
   return full.slice(-6).toUpperCase();
 }
 
-/* ---------- Единственная клавиатура: tg:// Full-Screen ---------- */
+/* ---------- Единственная клавиатура: tg:// Full-Screen (root) ---------- */
 const BOT_USERNAME = (process.env.BOT_USERNAME || '').replace(/^@/, '');
 
-// Строим ТОЛЬКО tg:// ссылку. Без https, без web_app, без fallback.
-function makeStartAppUrl(pathHash = '') {
+// Строим ТОЛЬКО tg:// ссылку БЕЗ payload: откроет корневой маршрут мини-приложения.
+function makeStartAppRootUrl() {
   if (!BOT_USERNAME) return null;
-  const clean = pathHash ? `/${String(pathHash).replace(/^#?\/?/, '')}` : '';
-  const payload = clean ? `=${encodeURIComponent(clean)}` : '';
-  // tg://resolve гарантированно открывает Mini App в full screen (по умолчанию)
-  return `tg://resolve?domain=${BOT_USERNAME}&startapp${payload}`;
+  return `tg://resolve?domain=${BOT_USERNAME}&startapp`;
 }
-
-function makeStartAppBtn(text, hash){
-  const url = makeStartAppUrl(hash);
+function makeStartAppRootBtn(text){
+  const url = makeStartAppRootUrl();
   return url ? { text, url } : null;
 }
 
 function kbForType(t){
   if (!BOT_USERNAME) return null; // Без имени бота не строим кнопку, чтобы не сломать сообщение
 
-  const target =
-    t === 'cashbackMatured'       ? 'cart' :
-    t === 'referralJoined'        ? 'account/referrals' :
-    t === 'referralOrderCashback' ? 'account/cashback' :
-    t === 'cartReminder'          ? 'cart' :
-    t === 'favReminder'           ? 'favorites' :
-                                    'orders';
-
   const mainText =
-    t === 'cashbackMatured'       ? 'Перейти к оплате' :
-    t === 'referralJoined'        ? 'Мои рефералы' :
-    t === 'referralOrderCashback' ? 'Мой кэшбек' :
-    t === 'cartReminder'          ? 'Оформить заказ' :
-    t === 'favReminder'           ? 'Открыть избранное' :
-                                    'Мои заказы';
+    t === 'cashbackMatured'       ? 'Открыть приложение' :
+    t === 'referralJoined'        ? 'Открыть приложение' :
+    t === 'referralOrderCashback' ? 'Открыть приложение' :
+    t === 'cartReminder'          ? 'Открыть приложение' :
+    t === 'favReminder'           ? 'Открыть приложение' :
+                                    'Открыть приложение';
 
-  const btn = makeStartAppBtn(mainText, target);
+  const btn = makeStartAppRootBtn(mainText);
   return btn ? [ [ btn ] ] : null;
 }
 
