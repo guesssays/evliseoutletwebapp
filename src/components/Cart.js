@@ -385,6 +385,7 @@ export async function renderCart(){
       class="input"
       inputmode="numeric"
       pattern="[0-9]*"
+      maxlength="6" 
       value="${redeemInit||''}"
       placeholder="0"
     >
@@ -483,37 +484,65 @@ export async function renderCart(){
   const discEl  = document.getElementById('sumDisc');
   const payEl   = document.getElementById('sumPay');
 
+  // Жёсткая крышка по ТЗ: не больше 150 000 и не больше динамического redeemMax
+const HARD_CAP_POINTS = MAX_REDEEM_POINTS; // 150 000
+
+function currentCap(){ 
+  // конечный лимит на ввод: минимум из 150к и рассчитанного redeemMax
+  return Math.max(0, Math.min(redeemMax, HARD_CAP_POINTS));
+}
+
+// Очищаем всё, кроме цифр, убираем лидирующие нули и жёстко режем по currentCap()
+function sanitizeAndClampInput(){
+  if (!inEl) return 0;
+  let s = String(inEl.value || '').replace(/[^\d]/g, '');
+  if (s.length > 1) s = s.replace(/^0+/, '') || '0';
+  let n = parseInt(s || '0', 10) || 0;
+  const cap = currentCap();
+  if (n > cap) n = cap;
+  inEl.value = n ? String(n) : '';
+  return n;
+}
+
   function clampRedeem(x){
     let v = Math.max(0, Number(x)||0);
     v = Math.min(v, redeemMax);
     return v|0;
   }
 
-  function validateRedeem(v){
-    if (v===0) return '';
-    if (v < redeemMin) return `Минимум для списания: ${MIN_REDEEM_POINTS.toLocaleString('ru-RU')} баллов`;
-    if (v > availablePoints) return 'Недостаточно баллов';
-    if (v > redeemMax) return 'Превышает лимит (30% от суммы, максимум 150 000)';
-    return '';
-  }
+function validateRedeem(v){
+  if (v===0) return '';
+  if (v < redeemMin) return `Минимум для списания: ${MIN_REDEEM_POINTS.toLocaleString('ru-RU')} баллов`;
+  if (v > availablePoints) return 'Недостаточно баллов';
+  if (v > redeemMax) return 'Превышает лимит (30% от суммы, максимум 150 000)';
+  return '';
+}
 
-  function recalc(){
-    const v = clampRedeem(inEl.value);
-    sessionStorage.setItem(KEY_REDEEM_DRAFT(), String(v));
-    const err = validateRedeem(v);
-    hintEl.textContent = err;
-    hintEl.style.color = err ? '#b91c1c' : 'var(--muted,#666)';
-    const disc = (err || v===0) ? 0 : v;
-    const pay  = Math.max(0, totalRaw - disc);
-    discEl.textContent = priceFmt(disc);
-    payEl.textContent  = priceFmt(pay);
-    return { disc, pay, err };
-  }
+function recalc(){
+  const v = sanitizeAndClampInput();            // <-- используем жёсткую нормализацию
+  sessionStorage.setItem(KEY_REDEEM_DRAFT(), String(v));
+  const err = validateRedeem(v);
+  hintEl.textContent = err;
+  hintEl.style.color = err ? '#b91c1c' : 'var(--muted,#666)';
+  const disc = (err || v===0) ? 0 : v;
+  const pay  = Math.max(0, totalRaw - disc);
+  discEl.textContent = priceFmt(disc);
+  payEl.textContent  = priceFmt(pay);
+  return { disc, pay, err };
+}
 
-  inEl?.addEventListener('input', recalc);
-  document.getElementById('redeemMaxBtn')?.addEventListener('click', ()=>{ inEl.value = String(redeemMax); recalc(); });
-  document.getElementById('redeemClearBtn')?.addEventListener('click', ()=>{ inEl.value=''; recalc(); });
+// События
+inEl?.addEventListener('input', recalc);
+document.getElementById('redeemMaxBtn')?.addEventListener('click', ()=>{
+  inEl.value = String(currentCap());            // <-- ставим ровно текущий лимит
   recalc();
+});
+document.getElementById('redeemClearBtn')?.addEventListener('click', ()=>{
+  inEl.value='';
+  recalc();
+});
+recalc();
+
 
   // 🔄 Обновляем баланс с сервера и пересчитываем лимиты/итоги (через лоадер для UX)
   (async () => {
@@ -526,19 +555,18 @@ export async function renderCart(){
       if (availEl) availEl.textContent = availablePoints.toLocaleString('ru-RU');
 
       // пересчёт максимума списания с учётом серверного баланса
-      redeemMax = Math.max(
-        0,
-        Math.min(Math.floor(totalRaw * MAX_DISCOUNT_SHARE), availablePoints, MAX_REDEEM_POINTS)
-      );
-      const maxEl = document.getElementById('redeemMaxVal');
-      if (maxEl) maxEl.textContent = Math.max(0, redeemMax).toLocaleString('ru-RU');
+// пересчёт максимума списания с учётом серверного баланса
+redeemMax = Math.max(
+  0,
+  Math.min(Math.floor(totalRaw * MAX_DISCOUNT_SHARE), availablePoints, MAX_REDEEM_POINTS)
+);
+const maxEl = document.getElementById('redeemMaxVal');
+if (maxEl) maxEl.textContent = Math.max(0, redeemMax).toLocaleString('ru-RU');
 
-      // если пользователь уже ввёл число больше нового лимита — подрежем и пересчитаем
-      const vNow = Number(inEl?.value || 0) | 0;
-      if (vNow > redeemMax) {
-        inEl.value = String(redeemMax || '');
-      }
-      recalc();
+// если введено больше нового лимита — подрежем и пересчитаем
+sanitizeAndClampInput();   // <-- вместо ручной проверки
+recalc();
+
     }catch{
       // молча оставляем локальные значения, если сервер не ответил
     }
