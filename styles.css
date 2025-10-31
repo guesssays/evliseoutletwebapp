@@ -1297,23 +1297,23 @@ html.route-home .product-fixhdr{
   line-height: 1.2;
 }
 
-/* === NOTIFY DOTS — SINGLE SOURCE OF TRUTH ==================== */
+/* === Notify dots = cart-badge style (final) ======================= */
 :root{
-  --dot-size: 8px;          /* единый размер точки */
-  --dot-ring: #fff;         /* кольцо в светлой теме */
+  --dot-size: 10px;         /* компактнее и внятнее */
+  --dot-color: #ff5966;     /* тот же красный, что и у бейджа */
+  --dot-ring: #ffffff;      /* белое тонкое кольцо как у бейджа */
 }
 @media (prefers-color-scheme: dark){
-  :root{ --dot-ring: #0b1220; }
+  :root{ --dot-ring: #1f1e1e; } /* в тёмной теме кольцо из цвета таббара */
 }
 
-/* якоря, чтобы точка не обрезалась */
+/* якоря не режутся */
 .tabbar .tab,
-.menu .menu-item{
-  position: relative;
-  overflow: visible;
-}
+.menu .menu-item,
+.badge-wrap,
+.notif-btn{ position: relative; overflow: visible; }
 
-/* сама точка: одинаково для .dot и .acc-dot */
+/* единый стиль точки для .dot и .acc-dot */
 :where(.dot, .acc-dot){
   position: absolute;
   top: -3px;
@@ -1321,9 +1321,23 @@ html.route-home .product-fixhdr{
   width: var(--dot-size);
   height: var(--dot-size);
   border-radius: 999px;
-  background: #ff3b30;
+  background: var(--dot-color);
   box-shadow:
-    0 0 0 2px var(--dot-ring),
-    0 1px 3px rgba(0,0,0,.16);
+    0 0 0 2px var(--dot-ring),       /* тонкое белое кольцо вокруг, как у бейджа */
+    0 2px 8px rgba(0,0,0,.18);
   pointer-events: none;
 }
+
+/* точка на табе "Аккаунт" сидит в правом верхнем углу и не смещает подпись */
+.tabbar .tab .dot{ top:-2px; right:-2px; }
+
+/* точка в пункте меню — чуть ближе к углу карточки */
+.menu .menu-item > .acc-dot{ top:-4px; right:-4px; }
+
+/* сам числовой бейдж корзины — оставить как есть, только синхронизируем цвета при желании */
+#cartBadge.badge{
+  background:#ff5966; color:#fff;
+}
+
+/* (необязательно) круглый индикатор на кнопке уведомлений */
+#openNotifications .dot{ top:-4px; right:-4px; }

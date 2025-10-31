@@ -122,7 +122,7 @@ function settleMatured(){
   if (changed){ w.pending=keep; writeWallet(w); }
 }
 
-/* -------- НОВОЕ: Unseen-флаги и «красные точки» -------- */
+/* -------- Unseen-флаги и «красные точки» -------- */
 const kinds = {
   orders:    'unseen_orders',
   cashback:  'unseen_cashback',
@@ -171,6 +171,20 @@ function setUnseen(kind, on){
 function clearUnseen(kind){ setUnseen(kind, false); }
 function anyUnseen(){ const m=readFlags(); return !!(m[kinds.orders]||m[kinds.cashback]||m[kinds.referrals]); }
 
+/* === NEW: понимание текущего «подраздела» аккаунта для корректной точки на табе === */
+function currentAccountSubKind() {
+  const h = (location.hash || '').toLowerCase();
+  if (h.includes('#/orders')) return kinds.orders;
+  if (h.includes('#/account/cashback')) return kinds.cashback;
+  if (h.includes('#/account/referrals')) return kinds.referrals;
+  return null;
+}
+function anyUnseenExcept(kindToIgnore){
+  const m = readFlags();
+  const keys = [kinds.orders, kinds.cashback, kinds.referrals];
+  return keys.some(k => k !== kindToIgnore && !!m[k]);
+}
+
 function ensureDot(el, extra=''){
   if (!el) return null;
   let d = el.querySelector(':scope > .dot'); // точка только прямым потомком
@@ -187,7 +201,6 @@ function ensureDot(el, extra=''){
   if (cs.position === 'static') el.style.position = 'relative';
   return d;
 }
-
 function removeDot(node){
   if (!node) return;
   node.querySelectorAll(':scope > .dot').forEach(n => n.remove());
@@ -196,9 +209,18 @@ function removeDot(node){
 function paintAccountDot(){
   const tab = document.querySelector('.tabbar .tab[data-tab="account"]');
   if (!tab) return;
-  if (anyUnseen()) ensureDot(tab);
+
+  // если открыт подраздел, и он — единственный «непрочитанный», точку на табе скрываем
+  const opened = currentAccountSubKind();
+  const show =
+    opened
+      ? anyUnseenExcept(opened) // показываем, только если есть ДРУГИЕ непросмотренные разделы
+      : anyUnseen();            // если не в подразделе — обычная логика
+
+  if (show) ensureDot(tab);
   else removeDot(tab);
 }
+
 function paintAccountButtonsDots(){
   const v = document.getElementById('view'); if (!v) return;
 
@@ -287,19 +309,13 @@ async function primeUnseenFromServer(){
 
   if (!hasBoot && Object.keys(current).length === 0) {
     // Мягкий онбординг: никакие флаги НЕ поднимаем насильно.
-    // Хотите приветственные точки — добавьте их один раз вручную ниже (закомментировано).
-    // setUnseen(kinds.orders,    true);
-    // setUnseen(kinds.cashback,  (Number(b?.available||0) > 0 || Number(b?.pending||0) > 0));
-    // setUnseen(kinds.referrals, false);
-
+    // (при желании можно активировать приветственные точки)
     localStorage.setItem(BOOT_KEY, '1');
   }
 
-  // 3) Перерисуем точки по текущему состоянию (ничего не поднимаем насильно)
+  // 3) Перерисуем точки по текущему состоянию
   try { paintAccountDot(); paintAccountButtonsDots(); } catch {}
 }
-
-
 
 async function notifApiList(uid){
   const url = `${NOTIF_API}?op=list&uid=${encodeURIComponent(uid)}`;
@@ -395,7 +411,6 @@ function mergeNotifsToLocal(serverItems){
   } catch {}
 }
 
-
 async function serverPushFor(uid, notif){
   const safe = {
     id:   notif.id || Date.now(),
@@ -435,7 +450,6 @@ async function syncMyNotifications(){
     paintAccountButtonsDots();
   } catch {}
 }
-
 
 /* ---- Онбординг-уведомления для новых юзеров (один раз на UID) ---- */
 async function ensureOnboardingNotifsOnce(){
@@ -561,7 +575,7 @@ function setTabbarMenu(activeKey = 'home'){
   });
 
   updateCartBadge();
-  // НОВОЕ: перерисовать точку аккаунта после перестройки таббара
+  // перерисовать точку аккаунта после перестройки таббара
   paintAccountDot();
 }
 function setTabbarCTA(arg){
@@ -668,66 +682,64 @@ async function router(){
 
   if (match('favorites'))          { return renderFavorites(); }
   if (match('cart'))               { return renderCart(); }
-// --- стало ---
-if (match('orders')) {
-  const r = renderOrders();
-  queueMicrotask(async () => {
-    clearUnseen(kinds.orders);
-    paintAccountDot();
-    try { await notifApiMarkAll(getUID()); } catch {}
-    await syncMyNotifications(); // подтянуть уже прочитанные
-  });
-  return r;
-}
 
+  if (match('orders')) {
+    const r = renderOrders();
+    // моментально скрываем «Аккаунт»-точку, если это был единственный флаг
+    paintAccountDot();
+    queueMicrotask(async () => {
+      clearUnseen(kinds.orders);
+      paintAccountDot();
+      try { await notifApiMarkAll(getUID()); } catch {}
+      await syncMyNotifications();
+    });
+    return r;
+  }
 
   if (match('account'))            {
-    const res = renderAccount(); 
+    const res = renderAccount();
     paintAccountDotsSafe();
+    paintAccountDot(); // перестраховка
     return res;
   }
-  if (match('account/addresses'))  { const r = renderAddresses(); paintAccountDotsSafe(); return r; }
-  if (match('account/settings'))   { const r = renderSettings();  paintAccountDotsSafe(); return r; }
+  if (match('account/addresses'))  { const r = renderAddresses(); paintAccountDotsSafe(); paintAccountDot(); return r; }
+  if (match('account/settings'))   { const r = renderSettings();  paintAccountDotsSafe(); paintAccountDot(); return r; }
 
-// --- стало ---
-if (match('account/cashback')) {
-  const r = renderCashback();
-  queueMicrotask(async () => {
-    clearUnseen(kinds.cashback);
-    paintAccountDot();
+  if (match('account/cashback')) {
+    const r = renderCashback();
+    paintAccountDot(); // скрыть таб-точку, если это единственный флаг
+    queueMicrotask(async () => {
+      clearUnseen(kinds.cashback);
+      paintAccountDot();
+      try { await notifApiMarkAll(getUID()); } catch {}
+      await syncMyNotifications();
+    });
+    return r;
+  }
+
+  if (match('account/referrals')) {
+    const r = renderReferrals();
+    paintAccountDot(); // скрыть таб-точку, если это единственный флаг
+    queueMicrotask(async () => {
+      clearUnseen(kinds.referrals);
+      paintAccountDot();
+      try { await notifApiMarkAll(getUID()); } catch {}
+      await syncMyNotifications();
+    });
+    return r;
+  }
+
+  // 'notifications' — не трогаем unseen-флаги разделов, только помечаем сами уведомления
+  if (match('notifications')){
+    await renderNotifications(updateNotifBadge);
     try { await notifApiMarkAll(getUID()); } catch {}
+    try { localStorage.setItem(k('notifs_unread'),'0'); } catch {}
+    try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: 0 })); } catch {}
     await syncMyNotifications();
-  });
-  return r;
-}
-
-if (match('account/referrals')) {
-  const r = renderReferrals();
-  queueMicrotask(async () => {
-    clearUnseen(kinds.referrals);
+    // таб-точку пересчитаем по актуальному состоянию
     paintAccountDot();
-    try { await notifApiMarkAll(getUID()); } catch {}
-    await syncMyNotifications();
-  });
-  return r;
-}
-
-// В роутере, ветка 'notifications'
-if (match('notifications')){
-  await renderNotifications(updateNotifBadge);
-
-  // помечаем ВСЕ уведомления как прочитанные
-  try { await notifApiMarkAll(getUID()); } catch {}
-
-  // локально обнулим счётчик и перерисуем
-  try { localStorage.setItem(k('notifs_unread'),'0'); } catch {}
-  try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: 0 })); } catch {}
-
-  // подтянем свежий список (уже без непрочитанных), чтобы mergeNotifs не поднял точки заново
-  await syncMyNotifications();
-  return;
-}
-
+    return;
+  }
 
   if (match('ref')){ return renderRefBridge(); }
 
@@ -787,8 +799,7 @@ async function init(){
   }catch{ state.products = []; state.categories = []; }
 
   try{ state.orders = await getOrders(); }catch{ state.orders = []; }
-await primeUnseenFromServer();
-
+  await primeUnseenFromServer();
 
   pruneCartAgainstProducts(state.products);
   updateCartBadge();
@@ -817,7 +828,7 @@ await primeUnseenFromServer();
   // После старта — попробовать привязать приглашение
   await tryBindPendingInviter();
 
-  window.addEventListener('hashchange', ()=>{ router(); });
+  window.addEventListener('hashchange', ()=>{ router(); paintAccountDot(); });
 
   window.addEventListener('orders:updated', ()=>{
     const inAdmin = document.body.classList.contains('admin-mode');
@@ -826,13 +837,13 @@ await primeUnseenFromServer();
     else { router(); }
   });
 
-  window.addEventListener('force:rerender', router);
+  window.addEventListener('force:rerender', ()=>{ router(); paintAccountDot(); });
 
   window.addEventListener('auth:updated', ()=>{
     if (document.body.classList.contains('admin-mode') && !canAccessAdmin()){
       setAdminMode(false); location.hash = '#/admin-login';
     }
-    router(); tryBindPendingInviter();
+    router(); tryBindPendingInviter(); paintAccountDot();
   });
 
   function buildOrderShortTitle(order) {
@@ -858,7 +869,7 @@ await primeUnseenFromServer();
         read:false
       };
       pushNotification(notif); updateNotifBadge?.();
-      setUnseen(kinds.orders, true); // НОВОЕ: точка «Заказы»
+      setUnseen(kinds.orders, true);
       await serverPushFor(getUID(), notif);
       window.dispatchEvent(new CustomEvent('orders:updated'));
     }catch{}
@@ -902,9 +913,9 @@ await primeUnseenFromServer();
   window.addEventListener('loyalty:accrue',     ()=> setUnseen(kinds.cashback, true));
   window.addEventListener('loyalty:confirmed',  ()=> setUnseen(kinds.cashback, true));
   window.addEventListener('referrals:joined',   ()=> setUnseen(kinds.referrals, true));
-window.addEventListener('unseen:update', () => {
-  try { paintAccountDot(); paintAccountDotsSafe(); } catch {}
-});
+  window.addEventListener('unseen:update', () => {
+    try { paintAccountDot(); paintAccountDotsSafe(); } catch {}
+  });
 
   window.lucide && lucide.createIcons?.();
 
@@ -925,7 +936,7 @@ window.addEventListener('unseen:update', () => {
   // лёгкий поллер заказов
   setInterval(async ()=>{ try { await getOrders(); } catch {} }, 45000);
 
-  // первичная отрисовка «красной точки» в таббаре и в аккаунте, вдруг уже есть flags
+  // первичная отрисовка «красной точки»
   paintAccountDot(); paintAccountDotsSafe();
 }
 init();
