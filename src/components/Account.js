@@ -7,6 +7,7 @@ import { notifyCashbackMatured } from '../core/botNotify.js'; // ✅ бот-ув
 const OP_CHAT_URL = 'https://t.me/evliseorder';
 const DEFAULT_AVATAR = 'assets/user-default.png'; // ← путь к дефолтной аватарке
 const AVATAR_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+const DEBUG_AVATAR = false; // поставь true для диагностики в консоли
 
 /* ===== Локальные ключи и работа с кошельком/рефералами ===== */
 function k(base){ try{ const uid=getUID?.()||'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
@@ -89,14 +90,14 @@ function getTgInitDataRaw(){
   } catch { return ''; }
 }
 function getTelegramUserId(u){
-  return String(
-    u?.id ??
-    u?.tg_id ??
-    u?.tgId ??
-    u?.chatId ??
-    u?.uid ??
-    ''
-  ).trim();
+  // 1) из state.user
+  let id = u?.id ?? u?.tg_id ?? u?.tgId ?? u?.chatId ?? u?.uid;
+  // 2) фолбэк: из initDataUnsafe.user.id
+  if (!id) {
+    try { id = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id; } catch {}
+  }
+  id = String(id || '').trim();
+  return /^\d+$/.test(id) ? id : '';
 }
 function getTelegramPhotoUrlFallback(){
   try{
@@ -138,8 +139,11 @@ async function fetchTgAvatarUrl(uid){
   if (bot) headers['X-Bot-Username'] = bot;
 
   const r = await fetch(url, { method:'GET', headers });
-  const j = await r.json().catch(()=> ({}));
-  if (!r.ok || j?.ok === false) throw new Error('avatar fetch failed');
+  let j = {};
+  try { j = await r.json(); } catch {}
+  if (!r.ok || j?.ok === false) {
+    throw new Error(`avatar fetch failed: ${r.status} ${r.statusText} ${(j && j.error)||''}`);
+  }
   // сервер может вернуть {url} или {dataUrl}
   return String(j?.url || j?.dataUrl || '');
 }
@@ -180,6 +184,14 @@ async function loadTgAvatar(){
   const img = document.getElementById('tgAvatar');
   if (!img) return;
 
+  if (DEBUG_AVATAR) {
+    try {
+      console.log('[avatar] state.user=', state?.user);
+      console.log('[avatar] initDataUnsafe.user=', window?.Telegram?.WebApp?.initDataUnsafe?.user);
+      console.log('[avatar] resolved uid=', uid);
+    } catch {}
+  }
+
   // Безопасный обработчик ошибок (один раз)
   ensureImgErrorGuard(img, box);
 
@@ -212,6 +224,7 @@ async function loadTgAvatar(){
   // 2) Фоновая актуализация через serverless-функцию
   try{
     const fresh = await fetchTgAvatarUrl(uid);
+    if (DEBUG_AVATAR) console.log('[avatar] server fresh url =', fresh);
     if (fresh) {
       if (fresh !== cached.url) cacheAvatar(uid, fresh);
       setImgSrcWithBust(img, fresh, Date.now());
@@ -222,7 +235,8 @@ async function loadTgAvatar(){
       img.src = DEFAULT_AVATAR;
       box?.classList.add('has-img');
     }
-  }catch{
+  }catch(e){
+    if (DEBUG_AVATAR) console.warn('[avatar] fetchTgAvatarUrl error:', e);
     // Ошибки сети/валидации — оставляем уже показанное (кэш/фолбэк/дефолт)
   }
 }
@@ -313,7 +327,7 @@ export function renderAccount(){
           background: linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ea580c 100%);
           box-shadow: 0 1px 0 rgba(0,0,0,.06), inset 0 0 0 1px rgba(255,255,255,.15);
         }
-        @media (hover:hover)){
+        @media (hover:hover){
           .points-actions .primary:hover{ filter:brightness(.98); }
           .points-actions .pill:not(.primary):hover{ filter:brightness(.98); }
         }
