@@ -1,20 +1,16 @@
 // src/components/Account.js
-import { state, persistAddresses } from '../core/state.js';
+import { state, persistAddresses, getUID } from '../core/state.js';
 import { canAccessAdmin } from '../core/auth.js';
-import { getUID } from '../core/state.js';
-import { makeReferralLink } from '../core/loyalty.js';
+import { makeReferralLink, fetchMyLoyalty, getLocalLoyalty } from '../core/loyalty.js';
 import { notifyCashbackMatured } from '../core/botNotify.js'; // ✅ бот-уведомление о дозревшем кэшбеке
 
-// 🔄 новее: показываем серверный баланс лояльности
-import { fetchMyLoyalty, getLocalLoyalty } from '../core/loyalty.js';
-
 const OP_CHAT_URL = 'https://t.me/evliseorder';
-const DEFAULT_AVATAR = 'assets/user-default.png';
+const DEFAULT_AVATAR = 'assets/user-default.png'; // ← путь к дефолтной аватарке
 
 /* ===== Локальные ключи и работа с кошельком/рефералами ===== */
 function k(base){ try{ const uid=getUID?.()||'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
 
-/* — кошелёк (оставлен для совместимости, UI берёт серверный баланс) — */
+/* — кошелёк баллов (локальные функции оставлены как вспомогательные, но не используются для отображения) — */
 const POINTS_MATURITY_MS  = 24*60*60*1000;
 function readWallet(){
   try{
@@ -27,6 +23,10 @@ function readWallet(){
   }catch{ return { available:0, pending:[], history:[] }; }
 }
 function writeWallet(w){ localStorage.setItem(k('points_wallet'), JSON.stringify(w||{available:0,pending:[],history:[]})); }
+
+/** Перенос дозревших баллов + уведомления (in-app + бот)
+ *  ⚠️ Не используется в UI — баланс берём с сервера, оставлено для совместимости
+ */
 function settleMatured(){
   const w = readWallet();
   const now = Date.now();
@@ -45,6 +45,7 @@ function settleMatured(){
   if (changed){
     w.pending = keep;
     writeWallet(w);
+    // In-app уведомление
     try{
       const uid = getUID?.() || 'guest';
       postAppNotif(uid, {
@@ -53,6 +54,7 @@ function settleMatured(){
         sub: `+${maturedSum.toLocaleString('ru-RU')} баллов — можно использовать при оформлении заказа.`,
       });
     }catch{}
+    // Бот-уведомление
     try{
       notifyCashbackMatured(getUID?.(), { text: `✅ Кэшбек доступен: +${maturedSum.toLocaleString('ru-RU')} баллов. Используйте их при оплате.` });
     }catch{}
@@ -62,12 +64,13 @@ function settleMatured(){
 
 /* — реф-профиль — */
 function readRefProfile(){ try{ return JSON.parse(localStorage.getItem(k('ref_profile')) || '{}'); }catch{ return {}; } }
-function writeRefProfile(v){ localStorage.setItem(k('ref_profile'), JSON.stringify(v||{})); }
 
-/* — реф-ссылка — */
-function getReferralLink(){ return makeReferralLink(); }
+/* — реф-ссылка (t.me deeplink) — */
+function getReferralLink(){
+  return makeReferralLink();
+}
 
-/* — список моих рефералов — */
+/* — список моих рефералов/статистика (локальный кеш) — */
 function readMyReferrals(){
   try{
     const raw = localStorage.getItem(k('my_referrals')) || '[]';
@@ -75,9 +78,8 @@ function readMyReferrals(){
     return Array.isArray(arr) ? arr : [];
   }catch{ return []; }
 }
-function writeMyReferrals(arr){ localStorage.setItem(k('my_referrals'), JSON.stringify(Array.isArray(arr)?arr:[])); }
 
-/* ===== ЗАГРУЗКА АВАТАРКИ (как у тебя, без изменений) ===== */
+/* ===== загрузка аватарки из Telegram через серверную функцию ===== */
 async function fetchTgAvatarUrl(uid){
   const url = `/.netlify/functions/user-avatar?uid=${encodeURIComponent(uid)}`;
   const r = await fetch(url, { method:'GET' });
@@ -87,18 +89,33 @@ async function fetchTgAvatarUrl(uid){
 }
 function cacheAvatar(url){ try{ localStorage.setItem(k('tg_avatar_url'), url || ''); }catch{} }
 function readCachedAvatar(){ try{ return localStorage.getItem(k('tg_avatar_url')) || ''; }catch{ return ''; } }
+
+/** Достаём Telegram user id из state.user (поддержка разных полей) */
 function getTelegramUserId(u){
-  return String(u?.id ?? u?.tg_id ?? u?.tgId ?? u?.chatId ?? u?.uid ?? '').trim();
+  return String(
+    u?.id ??
+    u?.tg_id ??
+    u?.tgId ??
+    u?.chatId ??
+    u?.uid ??
+    ''
+  ).trim();
 }
+
 async function loadTgAvatar(){
   const u = state?.user || null;
   const uid = getTelegramUserId(u);
   const box = document.getElementById('avatarBox');
   const img = document.getElementById('tgAvatar');
+
   if (!img) return;
 
-  if (!img.getAttribute('src')) img.src = DEFAULT_AVATAR;
+  // Предустановим дефолт на всякий случай
+  if (!img.getAttribute('src')) {
+    img.src = DEFAULT_AVATAR;
+  }
 
+  // Безопасный обработчик ошибки: всегда подставляем дефолт и не зацикливаемся
   if (!img._evliseErrorBound) {
     img._evliseErrorBound = true;
     img.addEventListener('error', () => {
@@ -109,12 +126,14 @@ async function loadTgAvatar(){
     });
   }
 
+  // Если нет tg-id — остаёмся на дефолте
   if (!uid) {
     img.src = DEFAULT_AVATAR;
     box?.classList.add('has-img');
     return;
   }
 
+  // 1) отрисуем кеш немедленно (если есть), иначе — дефолт
   const cached = readCachedAvatar();
   if (cached) {
     img.src = cached;
@@ -124,105 +143,27 @@ async function loadTgAvatar(){
     box?.classList.add('has-img');
   }
 
+  // 2) подтянем актуальный url у функции (если другой — обновим)
   try{
     const fresh = await fetchTgAvatarUrl(uid);
     if (fresh){
-      if (fresh !== cached) cacheAvatar(fresh);
+      if (fresh !== cached){
+        cacheAvatar(fresh);
+      }
       img.src = fresh;
       box?.classList.add('has-img');
     }else{
+      // нет фото в TG — оставляем дефолт
       cacheAvatar('');
       img.src = DEFAULT_AVATAR;
       box?.classList.add('has-img');
     }
   }catch{
+    // сетевые/серверные ошибки — оставляем дефолт
     img.src = DEFAULT_AVATAR;
     box?.classList.add('has-img');
   }
 }
-
-/* =======================================================================
-   БЛОК ИНДИКАТОРОВ (unseen dots): ТОЛЬКО добавлено
-   ======================================================================= */
-const kinds = {
-  orders:    'unseen_orders',
-  cashback:  'unseen_cashback',
-  referrals: 'unseen_referrals',
-};
-function seenKey(){ return k('unseen_last_seen'); }
-function readSeen(){ try { return JSON.parse(localStorage.getItem(seenKey())||'{}')||{}; } catch { return {}; } }
-function writeSeen(map){ try{ localStorage.setItem(seenKey(), JSON.stringify(map||{})); }catch{} }
-function setLastSeen(kind, ts = Date.now()){ const m = readSeen(); m[kind] = Math.max(Number(m[kind]||0), Number(ts||0)); writeSeen(m); }
-function getLastSeen(kind){ const m = readSeen(); return Number(m[kind]||0); }
-
-function flagKey(){ return k('unseen_flags'); }
-function readFlags(){ try { return JSON.parse(localStorage.getItem(flagKey())||'{}')||{}; } catch { return {}; } }
-function writeFlags(map){ try{ localStorage.setItem(flagKey(), JSON.stringify(map||{})); }catch{} }
-function getUnseen(kind){ return !!readFlags()[kind]; }
-function setUnseen(kind, on){
-  const map = readFlags();
-  if (on){ map[kind]=true; } else { delete map[kind]; }
-  writeFlags(map);
-  try{ window.dispatchEvent(new CustomEvent('unseen:update', { detail: map })); }catch{}
-  paintAccountDot();
-  paintAccountButtonsDots();
-}
-function clearUnseen(kind){ setUnseen(kind, false); }
-function anyUnseen(){ const m=readFlags(); return !!(m[kinds.orders]||m[kinds.cashback]||m[kinds.referrals]); }
-
-function currentAccountSubKind() {
-  const h = (location.hash || '').toLowerCase();
-  if (h.includes('#/orders')) return kinds.orders;
-  if (h.includes('#/account/cashback')) return kinds.cashback;
-  if (h.includes('#/account/referrals')) return kinds.referrals;
-  return null;
-}
-function anyUnseenExcept(kindToIgnore){
-  const m = readFlags();
-  const keys = [kinds.orders, kinds.cashback, kinds.referrals];
-  return keys.some(k => k !== kindToIgnore && !!m[k]);
-}
-function ensureDot(el, extra=''){
-  if (!el) return null;
-  let d = el.querySelector(':scope > .dot');
-  if (!d) {
-    d = document.createElement('b');
-    d.className = 'dot';
-    el.appendChild(d);
-  }
-  if (extra) String(extra).split(/\s+/).forEach(c => d.classList.add(c));
-  const cs = getComputedStyle(el);
-  if (cs.position === 'static') el.style.position = 'relative';
-  return d;
-}
-function removeDot(node){ if (!node) return; node.querySelectorAll(':scope > .dot').forEach(n => n.remove()); }
-function paintAccountDot(){
-  const tab = document.querySelector('.tabbar .tab[data-tab="account"]');
-  if (!tab) return;
-  const opened = currentAccountSubKind();
-  const showNow = opened ? anyUnseenExcept(opened) : anyUnseen();
-  if (showNow) ensureDot(tab);
-  else removeDot(tab);
-}
-function paintAccountButtonsDots(){
-  const v = document.getElementById('view'); if (!v) return;
-  const groups = [
-    { sel: '.menu .menu-item[href="#/orders"]',           kind: kinds.orders    },
-    { sel: '.menu .menu-item[href="#/account/cashback"]', kind: kinds.cashback  },
-    { sel: '.menu .menu-item[href="#/account/referrals"]',kind: kinds.referrals },
-  ];
-  for (const { sel, kind } of groups){
-    const node = v.querySelector(sel);
-    if (!node) continue;
-    removeDot(node);
-    if (getUnseen(kind)) ensureDot(node, 'acc-dot');
-  }
-}
-window.addEventListener('unseen:update', () => {
-  try { paintAccountDot(); paintAccountButtonsDots(); } catch {}
-});
-
-/* =============================== RENDER ================================= */
 
 export function renderAccount(){
   try{
@@ -231,41 +172,94 @@ export function renderAccount(){
     if (fix){ fix.classList.remove('show'); fix.setAttribute('aria-hidden','true'); }
   }catch{}
 
+  // ✅ фикс активной вкладки в таббаре
   window.setTabbarMenu?.('account');
 
   const v=document.getElementById('view');
   const u = state.user;
   const isAdmin = canAccessAdmin();
 
+  // ⚠️ раньше тут был settleMatured(); теперь показываем серверный баланс
   const ref = readRefProfile();
-  const hasBoost = !!ref.firstOrderBoost && !ref.firstOrderDone;
+  const hasBoost = !!ref.firstOrderBoost && !ref.firstOrderDone; // <-- флаг
 
+  // ⛔ УБРАН заголовок «Личный кабинет»
   v.innerHTML = `
     <section class="section" style="padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));">
+
       <style>
-        .account-card{ display:flex; gap:12px; align-items:center; padding:12px; border:1px solid var(--border,rgba(0,0,0,.1)); border-radius:12px; background:var(--card,rgba(0,0,0,.03)); }
-        .avatar{ width:56px; height:56px; border-radius:50%; display:grid; place-items:center; overflow:hidden; user-select:none; background:#111827; }
+        .account-card{
+          display:flex; gap:12px; align-items:center;
+          padding:12px; border:1px solid var(--border,rgba(0,0,0,.1));
+          border-radius:12px; background:var(--card,rgba(0,0,0,.03));
+        }
+        .avatar{
+          width:56px; height:56px; border-radius:50%;
+          display:grid; place-items:center;
+          overflow:hidden; user-select:none;
+          background:#111827;
+        }
         .avatar img{ display:block; width:100%; height:100%; object-fit:cover; }
         .avatar.has-img{ background:transparent; }
         .info .name{ font-weight:800; font-size:16px; }
         .muted{ color:var(--muted,#6b7280); }
         .muted.mini{ font-size:.9rem; }
-        .points-card{ position:relative; overflow:hidden; margin:12px 0 8px; padding:14px; border-radius:14px; background: var(--card, rgba(0,0,0,.03)); border:1px solid rgba(0,0,0,.08); }
-        .points-top{ display:flex; align-items:center; gap:8px; }
-        .points-title{ display:flex; align-items:center; gap:6px; font-weight:700; letter-spacing:.2px; font-size: clamp(13px, 3.5vw, 16px); color:#0f172a; }
+
+        /* ======= Баллы (обновлённый стиль, БЕЗ градиента) ======= */
+        .points-card{
+          position:relative; overflow:hidden;
+          margin:12px 0 8px; padding:14px;
+          border-radius:14px;
+          background: var(--card, rgba(0,0,0,.03)); /* без градиента */
+          border:1px solid rgba(0,0,0,.08);
+        }
+
+        .points-top{ display:flex; align-items:center; justify-content:flex-start; gap:8px; white-space:nowrap; min-width:0; }
+        .points-title{
+          display:flex; align-items:center; gap:6px;
+          font-weight:700; letter-spacing:.2px;
+          font-size: clamp(13px, 3.5vw, 16px);
+          color:#0f172a; white-space:nowrap;
+        }
         .points-title i{ width:18px; height:18px; flex:0 0 auto; }
+
         .points-row{ margin-top:10px; display:grid; grid-template-columns: 1fr; gap:8px; }
-        .points-chip{ display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid rgba(0,0,0,.06); background:#fff; }
+        .points-chip{
+          display:flex; align-items:center; gap:8px;
+          padding:8px 10px; border-radius:10px; border:1px solid rgba(0,0,0,.06);
+          background:#fff;
+        }
         .points-chip i{ width:18px; height:18px; flex:0 0 auto; }
-        .points-chip .label{ font-size:12px; color:var(--muted,#6b7280); }
-        .points-chip .val{ margin-left:auto; font-weight:800; }
-        .points-actions{ margin-top:10px; display:flex; gap:8px; }
-        .points-actions .pill{ height:36px; padding:0 10px; display:inline-flex; align-items:center; gap:8px; border-radius:10px; border:1px solid var(--border,rgba(0,0,0,.08)); background:#fff; font-weight:600; flex:1 1 0; font-size: clamp(12px, 3.3vw, 14px); }
+        .points-chip .label{ font-size:12px; color:var(--muted,#6b7280); white-space:nowrap; }
+        .points-chip .val{ margin-left:auto; font-weight:800; white-space:nowrap; }
+
+        .points-actions{ margin-top:10px; display:flex; gap:8px; align-items:stretch; flex-wrap:nowrap; min-width:0; }
+        .points-actions .pill{
+          height:36px; padding:0 10px;
+          display:inline-flex; align-items:center; justify-content:center; gap:8px;
+          border-radius:10px; border:1px solid var(--border,rgba(0,0,0,.08)); background:#fff;
+          font-weight:600; line-height:1;
+          flex:1 1 0; min-width:0;
+          font-size: clamp(12px, 3.3vw, 14px);
+          white-space:nowrap;
+        }
         .points-actions .pill i{ width:18px; height:18px; flex:0 0 auto; }
-        .points-actions .primary{ color:#fff; border-color:transparent; background: linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ea580c 100%); box-shadow: 0 1px 0 rgba(0,0,0,.06), inset 0 0 0 1px rgba(255,255,255,.15); }
-        @media (hover:hover){ .points-actions .primary:hover{ filter:brightness(.98); } .points-actions .pill:not(.primary):hover{ filter:brightness(.98); } }
+
+        .points-actions .primary{
+          color:#fff; border-color:transparent;
+          background: linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ea580c 100%);
+          box-shadow: 0 1px 0 rgba(0,0,0,.06), inset 0 0 0 1px rgba(255,255,255,.15);
+        }
+        @media (hover:hover){
+          .points-actions .primary:hover{ filter:brightness(.98); }
+          .points-actions .pill:not(.primary):hover{ filter:brightness(.98); }
+        }
         @media (min-width: 420px){ .points-row{ grid-template-columns: 1fr 1fr; } }
-        @media (max-width: 360px){ .points-actions{ gap:6px; } .points-actions .pill{ height:34px; padding:0 8px; font-size:12px; } .points-title i{ width:16px; height:16px; } }
+        @media (max-width: 360px){
+          .points-actions{ gap:6px; }
+          .points-actions .pill{ height:34px; padding:0 8px; font-size:12px; }
+          .points-title i{ width:16px; height:16px; }
+        }
       </style>
 
       <div class="account-card">
@@ -278,6 +272,7 @@ export function renderAccount(){
         </div>
       </div>
 
+      <!-- Блок баллов -->
       <div class="points-card" role="region" aria-label="Баллы и кэшбек">
         <div class="points-top">
           <div class="points-title"><i data-lucide="coins"></i><span>Ваши баллы</span></div>
@@ -289,7 +284,7 @@ export function renderAccount(){
             <div class="label">Готово к оплате</div>
             <div class="val" id="ptsAvail">${(0).toLocaleString('ru-RU')}</div>
           </div>
-          <div class="points-chip" title="Ожидает подтверждения">
+          <div class="points-chip" title="Баллы появятся на балансе после подтверждения (обычно 24 часа или вручную при «выдан»)">
             <i data-lucide="hourglass"></i>
             <div class="label">Ожидает начисления</div>
             <div class="val" id="ptsPend">${(0).toLocaleString('ru-RU')}</div>
@@ -327,8 +322,9 @@ export function renderAccount(){
         </button>
       </div>
     </section>`;
-  window.lucide?.createIcons && lucide.createIcons();
+  try { window.lucide?.createIcons?.(); } catch {}
 
+  // Загрузка серверного баланса и обновление чисел
   (async () => {
     try{
       await fetchMyLoyalty();
@@ -340,12 +336,16 @@ export function renderAccount(){
     }catch{}
   })();
 
-  document.getElementById('supportBtn')?.addEventListener('click', ()=>{ openExternal(OP_CHAT_URL); });
+  document.getElementById('supportBtn')?.addEventListener('click', ()=>{
+    openExternal(OP_CHAT_URL);
+  });
 
+  // подгружаем аватар (и обновляем при возврате на вкладку)
   loadTgAvatar();
   document.addEventListener('visibilitychange', ()=>{
     if (!document.hidden) {
       loadTgAvatar();
+      // и баланс обновим при возврате
       (async ()=> {
         try{
           await fetchMyLoyalty();
@@ -356,18 +356,13 @@ export function renderAccount(){
           if (p) p.textContent = (Number(b.pending||0)).toLocaleString('ru-RU');
         }catch{}
       })();
-      paintAccountDot();
-      paintAccountButtonsDots();
     }
   });
 
+  // на случай мгновенного перехода по ссылкам из аккаунта — ещё раз фиксируем вкладку
   document.querySelectorAll('.menu a').forEach(a=>{
     a.addEventListener('click', ()=> window.setTabbarMenu?.('account'));
   });
-
-  // первичная отрисовка индикаторов
-  paintAccountDot();
-  paintAccountButtonsDots();
 }
 
 /* ====== МОЙ КЭШБЕК ====== */
@@ -375,6 +370,7 @@ export function renderCashback(){
   window.setTabbarMenu?.('account');
   const v=document.getElementById('view');
 
+  // Рендерим каркас
   v.innerHTML = `
     <section class="section">
       <div class="section-title" style="display:flex;align-items:center;gap:10px">
@@ -404,15 +400,18 @@ export function renderCashback(){
       </div>
     </section>
   `;
-  window.lucide?.createIcons && lucide.createIcons();
+  try { window.lucide?.createIcons?.(); } catch {}
   document.getElementById('backAcc')?.addEventListener('click', ()=> history.back());
 
+  // Подтягиваем серверный баланс и историю
   (async ()=>{
-    try{ await fetchMyLoyalty(); }catch{}
+    try{
+      await fetchMyLoyalty();
+    }catch{}
     const b = getLocalLoyalty();
     const avail = Number(b.available||0);
     const pend  = Number(b.pending||0);
-    const hist  = Array.isArray(b.history) ? b.history.slice().reverse() : [];
+    const hist  = Array.isArray(b.history) ? b.history.slice().reverse() : []; // addHist пушит в конец
 
     const availEl = document.getElementById('cbAvail');
     const pendEl  = document.getElementById('cbPend');
@@ -441,13 +440,6 @@ export function renderCashback(){
       }
     }
   })();
-
-  // помечаем как просмотренный и снимаем точку
-  const now = Date.now();
-  setLastSeen(kinds.cashback, now);
-  clearUnseen(kinds.cashback);
-  paintAccountDot();
-  paintAccountButtonsDots();
 }
 
 /* ====== МОИ РЕФЕРАЛЫ ====== */
@@ -468,21 +460,56 @@ export function renderReferrals(){
       </div>
 
       <style>
-        .ref-card{ padding:12px; border:1px solid var(--border,rgba(0,0,0,.12)); border-radius:12px; background:var(--card,rgba(0,0,0,.03)); display:grid; gap:10px; }
-        .ref-grid{ display:grid; grid-template-columns: minmax(0,1fr) auto; gap:10px; }
-        .ref-linkbox{ min-height:42px; padding:10px 12px; border:1px solid var(--border,rgba(0,0,0,.12)); border-radius:10px; background:#fff; overflow-x:auto; white-space:nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:.92rem; line-height:1.2; user-select:all; }
-        .ref-actions .pill{ height:42px; display:inline-flex; align-items:center; gap:8px; white-space:nowrap; }
+        /* ——— Реф-карточка ——— */
+        .ref-card{
+          padding:12px;
+          border:1px solid var(--border,rgba(0,0,0,.12));
+          border-radius:12px;
+          background:var(--card,rgba(0,0,0,.03));
+          display:grid; gap:10px;
+        }
+        .ref-grid{
+          display:grid;
+          grid-template-columns: minmax(0,1fr) auto;
+          align-items: stretch;
+          gap:10px;
+        }
+        .ref-linkbox{
+          min-height:42px;
+          padding:10px 12px;
+          border:1px solid var(--border,rgba(0,0,0,.12));
+          border-radius:10px;
+          background:var(--bg,#fff);
+          overflow-x:auto;
+          overflow-y:hidden;
+          white-space:nowrap;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+          font-size:.92rem;
+          line-height:1.2;
+          user-select:all;
+        }
+        .ref-actions .pill{
+          height:42px;
+          display:inline-flex; align-items:center; gap:8px;
+          white-space:nowrap;
+        }
         .ref-hint{ color:var(--muted,#6b7280); font-size:.9rem; }
-        @media (max-width: 460px){ .ref-grid{ grid-template-columns: 1fr; } .ref-actions .pill{ width:100%; justify-content:center; } }
+        @media (max-width: 460px){
+          .ref-grid{ grid-template-columns: 1fr; }
+          .ref-actions .pill{ width:100%; justify-content:center; }
+        }
       </style>
 
       <div class="ref-card">
         <div class="muted mini">Ваша реф-ссылка</div>
+
         <div class="ref-grid">
           <div id="refLinkBox" class="ref-linkbox">${escapeHtml(link)}</div>
           <div class="ref-actions"><button id="copyRef" class="pill"><i data-lucide="copy"></i><span>Скопировать</span></button></div>
         </div>
+
         <div id="copyHint" class="ref-hint" style="display:none">Скопировано!</div>
+
         <div class="muted mini">Первый заказ по этой ссылке даёт рефералу x2 кэшбек, а вам — 5% с каждого его заказа. Лимит — не более 10 новых рефералов в месяц.</div>
         <div class="muted mini">В этом месяце новых рефералов: <b>${monthCount}</b> / 10</div>
       </div>
@@ -502,47 +529,50 @@ export function renderReferrals(){
       </div>
     </section>
   `;
-  window.lucide?.createIcons && lucide.createIcons();
+  try { window.lucide?.createIcons?.(); } catch {}
+
   document.getElementById('backAcc')?.addEventListener('click', ()=> history.back());
 
+  // copy button logic
   const btn = document.getElementById('copyRef');
   const hint = document.getElementById('copyHint');
   btn?.addEventListener('click', async ()=>{
     const text = String(link);
     let ok = false;
-    try{ await navigator.clipboard.writeText(text); ok = true; }
-    catch{
+    try{
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    }catch{
       try{
         const ta = document.createElement('textarea');
-        ta.value = text; ta.style.position='fixed'; ta.style.left='-9999px';
-        document.body.appendChild(ta); ta.select(); document.execCommand('copy');
-        document.body.removeChild(ta); ok = true;
+        ta.value = text;
+        ta.style.position='fixed'; ta.style.left='-9999px';
+        document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+        ok = true;
       }catch{}
     }
+
     if (ok){
+      // краткий фидбек
       const icon = btn.querySelector('i[data-lucide]');
       const label = btn.querySelector('span');
       const prev = { label: label?.textContent || 'Скопировать', icon: icon?.getAttribute('data-lucide') || 'copy' };
       if (label) label.textContent = 'Скопировано!';
-      if (icon){ icon.setAttribute('data-lucide','check'); window.lucide?.createIcons && lucide.createIcons(); }
+      if (icon){ icon.setAttribute('data-lucide','check'); try { window.lucide?.createIcons?.(); } catch {} }
       if (hint){ hint.style.display = 'block'; }
       setTimeout(()=>{
         if (label) label.textContent = prev.label;
-        if (icon){ icon.setAttribute('data-lucide', prev.icon); window.lucide?.createIcons && lucide.createIcons(); }
+        if (icon){ icon.setAttribute('data-lucide', prev.icon); try { window.lucide?.createIcons?.(); } catch {} }
         if (hint){ hint.style.display = 'none'; }
       }, 1500);
     }
   });
-
-  // помечаем раздел как просмотренный и снимаем точку
-  const now = Date.now();
-  setLastSeen(kinds.referrals, now);
-  clearUnseen(kinds.referrals);
-  paintAccountDot();
-  paintAccountButtonsDots();
 }
 
 export function renderAddresses(){
+  // ✅ фикс активной вкладки в таббаре
   window.setTabbarMenu?.('account');
 
   const v=document.getElementById('view');
@@ -557,15 +587,49 @@ export function renderAddresses(){
       </div>
 
       <style>
-        .addr-list .addr{ display:grid; grid-template-columns: auto 1fr auto; align-items:center; column-gap:10px; padding:10px 12px; border:1px solid var(--border, rgba(0,0,0,.08)); border-radius:10px; margin-bottom:8px; background: var(--card, rgba(0,0,0,.03)); }
-        .addr-list .addr input[type="radio"]{ margin:0 4px 0 0; align-self:center; }
-        .addr-list .addr-body{ min-width:0; }
-        .addr-list .addr-title{ font-weight:700; line-height:1.2; }
-        .addr-list .addr-sub{ color: var(--muted, #777); font-size:.92rem; line-height:1.3; word-break:break-word; }
-        .addr-list .addr-ops{ display:flex; flex-direction:column; gap:6px; align-items:flex-end; justify-content:center; }
-        .addr-list .addr-ops .icon-btn{ display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; border:1px solid var(--border, rgba(0,0,0,.08)); background:#fff; }
-        .addr-list .addr-ops .icon-btn.danger{ border-color: rgba(220, 53, 69, .35); background: rgba(220, 53, 69, .06); }
-        @media (hover:hover){ .addr-list .addr-ops .icon-btn:hover{ filter: brightness(0.98); } }
+        .addr-list .addr{
+          display:grid;
+          grid-template-columns: auto 1fr auto;
+          align-items: center;
+          column-gap: 10px;
+          padding: 10px 12px;
+          border: 1px solid var(--border, rgba(0,0,0,.08));
+          border-radius: 10px;
+          margin-bottom: 8px;
+          background: var(--card, rgba(0,0,0,.03));
+        }
+        .addr-list .addr input[type="radio"]{
+          margin: 0 4px 0 0;
+          align-self: center;
+        }
+        .addr-list .addr-body{ min-width: 0; }
+        .addr-list .addr-title{ font-weight: 700; line-height: 1.2; }
+        .addr-list .addr-sub{
+          color: var(--muted, #777);
+          font-size: .92rem;
+          line-height: 1.3;
+          word-break: break-word;
+        }
+        .addr-list .addr-ops{
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          align-items: flex-end;
+          justify-content: center;
+        }
+        .addr-list .addr-ops .icon-btn{
+          display:inline-flex; align-items:center; justify-content:center;
+          width:32px; height:32px; border-radius:8px;
+          border:1px solid var(--border, rgba(0,0,0,.08));
+          background: var(--btn, #fff);
+        }
+        .addr-list .addr-ops .icon-btn.danger{
+          border-color: rgba(220, 53, 69, .35);
+          background: rgba(220, 53, 69, .06);
+        }
+        @media (hover:hover){
+          .addr-list .addr-ops .icon-btn:hover{ filter: brightness(0.98); }
+        }
         .addr-actions{ display:flex; gap:10px; margin-top:10px; }
       </style>
 
@@ -654,15 +718,17 @@ export function renderAddresses(){
     history.back();
   });
 
+  // 👈 новая кнопка «назад»
   document.getElementById('backAccAddrs')?.addEventListener('click', ()=> history.back());
-  window.lucide?.createIcons && lucide.createIcons();
 
-  paintAccountDot();
-  paintAccountButtonsDots();
+  try { window.lucide?.createIcons?.(); } catch {}
 }
 
+// Настройки оставлены для прямого URL, но не показываются в меню
 export function renderSettings(){
+  // ✅ фикс активной вкладки в таббаре
   window.setTabbarMenu?.('account');
+
   const v=document.getElementById('view');
   v.innerHTML = `
     <section class="section">
@@ -674,11 +740,8 @@ export function renderSettings(){
         <div class="menu-item"><i data-lucide="moon"></i><span>Тема устройства</span></div>
       </div>
     </section>`;
-  window.lucide?.createIcons && lucide.createIcons();
+  try { window.lucide?.createIcons?.(); } catch {}
   document.getElementById('backAccSettings')?.addEventListener('click', ()=> history.back());
-
-  paintAccountDot();
-  paintAccountButtonsDots();
 }
 
 /* helpers */
@@ -690,18 +753,44 @@ function openExternal(url){
   }catch{}
   window.open(url, '_blank', 'noopener');
 }
+
 function escapeHtml(s=''){
   return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
+
+/* ===== Уведомления: helperы под новый notifs-бэкенд ===== */
+function getTgInitDataRaw(){
+  try {
+    return typeof window?.Telegram?.WebApp?.initData === 'string'
+      ? window.Telegram.WebApp.initData
+      : '';
+  } catch { return ''; }
+}
+
+/** Локальный помощник: создать in-app уведомление для uid (с учётом X-Tg-Init-Data) */
 async function postAppNotif(uid, { icon='bell', title='', sub='' } = {}){
+  const safe = (s, n=256) => String(s||'').trim().slice(0, n);
+  const body = {
+    op: 'add',
+    uid: String(uid||''),
+    notif: { icon: safe(icon, 32), title: safe(title), sub: safe(sub, 512) }
+  };
+
+  // В проде предпочтителен X-Tg-Init-Data
+  const initData = getTgInitDataRaw();
+  const headers = { 'Content-Type':'application/json' };
+  if (initData) headers['X-Tg-Init-Data'] = initData;
+
   try{
     await fetch('/.netlify/functions/notifs', {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ op:'add', uid, notif:{ icon, title, sub } })
+      headers,
+      body: JSON.stringify(body)
     });
   }catch{}
 }
+
+/** Маппинг вида операции для истории */
 function mapKind(kind=''){
   const dict = {
     accrue: 'Начисление (ожидание/подтверждено)',
