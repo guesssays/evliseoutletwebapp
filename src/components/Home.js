@@ -70,16 +70,16 @@ function renderEmptyState(grid, { title='Ничего не найдено', sub=
 /* ============= progressive rendering (батчи) ============= */
 function createProductNode(p){
   const t = document.getElementById('product-card');
-  // если есть шаблон — используем его
   let node;
   if (t) {
     node = t.content.firstElementChild.cloneNode(true);
   } else {
-    // минимальный фолбэк (если шаблон не подключён)
     node = document.createElement('a');
     node.className = 'card';
     node.innerHTML = `
-      <div class="card-img"><img alt=""></div>
+      <div class="card-img">
+        <img alt="">
+      </div>
       <button class="fav" aria-pressed="false" type="button"><i data-lucide="heart"></i></button>
       <div class="card-body">
         <div class="title"></div>
@@ -99,12 +99,33 @@ function createProductNode(p){
   node.href = `#/product/${p.id}`;
   node.dataset.id = String(p.id);
 
+  // === IMG + пер-карточный скелет до загрузки ===
+  const imgWrap = node.querySelector('.card-img');
   const im = node.querySelector('img');
-  if (im){
+  if (imgWrap && im){
+    // добавляем overlay-скелет только для конкретной карточки
+    const ov = document.createElement('b');
+    ov.className = 'img-skel';           // стилизуем в CSS
+    imgWrap.appendChild(ov);
+
+    // начальное состояние: img невидим (fade-in после load)
     im.loading = 'lazy';
     im.decoding = 'async';
     im.alt = p.title;
     im.src = p.images?.[0] || '';
+    im.classList.remove('is-ready');
+
+    const clear = () => {
+      ov.remove();
+      im.classList.add('is-ready');      // включает opacity:1 через CSS
+    };
+
+    // успех
+    im.addEventListener('load', clear, { once: true });
+    // фолбэк по таймеру, если onload не прилетел (например, кэш/ошибка)
+    setTimeout(() => {
+      if (ov.isConnected) clear();
+    }, 2000);
   }
 
   const titleEl = node.querySelector('.title'); if (titleEl) titleEl.textContent = p.title;
@@ -130,7 +151,6 @@ function progressiveAppend(grid, list, {firstBatch=12, batch=16, delay=0} = {}){
   const total = list.length;
   let idx = 0;
 
-  // Если данных вообще нет — НЕ трогаем скелетоны (они нужны на время загрузки)
   if (total === 0) return;
 
   const appendSlice = (from, to) => {
@@ -146,7 +166,7 @@ function progressiveAppend(grid, list, {firstBatch=12, batch=16, delay=0} = {}){
   if (first > 0){
     appendSlice(0, first);
     idx = first;
-    // удаляем скелетоны только когда реально добавили карточки
+    // удаляем ТОЛЬКО сеточные скелетоны; пер-карточные остаются до onload
     grid.querySelectorAll('.is-skeleton')?.forEach(el => el.remove());
   }
 
@@ -180,7 +200,7 @@ export function renderHome(router){
   // 1) сразу показываем скелетоны
   renderSkeletonGrid(grid, calcSkeletonCount());
 
-  // 2) рисуем чипы (быстро)
+  // 2) рисуем чипы
   drawCategoriesChips(router);
 
   // 3) запускаем рендер товаров (progressive) в следующий кадр
@@ -247,13 +267,9 @@ export function drawProducts(list){
   const grid = document.getElementById('productGrid');
   if (!grid) return;
 
-  // НЕ убираем скелетоны до появления реальных карточек.
   const source = Array.isArray(list) ? list : [];
-
-  // База фильтров (по цветам/размерам/цене и т.п.)
   const base = applyFilters(source);
 
-  // Поисковый запрос
   const q = (state.filters.query||'').trim().toLowerCase();
   const filtered = q
     ? base.filter(p =>
@@ -316,15 +332,11 @@ export function drawProducts(list){
     grid.dataset.favHandlerBound = '1';
   }
 
-  // === КЛЮЧЕВОЙ МОМЕНТ: что делаем, если пока нет данных? ===
-  // 1) Если СОВСЕМ нет товаров (например, ещё не загрузились) — ничего не делаем.
-  //    Скелетоны останутся видимыми до прихода данных.
+  // Пустые состояния
   if (source.length === 0 && (state.products?.length || 0) === 0){
+    // ждём данные — оставляем сеточные скелетоны
     return;
   }
-
-  // 2) Если общих товаров много, но после фильтров/поиска пусто —
-  //    убираем скелетоны и показываем пустое состояние.
   if (source.length === 0 && (state.products?.length || 0) > 0){
     grid.querySelectorAll('.is-skeleton')?.forEach(el => el.remove());
     renderEmptyState(grid, {
@@ -333,8 +345,6 @@ export function drawProducts(list){
     });
     return;
   }
-
-  // 3) Если базовый пул есть, но именно filtered пуст — это «ничего не найдено» по запросу
   if (source.length > 0 && filtered.length === 0){
     grid.querySelectorAll('.is-skeleton')?.forEach(el => el.remove());
     renderEmptyState(grid, {
@@ -344,7 +354,7 @@ export function drawProducts(list){
     return;
   }
 
-  // Прогрессивно добавляем карточки — скелетоны будут удалены
-  // внутри progressiveAppend при первом реальном батче.
+  // Прогрессивно добавляем карточки; сеточные скелетоны удалятся после первого батча,
+  // а пер-карточные (overlay .img-skel) останутся до загрузки конкретного img.
   progressiveAppend(grid, filtered, { firstBatch: 12, batch: 16, delay: 0 });
 }
