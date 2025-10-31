@@ -1492,7 +1492,7 @@ html.route-home .product-fixhdr{
   /* общий оффсет верхнего системного бара (вне TG почти 0) */
   --top-ui-offset: var(--safe-top, 0px);
   /* дополнительная «просадка» по твоей просьбе */
-  --top-ui-nudge: 6px;
+  --top-ui-nudge: 8px;
 
   /* единый токен для тостов: ПРИНИМАЕМ snake-case как канонический */
   --toast-top: calc(var(--safe-top, 0px) + 10px);
@@ -1524,8 +1524,7 @@ html.route-home .product-fixhdr{
   top: var(--toast-top) !important;
 }
 
-/* 7) На всякий случай синхронизируем старое имя переменной с новым,
-      чтобы другой код мог продолжать читать --toastTop, если встретится */
+/* 7) Синхронизируем старое имя переменной с новым */
 :root{
   --toastTop: var(--toast-top);
 }
