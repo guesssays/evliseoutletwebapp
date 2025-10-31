@@ -1485,3 +1485,47 @@ html.route-home .product-fixhdr{
 .toast-wrap{
   top: calc(var(--toast-top) + var(--top-ui-nudge)) !important;
 }
+/* === FIX PACK: top offsets for TG, hero buttons, zoom close, toasts === */
+
+/* 1) Базовые токены (дефолт для обычного браузера) */
+:root{
+  /* общий оффсет верхнего системного бара (вне TG почти 0) */
+  --top-ui-offset: var(--safe-top, 0px);
+  /* дополнительная «просадка» по твоей просьбе */
+  --top-ui-nudge: 6px;
+
+  /* единый токен для тостов: ПРИНИМАЕМ snake-case как канонический */
+  --toast-top: calc(var(--safe-top, 0px) + 10px);
+}
+
+/* 2) Внутри Telegram WebApp добавляем высоту телеграм-кнопок */
+.tg-webapp:root{
+  --top-ui-offset: calc(var(--safe-top, 0px) + var(--tg-topbar, 56px));
+  --toast-top:     calc(var(--safe-top, 0px) + var(--tg-topbar, 56px) + 10px);
+}
+
+/* 3) Кнопки фикс-хедера товара — ниже и с учётом Telegram */
+#btnFixBack{
+  top: calc(6px + var(--top-ui-offset) + var(--top-ui-nudge)) !important;
+}
+#btnFixFav{
+  top: calc(6px + var(--top-ui-offset) + var(--top-ui-nudge)) !important;
+}
+
+
+
+/* 5) Крестик zoom-оверлея — фикс у верхней кромки, не по центру */
+.zoom-close{
+  top: calc(14px + var(--top-ui-offset) + var(--top-ui-nudge)) !important;
+}
+
+/* 6) Тосты (Dynamic Island) — используем новый канонический токен */
+.toast-wrap{
+  top: var(--toast-top) !important;
+}
+
+/* 7) На всякий случай синхронизируем старое имя переменной с новым,
+      чтобы другой код мог продолжать читать --toastTop, если встретится */
+:root{
+  --toastTop: var(--toast-top);
+}
