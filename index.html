@@ -177,7 +177,28 @@
   </style>
 
   <!-- Telegram WebApp -->
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- Telegram WebApp -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+(function ensureTgExpand(){
+  function go(){
+    try{
+      var tg = window.Telegram && Telegram.WebApp;
+      if (!tg) return;
+      tg.ready && tg.ready();
+      tg.expand && tg.expand();
+    }catch{}
+  }
+  // максимально рано
+  if (document.readyState === 'complete' || document.readyState === 'interactive') go();
+  else document.addEventListener('DOMContentLoaded', go);
+  // подстраховки на случай поздней инициализации
+  setTimeout(go, 300);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) go(); });
+})();
+</script>
+
+  
   <script>
 (function(){
   var isTG = !!(window.Telegram && Telegram.WebApp);
