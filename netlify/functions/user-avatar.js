@@ -6,13 +6,13 @@
 // RESP { ok:true, url:"https://api.telegram.org/file/bot<TOKEN>/<file_path>", file_id:"...", updated:<ts> }
 //
 // ENV:
-//   TG_BOT_TOKEN    — токен бота (БЕЗ префикса "bot") (обяз.)
+//   TG_BOT_TOKEN    — токен бота (без "bot") (обяз.)
 //   ALLOWED_ORIGINS — опционально: "*", точные origin, или маски "*.domain.com"
 
 import { getStore } from '@netlify/blobs';
 
 const TOKEN = process.env.TG_BOT_TOKEN || '';
-if (!TOKEN) throw new Error('TG_BOT_TOKEN is required (must be raw token without "bot" prefix)');
+if (!TOKEN) throw new Error('TG_BOT_TOKEN is required');
 
 const API  = (m) => `https://api.telegram.org/bot${TOKEN}/${m}`;
 const FILE = (p) => `https://api.telegram.org/file/bot${TOKEN}/${p}`;
@@ -33,26 +33,22 @@ function originMatches(origin, rule) {
   if (rule.startsWith('*.')) {
     try {
       const host = new URL(origin).hostname;
-      const suffix = rule.slice(1); // ".domain.com"
+      const suffix = rule.slice(1);
       return host === rule.slice(2) || host.endsWith(suffix);
     } catch { return false; }
   }
   return origin === rule;
 }
-function corsHeaders(origin, req) {
+function corsHeaders(origin) {
   const allowed = parseAllowed();
   const isAllowed = !allowed.length ||
                     isTelegramOrigin(origin) ||
                     allowed.some(rule => originMatches(origin, rule));
-
-  const acrh = (req?.headers?.get('access-control-request-headers') || '').trim();
-
   return {
     'Access-Control-Allow-Origin': isAllowed ? (origin || '*') : 'null',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    // разрешаем пользовательские заголовки; подхватываем запрошенные при preflight
-    'Access-Control-Allow-Headers': acrh || 'Content-Type, X-Tg-Init-Data, X-Bot-Username',
-    'Vary': 'Origin, Access-Control-Request-Headers',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin',
     'Cache-Control': 'no-store',
   };
 }
@@ -75,7 +71,7 @@ async function tg(method, payload) {
 /* -------------------- HTTP handler (modern Netlify) -------------------- */
 export default async function handler(req) {
   const origin = req.headers.get('origin') || req.headers.get('Origin') || '';
-  const headers = corsHeaders(origin, req);
+  const headers = corsHeaders(origin);
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers });
@@ -86,14 +82,13 @@ export default async function handler(req) {
 
   try {
     const { searchParams } = new URL(req.url);
-    const uidRaw = String(searchParams.get('uid') || '').trim();
-
-    if (!uidRaw || !/^\d+$/.test(uidRaw)) {
-      return new Response(JSON.stringify({ ok:false, error:'uid required (digits only)', got: uidRaw }), { status: 400, headers });
+    const uid = String(searchParams.get('uid') || '').trim();
+    if (!uid) {
+      return new Response(JSON.stringify({ ok:false, error:'uid required' }), { status: 400, headers });
     }
-    const uid = Number(uidRaw);
 
-    // namespaced бакет "users"
+    // ВАЖНО: используем один и тот же бакет во всём проекте или отдельный — не критично.
+    // Здесь берём namespaced бакет "users".
     const store = getStore('users');
     const cacheKey = `avatar__${uid}.json`;
 
@@ -108,10 +103,8 @@ export default async function handler(req) {
     }
 
     // запросим последнее фото профиля
-    const photos = await tg('getUserProfilePhotos', { user_id: uid, limit: 1 });
-    const hasAny = Number(photos?.total_count || 0) > 0 &&
-                   Array.isArray(photos?.photos) &&
-                   photos.photos[0]?.length;
+    const photos = await tg('getUserProfilePhotos', { user_id: Number(uid), limit: 1 });
+    const hasAny = Number(photos?.total_count || 0) > 0 && Array.isArray(photos?.photos) && photos.photos[0]?.length;
 
     if (!hasAny) {
       // нет аватарки — положим пустую запись на 6ч
