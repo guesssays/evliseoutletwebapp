@@ -1632,3 +1632,24 @@ html.route-home .product-fixhdr{
 @media (max-width: 360px){
   :root{ --fav-left: 10px; } /* можешь сменить на 8px при желании */
 }
+/* === Skeletons for product grid === */
+.card.is-skeleton { pointer-events:none; }
+.card.is-skeleton .card-img{ background:#f2f2f2; }
+.skel{
+  position:relative; overflow:hidden; border-radius:10px; background:#eee;
+}
+.skel::after{
+  content:""; position:absolute; inset:0;
+  transform:translateX(-100%);
+  background:linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.6) 50%, rgba(255,255,255,0) 100%);
+  animation: skel 1.2s ease-in-out infinite;
+}
+@keyframes skel{ 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+.skel-img{ width:100%; height:100%; aspect-ratio:3/4; border-radius:22px; }
+.skel-title{ height:18px; width:70%; margin:10px 6px 6px; }
+.skel-sub{ height:14px; width:50%; margin:0 6px 8px; }
+.skel-price{ height:18px; width:68px; border-radius:8px; }
+.skel-chip{ height:18px; width:44px; border-radius:999px; }
+/* ====== Производительность: быстрый mount секций ====== */
+#view > * { content-visibility: auto; contain-intrinsic-size: 800px; }
+.admin-list-mini, .product-grid, .orders-list { content-visibility: auto; contain-intrinsic-size: 1200px; }
