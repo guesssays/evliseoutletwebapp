@@ -1612,3 +1612,23 @@ html.route-home .product-fixhdr{
     left: max(12px, calc(env(safe-area-inset-left, 0px) + 10px)) !important;
   }
 }
+/* === Favorites title: ещё левее (единый токен) === */
+:root{
+  /* на сколько отступаем слева от края экрана/безопасной зоны */
+  --fav-left: 12px; /* было ~18px. Поставь 10px или 8px, если нужно ещё левее */
+}
+
+/* резерв под кнопку с новым левым отступом */
+.page-title{
+  padding-left: calc(var(--fav-left) + var(--back-btn-w) + var(--back-btn-gap)) !important;
+}
+
+/* кнопка "назад" прижимается на тот же левый край, но уважает safe-area */
+.page-title .square-btn{
+  left: max(var(--fav-left), calc(env(safe-area-inset-left, 0px) + 8px)) !important;
+}
+
+/* очень узкие экраны — ещё плотнее прижимаем */
+@media (max-width: 360px){
+  :root{ --fav-left: 10px; } /* можешь сменить на 8px при желании */
+}
