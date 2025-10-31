@@ -1296,3 +1296,35 @@ html.route-home .product-fixhdr{
   font-size: 24px;               /* как .section-title */
   line-height: 1.2;
 }
+/* База точки: компактная с «кольцом», одинаково красиво в светлой/тёмной теме */
+:root{ --dot:#ff3b30; --dot-ring:#fff; }
+@media (prefers-color-scheme:dark){
+  :root{ --dot-ring:#0b1220; } /* фон карточки/страницы в тёмной теме */
+}
+
+.dot{
+  position:absolute;
+  width:9px; height:9px; border-radius:999px;
+  background:var(--dot);
+  box-shadow: 0 0 0 2px var(--dot-ring), 0 2px 6px rgba(0,0,0,.18);
+  pointer-events:none;
+  z-index: 1; /* поверх рамок/иконок, но не выше модалок */
+}
+
+/* Якоря, чтобы .dot не обрезалась скруглениями */
+.tabbar .tab,
+.menu .menu-item { position: relative; overflow: visible; }
+
+/* Позиции по умолчанию (например, на табах) — чуть отступив от краёв */
+.tabbar .tab .dot{ top:-3px; right:-3px; }
+
+/* >>> Точки в меню вкладки «Аккаунт»: выше и правее — «почти в угол» */
+.menu .menu-item .acc-dot{
+  top:-8px;
+  right:-8px;
+}
+
+/* Микротюнинг для очень узких экранов: чуть меньше сдвиг, чтобы не «съезжали» за радиус */
+@media (max-width: 360px){
+  .menu .menu-item .acc-dot{ top:-7px; right:-7px; }
+}

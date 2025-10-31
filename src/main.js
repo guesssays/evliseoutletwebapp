@@ -171,16 +171,23 @@ function setUnseen(kind, on){
 function clearUnseen(kind){ setUnseen(kind, false); }
 function anyUnseen(){ const m=readFlags(); return !!(m[kinds.orders]||m[kinds.cashback]||m[kinds.referrals]); }
 
-function ensureDot(node, cls=''){
-  if (!node) return null;
-  let d = node.querySelector(':scope > .dot');
-  if (!d){
-    d = document.createElement('b');
-    d.className = 'dot' + (cls?(' '+cls):'');
-    node.appendChild(d);
+function ensureDot(el, extra=''){
+  if (!el) return null;
+  let d = el.querySelector(':scope > .dot'); // точка только прямым потомком
+  if (!d) {
+    d = document.createElement('i');
+    d.className = 'dot';
+    el.appendChild(d);
   }
+  if (extra) {
+    for (const c of String(extra).split(/\s+/).filter(Boolean)) d.classList.add(c);
+  }
+  // якорь, чтобы позиционирование работало (на случай нестандартной разметки)
+  const cs = getComputedStyle(el);
+  if (cs.position === 'static') el.style.position = 'relative';
   return d;
 }
+
 function removeDot(node){
   if (!node) return;
   node.querySelectorAll(':scope > .dot').forEach(n => n.remove());
@@ -194,19 +201,45 @@ function paintAccountDot(){
 }
 function paintAccountButtonsDots(){
   const v = document.getElementById('view'); if (!v) return;
-  const sel = [
-    { q:'a[href="#/orders"]',               kind:kinds.orders },
-    { q:'a[href="#/account/cashback"]',    kind:kinds.cashback },
-    { q:'a[href="#/account/referrals"]',   kind:kinds.referrals },
+
+  const groups = [
+    {
+      // Мои заказы
+      all:    'a[href="#/orders"]',
+      target: '.menu .menu-item[href="#/orders"]',
+      kind:   kinds.orders
+    },
+    {
+      // Мой кэшбек — точку ставим ТОЛЬКО на пункт меню
+      all:    'a[href="#/account/cashback"]',
+      target: '.menu .menu-item[href="#/account/cashback"]',
+      kind:   kinds.cashback
+    },
+    {
+      // Мои рефералы
+      all:    'a[href="#/account/referrals"]',
+      target: '.menu .menu-item[href="#/account/referrals"]',
+      kind:   kinds.referrals
+    }
   ];
-  for (const {q,kind} of sel){
-    const a = v.querySelector(q);
-    if (!a) continue;
-    a.style.position = a.style.position || 'relative';
-    if (getUnseen(kind)) ensureDot(a, 'acc-dot');
-    else removeDot(a);
+
+  for (const { all, target, kind } of groups){
+    const allNodes = Array.from(v.querySelectorAll(all));
+    // 1) на всякий случай снимем точки со всех найденных ссылок (и с кнопки-пилла в карточке баллов)
+    for (const n of allNodes) removeDot(n);
+
+    // 2) выбираем правильный якорь (меню). Если вдруг меню нет — берём последний из всех.
+    const anchor = v.querySelector(target) || allNodes.at(-1);
+    if (!anchor) continue;
+
+    // 3) если для этого раздела есть флаг — ставим точку на НУЖНУЮ кнопку
+    if (getUnseen(kind)){
+      anchor.style.position = anchor.style.position || 'relative';
+      ensureDot(anchor, 'acc-dot');
+    }
   }
 }
+
 function paintAccountDotsSafe(){ try{ paintAccountButtonsDots(); }catch{} }
 
 /* -------- Отрисовочные помощники для заказов/уведомлений -------- */
@@ -623,11 +656,16 @@ async function router(){
 
   if (match('favorites'))          { return renderFavorites(); }
   if (match('cart'))               { return renderCart(); }
-  if (match('orders'))             {
+// --- стало ---
+if (match('orders')) {
+  const r = renderOrders();
+  queueMicrotask(() => {
     clearUnseen(kinds.orders);
-    paintAccountDot(); paintAccountDotsSafe();
-    return renderOrders();
-  }
+    // на экране заказов в меню аккаунта кнопок нет — достаточно таббара
+    paintAccountDot();
+  });
+  return r;
+}
 
   if (match('account'))            {
     const res = renderAccount(); 
@@ -636,17 +674,25 @@ async function router(){
   }
   if (match('account/addresses'))  { const r = renderAddresses(); paintAccountDotsSafe(); return r; }
   if (match('account/settings'))   { const r = renderSettings();  paintAccountDotsSafe(); return r; }
-  if (match('account/cashback'))   {
-    clearUnseen(kinds.cashback);
-    paintAccountDot(); paintAccountDotsSafe();
-    const r = renderCashback(); return r;
-  }
-  if (match('account/referrals'))  {
-    clearUnseen(kinds.referrals);
-    paintAccountDot(); paintAccountDotsSafe();
-    const r = renderReferrals(); return r;
-  }
 
+// --- стало ---
+if (match('account/cashback')) {
+  const r = renderCashback();
+  queueMicrotask(() => {
+    clearUnseen(kinds.cashback);
+    paintAccountDot();
+    // кнопки с точками появятся при возврате в /account — там они перечитаются
+  });
+  return r;
+}
+if (match('account/referrals')) {
+  const r = renderReferrals();
+  queueMicrotask(() => {
+    clearUnseen(kinds.referrals);
+    paintAccountDot();
+  });
+  return r;
+}
   if (match('notifications')){
     await renderNotifications(updateNotifBadge);
     try { localStorage.setItem(k('notifs_unread'),'0'); } catch {}
@@ -828,6 +874,9 @@ await primeUnseenFromServer();
   window.addEventListener('loyalty:accrue',     ()=> setUnseen(kinds.cashback, true));
   window.addEventListener('loyalty:confirmed',  ()=> setUnseen(kinds.cashback, true));
   window.addEventListener('referrals:joined',   ()=> setUnseen(kinds.referrals, true));
+window.addEventListener('unseen:update', () => {
+  try { paintAccountDot(); paintAccountDotsSafe(); } catch {}
+});
 
   window.lucide && lucide.createIcons?.();
 
