@@ -25,10 +25,8 @@ function categoryNameBySlug(slug){
 
 /* ================== скелетоны ================== */
 function calcSkeletonCount(){
-  // 2 колонки на большинстве экранов → показываем «первый экран»
-  // берём ~6–8 карточек (в зависимости от высоты)
   const h = (window.visualViewport?.height || window.innerHeight || 700);
-  const rows = Math.max(3, Math.min(4, Math.round(h / 260))); // грубо: 3–4 ряда
+  const rows = Math.max(3, Math.min(4, Math.round(h / 260))); // 3–4 ряда
   const cols = (window.innerWidth <= 380) ? 1 : 2;
   return rows * cols; // 6–8
 }
@@ -55,6 +53,18 @@ function renderSkeletonGrid(container, count){
     frag.appendChild(el);
   }
   container.appendChild(frag);
+}
+
+/* ============= helpers: пустое состояние ============= */
+function renderEmptyState(grid, { title='Ничего не найдено', sub='Попробуйте изменить фильтры или запрос' } = {}){
+  grid.innerHTML = `
+    <div class="section" style="grid-column:1/-1;padding:10px 0 0">
+      <div class="notes-empty">
+        <b style="display:block;font-weight:800;margin-bottom:6px">${title}</b>
+        <div>${sub}</div>
+      </div>
+    </div>
+  `;
 }
 
 /* ============= progressive rendering (батчи) ============= */
@@ -91,7 +101,6 @@ function createProductNode(p){
 
   const im = node.querySelector('img');
   if (im){
-    // первые карточки — приоритет выше, остальные — lazy
     im.loading = 'lazy';
     im.decoding = 'async';
     im.alt = p.title;
@@ -118,9 +127,11 @@ function createProductNode(p){
 }
 
 function progressiveAppend(grid, list, {firstBatch=12, batch=16, delay=0} = {}){
-  // первый батч кидаем сразу → скрываем скелетоны
   const total = list.length;
   let idx = 0;
+
+  // Если данных вообще нет — НЕ трогаем скелетоны (они нужны на время загрузки)
+  if (total === 0) return;
 
   const appendSlice = (from, to) => {
     const frag = document.createDocumentFragment();
@@ -135,20 +146,15 @@ function progressiveAppend(grid, list, {firstBatch=12, batch=16, delay=0} = {}){
   if (first > 0){
     appendSlice(0, first);
     idx = first;
-    // удаляем скелетоны плавно
-    grid.querySelectorAll('.is-skeleton')?.forEach(el => el.remove());
-  } else {
-    // пусто — просто убираем скелетоны
+    // удаляем скелетоны только когда реально добавили карточки
     grid.querySelectorAll('.is-skeleton')?.forEach(el => el.remove());
   }
 
-  // остальные — батчами, отдаём управление кадрам/простою
   const pump = () => {
     if (idx >= total) return;
     const next = Math.min(idx + batch, total);
     appendSlice(idx, next);
     idx = next;
-    // используем requestIdleCallback если есть, иначе setTimeout(0)
     if ('requestIdleCallback' in window){
       requestIdleCallback(pump, { timeout: 120 });
     } else {
@@ -156,7 +162,6 @@ function progressiveAppend(grid, list, {firstBatch=12, batch=16, delay=0} = {}){
     }
   };
 
-  // стартуем следующий тик
   if (idx < total){
     if ('requestIdleCallback' in window){
       requestIdleCallback(pump, { timeout: 120 });
@@ -172,14 +177,13 @@ export function renderHome(router){
   v.innerHTML = `<div class="grid home-bottom-pad" id="productGrid"></div>`;
   const grid = document.getElementById('productGrid');
 
-  // 1) сразу показываем скелетоны, чтобы не было пустого «серединного» провала
+  // 1) сразу показываем скелетоны
   renderSkeletonGrid(grid, calcSkeletonCount());
 
   // 2) рисуем чипы (быстро)
   drawCategoriesChips(router);
 
-  // 3) запускаем рендер товаров (progressive)
-  //   переносим в next frame, чтобы дать браузеру нарисовать UI + скелетоны
+  // 3) запускаем рендер товаров (progressive) в следующий кадр
   requestAnimationFrame(() => {
     drawProducts(state.products);
     try { window.dispatchEvent(new CustomEvent('view:home-mounted')); } catch {}
@@ -224,7 +228,7 @@ export function drawCategoriesChips(router){
         list = state.products.filter(p => pool.has(p.categoryId));
       }
 
-      // при переключении категорий тоже даём скелетоны и прогрессивный рендер
+      // На переключении — показываем скелетоны и затем рендерим
       const grid = document.getElementById('productGrid');
       if (grid){
         grid.innerHTML = '';
@@ -243,8 +247,13 @@ export function drawProducts(list){
   const grid = document.getElementById('productGrid');
   if (!grid) return;
 
-  // не убираем скелетоны сейчас — пусть исчезнут после первого батча
-  const base = applyFilters(Array.isArray(list) ? list : []);
+  // НЕ убираем скелетоны до появления реальных карточек.
+  const source = Array.isArray(list) ? list : [];
+
+  // База фильтров (по цветам/размерам/цене и т.п.)
+  const base = applyFilters(source);
+
+  // Поисковый запрос
   const q = (state.filters.query||'').trim().toLowerCase();
   const filtered = q
     ? base.filter(p =>
@@ -253,7 +262,7 @@ export function drawProducts(list){
       )
     : base;
 
-  // делегированный guard на клик по .fav (не даём открывать карточку)
+  // Делегированный guard на клик по .fav
   if (!grid.dataset.anchorGuard) {
     grid.addEventListener('click', (e) => {
       if (e.target?.closest?.('.fav, button.fav')) e.preventDefault();
@@ -261,7 +270,7 @@ export function drawProducts(list){
     grid.dataset.anchorGuard = '1';
   }
 
-  // делегат избранного
+  // Делегат избранного
   if (!grid.dataset.favHandlerBound) {
     grid.addEventListener('click', (ev) => {
       const favBtn = ev.target.closest('.fav, button.fav');
@@ -307,7 +316,35 @@ export function drawProducts(list){
     grid.dataset.favHandlerBound = '1';
   }
 
-  // прогрессивно добавляем карточки
-  // — первые 12 сразу, далее по 16 (регулируется)
+  // === КЛЮЧЕВОЙ МОМЕНТ: что делаем, если пока нет данных? ===
+  // 1) Если СОВСЕМ нет товаров (например, ещё не загрузились) — ничего не делаем.
+  //    Скелетоны останутся видимыми до прихода данных.
+  if (source.length === 0 && (state.products?.length || 0) === 0){
+    return;
+  }
+
+  // 2) Если общих товаров много, но после фильтров/поиска пусто —
+  //    убираем скелетоны и показываем пустое состояние.
+  if (source.length === 0 && (state.products?.length || 0) > 0){
+    grid.querySelectorAll('.is-skeleton')?.forEach(el => el.remove());
+    renderEmptyState(grid, {
+      title: 'По вашему запросу ничего не найдено',
+      sub: 'Измените фильтры или строку поиска'
+    });
+    return;
+  }
+
+  // 3) Если базовый пул есть, но именно filtered пуст — это «ничего не найдено» по запросу
+  if (source.length > 0 && filtered.length === 0){
+    grid.querySelectorAll('.is-skeleton')?.forEach(el => el.remove());
+    renderEmptyState(grid, {
+      title: 'Ничего не найдено',
+      sub: 'Сбросьте часть фильтров или измените запрос'
+    });
+    return;
+  }
+
+  // Прогрессивно добавляем карточки — скелетоны будут удалены
+  // внутри progressiveAppend при первом реальном батче.
   progressiveAppend(grid, filtered, { firstBatch: 12, batch: 16, delay: 0 });
 }
