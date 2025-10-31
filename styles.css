@@ -1492,7 +1492,7 @@ html.route-home .product-fixhdr{
   /* общий оффсет верхнего системного бара (вне TG почти 0) */
   --top-ui-offset: var(--safe-top, 0px);
   /* дополнительная «просадка» по твоей просьбе */
-  --top-ui-nudge: 12px;
+  --top-ui-nudge: 20px;
 
   /* единый токен для тостов: ПРИНИМАЕМ snake-case как канонический */
   --toast-top: calc(var(--safe-top, 0px) + 10px);
