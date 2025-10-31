@@ -1328,3 +1328,45 @@ html.route-home .product-fixhdr{
 @media (max-width: 360px){
   .menu .menu-item .acc-dot{ top:-7px; right:-7px; }
 }
+/* === Compact Dots (final override) ================================== */
+:root{
+  --dot-size: 6px;         /* было 9px */
+  --dot-ring-w: 1.5px;     /* тоньше «кольцо» вокруг точки */
+  --dot-color: #ff3b30;    /* как и раньше */
+}
+@media (prefers-color-scheme: dark){
+  :root{ --dot-ring:#0b1220; }
+}
+@media (prefers-color-scheme: light){
+  :root{ --dot-ring:#fff; }
+}
+
+/* сама точка: меньше, современный мягкий шэдоу */
+.dot{
+  width: var(--dot-size);
+  height: var(--dot-size);
+  border-radius: 999px;
+  background: var(--dot-color);
+  box-shadow:
+    0 0 0 var(--dot-ring-w) var(--dot-ring),
+    0 1px 3px rgba(0,0,0,.16);   /* деликатнее тень */
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* позиционирование — ближе к углу, но без выхода за радиусы */
+.tabbar .tab .dot{
+  top: -2px;     /* было -3px */
+  right: -2px;   /* было -3px */
+}
+
+/* «Аккаунт»/меню — тоже компактнее */
+.menu .menu-item .acc-dot{
+  top: -6px;     /* было -8px */
+  right: -6px;   /* было -8px */
+}
+
+/* очень узкие экраны — ещё чуть ближе к углу */
+@media (max-width: 360px){
+  .menu .menu-item .acc-dot{ top: -5px; right: -5px; }
+}
