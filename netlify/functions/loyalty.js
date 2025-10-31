@@ -2,16 +2,6 @@
 // Бэкенд лояльности + защита: валидация TG initData, строгий CORS, internal-token для сервисных вызовов,
 // запрет memory-fallback в проде, TTL для резерва.
 
-// ENV:
-//   TG_BOT_TOKEN               (обязательно — основной токен для валидации initData)
-//   ALT_TG_BOT_TOKENS          (опционально — дополнительные токены через запятую/точку с запятой/перенос строки)
-//   ADMIN_API_TOKEN            (секрет для сервер-к-серверу/админских вызовов)
-//   ALLOWED_ORIGINS            (список через запятую, включая тг-домены)
-//   ALLOW_MEMORY_FALLBACK=0/1  (в проде — 0)
-//   NETLIFY_BLOBS_SITE_ID, NETLIFY_BLOBS_TOKEN  (рекомендуется явно)
-//   DEBUG_LOYALTY=1            (включить подробные логи)
-//   EMERGENCY_ALLOW_WEAK_INIT=1 (временный аварийный пропуск initData ТОЛЬКО для списания)
-
 import crypto from 'node:crypto';
 
 const DAY = 24*60*60*1000;
@@ -30,7 +20,7 @@ function redact(str='', keep=8){
 function tail(str='', n=6){ const s=String(str||''); return s.slice(-n); }
 function sha256hex(s){ return crypto.createHash('sha256').update(String(s),'utf8').digest('hex'); }
 
-// === безопасное сравнение HMAC (константное время)
+// === безопасное сравнение HMAC
 function sigOk(aHex, bHex) {
   try {
     const a = Buffer.from(String(aHex||''), 'hex');
@@ -40,11 +30,11 @@ function sigOk(aHex, bHex) {
   } catch { return false; }
 }
 
-/* ===== НОРМАЛИЗАЦИЯ initData (фикс поломанных заголовков) ===== */
+/* ===== НОРМАЛИЗАЦИЯ initData ===== */
 function normalizeInitRaw(raw) {
   let s = String(raw || '');
   if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1);
-  s = s.replace(/\r?\n/g, '&'); // склеиваем переносы строк в & (часто бывает в iOS/Safari)
+  s = s.replace(/\r?\n/g, '&');
   return s.trim();
 }
 function getParamFromRaw(raw, key) {
@@ -110,7 +100,6 @@ function buildCorsHeaders(origin, isInternal=false){
 }
 
 /* ====== TG initData verification ====== */
-// Секреты/подписи в обоих режимах (WebApp/Login), для decoded/raw DCS.
 function _calcFromDcs(tokenStr, dataCheckString) {
   const secretWebApp = crypto.createHmac('sha256', 'WebAppData').update(tokenStr).digest();
   const calcWebApp   = crypto.createHmac('sha256', secretWebApp).update(dataCheckString).digest('hex');
@@ -119,7 +108,6 @@ function _calcFromDcs(tokenStr, dataCheckString) {
   return { calcWebApp, calcLogin };
 }
 function _parseAndCalc(tokenStr, raw, dbgReqId='') {
-  // --- путь 1: decode с URLSearchParams
   const urlEncoded = new URLSearchParams(raw);
   let hash = urlEncoded.get('hash') || urlEncoded.get('signature');
   if (!hash && String(raw).includes('hash=')) {
@@ -134,7 +122,6 @@ function _parseAndCalc(tokenStr, raw, dbgReqId='') {
   pairs.sort();
   const dcsDecoded = pairs.join('\n');
 
-  // --- путь 2: «сырые» пары без декодирования
   const rawPairs = splitRawPairs(raw).filter(([k]) => k !== 'hash' && k !== 'signature');
   rawPairs.sort((a,b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
   const dcsRaw = rawPairs.map(([k,v]) => `${k}=${v}`).join('\n');
@@ -172,24 +159,19 @@ function verifyTgInitData(rawInitData, reqId='') {
 
   let lastDebug = null;
 
-  // нормализуем сырьё один раз
   let rawBase = normalizeInitRaw(rawInitData);
   if (DEBUG) {
     logD(`[req:${reqId}] rawInit first100="${rawBase.slice(0,100)}" len=${rawBase.length} sha256=${sha256hex(rawBase)}`);
     logD(`[req:${reqId}] raw has hash? ${rawBase.includes('hash=')} has signature? ${rawBase.includes('signature=')}`);
   }
 
-  // пробуем каждый токен по очереди
   for (const token of tokens){
-    // 1) как есть
     let r = _parseAndCalc(token, rawBase, reqId);
 
-    // подробный лог по токену/режимам
     if (DEBUG){
       logD(`[req:${reqId}] try token tail=${tail(token)} got=${redact(r.hash,10)} web/dec=${redact(r.calcWebApp,10)} login/dec=${redact(r.calcLogin,10)} web/raw=${redact(r.calcWebAppRaw,10)} login/raw=${redact(r.calcLoginRaw,10)}`);
     }
 
-    // 2) fix "+ as space"
     let workingRaw = rawBase;
     if (!r.ok) {
       const fixed = rawBase.replace(/\+/g, '%20');
@@ -216,7 +198,6 @@ function verifyTgInitData(rawInitData, reqId='') {
     }
   }
 
-  // если ни один токен не подошёл — лог и ошибка
   if (DEBUG && lastDebug){
     logD(`[req:${reqId}] initData mismatch (all tokens tried)`, {
       last_token_tail: lastDebug.tokenTail,
@@ -271,32 +252,6 @@ async function fireAndForgetAppNotif(uid, notif={}){
 }
 
 /* ====== ХРАНИЛИЩЕ (Blobs only в проде) ====== */
-async function getStoreSafe() {
-  try{
-    const { getStore } = await import('@netlify/blobs');
-
-    const siteID = process.env.NETLIFY_BLOBS_SITE_ID || '';
-    const token  = process.env.NETLIFY_BLOBS_TOKEN   || '';
-    const base   = siteID && token ? getStore({ name:'loyalty', siteID, token }) : getStore('loyalty');
-
-    await base.list({ prefix:'__ping__', paginate:false });
-
-    const store = makeBlobsStore(base);
-    logD('store ready:', store.__kind || 'blobs');
-    return store;
-  }catch(e){
-    if (IS_PROD || !ALLOW_MEMORY_FALLBACK) {
-      logE('blobs init failed:', e?.message || e);
-      throw new Error('[loyalty] persistent store unavailable');
-    }
-    console.warn('[loyalty] fallback to memory (DEV only):', e?.message||e);
-    const store = makeMemoryStore();
-    logD('store ready:', store.__kind || 'memory');
-    return store;
-  }
-}
-
-/* --- merge helpers --- */
 function clone(obj){ return JSON.parse(JSON.stringify(obj||{})); }
 function mergeHist(oldArr=[], newArr=[]){
   const out = [...(oldArr||[])];
@@ -346,7 +301,6 @@ function mergeReferrals(oldR={}, newR={}){
   return out;
 }
 function mergeReservations(oldArr = [], newArr = []) {
-  // Берём максимум по времени для каждого ключа uid|orderId
   const map = new Map();
   for (const r of [...(oldArr || []), ...(newArr || [])]) {
     if (!r) continue;
@@ -356,76 +310,25 @@ function mergeReservations(oldArr = [], newArr = []) {
       map.set(key, r);
     }
   }
-  // ⚠️ Не фильтруем по TTL здесь!
   return Array.from(map.values());
 }
-
-
 function deepMergeDb(oldDb, newDb){
   const oldSafe = clone(oldDb||{ meta:{expiredResProcessed:{}}, users:{}, referrals:{}, reservations:[], orders:{} });
   const newSafe = clone(newDb||{ meta:{expiredResProcessed:{}}, users:{}, referrals:{}, reservations:[], orders:{} });
-
-  // 👇 добавь это
   const mergedMeta = {
     expiredResProcessed: {
       ...(oldSafe.meta?.expiredResProcessed || {}),
       ...(newSafe.meta?.expiredResProcessed || {}),
     }
   };
-
   return {
-    meta:        mergedMeta,                          // 👈 и верни meta
+    meta:        mergedMeta,
     users:       mergeUsers(oldSafe.users, newSafe.users),
     referrals:   mergeReferrals(oldSafe.referrals, newSafe.referrals),
     reservations: mergeReservations(oldSafe.reservations, newSafe.reservations),
     orders:      { ...(oldSafe.orders||{}), ...(newSafe.orders||{}) },
   };
 }
-
-
-function makeBlobsStore(store){
-  const KEY = 'loyalty_all';
-  async function readAll(){
-    try{
-      const data = await store.get(KEY, { type:'json', consistency:'strong' });
-return data && typeof data==='object'
-  ? { meta:{ expiredResProcessed:{} }, users:{}, referrals:{}, reservations:[], orders:{}, ...data }
-  : { meta:{ expiredResProcessed:{} }, users:{}, referrals:{}, reservations:[], orders:{} };
-    }catch{
-      return { meta:{ expiredResProcessed:{} }, users:{}, referrals:{}, reservations:[], orders:{} };
-    }
-  }
-  async function writeAll(obj){
-    let merged = obj;
-    try{
-      const existing = await store.get(KEY, { type:'json', consistency:'strong' });
-      if (existing && typeof existing==='object'){
-        merged = deepMergeDb(existing, obj);
-      }
-    }catch{}
-    try{
-      const now=Date.now(); const bucket = Math.floor(now/(5*60*1000))*(5*60*1000);
-      await store.setJSON(`${KEY}__snap_${bucket}`, merged);
-    }catch{}
-    await store.setJSON(KEY, merged);
-  }
-  const core = makeCore(readAll, writeAll);
-  core.__kind='blobs';
-  return core;
-}
-const __mem = { meta:{ expiredResProcessed:{} }, users:{}, referrals:{}, reservations:[], orders:{} };
-function makeMemoryStore(){
-  async function readAll(){ return JSON.parse(JSON.stringify(__mem)); }
-  async function writeAll(obj){
-    const merged = deepMergeDb(__mem, obj);
-    Object.assign(__mem, JSON.parse(JSON.stringify(merged)));
-  }
-  const core = makeCore(readAll, writeAll);
-  core.__kind='memory';
-  return core;
-}
-
-/* ====== CORE ====== */
 function makeCore(readAll, writeAll){
   function safeUser(db, uid){
     if (!db.users[uid]) db.users[uid] = { available:0, pending:0, history:[] };
@@ -445,44 +348,39 @@ function makeCore(readAll, writeAll){
     db.referrals.inviteesFirst[invitee] = true;
   }
 
-function cleanupExpiredReservations(db){
-  if (!db.meta) db.meta = { expiredResProcessed:{} };
-  if (!db.meta.expiredResProcessed) db.meta.expiredResProcessed = {};
+  function cleanupExpiredReservations(db){
+    if (!db.meta) db.meta = { expiredResProcessed:{} };
+    if (!db.meta.expiredResProcessed) db.meta.expiredResProcessed = {};
 
-  const now = Date.now();
-  const keep = [];
+    const now = Date.now();
+    const keep = [];
 
-  for (const r of (db.reservations||[])) {
-    const expired = (now - (r.ts||0)) > CFG.RESERVE_TTL_MS;
-    if (!expired) { keep.push(r); continue; }
+    for (const r of (db.reservations||[])) {
+      const expired = (now - (r.ts||0)) > CFG.RESERVE_TTL_MS;
+      if (!expired) { keep.push(r); continue; }
 
-    const key = `${r.uid}|${r.orderId}|${r.ts||0}`;
-    if (db.meta.expiredResProcessed[key]) {
-      // уже обрабатывали этот конкретный резерв — пропускаем
-      continue;
+      const key = `${r.uid}|${r.orderId}|${r.ts||0}`;
+      if (db.meta.expiredResProcessed[key]) { continue; }
+
+      const give = Math.abs(r.pts|0);
+      if (give > 0) {
+        const u = safeUser(db, r.uid);
+        u.available += give;
+        addHist(u, {
+          kind:'reserve_expire',
+          orderId:r.orderId,
+          pts:+give,
+          info:`Снятие резерва по TTL (${Math.floor(CFG.RESERVE_TTL_MS/60000)}м)`
+        });
+        const o = db.orders[r.orderId];
+        if (o) o.used = Math.max(0, (o.used|0) - give);
+      }
+
+      db.meta.expiredResProcessed[key] = true;
     }
 
-    // первый раз: возвращаем баллы и помечаем
-    const give = Math.abs(r.pts|0);
-    if (give > 0) {
-      const u = safeUser(db, r.uid);
-      u.available += give;
-      addHist(u, {
-        kind:'reserve_expire',
-        orderId:r.orderId,
-        pts:+give,
-        info:`Снятие резерва по TTL (${Math.floor(CFG.RESERVE_TTL_MS/60000)}м)`
-      });
-      const o = db.orders[r.orderId];
-      if (o) o.used = Math.max(0, (o.used|0) - give);
-    }
-
-    db.meta.expiredResProcessed[key] = true;
+    db.reservations = keep;
   }
-
-  db.reservations = keep;
-}
-
 
   async function readDb(){
     const db = await readAll();
@@ -561,7 +459,6 @@ function cleanupExpiredReservations(db){
 
     async accrue(uid, orderId, total, currency, shortId=null){
       const db = await readDb();
-      logD('accrue in', { uid, orderId, total, currency, shortId });
       const existing = db.orders[orderId];
       if (existing?.released) {
         const me = safeUser(db, uid);
@@ -631,7 +528,6 @@ function cleanupExpiredReservations(db){
       };
 
       await writeAll(db);
-      logD('accrue out', { orderId, buyerPending: buyer.pending, inviter, buyerPts:newBuyerPts, refPts:newRefPts });
       return { ok:true, balance: { available: buyer.available, pending: buyer.pending, history: buyer.history } };
     },
 
@@ -639,11 +535,10 @@ function cleanupExpiredReservations(db){
       const db = await readDb();
       const user = safeUser(db, uid);
 
-      if (pts < CFG.MIN_REDEEM){ logD('reserve: reject min', { uid, pts, min: CFG.MIN_REDEEM, orderId }); return { ok:false, reason:'min' }; }
+      if (pts < CFG.MIN_REDEEM){ return { ok:false, reason:'min' }; }
 
       const ordExisting = db.orders[orderId];
 
-      // ►► приоритет: если фронт прислал total > 0 — используем его, а не старое значение
       const providedTotal = Number(totalArg || 0);
       const existingTotal = Number(ordExisting?.total || 0);
       const baseTotal = providedTotal > 0 ? providedTotal : existingTotal;
@@ -652,18 +547,14 @@ function cleanupExpiredReservations(db){
         ordExisting.total = providedTotal;
       }
 
-      if (baseTotal <= 0){
-        logD('reserve: reject total<=0', { uid, pts, orderId, totalArg: providedTotal, existingTotal });
-        return { ok:false, reason:'total' };
-      }
+      if (baseTotal <= 0){ return { ok:false, reason:'total' }; }
 
       const byShare = Math.floor(baseTotal * CFG.MAX_CART_DISCOUNT_FRAC);
       const maxAllowed = Math.min(byShare, CFG.MAX_REDEEM);
 
-      if (pts > maxAllowed){ logD('reserve: reject rule', { uid, pts, maxAllowed, byShare, MAX_REDEEM:CFG.MAX_REDEEM, baseTotal }); return { ok:false, reason:'rule' }; }
-      if (pts > user.available){ logD('reserve: reject balance', { uid, pts, available:user.available }); return { ok:false, reason:'balance' }; }
+      if (pts > maxAllowed){ return { ok:false, reason:'rule' }; }
+      if (pts > user.available){ return { ok:false, reason:'balance' }; }
 
-      logD('reserve: accept', { uid, pts, beforeAvail:user.available, orderId, baseTotal, byShare, maxAllowed, shortId });
       user.available -= pts;
       user.history.push({ ts:Date.now(), kind:'reserve', orderId, pts:-pts, info:'Резерв на оплату' });
       if (user.history.length>500) user.history = user.history.slice(-500);
@@ -686,7 +577,6 @@ function cleanupExpiredReservations(db){
       if (shortId && !db.orders[orderId].shortId) db.orders[orderId].shortId = shortId;
 
       await writeAll(db);
-      logD('reserve: done', { uid, orderId, newAvail:user.available, orderUsed: db.orders[orderId].used });
       return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };
     },
 
@@ -695,14 +585,12 @@ function cleanupExpiredReservations(db){
       const user = safeUser(db, uid);
       const idx = db.reservations.findIndex(r => String(r.uid)===String(uid) && String(r.orderId)===String(orderId));
       if (idx === -1){
-        logD('finalize: no reservation', { uid, orderId, action });
         return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };
       }
       const res = db.reservations[idx];
       db.reservations.splice(idx, 1);
 
       if (action === 'cancel'){
-        logD('finalize: cancel', { uid, orderId, pts: res.pts, beforeAvail:user.available });
         user.available += res.pts;
         user.history.push({ ts:Date.now(), kind:'reserve_cancel', orderId, pts:+res.pts, info:'Возврат резерва' });
         if (user.history.length>500) user.history = user.history.slice(-500);
@@ -712,18 +600,15 @@ function cleanupExpiredReservations(db){
           if (take > 0) o.used = Math.max(0, (o.used|0) - take);
         }
       }else{
-        logD('finalize: commit', { uid, orderId, pts: res.pts });
         user.history.push({ ts:Date.now(), kind:'redeem', orderId, pts:-Math.abs(res.pts|0), info:`Оплата баллами ${res.pts}` });
         if (user.history.length>500) user.history = user.history.slice(-500);
       }
       await writeAll(db);
-      logD('finalize: done', { uid, orderId, action, newAvail:user.available });
       return { ok:true, balance:{ available:user.available, pending:user.pending, history:user.history } };
     },
 
     async confirm(uid, orderId){
       const db = await readDb();
-      logD('confirm in', { uid, orderId });
       const user = safeUser(db, uid);
       const ord = db.orders[orderId];
       if (!ord || ord.released || ord.canceled) {
@@ -758,7 +643,6 @@ function cleanupExpiredReservations(db){
       ord.released = true;
       ord.releasedAt = Date.now();
       await writeAll(db);
-      logD('confirm out', { orderId, released: ord?.released, buyerAvail: buyer?.available });
 
       const me = safeUser(db, uid);
       return { ok:true, balance:{ available: me.available, pending: me.pending, history: me.history } };
@@ -768,7 +652,6 @@ function cleanupExpiredReservations(db){
       const db = await readDb();
       const r = await voidAccrualInternal(db, String(orderId));
       await writeAll(db);
-      logD('voidAccrual', { orderId, result:r });
       return r;
     },
 
@@ -803,41 +686,92 @@ function cleanupExpiredReservations(db){
   };
 }
 
-/* ================== АВАРИЙНЫЕ ХЕЛПЕРЫ ДЛЯ WEAK INIT ================== */
-const EMERGENCY_ALLOW_WEAK_INIT = String(process.env.EMERGENCY_ALLOW_WEAK_INIT||'').trim()==='1';
+async function getStoreSafe() {
+  try{
+    const { getStore } = await import('@netlify/blobs');
+    const siteID = process.env.NETLIFY_BLOBS_SITE_ID || '';
+    const token  = process.env.NETLIFY_BLOBS_TOKEN   || '';
+    const base   = siteID && token ? getStore({ name:'loyalty', siteID, token }) : getStore('loyalty');
+    await base.list({ prefix:'__ping__', paginate:false });
+    const store = makeBlobsStore(base);
+    logD('store ready:', store.__kind || 'blobs');
+    return store;
+  }catch(e){
+    if (IS_PROD || !ALLOW_MEMORY_FALLBACK) {
+      logE('blobs init failed:', e?.message || e);
+      throw new Error('[loyalty] persistent store unavailable');
+    }
+    console.warn('[loyalty] fallback to memory (DEV only):', e?.message||e);
+    const store = makeMemoryStore();
+    logD('store ready:', store.__kind || 'memory');
+    return store;
+  }
+}
+function makeBlobsStore(store){
+  const KEY = 'loyalty_all';
+  async function readAll(){
+    try{
+      const data = await store.get(KEY, { type:'json', consistency:'strong' });
+      return data && typeof data==='object'
+        ? { meta:{ expiredResProcessed:{} }, users:{}, referrals:{}, reservations:[], orders:{}, ...data }
+        : { meta:{ expiredResProcessed:{} }, users:{}, referrals:{}, reservations:[], orders:{} };
+    }catch{
+      return { meta:{ expiredResProcessed:{} }, users:{}, referrals:{}, reservations:[], orders:{} };
+    }
+  }
+  async function writeAll(obj){
+    let merged = obj;
+    try{
+      const existing = await store.get(KEY, { type:'json', consistency:'strong' });
+      if (existing && typeof existing==='object'){
+        merged = deepMergeDb(existing, obj);
+      }
+    }catch{}
+    try{
+      const now=Date.now(); const bucket = Math.floor(now/(5*60*1000))*(5*60*1000);
+      await store.setJSON(`${KEY}__snap_${bucket}`, merged);
+    }catch{}
+    await store.setJSON(KEY, merged);
+  }
+  const core = makeCore(readAll, writeAll);
+  core.__kind='blobs';
+  return core;
+}
+const __mem = { meta:{ expiredResProcessed:{} }, users:{}, referrals:{}, reservations:[], orders:{} };
+function makeMemoryStore(){
+  async function readAll(){ return JSON.parse(JSON.stringify(__mem)); }
+  async function writeAll(obj){
+    const merged = deepMergeDb(__mem, obj);
+    Object.assign(__mem, JSON.parse(JSON.stringify(merged)));
+  }
+  const core = makeCore(readAll, writeAll);
+  core.__kind='memory';
+  return core;
+}
 
-// простая проверка, что запрос реально пришёл из Telegram WebApp
+/* ================== АВАРИЙНЫЕ WEAK INIT ================== */
+const EMERGENCY_ALLOW_WEAK_INIT = String(process.env.EMERGENCY_ALLOW_WEAK_INIT||'').trim()==='1';
 function isFromTelegramHeaders(headers) {
   const h = headers || {};
   const origin  = (h.origin  || h.Origin  || '').toLowerCase();
   const referer = (h.referer || h.Referer || '').toLowerCase();
   const ua      = (h['user-agent'] || h['User-Agent'] || '').toLowerCase();
-
-  // хоть какой-то initData-хедер (их кладём на клиенте в initHeaders())
   const hasInitHdr =
     !!(h['x-tg-init-data'] ||
        h['X-Tg-Init-Data'] ||
        h['x-telegram-web-app-init-data'] ||
        h['X-Telegram-Web-App-Init-Data']);
-
   const okOrigin =
     origin.startsWith('https://t.me') ||
     origin.startsWith('https://web.telegram.org') ||
     origin.startsWith('https://telegram.org');
-
   const okReferer =
     referer.startsWith('https://t.me') ||
     referer.startsWith('https://web.telegram.org') ||
     referer.startsWith('https://telegram.org');
-
-  // во многих WebView User-Agent содержит 'Telegram'
   const okUA = ua.includes('telegram');
-
   return hasInitHdr || okOrigin || okReferer || okUA;
 }
-
-
-// извлекаем user.id из сырого initData без проверки подписи
 function parseUidFromInitDataRaw(rawInit) {
   try {
     if (!rawInit) return null;
@@ -848,15 +782,10 @@ function parseUidFromInitDataRaw(rawInit) {
     const user = JSON.parse(userStr);
     const id = Number(user?.id);
     return Number.isFinite(id) ? id : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
-
-// примитивный in-memory rate limit на холодном старте лямбды
-const __weakRate = new Map(); // key -> ts
+const __weakRate = new Map();
 function weakRateLimit(uid, op) {
-  // окно 5 секунд
   const BUCKET_SECONDS = 5;
   const slot = Math.floor(Date.now()/1000/BUCKET_SECONDS);
   const key = `${op}:${uid}:${slot}`;
@@ -864,7 +793,6 @@ function weakRateLimit(uid, op) {
   __weakRate.set(key, Date.now());
   return true;
 }
-
 function canProceedWeakInit({ op, headers, rawInit, bodyUid }) {
   if (!EMERGENCY_ALLOW_WEAK_INIT) return false;
   const allowed = op === 'reserveredeem' || op === 'finalizeredeem';
@@ -872,7 +800,6 @@ function canProceedWeakInit({ op, headers, rawInit, bodyUid }) {
 
   const rawStr = String(rawInit||'');
   if (!rawStr || rawStr.length < 80 || !rawStr.includes('hash=')) return false;
-
   if (!isFromTelegramHeaders(headers)) return false;
 
   const uidFromInit = parseUidFromInitDataRaw(rawStr);
@@ -884,7 +811,7 @@ function canProceedWeakInit({ op, headers, rawInit, bodyUid }) {
   return true;
 }
 
-/* ================== ЧТЕНИЕ initData: приоритет body, затем header ================== */
+/* ================= ЧТЕНИЕ initData ================= */
 function getHeaderCaseInsensitive(event, name){
   const h = event.headers || {};
   const keys = Object.keys(h);
@@ -893,18 +820,15 @@ function getHeaderCaseInsensitive(event, name){
   return match ? h[match] : '';
 }
 function readInitDataSource(event, body) {
-  // 1) Приоритет — тело (raw строка)
   if (body && typeof body.initData === 'string' && body.initData) {
     return { raw: body.initData, src: 'body.initData' };
   }
-  // поддерживаем base64-поля: initDataB64 / initData64
   let b64 = '';
   if (body && typeof body.initDataB64 === 'string' && body.initDataB64) b64 = body.initDataB64;
   else if (body && typeof body.initData64 === 'string' && body.initData64) b64 = body.initData64;
   if (b64) {
     try { return { raw: Buffer.from(b64, 'base64').toString('utf8'), src: 'body.initData(b64)' }; } catch {}
   }
-  // 2) Fallback — один из заголовков: X-Tg-Init-Data ИЛИ X-Telegram-Web-App-Init-Data
   const raw =
     getHeaderCaseInsensitive(event, 'X-Tg-Init-Data') ||
     getHeaderCaseInsensitive(event, 'X-Telegram-Web-App-Init-Data') ||
@@ -934,7 +858,6 @@ export async function handler(event){
       EMERGENCY_ALLOW_WEAK_INIT
     });
   }
-  // Кто нас вызывает (для диагностики)
   const clientBot = (getHeaderCaseInsensitive(event, 'X-Bot-Username') || '')
     .toString()
     .replace(/^@/, '');
@@ -956,7 +879,6 @@ export async function handler(event){
     const op = String(body.op || '').toLowerCase();
     const store = await getStoreSafe();
 
-    // === читаем initData с приоритетом тела, логируем источник
     let userUid = null;
     let verified = false;
     let weakInit = false;
@@ -978,22 +900,17 @@ export async function handler(event){
         if (DEBUG) logD(`[req:${reqId}] tg ok, uid=${userUid}`);
       } catch (e) {
         if (DEBUG) logD(`[req:${reqId}] tg verify failed (src=${src}):`, String(e?.message||e));
-        // readonly-поблажка как раньше
         if (op === 'getbalance' || op === 'getreferrals') {
           userUid = String(body.uid || '').trim();
           if (!userUid) throw e;
-          if (DEBUG) logD(`[req:${reqId}] readonly op without tg:`, op, 'uid=', userUid);
         } else {
-          // аварийный режим: только для резерв/финализация, если соблюдены предохранители
           const allowWeak = canProceedWeakInit({
             op,
             headers: event.headers || {},
             rawInit,
             bodyUid: body.uid
           });
-          if (!allowWeak) {
-            throw e;
-          }
+          if (!allowWeak) { throw e; }
           userUid = String(body.uid || '').trim();
           weakInit = true;
           verified = false;
@@ -1006,7 +923,6 @@ export async function handler(event){
 
     if (op === 'getbalance'){
       const uid = uidFor(body.uid);
-      if (DEBUG) logD(`[req:${reqId}] getbalance uid=${uid}`);
       const balance = await store.getBalance(String(uid));
       return { statusCode:200, headers:cors, body: JSON.stringify({ ok:true, balance }) };
     }
@@ -1014,7 +930,6 @@ export async function handler(event){
     if (op === 'bindreferral'){
       const inviter = String(body.inviter||'');
       const invitee = uidFor(body.invitee);
-      if (DEBUG) logD(`[req:${reqId}] bindReferral inviter=${inviter} invitee=${invitee}`);
       const r = await store.bindReferral(inviter, invitee);
       return { statusCode:200, headers:cors, body: JSON.stringify({ ok:r.ok!==false, reason:r.reason||null }) };
     }
@@ -1022,7 +937,6 @@ export async function handler(event){
     if (op === 'accrue'){
       if (!internal) return { statusCode:403, headers:cors, body: JSON.stringify({ ok:false, error:'forbidden' }) };
       const { uid, orderId, total=0, currency='UZS', shortId=null } = body;
-      if (DEBUG) logD(`[req:${reqId}] accrue`, { uid, orderId, total, currency, shortId });
       const r = await store.accrue(String(uid), String(orderId), Number(total||0), String(currency||'UZS'), shortId ? String(shortId) : null);
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
     }
@@ -1030,25 +944,20 @@ export async function handler(event){
     if (op === 'reserveredeem'){
       const uid = uidFor(body.uid);
       const { pts=0, orderId, total=0, shortId=null } = body;
-      if (DEBUG) logD(`[req:${reqId}] reserveRedeem in`, { uid, pts, orderId, total, shortId, weakInit });
       const r = await store.reserve(String(uid), Number(pts||0), String(orderId), Number(total||0), shortId ? String(shortId) : null);
-      if (DEBUG) logD(`[req:${reqId}] reserveRedeem out`, r);
       return { statusCode:200, headers:cors, body: JSON.stringify({ ...r, weakInit }) };
     }
 
     if (op === 'finalizeredeem'){
       const uid = uidFor(body.uid);
       const { orderId, action } = body;
-      if (DEBUG) logD(`[req:${reqId}] finalizeRedeem in`, { uid, orderId, action, weakInit });
       const r = await store.finalize(String(uid), String(orderId), String(action));
-      if (DEBUG) logD(`[req:${reqId}] finalizeRedeem out`, r);
       return { statusCode:200, headers:cors, body: JSON.stringify({ ...r, weakInit }) };
     }
 
     if (op === 'confirmaccrual'){
       const uid = uidFor(body.uid);
       const { orderId } = body;
-      if (DEBUG) logD(`[req:${reqId}] confirmAccrual`, { uid, orderId });
       const r = await store.confirm(String(uid), String(orderId));
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
     }
@@ -1056,7 +965,6 @@ export async function handler(event){
     if (op === 'voidaccrual'){
       if (!internal) return { statusCode:403, headers:cors, body: JSON.stringify({ ok:false, error:'forbidden' }) };
       const { uid=null, orderId } = body;
-      if (DEBUG) logD(`[req:${reqId}] voidAccrual`, { uid, orderId });
       const r = await store.voidAccrual(String(orderId));
       let balance = null;
       if (uid) { try { balance = await store.getBalance(String(uid)); } catch {} }
@@ -1065,7 +973,6 @@ export async function handler(event){
 
     if (op === 'getreferrals'){
       const uid = uidFor(body.uid);
-      if (DEBUG) logD(`[req:${reqId}] getReferrals uid=${uid}`);
       const r = await store.getReferrals(String(uid));
       return { statusCode:200, headers:cors, body: JSON.stringify({ ok:true, ...r }) };
     }
@@ -1073,14 +980,13 @@ export async function handler(event){
     if (op === 'admincalc'){
       if (!internal) return { statusCode:403, headers:cors, body: JSON.stringify({ ok:false, error:'forbidden' }) };
       const { orderId } = body;
-      if (DEBUG) logD(`[req:${reqId}] adminCalc`, { orderId });
       const r = await store.calc(String(orderId));
       return { statusCode:200, headers:cors, body: JSON.stringify({ ok:true, ...r }) };
     }
 
     return { statusCode:400, headers:cors, body: JSON.stringify({ ok:false, error:'unknown op' }) };
   }catch(e){
-    logE(`[req:${reqId}] error:`, e);
+    logE(`[loyalty] error:`, e);
     return { statusCode:500, headers:cors, body: JSON.stringify({ ok:false, error:String(e?.message||e) }) };
   }
 }

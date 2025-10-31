@@ -1,4 +1,3 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -71,10 +70,9 @@
   var de = document.documentElement;
 
   function isHomeHash(h){
-    if (!h || h === '#') return true;             // пусто → home
-    if (/^#tgwebapp/i.test(h)) return true;       // Telegram: #tgWebAppData=... → home
-    if (!h.startsWith('#/')) return true;         // любой хэш без '/': считаем home
-    // на роутере у нас home — это ровно '#/' (или '#/?...')
+    if (!h || h === '#') return true;
+    if (/^#tgwebapp/i.test(h)) return true;
+    if (!h.startsWith('#/')) return true;
     return (h === '#/' || h.startsWith('#/?'));
   }
 
@@ -84,10 +82,10 @@
     de.classList.toggle('route-other', !onHome);
   }
 
-  apply();                                 // как можно раньше
+  apply();
   window.addEventListener('hashchange', apply, { passive:true });
-  document.addEventListener('DOMContentLoaded', apply); // на всякий случай
-  window.addEventListener('load', apply);               // Telegram иногда меняет хэш на load
+  document.addEventListener('DOMContentLoaded', apply);
+  window.addEventListener('load', apply);
 })();
 </script>
 <script>
@@ -98,22 +96,19 @@
     if (booted) return;
     var hdr = document.querySelector('.app-header');
     if (hdr) {
-      hdr.classList.remove('hidden');     // снять возможную невидимость
-      // на случай, если где-то ставили style="display:none"
+      hdr.classList.remove('hidden');
       hdr.style.removeProperty('display');
       hdr.style.removeProperty('visibility');
       document.documentElement.setAttribute('data-hdr-boot', '1');
       booted = true;
     }
   }
-  // максимально рано
   showOnce();
   document.addEventListener('readystatechange', showOnce, { once:true });
   document.addEventListener('DOMContentLoaded', showOnce, { once:true });
   window.addEventListener('load', showOnce, { once:true });
 })();
 </script>
-
 
   <!-- Fonts / styles -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -128,16 +123,25 @@
       --tabbar-h: 92px;
       --shadow: 0 10px 30px rgba(0,0,0,.18);
       --muted:#787676;
+      --dot: #ff3b30;
     }
 
-/* стало (вставь/замени в твоём <style> в head): */
-[data-home-only]{ display:block !important; }
-.route-other [data-home-only]{ display:none !important; }
+    /* показ секций только на главной */
+    [data-home-only]{ display:block !important; }
+    .route-other [data-home-only]{ display:none !important; }
 
-
-
-
-
+    /* === Уведомления (новая система "точек") === */
+    .app-header .notif-btn { display:none !important; } /* прячем колокольчик */
+    .dot{
+      position:absolute; right:-2px; top:-2px;
+      width:10px; height:10px; border-radius:999px;
+      background:var(--dot); box-shadow:0 0 0 2px #fff;
+      pointer-events:none;
+    }
+    .tabbar .tab{ position:relative } /* якорь для позиции .dot на табах */
+    /* точка внутри плиток/кнопок аккаунта — небольшой сдвиг */
+    .acc-dot{ position:absolute; right:10px; top:10px; }
+    .badge-wrap{ position:relative } /* чтобы не сломать бейдж корзины */
 
     .section-search .search-wrap{ position:relative }
     .section-search .search{ width:100%; padding-right:44px }
@@ -214,6 +218,7 @@
         <div class="brand"><span class="app-title" aria-label="EVLISE OUTLET">EVLISE OUTLET</span></div>
       </div>
       <div class="hdr-right">
+        <!-- Колокольчик скрыт CSS-ом .notif-btn -->
         <button id="openNotifications" class="icon-btn notif-btn" aria-label="Уведомления" aria-live="polite" aria-atomic="true">
           <i data-lucide="bell"></i><b id="notifBadge" class="badge" hidden>0</b>
         </button>

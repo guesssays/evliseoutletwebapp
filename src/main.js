@@ -1,4 +1,3 @@
-// src/main.js
 import {
   state,
   loadCart,
@@ -15,7 +14,7 @@ import {
 
 import { toast } from './core/toast.js';
 
-// --- Унифицированные тосты (адаптер под новый/старый API) ---
+// --- Унифицированные тосты ---
 function toastEx(msg, type = 'info') {
   try {
     if (toast && typeof toast === 'object') {
@@ -73,7 +72,7 @@ import {
 // Экран-мостик для браузера
 import { renderRefBridge } from './views/RefBridge.js';
 
-/* ===== Кэшбек/Рефералы: локальные утилиты (дозревание pending) ===== */
+/* ===== Кэшбек/Рефералы: локальные утилиты дозревания ===== */
 const POINTS_MATURITY_MS  = 24*60*60*1000;
 function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
 
@@ -122,6 +121,67 @@ function settleMatured(){
   if (changed){ w.pending=keep; writeWallet(w); }
 }
 
+/* -------- НОВОЕ: Unseen-флаги и «красные точки» -------- */
+const kinds = {
+  orders:    'unseen_orders',
+  cashback:  'unseen_cashback',
+  referrals: 'unseen_referrals',
+};
+function flagKey(){ return k('unseen_flags'); }
+function readFlags(){
+  try { return JSON.parse(localStorage.getItem(flagKey())||'{}')||{}; } catch { return {}; }
+}
+function writeFlags(map){ try{ localStorage.setItem(flagKey(), JSON.stringify(map||{})); }catch{} }
+function getUnseen(kind){ return !!readFlags()[kind]; }
+function setUnseen(kind, on){
+  const map = readFlags();
+  if (on){ map[kind]=true; } else { delete map[kind]; }
+  writeFlags(map);
+  try{ window.dispatchEvent(new CustomEvent('unseen:update', { detail: map })); }catch{}
+  paintAccountDot();
+  paintAccountButtonsDots();
+}
+function clearUnseen(kind){ setUnseen(kind, false); }
+function anyUnseen(){ const m=readFlags(); return !!(m[kinds.orders]||m[kinds.cashback]||m[kinds.referrals]); }
+
+function ensureDot(node, cls=''){
+  if (!node) return null;
+  let d = node.querySelector(':scope > .dot');
+  if (!d){
+    d = document.createElement('b');
+    d.className = 'dot' + (cls?(' '+cls):'');
+    node.appendChild(d);
+  }
+  return d;
+}
+function removeDot(node){
+  if (!node) return;
+  node.querySelectorAll(':scope > .dot').forEach(n => n.remove());
+}
+
+function paintAccountDot(){
+  const tab = document.querySelector('.tabbar .tab[data-tab="account"]');
+  if (!tab) return;
+  if (anyUnseen()) ensureDot(tab);
+  else removeDot(tab);
+}
+function paintAccountButtonsDots(){
+  const v = document.getElementById('view'); if (!v) return;
+  const sel = [
+    { q:'a[href="#/orders"]',               kind:kinds.orders },
+    { q:'a[href="#/account/cashback"]',    kind:kinds.cashback },
+    { q:'a[href="#/account/referrals"]',   kind:kinds.referrals },
+  ];
+  for (const {q,kind} of sel){
+    const a = v.querySelector(q);
+    if (!a) continue;
+    a.style.position = a.style.position || 'relative';
+    if (getUnseen(kind)) ensureDot(a, 'acc-dot');
+    else removeDot(a);
+  }
+}
+function paintAccountDotsSafe(){ try{ paintAccountButtonsDots(); }catch{} }
+
 /* -------- Отрисовочные помощники для заказов/уведомлений -------- */
 function makeDisplayOrderIdFromParts(orderId, shortId) {
   const s = String(shortId || '').trim();
@@ -168,7 +228,6 @@ async function notifApiMarkAll(uid){
   const headers = { 'Content-Type':'application/json' };
   if (hasInit) headers['X-Tg-Init-Data'] = initData;
 
-  // пробуем по очереди: markmine → markseen → markAll
   const attempts = hasInit
     ? [{ op:'markmine' }, { op:'markseen' }]
     : [{ op:'markAll', uid:String(uid) }];
@@ -264,19 +323,15 @@ async function ensureOnboardingNotifsOnce(){
   try{ if (!localStorage.getItem('nas_uid')) localStorage.setItem('nas_uid', 'guest'); }catch{}
 })();
 
-/* ВАЖНО: однократно перенесём кошелёк guest -> <uid> до любых чтений */
+/* ВАЖНО: миграция кошелька — до любых чтений */
 migrateGuestWalletOnce();
 
 /* ---------- персональные данные ---------- */
 loadCart(); loadAddresses(); loadProfile(); loadFavorites();
 updateCartBadge(); initTelegramChrome();
-// --- Telegram WebApp first-frame fix: показываем хедер сразу в вебвью
 try {
   const tg = window.Telegram?.WebApp;
-  if (tg) {
-    tg.ready?.();
-    tg.expand?.();
-  }
+  if (tg) { tg.ready?.(); tg.expand?.(); }
 } catch {}
 
 requestAnimationFrame(() => {
@@ -365,6 +420,8 @@ function setTabbarMenu(activeKey = 'home'){
   });
 
   updateCartBadge();
+  // НОВОЕ: перерисовать точку аккаунта после перестройки таббара
+  paintAccountDot();
 }
 function setTabbarCTA(arg){
   const inner = document.querySelector('.tabbar .tabbar-inner'); if (!inner) return;
@@ -389,7 +446,6 @@ function setTabbarCTAs(left = { id:'ctaLeft', html:'', onClick:null }, right = {
   if (right.onClick) document.getElementById(right.id||'ctaRight').onclick = right.onClick;
 }
 
-/* глобально — нужно другим модулям */
 window.setTabbarMenu = setTabbarMenu;
 window.setTabbarCTA  = setTabbarCTA;
 window.setTabbarCTAs = setTabbarCTAs;
@@ -471,13 +527,29 @@ async function router(){
 
   if (match('favorites'))          { return renderFavorites(); }
   if (match('cart'))               { return renderCart(); }
-  if (match('orders'))             { return renderOrders(); }
+  if (match('orders'))             {
+    clearUnseen(kinds.orders);
+    paintAccountDot(); paintAccountDotsSafe();
+    return renderOrders();
+  }
 
-  if (match('account'))            { return renderAccount(); }
-  if (match('account/addresses'))  { return renderAddresses(); }
-  if (match('account/settings'))   { return renderSettings(); }
-  if (match('account/cashback'))   { return renderCashback(); }
-  if (match('account/referrals'))  { return renderReferrals(); }
+  if (match('account'))            {
+    const res = renderAccount();
+    paintAccountDotsSafe();
+    return res;
+  }
+  if (match('account/addresses'))  { const r = renderAddresses(); paintAccountDotsSafe(); return r; }
+  if (match('account/settings'))   { const r = renderSettings();  paintAccountDotsSafe(); return r; }
+  if (match('account/cashback'))   {
+    clearUnseen(kinds.cashback);
+    paintAccountDot(); paintAccountDotsSafe();
+    const r = renderCashback(); return r;
+  }
+  if (match('account/referrals'))  {
+    clearUnseen(kinds.referrals);
+    paintAccountDot(); paintAccountDotsSafe();
+    const r = renderReferrals(); return r;
+  }
 
   if (match('notifications')){
     await renderNotifications(updateNotifBadge);
@@ -601,7 +673,7 @@ async function init(){
     if (String(targetUid) === String(getUID?.())) { pushNotification(notif); updateNotifBadge?.(); }
   }
 
-  // === Уведомления вокруг заказов ===
+  // === Уведомления вокруг заказов (+ unseen:orders) ===
   window.addEventListener('client:orderPlaced', async (e)=>{
     try{
       const id = e.detail?.id;
@@ -614,6 +686,7 @@ async function init(){
         read:false
       };
       pushNotification(notif); updateNotifBadge?.();
+      setUnseen(kinds.orders, true); // НОВОЕ: точка «Заказы»
       await serverPushFor(getUID(), notif);
       window.dispatchEvent(new CustomEvent('orders:updated'));
     }catch{}
@@ -626,6 +699,7 @@ async function init(){
       const dispId = makeDisplayOrderId(order);
       const notif = { icon:'shield-check', title:'Заказ принят администратором', sub: dispId ? `#${dispId}` : '' };
       await serverPushFor(userId, notif); instantLocalIfSelf(userId, notif);
+      if (String(userId) === String(getUID?.())) setUnseen(kinds.orders, true);
     }catch{}
   });
 
@@ -636,6 +710,7 @@ async function init(){
       const dispId = makeDisplayOrderId(order);
       const notif = { icon:'refresh-ccw', title:'Статус заказа обновлён', sub: dispId ? `#${dispId}: ${getStatusLabel(status)}` : getStatusLabel(status) };
       await serverPushFor(userId, notif); instantLocalIfSelf(userId, notif);
+      if (String(userId) === String(getUID?.())) setUnseen(kinds.orders, true);
     }catch{}
   });
 
@@ -647,8 +722,14 @@ async function init(){
       const subSuffix = reason ? ` — ${reason}` : '';
       const notif = { icon:'x-circle', title:'Заказ отменён', sub: dispId ? `#${dispId}${subSuffix}` : (reason || '') };
       await serverPushFor(userId, notif); instantLocalIfSelf(userId, notif);
+      if (String(userId) === String(getUID?.())) setUnseen(kinds.orders, true);
     }catch{}
   });
+
+  // === Локальные события лояльности/рефералок — триггеры точек ===
+  window.addEventListener('loyalty:accrue',     ()=> setUnseen(kinds.cashback, true));
+  window.addEventListener('loyalty:confirmed',  ()=> setUnseen(kinds.cashback, true));
+  window.addEventListener('referrals:joined',   ()=> setUnseen(kinds.referrals, true));
 
   window.lucide && lucide.createIcons?.();
 
@@ -668,6 +749,9 @@ async function init(){
 
   // лёгкий поллер заказов
   setInterval(async ()=>{ try { await getOrders(); } catch {} }, 45000);
+
+  // первичная отрисовка «красной точки» в таббаре и в аккаунте, вдруг уже есть flags
+  paintAccountDot(); paintAccountDotsSafe();
 }
 init();
 

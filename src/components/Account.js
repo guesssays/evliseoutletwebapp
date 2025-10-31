@@ -1,12 +1,8 @@
 // src/components/Account.js
-import { state, persistAddresses } from '../core/state.js';
+import { state, persistAddresses, getUID } from '../core/state.js';
 import { canAccessAdmin } from '../core/auth.js';
-import { getUID } from '../core/state.js';
-import { makeReferralLink } from '../core/loyalty.js';
+import { makeReferralLink, fetchMyLoyalty, getLocalLoyalty } from '../core/loyalty.js';
 import { notifyCashbackMatured } from '../core/botNotify.js'; // ✅ бот-уведомление о дозревшем кэшбеке
-
-// 🔄 новее: показываем серверный баланс лояльности
-import { fetchMyLoyalty, getLocalLoyalty } from '../core/loyalty.js';
 
 const OP_CHAT_URL = 'https://t.me/evliseorder';
 const DEFAULT_AVATAR = 'assets/user-default.png'; // ← путь к дефолтной аватарке
@@ -58,7 +54,7 @@ function settleMatured(){
         sub: `+${maturedSum.toLocaleString('ru-RU')} баллов — можно использовать при оформлении заказа.`,
       });
     }catch{}
-    // Бот-уведомление с упором на действие
+    // Бот-уведомление
     try{
       notifyCashbackMatured(getUID?.(), { text: `✅ Кэшбек доступен: +${maturedSum.toLocaleString('ru-RU')} баллов. Используйте их при оплате.` });
     }catch{}
@@ -68,14 +64,13 @@ function settleMatured(){
 
 /* — реф-профиль — */
 function readRefProfile(){ try{ return JSON.parse(localStorage.getItem(k('ref_profile')) || '{}'); }catch{ return {}; } }
-function writeRefProfile(v){ localStorage.setItem(k('ref_profile'), JSON.stringify(v||{})); }
 
 /* — реф-ссылка (t.me deeplink) — */
 function getReferralLink(){
   return makeReferralLink();
 }
 
-/* — список моих рефералов/статистика — */
+/* — список моих рефералов/статистика (локальный кеш) — */
 function readMyReferrals(){
   try{
     const raw = localStorage.getItem(k('my_referrals')) || '[]';
@@ -83,7 +78,6 @@ function readMyReferrals(){
     return Array.isArray(arr) ? arr : [];
   }catch{ return []; }
 }
-function writeMyReferrals(arr){ localStorage.setItem(k('my_referrals'), JSON.stringify(Array.isArray(arr)?arr:[])); }
 
 /* ===== загрузка аватарки из Telegram через серверную функцию ===== */
 async function fetchTgAvatarUrl(uid){
@@ -328,7 +322,7 @@ export function renderAccount(){
         </button>
       </div>
     </section>`;
-  window.lucide?.createIcons && lucide.createIcons();
+  try { window.lucide?.createIcons?.(); } catch {}
 
   // Загрузка серверного баланса и обновление чисел
   (async () => {
@@ -406,7 +400,7 @@ export function renderCashback(){
       </div>
     </section>
   `;
-  window.lucide?.createIcons && lucide.createIcons();
+  try { window.lucide?.createIcons?.(); } catch {}
   document.getElementById('backAcc')?.addEventListener('click', ()=> history.back());
 
   // Подтягиваем серверный баланс и историю
@@ -535,7 +529,7 @@ export function renderReferrals(){
       </div>
     </section>
   `;
-  window.lucide?.createIcons && lucide.createIcons();
+  try { window.lucide?.createIcons?.(); } catch {}
 
   document.getElementById('backAcc')?.addEventListener('click', ()=> history.back());
 
@@ -566,11 +560,11 @@ export function renderReferrals(){
       const label = btn.querySelector('span');
       const prev = { label: label?.textContent || 'Скопировать', icon: icon?.getAttribute('data-lucide') || 'copy' };
       if (label) label.textContent = 'Скопировано!';
-      if (icon){ icon.setAttribute('data-lucide','check'); window.lucide?.createIcons && lucide.createIcons(); }
+      if (icon){ icon.setAttribute('data-lucide','check'); try { window.lucide?.createIcons?.(); } catch {} }
       if (hint){ hint.style.display = 'block'; }
       setTimeout(()=>{
         if (label) label.textContent = prev.label;
-        if (icon){ icon.setAttribute('data-lucide', prev.icon); window.lucide?.createIcons && lucide.createIcons(); }
+        if (icon){ icon.setAttribute('data-lucide', prev.icon); try { window.lucide?.createIcons?.(); } catch {} }
         if (hint){ hint.style.display = 'none'; }
       }, 1500);
     }
@@ -727,7 +721,7 @@ export function renderAddresses(){
   // 👈 новая кнопка «назад»
   document.getElementById('backAccAddrs')?.addEventListener('click', ()=> history.back());
 
-  window.lucide?.createIcons && lucide.createIcons();
+  try { window.lucide?.createIcons?.(); } catch {}
 }
 
 // Настройки оставлены для прямого URL, но не показываются в меню
@@ -746,7 +740,7 @@ export function renderSettings(){
         <div class="menu-item"><i data-lucide="moon"></i><span>Тема устройства</span></div>
       </div>
     </section>`;
-  window.lucide?.createIcons && lucide.createIcons();
+  try { window.lucide?.createIcons?.(); } catch {}
   document.getElementById('backAccSettings')?.addEventListener('click', ()=> history.back());
 }
 
@@ -764,13 +758,34 @@ function escapeHtml(s=''){
   return String(s).replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
-/** Локальный помощник: создать in-app уведомление для uid */
+/* ===== Уведомления: helperы под новый notifs-бэкенд ===== */
+function getTgInitDataRaw(){
+  try {
+    return typeof window?.Telegram?.WebApp?.initData === 'string'
+      ? window.Telegram.WebApp.initData
+      : '';
+  } catch { return ''; }
+}
+
+/** Локальный помощник: создать in-app уведомление для uid (с учётом X-Tg-Init-Data) */
 async function postAppNotif(uid, { icon='bell', title='', sub='' } = {}){
+  const safe = (s, n=256) => String(s||'').trim().slice(0, n);
+  const body = {
+    op: 'add',
+    uid: String(uid||''),
+    notif: { icon: safe(icon, 32), title: safe(title), sub: safe(sub, 512) }
+  };
+
+  // В проде предпочтителен X-Tg-Init-Data
+  const initData = getTgInitDataRaw();
+  const headers = { 'Content-Type':'application/json' };
+  if (initData) headers['X-Tg-Init-Data'] = initData;
+
   try{
     await fetch('/.netlify/functions/notifs', {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ op:'add', uid, notif:{ icon, title, sub } })
+      headers,
+      body: JSON.stringify(body)
     });
   }catch{}
 }
