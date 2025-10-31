@@ -1,3 +1,4 @@
+// src/main.js
 import {
   state,
   loadCart,
@@ -73,21 +74,67 @@ import {
 // Экран-мостик для браузера
 import { renderRefBridge } from './views/RefBridge.js';
 
+/* ------------------------------------------------------------------
+   МГНОВЕННЫЕ СКЕЛЕТОНЫ ДО ЛЮБЫХ FETCH
+   ------------------------------------------------------------------ */
+
+/** Вычислить количество карточек-скелетонов под текущий вьюпорт */
+function calcBootSkeletonCount(){
+  const h = (window.visualViewport?.height || window.innerHeight || 700);
+  const rows = Math.max(3, Math.min(4, Math.round(h / 260))); // ориентир 3–4 ряда
+  const cols = (window.innerWidth <= 380) ? 1 : 2;
+  return rows * cols; // 6–8 штук обычно
+}
+
+/** Отрисовать сетку скелетонов сразу в #view (без зависимостей) */
+function renderBootSkeleton(){
+  const v = document.getElementById('view'); if (!v) return;
+  // Если уже что-то есть (например, роут успел отрисоваться) — не вмешиваемся
+  if (v.__bootSkelMounted) return;
+  v.__bootSkelMounted = true;
+
+  const n = calcBootSkeletonCount();
+  const grid = document.createElement('div');
+  grid.className = 'grid home-bottom-pad';
+  grid.id = 'productGrid';
+
+  let html = '';
+  for (let i=0; i<n; i++){
+    html += `
+      <div class="card is-skeleton">
+        <div class="card-img">
+          <div class="img-skel"></div>
+        </div>
+        <div class="card-body">
+          <div class="skel skel-title"></div>
+          <div class="skel skel-sub"></div>
+          <div class="price-row">
+            <div class="skel skel-price"></div>
+            <div class="skel skel-chip"></div>
+          </div>
+        </div>
+      </div>`;
+  }
+  grid.innerHTML = html;
+  v.innerHTML = '';
+  v.appendChild(grid);
+}
+
+/** Снять «метку» о пререндере скелетонов, чтобы повторно не блокировать */
+function clearBootSkeletonMark(){
+  const v = document.getElementById('view');
+  if (v) v.__bootSkelMounted = false;
+}
 
 // --- Telegram Fullscreen bootstrap (very early) ---
 (function forceTGFullscreenEarly(){
   const tg = window?.Telegram?.WebApp;
   if (!tg) return;
 
-  // Базовые вызовы: ready + максимально расшириться + попытка полноценного фуллскрина
   try { tg.ready?.(); } catch {}
   try { tg.requestFullscreen?.(); } catch {}
   try { tg.expand?.(); } catch {}
 
-  // (опционально) фикс ориентации
-  // try { tg.lockOrientation?.('portrait'); } catch {}
-
-  // Подстраховка: повторять запрос после возврата в приложение/фокуса
   const reassert = () => {
     try { tg.requestFullscreen?.(); } catch {}
     try { tg.expand?.(); } catch {}
@@ -723,6 +770,7 @@ async function router(){
   if (parts.length===0) {
     const res = renderHome(router);
     try { ScrollReset.request(document.getElementById('view')); } catch {}
+    clearBootSkeletonMark();
     return res;
   }
 
@@ -732,12 +780,12 @@ async function router(){
     return params;
   };
 
-  const m1=match('category/:slug'); if (m1){ return renderCategory(m1); }
-  const m2=match('product/:id');   if (m2){ return renderProduct(m2); }
-  const m3=match('track/:id');     if (m3){ return renderTrack(m3); }
+  const m1=match('category/:slug'); if (m1){ clearBootSkeletonMark(); return renderCategory(m1); }
+  const m2=match('product/:id');   if (m2){ clearBootSkeletonMark(); return renderProduct(m2); }
+  const m3=match('track/:id');     if (m3){ clearBootSkeletonMark(); return renderTrack(m3); }
 
-  if (match('favorites'))          { return renderFavorites(); }
-  if (match('cart'))               { return renderCart(); }
+  if (match('favorites'))          { clearBootSkeletonMark(); return renderFavorites(); }
+  if (match('cart'))               { clearBootSkeletonMark(); return renderCart(); }
 
   if (match('orders')) {
     const r = renderOrders();
@@ -813,7 +861,7 @@ async function router(){
 
   if (match('faq')) { return renderFAQ(); }
 
-  { const res = renderHome(router); try { ScrollReset.forceNow(); } catch {} return res; }
+  { const res = renderHome(router); try { ScrollReset.forceNow(); } catch {} clearBootSkeletonMark(); return res; }
 }
 
 /* ===== серверная синхронизация снапшота корзины/избранного ===== */
@@ -848,11 +896,14 @@ function startUserSnapshotSync(){
 
 /* ---------- ИНИЦИАЛИЗАЦИЯ ---------- */
 async function init(){
+  // Сразу показываем скелетоны, чтобы не было «пустого» старта
+  renderBootSkeleton();
+
   captureInviterFromContext();
 
   // загрузка каталога
   try{
-    const res = await fetch('data/products.json');
+    const res = await fetch('data/products.json', { cache:'no-store' });
     const data = await res.json();
     state.products   = Array.isArray(data?.products)   ? data.products   : [];
     state.categories = Array.isArray(data?.categories) ? data.categories.map(c=>({ ...c, name: c.name })) : [];

@@ -24,6 +24,38 @@ function categoryNameBySlug(slug){
 }
 
 /* ================== скелетоны ================== */
+
+
+// ⬇️ ДОБАВЬТЕ (рядом с уже существующим calcSkeletonCount/renderSkeletonGrid)
+export function showHomeSkeleton() {
+  const v = document.getElementById('view');
+  if (!v) return;
+  // Каркас такой же, как в renderHome, но только скелет-сетка
+  v.innerHTML = `<div class="grid home-bottom-pad" id="productGrid"></div>`;
+  const grid = v.querySelector('#productGrid');
+  if (!grid) return;
+
+  const count = calcSkeletonCount();
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < count; i++) {
+    const card = document.createElement('a');
+    card.className = 'card is-skeleton';
+    card.setAttribute('aria-hidden', 'true');
+    card.innerHTML = `
+      <div class="card-img">
+        <div class="img-skel"></div>
+      </div>
+      <div class="card-body">
+        <div class="title skel skel-title"></div>
+        <div class="subtitle skel skel-sub"></div>
+        <div class="price-row"><div class="price skel skel-price"></div></div>
+      </div>`;
+    frag.appendChild(card);
+  }
+  grid.appendChild(frag);
+}
+
+
 function calcSkeletonCount(){
   const h = (window.visualViewport?.height || window.innerHeight || 700);
   const rows = Math.max(3, Math.min(4, Math.round(h / 260))); // 3–4 ряда
@@ -39,7 +71,7 @@ function renderSkeletonGrid(container, count){
     el.setAttribute('aria-hidden','true');
     el.innerHTML = `
       <div class="card-img">
-        <div class="skel skel-img"></div>
+        <div class="img-skel"></div>
       </div>
       <div class="card-body">
         <div class="skel skel-title"></div>
@@ -194,6 +226,15 @@ function progressiveAppend(grid, list, {firstBatch=12, batch=16, delay=0} = {}){
 /* ================== публичные функции ================== */
 export function renderHome(router){
   const v = document.getElementById('view');
+  if (!v) return;
+
+  // если ещё нет товаров — показываем скелет сразу
+  if (!Array.isArray(state.products) || state.products.length === 0) {
+    showHomeSkeleton();
+    // категории/чипы над сеткой вы уже рендерите отдельно — оставляем как есть
+    try { window.dispatchEvent(new CustomEvent('view:home-mounted')); } catch {}
+    return;
+  }
   v.innerHTML = `<div class="grid home-bottom-pad" id="productGrid"></div>`;
   const grid = document.getElementById('productGrid');
 
