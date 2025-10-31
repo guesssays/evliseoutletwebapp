@@ -1492,7 +1492,7 @@ html.route-home .product-fixhdr{
   /* общий оффсет верхнего системного бара (вне TG почти 0) */
   --top-ui-offset: var(--safe-top, 0px);
   /* дополнительная «просадка» по твоей просьбе */
-  --top-ui-nudge: 20px;
+  --top-ui-nudge: 12px;
 
   /* единый токен для тостов: ПРИНИМАЕМ snake-case как канонический */
   --toast-top: calc(var(--safe-top, 0px) + 10px);
@@ -1528,3 +1528,22 @@ html.route-home .product-fixhdr{
 :root{
   --toastTop: var(--toast-top);
 }
+/* === Toast offset bump (+8px) === */
+
+/* 1) общий токен-добавка */
+:root{
+  --toast-nudge: 8px; /* тут увеличиваешь/уменьшаешь отступ для тостов */
+}
+
+/* 2) пересобираем --toast-top с учётом nudge */
+:root{
+  --toast-top: calc(var(--safe-top, 0px) + 10px + var(--toast-nudge));
+}
+
+/* 3) внутри Telegram WebApp — тоже прибавляем nudge */
+.tg-webapp:root{
+  --toast-top: calc(var(--safe-top, 0px) + var(--tg-topbar, 56px) + 10px + var(--toast-nudge));
+}
+
+/* 4) маппинг для старого имени переменной (как и было) */
+:root{ --toastTop: var(--toast-top); }
