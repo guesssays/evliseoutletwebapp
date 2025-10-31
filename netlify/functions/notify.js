@@ -10,7 +10,7 @@
 //   ALLOWED_ORIGINS
 //
 // Примечание: для стабильного Full Screen используем deep-link tg://resolve?...&startapp
-// WEBAPP_URL и USE_STARTAPP не требуются и не используются.
+// Никаких web_app-кнопок и https-fallback-ов.
 //
 // Заголовки: X-Tg-Init-Data, X-Bot-Username (диагностика), X-Internal-Auth (внутр. вызовы)
 
@@ -21,7 +21,7 @@ function parseAllowed(){ return (process.env.ALLOWED_ORIGINS||'').split(',').map
 function isTelegramOrigin(origin){
   return origin==='https://t.me'
       || origin==='https://web.telegram.org'
-      || origin==='https://web.telegram.org/a'        // новые клиенты
+      || origin==='https://web.telegram.org/a'
       || origin==='https://telegram.org';
 }
 function originMatches(origin, rule){
@@ -166,28 +166,25 @@ function makeDisplayOrderId(orderId, shortId){
   return full.slice(-6).toUpperCase();
 }
 
-/* ---------- Клавиатура: tg:// Full-Screen + https-fallback ---------- */
+/* ---------- Единственная клавиатура: tg:// Full-Screen ---------- */
 const BOT_USERNAME = (process.env.BOT_USERNAME || '').replace(/^@/, '');
 
-function makeStartAppLinks(pathHash = '') {
+// Строим ТОЛЬКО tg:// ссылку. Без https, без web_app, без fallback.
+function makeStartAppUrl(pathHash = '') {
+  if (!BOT_USERNAME) return null;
   const clean = pathHash ? `/${String(pathHash).replace(/^#?\/?/, '')}` : '';
   const payload = clean ? `=${encodeURIComponent(clean)}` : '';
-  const user = BOT_USERNAME;
-  return {
-    tg:    user ? `tg://resolve?domain=${user}&startapp${payload}` : null,
-    https: user ? `https://t.me/${user}?startapp${payload}`       : null,
-  };
+  // tg://resolve гарантированно открывает Mini App в full screen (по умолчанию)
+  return `tg://resolve?domain=${BOT_USERNAME}&startapp${payload}`;
 }
+
 function makeStartAppBtn(text, hash){
-  const { tg } = makeStartAppLinks(hash);
-  return tg ? { text, url: tg } : { text, url: 'tg://resolve' };
+  const url = makeStartAppUrl(hash);
+  return url ? { text, url } : null;
 }
-function makeStartAppFallbackBtn(text, hash){
-  const { https } = makeStartAppLinks(hash);
-  return https ? { text, url: https } : null;
-}
+
 function kbForType(t){
-  if (!BOT_USERNAME) return null; // без имени бота кнопки строить нельзя
+  if (!BOT_USERNAME) return null; // Без имени бота не строим кнопку, чтобы не сломать сообщение
 
   const target =
     t === 'cashbackMatured'       ? 'cart' :
@@ -205,9 +202,8 @@ function kbForType(t){
     t === 'favReminder'           ? 'Открыть избранное' :
                                     'Мои заказы';
 
-  const row1 = [ makeStartAppBtn(mainText, target) ];
-  const fb   = makeStartAppFallbackBtn('Открыть (fallback)', target);
-  return fb ? [ row1, [ fb ] ] : [ row1 ];
+  const btn = makeStartAppBtn(mainText, target);
+  return btn ? [ [ btn ] ] : null;
 }
 
 async function sendTg(token, chatId, text, kb, type){

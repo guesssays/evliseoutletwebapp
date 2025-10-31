@@ -73,6 +73,29 @@ import {
 // Экран-мостик для браузера
 import { renderRefBridge } from './views/RefBridge.js';
 
+
+// --- Telegram Fullscreen bootstrap (very early) ---
+(function forceTGFullscreenEarly(){
+  const tg = window?.Telegram?.WebApp;
+  if (!tg) return;
+
+  // Базовые вызовы: ready + максимально расшириться + попытка полноценного фуллскрина
+  try { tg.ready?.(); } catch {}
+  try { tg.requestFullscreen?.(); } catch {}
+  try { tg.expand?.(); } catch {}
+
+  // (опционально) фикс ориентации
+  // try { tg.lockOrientation?.('portrait'); } catch {}
+
+  // Подстраховка: повторять запрос после возврата в приложение/фокуса
+  const reassert = () => {
+    try { tg.requestFullscreen?.(); } catch {}
+    try { tg.expand?.(); } catch {}
+  };
+  window.addEventListener('focus', reassert);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) reassert(); });
+})();
+
 /* ===== Кэшбек/Рефералы: локальные утилиты дозревания ===== */
 const POINTS_MATURITY_MS  = 24*60*60*1000;
 function k(base){ try{ const uid = getUID?.() || 'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
@@ -530,10 +553,6 @@ migrateGuestWalletOnce();
 /* ---------- персональные данные ---------- */
 loadCart(); loadAddresses(); loadProfile(); loadFavorites();
 updateCartBadge(); initTelegramChrome();
-try {
-  const tg = window.Telegram?.WebApp;
-  if (tg) { tg.ready?.(); tg.expand?.(); }
-} catch {}
 
 /* Кнопка "Наверх" */
 mountScrollTop();
