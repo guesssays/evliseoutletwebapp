@@ -1370,3 +1370,79 @@ html.route-home .product-fixhdr{
 @media (max-width: 360px){
   .menu .menu-item .acc-dot{ top: -5px; right: -5px; }
 }
+/* === MINI-SHRINK PACK (final override) ===================== */
+/* 1) ScrollTop — компактнее */
+#scrollTopBtn{
+  width: 44px !important;
+  height: 44px !important;
+  right: 18px !important;                    /* аккуратнее у края */
+}
+#scrollTopBtn i,
+#scrollTopBtn svg{
+  width: 18px !important;
+  height: 18px !important;
+  stroke-width: 2.1 !important;
+}
+
+/* 2) Фикс-кнопки на странице товара и геро-кнопки */
+#productFixHdr .fixbtn,
+.product-fixhdr .fixbtn,
+.hero-btn{
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 999px !important;
+}
+#productFixHdr .fixbtn i, #productFixHdr .fixbtn svg,
+.product-fixhdr .fixbtn i, .product-fixhdr .fixbtn svg,
+.hero-btn i, .hero-btn svg{
+  width: 18px !important;
+  height: 18px !important;
+}
+
+/* 3) Сердечко на карточках каталога */
+.card .fav{
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 999px !important;
+}
+.card .fav i,
+.card .fav svg{
+  width: 17px !important;
+  height: 17px !important;
+}
+
+/* 4) Точки-индикаторы (notification dots) — реально маленькие */
+:root{
+  --dot-size: 5px !important;     /* было 9 → 5 */
+  --dot-ring-w: 1px !important;    /* тоньше кольцо */
+}
+.dot{
+  width: var(--dot-size) !important;
+  height: var(--dot-size) !important;
+  box-shadow:
+    0 0 0 var(--dot-ring-w) var(--dot-ring, #fff),
+    0 1px 2px rgba(0,0,0,.14) !important;
+}
+.tabbar .tab .dot{ top: -2px !important; right: -2px !important; }
+.menu .menu-item .acc-dot{ top: -5px !important; right: -5px !important; }
+
+/* 5) Бейджи-числа — аккуратнее */
+.badge{
+  font-size: 10px !important;
+  padding: 2px 5px !important;
+  border-radius: 999px !important;
+}
+
+/* 6) Таббар — капельку компактнее (но тапы ≥40px) */
+.tabbar .tab{
+  min-width: 56px !important;     /* было 64 */
+  height: 48px !important;        /* было 52 */
+  gap: 3px !important;
+}
+.tabbar .tab i{ width: 22px !important; height: 22px !important; }
+.tabbar .tab span{ font-size: 11px !important; }
+
+/* 7) Превью «больших» превьюшек, если надо компактнее на мелких экранах */
+@media (max-width: 380px){
+  .thumb{ width: 58px !important; height: 58px !important; }
+}
