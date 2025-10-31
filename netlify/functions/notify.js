@@ -6,10 +6,11 @@
 //   ALT_TG_BOT_TOKENS
 //   ADMIN_API_TOKEN
 //   ADMIN_CHAT_ID
-//   WEBAPP_URL                 // например: https://evliseoutlet.netlify.app/
-//   BOT_USERNAME               // например: EvliSeOutletBot  (нужно только для startapp-фолбэка)
-//   USE_STARTAPP=0|1           // 0 (по умолчанию): web_app-кнопки; 1: URL-кнопки t.me/<bot>?startapp=...
+//   BOT_USERNAME               // например: EvliSeOutletBot  (без @) — обязательно для startapp
 //   ALLOWED_ORIGINS
+//
+// Примечание: для стабильного Full Screen используем deep-link tg://resolve?...&startapp
+// WEBAPP_URL и USE_STARTAPP не требуются и не используются.
 //
 // Заголовки: X-Tg-Init-Data, X-Bot-Username (диагностика), X-Internal-Auth (внутр. вызовы)
 
@@ -165,39 +166,48 @@ function makeDisplayOrderId(orderId, shortId){
   return full.slice(-6).toUpperCase();
 }
 
-/* ---------- Клавиатуры: web_app по умолчанию + startapp-фолбэк ---------- */
-const WEBAPP_URL   = (process.env.WEBAPP_URL || '').replace(/\/+$/, '');
-const BOT_USERNAME = (process.env.BOT_USERNAME || '').replace(/^@/,'');
-const USE_STARTAPP = String(process.env.USE_STARTAPP||'0')==='1';
+/* ---------- Клавиатура: tg:// Full-Screen + https-fallback ---------- */
+const BOT_USERNAME = (process.env.BOT_USERNAME || '').replace(/^@/, '');
 
-function makeStartAppUrl(pathHash=''){
-  if (!BOT_USERNAME) return null;
-  const param = pathHash ? encodeURIComponent(pathHash.replace(/^#/,'')) : '';
-  // https://t.me/<bot>?startapp[=<param>]
-  return `https://t.me/${BOT_USERNAME}?startapp${param ? `=${param}` : ''}`;
+function makeStartAppLinks(pathHash = '') {
+  const clean = pathHash ? `/${String(pathHash).replace(/^#?\/?/, '')}` : '';
+  const payload = clean ? `=${encodeURIComponent(clean)}` : '';
+  const user = BOT_USERNAME;
+  return {
+    tg:    user ? `tg://resolve?domain=${user}&startapp${payload}` : null,
+    https: user ? `https://t.me/${user}?startapp${payload}`       : null,
+  };
 }
-function makeBtn(text, hash){
-  // Куда вести внутри мини-приложения
-  const url = WEBAPP_URL ? `${WEBAPP_URL}/${hash ? `#/${hash.replace(/^#\/?/,'')}` : ''}` : null;
-
-  if (USE_STARTAPP) {
-    // URL-кнопка с deep-link (гарантировано Mini App + fullscreen)
-    const dl = makeStartAppUrl(hash ? `/${hash.replace(/^#\/?/,'')}` : '');
-    return dl ? { text, url: dl } : { text, url: url || 'https://t.me' };
-  }
-  // Нормальный Mini App вход через web_app
-  return { text, web_app: { url: url || 'https://t.me' } };
+function makeStartAppBtn(text, hash){
+  const { tg } = makeStartAppLinks(hash);
+  return tg ? { text, url: tg } : { text, url: 'tg://resolve' };
+}
+function makeStartAppFallbackBtn(text, hash){
+  const { https } = makeStartAppLinks(hash);
+  return https ? { text, url: https } : null;
 }
 function kbForType(t){
-  if (!WEBAPP_URL && (!USE_STARTAPP || !BOT_USERNAME)) return null;
-  switch(t){
-    case 'cashbackMatured':         return [[ makeBtn('Перейти к оплате',      'cart') ]];
-    case 'referralJoined':          return [[ makeBtn('Мои рефералы',          'account/referrals') ]];
-    case 'referralOrderCashback':   return [[ makeBtn('Мой кэшбек',            'account/cashback') ]];
-    case 'cartReminder':            return [[ makeBtn('Оформить заказ',        'cart') ]];
-    case 'favReminder':             return [[ makeBtn('Открыть избранное',     'favorites') ]];
-    default:                        return [[ makeBtn('Мои заказы',            'orders') ]];
-  }
+  if (!BOT_USERNAME) return null; // без имени бота кнопки строить нельзя
+
+  const target =
+    t === 'cashbackMatured'       ? 'cart' :
+    t === 'referralJoined'        ? 'account/referrals' :
+    t === 'referralOrderCashback' ? 'account/cashback' :
+    t === 'cartReminder'          ? 'cart' :
+    t === 'favReminder'           ? 'favorites' :
+                                    'orders';
+
+  const mainText =
+    t === 'cashbackMatured'       ? 'Перейти к оплате' :
+    t === 'referralJoined'        ? 'Мои рефералы' :
+    t === 'referralOrderCashback' ? 'Мой кэшбек' :
+    t === 'cartReminder'          ? 'Оформить заказ' :
+    t === 'favReminder'           ? 'Открыть избранное' :
+                                    'Мои заказы';
+
+  const row1 = [ makeStartAppBtn(mainText, target) ];
+  const fb   = makeStartAppFallbackBtn('Открыть (fallback)', target);
+  return fb ? [ row1, [ fb ] ] : [ row1 ];
 }
 
 async function sendTg(token, chatId, text, kb, type){
