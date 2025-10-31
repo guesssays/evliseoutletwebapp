@@ -1299,7 +1299,7 @@ html.route-home .product-fixhdr{
 
 /* === Notify dots = cart-badge style (final) ======================= */
 :root{
-  --dot-size: 10px;         /* компактнее и внятнее */
+  --dot-size: 4px;         /* компактнее и внятнее */
   --dot-color: #ff5966;     /* тот же красный, что и у бейджа */
   --dot-ring: #ffffff;      /* белое тонкое кольцо как у бейджа */
 }
