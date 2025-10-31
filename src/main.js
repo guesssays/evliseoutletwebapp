@@ -187,20 +187,18 @@ function anyUnseenExcept(kindToIgnore){
 
 function ensureDot(el, extra=''){
   if (!el) return null;
-  let d = el.querySelector(':scope > .dot'); // точка только прямым потомком
+  let d = el.querySelector(':scope > .dot');
   if (!d) {
-    d = document.createElement('i');
+    d = document.createElement('b'); // было: 'i'
     d.className = 'dot';
     el.appendChild(d);
   }
-  if (extra) {
-    for (const c of String(extra).split(/\s+/).filter(Boolean)) d.classList.add(c);
-  }
-  // якорь, чтобы позиционирование работало (на случай нестандартной разметки)
+  if (extra) String(extra).split(/\s+/).forEach(c => d.classList.add(c));
   const cs = getComputedStyle(el);
   if (cs.position === 'static') el.style.position = 'relative';
   return d;
 }
+
 function removeDot(node){
   if (!node) return;
   node.querySelectorAll(':scope > .dot').forEach(n => n.remove());

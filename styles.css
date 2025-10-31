@@ -1341,3 +1341,86 @@ html.route-home .product-fixhdr{
 
 /* (необязательно) круглый индикатор на кнопке уведомлений */
 #openNotifications .dot{ top:-4px; right:-4px; }
+/* === NEUTRAL UI: единые токены и компоненты ========================= */
+:root{
+  --neutral-bg:     #f6f6f6;                 /* светлый фон */
+  --neutral-fg:     var(--text);             /* текст той же тональности */
+  --neutral-border: var(--stroke);           /* тонкая рамка */
+  --neutral-hover:  #efefef;                 /* наведение */
+  --neutral-press:  #e9e9e9;                 /* нажатие */
+  --neutral-shadow: 0 6px 18px rgba(0,0,0,.06); /* мягкая тень */
+}
+
+@media (prefers-color-scheme: dark){
+  :root{
+    --neutral-bg:     rgba(255,255,255,.10);
+    --neutral-fg:     #fff;
+    --neutral-border: rgba(255,255,255,.18);
+    --neutral-hover:  rgba(255,255,255,.14);
+    --neutral-press:  rgba(255,255,255,.10);
+    --neutral-shadow: 0 8px 26px rgba(0,0,0,.28);
+  }
+}
+
+/* КНОПКА: .btn.neutral — вторичное действие без агрессивного контраста */
+.btn.neutral{
+  background: var(--neutral-bg) !important;
+  color: var(--neutral-fg) !important;
+  border: 1px solid var(--neutral-border) !important;
+  box-shadow: var(--neutral-shadow) !important;
+}
+.btn.neutral:hover{ background: var(--neutral-hover) !important; }
+.btn.neutral:active{ transform: translateY(1px); background: var(--neutral-press) !important; }
+.btn.neutral:disabled{
+  opacity: .55; box-shadow: none; cursor: not-allowed;
+}
+
+/* ПИЛЮЛЯ: .pill.neutral — как outline, но с заливкой бумаги */
+.pill.neutral{
+  background: var(--neutral-bg) !important;
+  color: var(--neutral-fg) !important;
+  border: 1px solid var(--neutral-border) !important;
+}
+.pill.neutral:focus-visible{ outline: 2px solid var(--neutral-border); outline-offset: 3px; }
+
+/* ЧИП: .chip.neutral — “пассивный” включаемый фильтр/лейбл */
+.chip.neutral{
+  background: var(--neutral-bg) !important;
+  color: var(--neutral-fg) !important;
+  border: 1px solid var(--neutral-border) !important;
+}
+.chip.neutral.active{
+  /* активный нейтральный чип слегка усиливаем, без инверсии в чёрный */
+  background: var(--neutral-hover) !important;
+  border-color: var(--neutral-border) !important;
+  color: var(--neutral-fg) !important;
+}
+
+/* КВАДРАТНЫЕ / ИКОН-КНОПКИ (в хедерах и т.п.) */
+.square-btn.neutral,
+.icon-btn.neutral{
+  background: var(--neutral-bg) !important;
+  color: var(--neutral-fg) !important;
+  border: 1px solid var(--neutral-border) !important;
+  box-shadow: var(--neutral-shadow) !important;
+}
+.square-btn.neutral:active,
+.icon-btn.neutral:active{ background: var(--neutral-press) !important; }
+
+/* HERO/FX: круглая плавающая кнопка “нейтральная” (например, кнопка назад) */
+.hero-btn.neutral,
+#productFixHdr .fixbtn.neutral,
+.product-fixhdr .fixbtn.neutral{
+  background: var(--neutral-bg) !important;
+  color: var(--neutral-fg) !important;
+  border: 1px solid var(--neutral-border) !important;
+  box-shadow: var(--neutral-shadow) !important;
+}
+
+/* Доп: компактный нейтральный вариант для мини-кнопок в админке */
+.btn--sm.neutral{
+  background: var(--neutral-bg) !important;
+  color: var(--neutral-fg) !important;
+  border: 1px solid var(--neutral-border) !important;
+  box-shadow: none !important;
+}
