@@ -7,7 +7,7 @@ import { notifyCashbackMatured } from '../core/botNotify.js'; // ✅ бот-ув
 const OP_CHAT_URL = 'https://t.me/evliseorder';
 const DEFAULT_AVATAR = 'assets/user-default.png'; // ← путь к дефолтной аватарке
 const AVATAR_TTL_MS = 24 * 60 * 60 * 1000; // 24h
-const DEBUG_AVATAR = false; // поставь true для диагностики в консоли
+const DEBUG_AVATAR = true; // поставь true для диагностики в консоли
 
 /* ===== Локальные ключи и работа с кошельком/рефералами ===== */
 function k(base){ try{ const uid=getUID?.()||'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
