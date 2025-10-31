@@ -6,6 +6,7 @@ import { notifyCashbackMatured } from '../core/botNotify.js'; // ✅ бот-ув
 
 const OP_CHAT_URL = 'https://t.me/evliseorder';
 const DEFAULT_AVATAR = 'assets/user-default.png'; // ← путь к дефолтной аватарке
+const AVATAR_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 /* ===== Локальные ключи и работа с кошельком/рефералами ===== */
 function k(base){ try{ const uid=getUID?.()||'guest'; return `${base}__${uid}`; }catch{ return `${base}__guest`; } }
@@ -79,18 +80,14 @@ function readMyReferrals(){
   }catch{ return []; }
 }
 
-/* ===== загрузка аватарки из Telegram через серверную функцию ===== */
-async function fetchTgAvatarUrl(uid){
-  const url = `/.netlify/functions/user-avatar?uid=${encodeURIComponent(uid)}`;
-  const r = await fetch(url, { method:'GET' });
-  const j = await r.json().catch(()=> ({}));
-  if (!r.ok || j?.ok === false) throw new Error('avatar fetch failed');
-  return String(j?.url || '');
+/* ===== Telegram helpers ===== */
+function getTgInitDataRaw(){
+  try {
+    return typeof window?.Telegram?.WebApp?.initData === 'string'
+      ? window.Telegram.WebApp.initData
+      : '';
+  } catch { return ''; }
 }
-function cacheAvatar(url){ try{ localStorage.setItem(k('tg_avatar_url'), url || ''); }catch{} }
-function readCachedAvatar(){ try{ return localStorage.getItem(k('tg_avatar_url')) || ''; }catch{ return ''; } }
-
-/** Достаём Telegram user id из state.user (поддержка разных полей) */
 function getTelegramUserId(u){
   return String(
     u?.id ??
@@ -101,70 +98,131 @@ function getTelegramUserId(u){
     ''
   ).trim();
 }
+function getTelegramPhotoUrlFallback(){
+  try{
+    const p = window?.Telegram?.WebApp?.initDataUnsafe?.user?.photo_url;
+    return p ? String(p) : '';
+  }catch{ return ''; }
+}
 
+/* ===== загрузка аватарки из Telegram через серверную функцию ===== */
+function avatarCacheKey(){ return k('tg_avatar_url_v2'); } // v2 чтобы сбросить старый формат
+function cacheAvatar(url, ts = Date.now()){
+  try{
+    const rec = { url: String(url||''), ts: Number(ts)||Date.now() };
+    localStorage.setItem(avatarCacheKey(), JSON.stringify(rec));
+  }catch{}
+}
+function readCachedAvatar(){
+  try{
+    const raw = localStorage.getItem(avatarCacheKey());
+    if (!raw) return { url:'', ts:0 };
+    const rec = JSON.parse(raw);
+    if (!rec || !rec.url) return { url:'', ts:0 };
+    // TTL
+    if ((Date.now() - Number(rec.ts||0)) > AVATAR_TTL_MS) return { url:'', ts:0 };
+    return { url: String(rec.url), ts: Number(rec.ts||0) };
+  }catch{ return { url:'', ts:0 }; }
+}
+
+/** GET /.netlify/functions/user-avatar с X-Tg-Init-Data */
+async function fetchTgAvatarUrl(uid){
+  const url = `/.netlify/functions/user-avatar?uid=${encodeURIComponent(uid)}&t=${Date.now()}`;
+  const headers = {};
+  const initData = getTgInitDataRaw();
+  if (initData) headers['X-Tg-Init-Data'] = initData;
+  const r = await fetch(url, { method:'GET', headers });
+  const j = await r.json().catch(()=> ({}));
+  if (!r.ok || j?.ok === false) throw new Error('avatar fetch failed');
+  // сервер может вернуть {url: "..."} или {dataUrl: "..."} — поддержим оба
+  return String(j?.url || j?.dataUrl || '');
+}
+
+/** Аккуратно проставить src с bust’ом кэша, если это не data: */
+function setImgSrcWithBust(img, url, ts = Date.now()){
+  if (!img) return;
+  const isData = /^data:/i.test(url);
+  const isBlob = /^blob:/i.test(url);
+  if (isData || isBlob) { img.src = url; return; }
+  try{
+    const u = new URL(url, location.origin);
+    u.searchParams.set('v', String(ts));
+    img.src = u.toString();
+  }catch{
+    // на всякий — если это невалидный URL, просто присвоим
+    img.src = url;
+  }
+}
+
+function ensureImgErrorGuard(img, box){
+  if (!img || img._evliseErrorBound) return;
+  img._evliseErrorBound = true;
+  img.addEventListener('error', () => {
+    // чтобы не зациклиться — сравним с дефолтом
+    const defAbs = (location.origin + '/' + DEFAULT_AVATAR).replace(/\/+$/, '');
+    const cur = (img.src||'').replace(/\/+$/, '');
+    if (cur !== defAbs && !cur.endsWith(`/${DEFAULT_AVATAR}`) && !cur.endsWith(DEFAULT_AVATAR)) {
+      img.src = DEFAULT_AVATAR;
+    }
+    box?.classList.add('has-img');
+  }, { passive: true });
+}
+
+/** Главный загрузчик аватара */
 async function loadTgAvatar(){
   const u = state?.user || null;
   const uid = getTelegramUserId(u);
   const box = document.getElementById('avatarBox');
   const img = document.getElementById('tgAvatar');
-
   if (!img) return;
 
-  // Предустановим дефолт на всякий случай
+  // Безопасный обработчик ошибок (один раз)
+  ensureImgErrorGuard(img, box);
+
+  // Предустановим дефолт, если пусто
   if (!img.getAttribute('src')) {
     img.src = DEFAULT_AVATAR;
   }
 
-  // Безопасный обработчик ошибки: всегда подставляем дефолт и не зацикливаемся
-  if (!img._evliseErrorBound) {
-    img._evliseErrorBound = true;
-    img.addEventListener('error', () => {
-      if (img.src !== location.origin + '/' + DEFAULT_AVATAR && !img.src.endsWith(DEFAULT_AVATAR)) {
-        img.src = DEFAULT_AVATAR;
-      }
-      box?.classList.add('has-img');
-    });
-  }
-
-  // Если нет tg-id — остаёмся на дефолте
+  // Нет UID — показываем дефолт
   if (!uid) {
     img.src = DEFAULT_AVATAR;
     box?.classList.add('has-img');
     return;
   }
 
-  // 1) отрисуем кеш немедленно (если есть), иначе — дефолт
+  // 1) Мгновенный фолбэк: из кэша (валидного), иначе photo_url из initData, иначе дефолт
+  let instantUrl = '';
   const cached = readCachedAvatar();
-  if (cached) {
-    img.src = cached;
-    box?.classList.add('has-img');
-  } else {
-    img.src = DEFAULT_AVATAR;
-    box?.classList.add('has-img');
+  if (cached.url) instantUrl = cached.url;
+  if (!instantUrl) {
+    const ph = getTelegramPhotoUrlFallback();
+    if (ph) instantUrl = ph;
   }
+  if (!instantUrl) instantUrl = DEFAULT_AVATAR;
+  setImgSrcWithBust(img, instantUrl, cached.ts || Date.now());
+  box?.classList.add('has-img');
 
-  // 2) подтянем актуальный url у функции (если другой — обновим)
+  // 2) Актуализируем с сервера (может вернуть более стабильный proxied URL)
   try{
     const fresh = await fetchTgAvatarUrl(uid);
-    if (fresh){
-      if (fresh !== cached){
-        cacheAvatar(fresh);
-      }
-      img.src = fresh;
+    if (fresh) {
+      // если новый — кладём в кэш (и ставим bust чтобы обновить превью)
+      if (fresh !== cached.url) cacheAvatar(fresh);
+      setImgSrcWithBust(img, fresh, Date.now());
       box?.classList.add('has-img');
-    }else{
-      // нет фото в TG — оставляем дефолт
+    } else {
+      // нет фото на стороне TG — очистим кэш и поставим дефолт
       cacheAvatar('');
       img.src = DEFAULT_AVATAR;
       box?.classList.add('has-img');
     }
   }catch{
-    // сетевые/серверные ошибки — оставляем дефолт
-    img.src = DEFAULT_AVATAR;
-    box?.classList.add('has-img');
+    // сетевые/серверные ошибки — не трогаем то, что уже показали (кэш/фолбэк/дефолт)
   }
 }
 
+/* ===== рендеры ===== */
 export function renderAccount(){
   try{
     document.querySelector('.app-header')?.classList.remove('hidden');
@@ -759,13 +817,6 @@ function escapeHtml(s=''){
 }
 
 /* ===== Уведомления: helperы под новый notifs-бэкенд ===== */
-function getTgInitDataRaw(){
-  try {
-    return typeof window?.Telegram?.WebApp?.initData === 'string'
-      ? window.Telegram.WebApp.initData
-      : '';
-  } catch { return ''; }
-}
 
 /** Локальный помощник: создать in-app уведомление для uid (с учётом X-Tg-Init-Data) */
 async function postAppNotif(uid, { icon='bell', title='', sub='' } = {}){

@@ -128,6 +128,19 @@ const kinds = {
   cashback:  'unseen_cashback',
   referrals: 'unseen_referrals',
 };
+
+/* -------- Запоминаем «последний просмотр» по разделам -------- */
+function seenKey(){ return k('unseen_last_seen'); }
+function readSeen(){
+  try { return JSON.parse(localStorage.getItem(seenKey())||'{}')||{}; } catch { return {}; }
+}
+function writeSeen(map){ try{ localStorage.setItem(seenKey(), JSON.stringify(map||{})); }catch{} }
+function setLastSeen(kind, ts = Date.now()){
+  const m = readSeen(); m[kind] = Math.max(Number(m[kind]||0), Number(ts||0));
+  writeSeen(m);
+}
+function getLastSeen(kind){ const m = readSeen(); return Number(m[kind]||0); }
+
 function classifyNotif(n){
   const icon  = String(n.icon||'').toLowerCase();
   const title = String(n.title||'').toLowerCase();
@@ -171,6 +184,23 @@ function setUnseen(kind, on){
 function clearUnseen(kind){ setUnseen(kind, false); }
 function anyUnseen(){ const m=readFlags(); return !!(m[kinds.orders]||m[kinds.cashback]||m[kinds.referrals]); }
 
+/* Сверка флагов с последним просмотром (чтобы старые не всплывали снова) */
+function reconcileFlagsWithSeen(){
+  const flags = readFlags();
+  let changed = false;
+  for (const kind of [kinds.orders, kinds.cashback, kinds.referrals]){
+    if (!flags[kind]) continue;
+    if (getLastSeen(kind) > 0){
+      delete flags[kind];
+      changed = true;
+    }
+  }
+  if (changed){
+    writeFlags(flags);
+    try{ window.dispatchEvent(new CustomEvent('unseen:update', { detail: flags })); }catch{}
+  }
+}
+
 /* === NEW: понимание текущего «подраздела» аккаунта для корректной точки на табе === */
 function currentAccountSubKind() {
   const h = (location.hash || '').toLowerCase();
@@ -208,12 +238,14 @@ function paintAccountDot(){
   const tab = document.querySelector('.tabbar .tab[data-tab="account"]');
   if (!tab) return;
 
-  // если открыт подраздел, и он — единственный «непрочитанный», точку на табе скрываем
   const opened = currentAccountSubKind();
-  const show =
-    opened
-      ? anyUnseenExcept(opened) // показываем, только если есть ДРУГИЕ непросмотренные разделы
-      : anyUnseen();            // если не в подразделе — обычная логика
+  const showNow = opened ? anyUnseenExcept(opened) : anyUnseen();
+  const allSeen =
+    getLastSeen(kinds.orders)    > 0 &&
+    getLastSeen(kinds.cashback)  > 0 &&
+    getLastSeen(kinds.referrals) > 0;
+
+  const show = showNow && !allSeen ? true : anyUnseenExcept(opened);
 
   if (show) ensureDot(tab);
   else removeDot(tab);
@@ -245,14 +277,11 @@ function paintAccountButtonsDots(){
 
   for (const { all, target, kind } of groups){
     const allNodes = Array.from(v.querySelectorAll(all));
-    // 1) на всякий случай снимем точки со всех найденных ссылок (и с кнопки-пилла в карточке баллов)
     for (const n of allNodes) removeDot(n);
 
-    // 2) выбираем правильный якорь (меню). Если вдруг меню нет — берём последний из всех.
     const anchor = v.querySelector(target) || allNodes.at(-1);
     if (!anchor) continue;
 
-    // 3) если для этого раздела есть флаг — ставим точку на НУЖНУЮ кнопку
     if (getUnseen(kind)){
       anchor.style.position = anchor.style.position || 'relative';
       ensureDot(anchor, 'acc-dot');
@@ -307,12 +336,14 @@ async function primeUnseenFromServer(){
 
   if (!hasBoot && Object.keys(current).length === 0) {
     // Мягкий онбординг: никакие флаги НЕ поднимаем насильно.
-    // (при желании можно активировать приветственные точки)
     localStorage.setItem(BOOT_KEY, '1');
   }
 
   // 3) Перерисуем точки по текущему состоянию
   try { paintAccountDot(); paintAccountButtonsDots(); } catch {}
+
+  // 4) Сверим флаги с метками последнего просмотра
+  reconcileFlagsWithSeen();
 }
 
 async function notifApiList(uid){
@@ -389,20 +420,34 @@ function mergeNotifsToLocal(serverItems){
     );
   }
 
-  // Поднять unseen-флаги по непрочитанным
+  // Поднять unseen-флаги ТОЛЬКО если есть НОВЫЕ (после lastSeen) непрочитанные
   try{
     const all = [...byId.values()];
-    let seenOrders=false, seenCashback=false, seenRefs=false;
+    const lastSeenMap = {
+      [kinds.orders]:    getLastSeen(kinds.orders),
+      [kinds.cashback]:  getLastSeen(kinds.cashback),
+      [kinds.referrals]: getLastSeen(kinds.referrals),
+    };
+
+    const haveNewUnread = {
+      [kinds.orders]:    false,
+      [kinds.cashback]:  false,
+      [kinds.referrals]: false,
+    };
+
     for (const n of all){
       if (n.read) continue;
-      const k = classifyNotif(n);
-      if (k === kinds.orders)    seenOrders = true;
-      if (k === kinds.cashback)  seenCashback = true;
-      if (k === kinds.referrals) seenRefs = true;
+      const k = classifyNotif(n); if (!k) continue;
+      const ts = Number(n.ts||0);
+      if (ts > (lastSeenMap[k]||0)) {
+        haveNewUnread[k] = true;
+      }
     }
-    if (seenOrders)   setUnseen(kinds.orders, true);
-    if (seenCashback) setUnseen(kinds.cashback, true);
-    if (seenRefs)     setUnseen(kinds.referrals, true);
+
+    for (const k of [kinds.orders, kinds.cashback, kinds.referrals]){
+      if (haveNewUnread[k]) setUnseen(k, true);
+      else setUnseen(k, false);
+    }
 
     paintAccountDot();
     paintAccountButtonsDots();
@@ -433,7 +478,10 @@ async function serverPushFor(uid, notif){
   // Поднять соответствующий флаг для текущего пользователя
   try{
     const kind = classifyNotif(safe);
-    if (String(uid) === String(getUID?.()) && kind) setUnseen(kind, true);
+    if (String(uid) === String(getUID?.()) && kind) {
+      // поднимаем только если это свежее, чем lastSeen
+      if (Number(safe.ts||0) > getLastSeen(kind)) setUnseen(kind, true);
+    }
   } catch {}
 }
 
@@ -683,11 +731,12 @@ async function router(){
 
   if (match('orders')) {
     const r = renderOrders();
-    // моментально скрываем «Аккаунт»-точку, если это был единственный флаг
+    const now = Date.now();
+    setLastSeen(kinds.orders, now);
+    clearUnseen(kinds.orders);
     paintAccountDot();
+
     queueMicrotask(async () => {
-      clearUnseen(kinds.orders);
-      paintAccountDot();
       try { await notifApiMarkAll(getUID()); } catch {}
       await syncMyNotifications();
     });
@@ -705,10 +754,12 @@ async function router(){
 
   if (match('account/cashback')) {
     const r = renderCashback();
-    paintAccountDot(); // скрыть таб-точку, если это единственный флаг
+    const now = Date.now();
+    setLastSeen(kinds.cashback, now);
+    clearUnseen(kinds.cashback);
+    paintAccountDot();
+
     queueMicrotask(async () => {
-      clearUnseen(kinds.cashback);
-      paintAccountDot();
       try { await notifApiMarkAll(getUID()); } catch {}
       await syncMyNotifications();
     });
@@ -717,10 +768,12 @@ async function router(){
 
   if (match('account/referrals')) {
     const r = renderReferrals();
-    paintAccountDot(); // скрыть таб-точку, если это единственный флаг
+    const now = Date.now();
+    setLastSeen(kinds.referrals, now);
+    clearUnseen(kinds.referrals);
+    paintAccountDot();
+
     queueMicrotask(async () => {
-      clearUnseen(kinds.referrals);
-      paintAccountDot();
       try { await notifApiMarkAll(getUID()); } catch {}
       await syncMyNotifications();
     });
@@ -734,7 +787,6 @@ async function router(){
     try { localStorage.setItem(k('notifs_unread'),'0'); } catch {}
     try { window.dispatchEvent(new CustomEvent('notifs:unread', { detail: 0 })); } catch {}
     await syncMyNotifications();
-    // таб-точку пересчитаем по актуальному состоянию
     paintAccountDot();
     return;
   }
@@ -922,11 +974,23 @@ async function init(){
 
   // подтянуть + обновить бейдж
   await syncMyNotifications(); updateNotifBadge();
+  // сверка флагов по lastSeen и перерисовка
+  reconcileFlagsWithSeen();
+  paintAccountDot();
+  paintAccountButtonsDots();
 
   // синк уведомлений по интервалу + дозревание кешбэка
   const NOTIF_POLL_MS = 30000;
   setInterval(()=>{ syncMyNotifications(); settleMatured(); }, NOTIF_POLL_MS);
-  document.addEventListener('visibilitychange', ()=>{ if (!document.hidden){ syncMyNotifications(); settleMatured(); } });
+  document.addEventListener('visibilitychange', ()=>{
+    if (!document.hidden){
+      syncMyNotifications();
+      settleMatured();
+      reconcileFlagsWithSeen();
+      paintAccountDot();
+      paintAccountButtonsDots();
+    }
+  });
 
   // серверная синхронизация снапшота
   startUserSnapshotSync();
