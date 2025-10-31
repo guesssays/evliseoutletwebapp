@@ -1446,3 +1446,46 @@ html.route-home .product-fixhdr{
 @media (max-width: 380px){
   .thumb{ width: 58px !important; height: 58px !important; }
 }
+/* === NOTIFY DOTS — FINAL STANDARD SIZE ================================== */
+/* Единые переменные */
+:root{
+  --dot-size: 8px;          /* стандартный размер точки */
+  --dot-ring-w: 2px;        /* ширина белого/тёмного кольца */
+  --dot-color: #ff3b30;     /* цвет точки */
+}
+
+/* Размер и оформление — одинаково для всех вариантов (.dot и .acc-dot) */
+.dot,
+.acc-dot{
+  width: var(--dot-size) !important;
+  height: var(--dot-size) !important;
+  border-radius: 999px !important;
+  background: var(--dot-color) !important;
+  box-shadow:
+    0 0 0 var(--dot-ring-w) var(--dot-ring, #fff),
+    0 1px 3px rgba(0,0,0,.16) !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+
+/* Позиционирование по умолчанию на табах */
+.tabbar .tab .dot,
+.tabbar .tab .acc-dot{
+  top: -3px !important;
+  right: -3px !important;
+}
+
+/* Позиционирование в меню «Аккаунт» (те же отступы, чтобы не казалось больше) */
+.menu .menu-item .dot,
+.menu .menu-item .acc-dot{
+  top: -3px !important;
+  right: -3px !important;
+}
+
+/* Тёмная тема — корректное кольцо вокруг точки */
+@media (prefers-color-scheme: dark){
+  :root{ --dot-ring: #0b1220; }
+}
+@media (prefers-color-scheme: light){
+  :root{ --dot-ring: #fff; }
+}
