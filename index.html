@@ -4,82 +4,109 @@
   <meta charset="UTF-8" />
 
 <!-- ▼ Maintenance gate (must be before your main scripts) -->
+<!-- (Опц.) Поднимем шрифт раньше, чтобы экран выглядел сразу красиво -->
+<link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+
 <style>
   :root{
-    --m-bg: #ffffff; --m-text:#121111; --m-muted:#787676; --m-card:#f6f6f6; --m-border:#ececec; --m-primary:#121111;
+    --m-bg:#ffffff; --m-text:#121111; --m-muted:#787676; --m-card:#f6f6f6; --m-border:#ececec; --m-primary:#121111;
   }
   .tg-dark, [data-theme="dark"]{
     --m-bg:#0f0f0f; --m-text:#f5f5f5; --m-muted:#a3a1a2; --m-card:#161616; --m-border:#262626; --m-primary:#f5f5f5;
   }
+
+  /* контейнер на весь экран */
   #maintenanceScreen{
     position:fixed; inset:0; z-index:999999;
-    display:none; align-items:center; justify-content:center;
+    display:none; align-items:center; justify-content:center; text-align:center;
     background:var(--m-bg); color:var(--m-text);
-    padding:24px;
+    padding:28px;
+    font-family:"Encode Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", sans-serif;
   }
   #maintenanceScreen.show{ display:flex; }
+
+  /* карточка */
   .m-card{
-    width:min(700px, 100%);
+    width:min(560px, 100%);
     border:1px solid var(--m-border);
     background:var(--m-card);
     border-radius:22px;
-    box-shadow:0 12px 30px rgba(0,0,0,.12);
-    padding:22px 18px;
+    box-shadow:0 12px 30px rgba(0,0,0,.10);
+    padding:26px 22px;
   }
-  .m-top{ display:flex; align-items:center; gap:12px; }
-  .m-icon{ width:32px; height:32px; border-radius:12px; display:grid; place-items:center;
-    background:rgba(0,0,0,.06); }
-  .m-title{ font-size:20px; font-weight:800; letter-spacing:.2px; }
-  .m-sub{ color:var(--m-muted); margin-top:6px; line-height:1.35; }
-  .m-cta{ margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; }
+
+  /* иконка-герой (встроенный SVG: wrench) */
+  .m-hero{
+    width:64px; height:64px; margin:0 auto 14px; border-radius:18px;
+    display:grid; place-items:center;
+    background:rgba(0,0,0,.06); border:1px solid var(--m-border);
+  }
+  .tg-dark .m-hero, [data-theme="dark"] .m-hero{ background:rgba(255,255,255,.05); }
+
+  .m-title{ font-size:22px; font-weight:800; letter-spacing:.2px; }
+  .m-sub{ color:var(--m-muted); margin-top:8px; line-height:1.35; font-size:15px; }
+
+  .m-cta{ margin-top:18px; display:flex; justify-content:center; }
   .m-btn{
-    display:inline-flex; align-items:center; gap:8px;
-    padding:12px 14px; border-radius:999px;
-    border:1px solid var(--m-border); background:#fff; color:#111;
-    cursor:pointer; font-weight:700;
+    display:inline-flex; align-items:center; gap:10px;
+    padding:12px 16px; border-radius:999px;
+    border:1px solid var(--m-primary); background:var(--m-primary); color:var(--m-bg);
+    font-weight:700; cursor:pointer;
   }
-  .tg-dark .m-btn, [data-theme="dark"] .m-btn{ background:#1b1b1b; color:#fff; }
-  .m-btn.primary{ background:var(--m-primary); color:var(--m-bg); border-color:var(--m-primary); }
-  .m-note{ margin-top:10px; font-size:.92rem; color:var(--m-muted); }
+  .m-btn svg{ width:18px; height:18px; flex:0 0 18px; }
+
+  .m-note{ margin-top:12px; font-size:.92rem; color:var(--m-muted); }
+  html.maintenance-lock, body.maintenance-lock{ overflow:hidden !important; }
 </style>
 
-<div id="maintenanceScreen" role="dialog" aria-live="polite" aria-label="Технические работы">
+<div id="maintenanceScreen" role="dialog" aria-modal="true" aria-live="polite" aria-label="Технические работы">
   <div class="m-card">
-    <div class="m-top">
-      <div class="m-icon" aria-hidden="true">🛠️</div>
-      <div class="m-title">Технические работы</div>
+    <div class="m-hero" aria-hidden="true">
+      <!-- Lucide wrench (inline SVG) -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M22 2l-6 6"/>
+        <path d="M3 22l6-6 3 3 7-7-3-3 6-6"/>
+        <path d="M14 7l3 3"/>
+      </svg>
     </div>
+    <div class="m-title">Технические работы</div>
     <div class="m-sub">
-      Мы временно обновляем приложение и улучшаем сервис.
-      По вопросам заказа или другим обращениям — напишите оператору.
+      Мы обновляем приложение и улучшаем сервис.<br/>
+      По заказу или другим вопросам — напишите оператору.
     </div>
     <div class="m-cta">
-      <button id="mOpBtn" class="m-btn primary" type="button">Написать оператору</button>
-      <button id="mRetryBtn" class="m-btn" type="button">Попробовать снова</button>
+      <button id="mOpBtn" class="m-btn" type="button" aria-label="Написать оператору">
+        <!-- Lucide send (inline SVG) -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M22 2L11 13"/>
+          <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+        </svg>
+        <span>Написать оператору</span>
+      </button>
     </div>
-    <div class="m-note">Обычно это занимает совсем немного времени.</div>
+    <div class="m-note">Обычно это занимает немного времени.</div>
   </div>
 </div>
 
 <script>
-  // Тема из Telegram для аккуратного соответствия тёмной теме
+  // Тема из Telegram
   try{
     const tp = window?.Telegram?.WebApp?.themeParams || {};
     if (tp && (tp.bg_color || tp.secondary_bg_color || tp.text_color)){
       const root = document.documentElement;
-      if (tp.bg_color)          root.style.setProperty('--m-bg',        '#'+tp.bg_color);
-      if (tp.text_color)        root.style.setProperty('--m-text',      '#'+tp.text_color);
-      if (tp.hint_color)        root.style.setProperty('--m-muted',     '#'+tp.hint_color);
-      if (tp.secondary_bg_color)root.style.setProperty('--m-card',      '#'+tp.secondary_bg_color);
-      if (tp.section_separator_color) root.style.setProperty('--m-border', '#'+tp.section_separator_color);
-      if (tp.button_color)      root.style.setProperty('--m-primary',   '#'+tp.button_color);
+      if (tp.bg_color)               root.style.setProperty('--m-bg',        '#'+tp.bg_color);
+      if (tp.text_color)             root.style.setProperty('--m-text',      '#'+tp.text_color);
+      if (tp.hint_color)             root.style.setProperty('--m-muted',     '#'+tp.hint_color);
+      if (tp.secondary_bg_color)     root.style.setProperty('--m-card',      '#'+tp.secondary_bg_color);
+      if (tp.section_separator_color)root.style.setProperty('--m-border',    '#'+tp.section_separator_color);
+      if (tp.button_color)           root.style.setProperty('--m-primary',   '#'+tp.button_color);
     }
     if (window?.Telegram?.WebApp?.colorScheme === 'dark'){
       document.documentElement.classList.add('tg-dark');
     }
   }catch{}
 
-  // Мини-хелпер для открытия чата
+  // Мини-хелпер открытия чата
   function openExternal(url){
     try{
       const tg = window?.Telegram?.WebApp;
@@ -89,7 +116,7 @@
     window.open(url, '_blank', 'noopener');
   }
 
-  // Проверка режима с сервера (не кэшировать)
+  // Проверка режима (не кэшировать)
   (async () => {
     let cfg = null;
     try{
@@ -98,22 +125,25 @@
     }catch{ cfg = { maintenance:false }; }
 
     if (cfg?.maintenance){
-      // Блокируем приложение «поверх»
+      // Блокируем приложение поверх
       window.__APP_MAINTENANCE__ = true;
       const node = document.getElementById('maintenanceScreen');
       node.classList.add('show');
 
-      // wire buttons
+      // доступность / блок взаимодействий
+      document.documentElement.classList.add('maintenance-lock');
+      document.body.classList.add('maintenance-lock');
+      document.getElementById('app')?.setAttribute('aria-hidden','true');
+      try{ document.body.inert = true; }catch{}
+
+      // кнопка «Написать оператору»
       const opUrl = cfg.opChat || 'https://t.me/evliseorder';
       document.getElementById('mOpBtn')?.addEventListener('click', ()=>openExternal(opUrl));
-      document.getElementById('mRetryBtn')?.addEventListener('click', ()=>location.reload());
-
-      // Дополнительно отключим взаимодействие с фоном
-      try{ document.body.inert = true; }catch{}
     }
   })();
 </script>
 <!-- ▲ Maintenance gate -->
+
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
