@@ -6,7 +6,9 @@
 //   ALT_TG_BOT_TOKENS
 //   ADMIN_API_TOKEN
 //   ADMIN_CHAT_ID
-//   WEBAPP_URL
+//   WEBAPP_URL                 // например: https://evliseoutlet.netlify.app/
+//   BOT_USERNAME               // например: EvliSeOutletBot  (нужно только для startapp-фолбэка)
+//   USE_STARTAPP=0|1           // 0 (по умолчанию): web_app-кнопки; 1: URL-кнопки t.me/<bot>?startapp=...
 //   ALLOWED_ORIGINS
 //
 // Заголовки: X-Tg-Init-Data, X-Bot-Username (диагностика), X-Internal-Auth (внутр. вызовы)
@@ -15,7 +17,12 @@ import crypto from 'node:crypto';
 
 /* ---------------- CORS ---------------- */
 function parseAllowed(){ return (process.env.ALLOWED_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean); }
-function isTelegramOrigin(origin){ return origin==='https://t.me'||origin==='https://web.telegram.org'||origin==='https://telegram.org'; }
+function isTelegramOrigin(origin){
+  return origin==='https://t.me'
+      || origin==='https://web.telegram.org'
+      || origin==='https://web.telegram.org/a'        // новые клиенты
+      || origin==='https://telegram.org';
+}
 function originMatches(origin, rule){
   if (!rule||rule==='*') return true;
   if (!origin) return false;
@@ -109,7 +116,7 @@ function _parseAndCalc(tokenStr, raw) {
 }
 function getBotTokens(){
   const primary = (process.env.TG_BOT_TOKEN||'').trim();
-  const extra = String(process.env.ALT_TG_BOT_TOKENS||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const extra = String(process.env.ALT_TG_BOT_TOKENS||'').split(/[,\n;]/).map(s=>s.trim()).filter(Boolean);
   return [primary, ...extra].filter(Boolean);
 }
 function verifyTgInitData(rawInitData){
@@ -157,6 +164,42 @@ function makeDisplayOrderId(orderId, shortId){
   if (!full) return '';
   return full.slice(-6).toUpperCase();
 }
+
+/* ---------- Клавиатуры: web_app по умолчанию + startapp-фолбэк ---------- */
+const WEBAPP_URL   = (process.env.WEBAPP_URL || '').replace(/\/+$/, '');
+const BOT_USERNAME = (process.env.BOT_USERNAME || '').replace(/^@/,'');
+const USE_STARTAPP = String(process.env.USE_STARTAPP||'0')==='1';
+
+function makeStartAppUrl(pathHash=''){
+  if (!BOT_USERNAME) return null;
+  const param = pathHash ? encodeURIComponent(pathHash.replace(/^#/,'')) : '';
+  // https://t.me/<bot>?startapp[=<param>]
+  return `https://t.me/${BOT_USERNAME}?startapp${param ? `=${param}` : ''}`;
+}
+function makeBtn(text, hash){
+  // Куда вести внутри мини-приложения
+  const url = WEBAPP_URL ? `${WEBAPP_URL}/${hash ? `#/${hash.replace(/^#\/?/,'')}` : ''}` : null;
+
+  if (USE_STARTAPP) {
+    // URL-кнопка с deep-link (гарантировано Mini App + fullscreen)
+    const dl = makeStartAppUrl(hash ? `/${hash.replace(/^#\/?/,'')}` : '');
+    return dl ? { text, url: dl } : { text, url: url || 'https://t.me' };
+  }
+  // Нормальный Mini App вход через web_app
+  return { text, web_app: { url: url || 'https://t.me' } };
+}
+function kbForType(t){
+  if (!WEBAPP_URL && (!USE_STARTAPP || !BOT_USERNAME)) return null;
+  switch(t){
+    case 'cashbackMatured':         return [[ makeBtn('Перейти к оплате',      'cart') ]];
+    case 'referralJoined':          return [[ makeBtn('Мои рефералы',          'account/referrals') ]];
+    case 'referralOrderCashback':   return [[ makeBtn('Мой кэшбек',            'account/cashback') ]];
+    case 'cartReminder':            return [[ makeBtn('Оформить заказ',        'cart') ]];
+    case 'favReminder':             return [[ makeBtn('Открыть избранное',     'favorites') ]];
+    default:                        return [[ makeBtn('Мои заказы',            'orders') ]];
+  }
+}
+
 async function sendTg(token, chatId, text, kb, type){
   const imgPath = TYPE_IMG[type];
   const imgUrl = (imgPath && BASE_ASSET_URL) ? `${BASE_ASSET_URL}${imgPath}` : null;
@@ -196,22 +239,8 @@ export async function handler(event){
     const { chat_id: clientChatId, type, orderId, shortId, title, text } = parsed;
     if (!type) return { statusCode:400, headers, body:'type required' };
 
-    const webappUrl = process.env.WEBAPP_URL || '';
-
     const safeTitle = (t)=> (t ? String(t).slice(0,140) : '').trim();
     const goods = safeTitle(title) || 'товар';
-
-    // Разные клавиатуры для типов
-    const kbForType = (t)=>{
-      if (!webappUrl) return null;
-      if (t==='cashbackMatured')       return [[{ text:'Перейти к оплате',     web_app:{ url: `${webappUrl}#/cart` } }]];
-      if (t==='referralJoined')        return [[{ text:'Мои рефералы',        web_app:{ url: `${webappUrl}#/account/referrals` } }]];
-      if (t==='referralOrderCashback') return [[{ text:'Мой кэшбек',          web_app:{ url: `${webappUrl}#/account/cashback` } }]];
-      if (t==='cartReminder')          return [[{ text:'Оформить заказ',      web_app:{ url: `${webappUrl}#/cart` } }]];
-      if (t==='favReminder')           return [[{ text:'Открыть избранное',   web_app:{ url: `${webappUrl}#/favorites` } }]];
-      // по умолчанию — на заказы
-      return [[{ text:'Мои заказы',    web_app:{ url: `${webappUrl}#/orders` } }]];
-    };
 
     const displayOrderId = makeDisplayOrderId(orderId, shortId);
     const hint = 'Откройте приложение, чтобы посмотреть подробности.';
