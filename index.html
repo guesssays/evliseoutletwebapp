@@ -2,6 +2,120 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
+
+<!-- ▼ Maintenance gate (must be before your main scripts) -->
+<style>
+  :root{
+    --m-bg: #ffffff; --m-text:#121111; --m-muted:#787676; --m-card:#f6f6f6; --m-border:#ececec; --m-primary:#121111;
+  }
+  .tg-dark, [data-theme="dark"]{
+    --m-bg:#0f0f0f; --m-text:#f5f5f5; --m-muted:#a3a1a2; --m-card:#161616; --m-border:#262626; --m-primary:#f5f5f5;
+  }
+  #maintenanceScreen{
+    position:fixed; inset:0; z-index:999999;
+    display:none; align-items:center; justify-content:center;
+    background:var(--m-bg); color:var(--m-text);
+    padding:24px;
+  }
+  #maintenanceScreen.show{ display:flex; }
+  .m-card{
+    width:min(700px, 100%);
+    border:1px solid var(--m-border);
+    background:var(--m-card);
+    border-radius:22px;
+    box-shadow:0 12px 30px rgba(0,0,0,.12);
+    padding:22px 18px;
+  }
+  .m-top{ display:flex; align-items:center; gap:12px; }
+  .m-icon{ width:32px; height:32px; border-radius:12px; display:grid; place-items:center;
+    background:rgba(0,0,0,.06); }
+  .m-title{ font-size:20px; font-weight:800; letter-spacing:.2px; }
+  .m-sub{ color:var(--m-muted); margin-top:6px; line-height:1.35; }
+  .m-cta{ margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; }
+  .m-btn{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:12px 14px; border-radius:999px;
+    border:1px solid var(--m-border); background:#fff; color:#111;
+    cursor:pointer; font-weight:700;
+  }
+  .tg-dark .m-btn, [data-theme="dark"] .m-btn{ background:#1b1b1b; color:#fff; }
+  .m-btn.primary{ background:var(--m-primary); color:var(--m-bg); border-color:var(--m-primary); }
+  .m-note{ margin-top:10px; font-size:.92rem; color:var(--m-muted); }
+</style>
+
+<div id="maintenanceScreen" role="dialog" aria-live="polite" aria-label="Технические работы">
+  <div class="m-card">
+    <div class="m-top">
+      <div class="m-icon" aria-hidden="true">🛠️</div>
+      <div class="m-title">Технические работы</div>
+    </div>
+    <div class="m-sub">
+      Мы временно обновляем приложение и улучшаем сервис.
+      По вопросам заказа или другим обращениям — напишите оператору.
+    </div>
+    <div class="m-cta">
+      <button id="mOpBtn" class="m-btn primary" type="button">Написать оператору</button>
+      <button id="mRetryBtn" class="m-btn" type="button">Попробовать снова</button>
+    </div>
+    <div class="m-note">Обычно это занимает совсем немного времени.</div>
+  </div>
+</div>
+
+<script>
+  // Тема из Telegram для аккуратного соответствия тёмной теме
+  try{
+    const tp = window?.Telegram?.WebApp?.themeParams || {};
+    if (tp && (tp.bg_color || tp.secondary_bg_color || tp.text_color)){
+      const root = document.documentElement;
+      if (tp.bg_color)          root.style.setProperty('--m-bg',        '#'+tp.bg_color);
+      if (tp.text_color)        root.style.setProperty('--m-text',      '#'+tp.text_color);
+      if (tp.hint_color)        root.style.setProperty('--m-muted',     '#'+tp.hint_color);
+      if (tp.secondary_bg_color)root.style.setProperty('--m-card',      '#'+tp.secondary_bg_color);
+      if (tp.section_separator_color) root.style.setProperty('--m-border', '#'+tp.section_separator_color);
+      if (tp.button_color)      root.style.setProperty('--m-primary',   '#'+tp.button_color);
+    }
+    if (window?.Telegram?.WebApp?.colorScheme === 'dark'){
+      document.documentElement.classList.add('tg-dark');
+    }
+  }catch{}
+
+  // Мини-хелпер для открытия чата
+  function openExternal(url){
+    try{
+      const tg = window?.Telegram?.WebApp;
+      if (tg?.openTelegramLink){ tg.openTelegramLink(url); return; }
+      if (tg?.openLink){ tg.openLink(url, { try_instant_view:false }); return; }
+    }catch{}
+    window.open(url, '_blank', 'noopener');
+  }
+
+  // Проверка режима с сервера (не кэшировать)
+  (async () => {
+    let cfg = null;
+    try{
+      const r = await fetch('/.netlify/functions/app-config', { cache:'no-store' });
+      cfg = await r.json();
+    }catch{ cfg = { maintenance:false }; }
+
+    if (cfg?.maintenance){
+      // Блокируем приложение «поверх»
+      window.__APP_MAINTENANCE__ = true;
+      const node = document.getElementById('maintenanceScreen');
+      node.classList.add('show');
+
+      // wire buttons
+      const opUrl = cfg.opChat || 'https://t.me/evliseorder';
+      document.getElementById('mOpBtn')?.addEventListener('click', ()=>openExternal(opUrl));
+      document.getElementById('mRetryBtn')?.addEventListener('click', ()=>location.reload());
+
+      // Дополнительно отключим взаимодействие с фоном
+      try{ document.body.inert = true; }catch{}
+    }
+  })();
+</script>
+<!-- ▲ Maintenance gate -->
+
+
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
   <title>EVLISE OUTLET — интернет-магазин одежды</title>
