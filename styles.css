@@ -1461,3 +1461,55 @@ html.route-home .product-fixhdr{
 #productFixHdr, .product-fixhdr{ z-index: var(--z-fixhdr) !important; }
 #btnFixBack{ left:12px; top: calc(6px + var(--safe-top)); }
 #btnFixFav{  right:12px; top: calc(6px + var(--safe-top)); }
+/* === TOP SAFE OFFSET (унифицировано для всех фиксированных верхних слоёв) === */
+:root{
+  /* базовый верхний оффсет для браузера */
+  --top-ui-offset: var(--safe-top);
+  /* дефолт для тостов (если где-то читается --toast-top) */
+  --toast-top: calc(var(--top-ui-offset) + 10px);
+}
+
+/* внутри Telegram WebApp прибавляем зону кнопок Telegram */
+.tg-webapp:root{
+  --top-ui-offset: calc(var(--safe-top) + var(--tg-topbar));  /* << ключ */
+  --toast-top:     calc(var(--top-ui-offset) + 10px);
+}
+
+/* 1) Фикс-хедер товара: обе кнопки учитывают общий верхний оффсет */
+#btnFixBack{
+  top: calc(6px + var(--top-ui-offset)) !important;
+}
+#btnFixFav{
+  top: calc(6px + var(--top-ui-offset)) !important;
+}
+
+/* сам контейнер фикс-хедера остаётся в нуле экрана, это ок */
+#productFixHdr, .product-fixhdr{
+  top: 0; z-index: var(--z-fixhdr) !important;
+  pointer-events: none !important;  /* контейнер сквозной */
+}
+#productFixHdr .fixbtn,
+.product-fixhdr .fixbtn{
+  pointer-events: auto !important;
+}
+
+/* 2) Крестик в zoom-оверлее: тоже ниже кнопок Telegram */
+.zoom-close{
+  top: calc(14px + var(--top-ui-offset)) !important;
+}
+
+/* 3) Тосты: используем унифицированную переменную */
+.toast-wrap{
+  top: var(--toast-top) !important;
+  z-index: var(--z-toast) !important;
+}
+
+/* 4) На всякий случай: любые hero-кнопки внутри главного кадра продукта */
+.gallery-main .hero-btn{
+  top: calc(12px + var(--top-ui-offset)) !important;
+}
+
+/* (опционально) чтобы сам экран товара не удваивал отступ: маленький внутренний паддинг */
+.tg-webapp .product{
+  padding-top: 8px !important;
+}
