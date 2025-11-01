@@ -30,7 +30,7 @@ export function buildDrawer(){
   // служебные
   panel.appendChild(mkLink('Все товары', '#/category/all'));
   panel.appendChild(mkLink('Новинки',   '#/category/new'));
-
+  panel.appendChild(mkLink('В наличии',  '#/category/instock'));
   // только верхний уровень групп: Верх, Низ, Обувь, Сумки, Разное
   state.categories.forEach(group=>{
     panel.appendChild(mkLink(group.name, `#/category/${group.slug}`));

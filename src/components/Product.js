@@ -8,16 +8,15 @@ import {
   setFavActive as setFixFavActive,
 } from './ProductFixHeader.js';
 import { ScrollReset } from '../core/scroll-reset.js';
-import { Loader } from '../ui/loader.js'; // ⬅️ новый лоадер
+import { Loader } from '../ui/loader.js';
 import { toast } from '../core/toast.js';
 
 /* ====== КОНСТАНТЫ КЭШБЕКА/РЕФЕРАЛОВ ====== */
-const CASHBACK_RATE_BASE  = 0.05; // 5%
-const CASHBACK_RATE_BOOST = 0.10; // 10% для 1-го заказа по реф-ссылке
+const CASHBACK_RATE_BASE  = 0.05;
+const CASHBACK_RATE_BOOST = 0.10;
 
 /* ====== LAZY-LOAD SETUP ====== */
-const BLANK =
-  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
 
 let __lazyObserver = null;
 function ensureLazyObserver() {
@@ -36,9 +35,7 @@ function ensureLazyObserver() {
   }, { root: null, rootMargin: '250px 0px', threshold: 0.01 });
   return __lazyObserver;
 }
-
 function lazyifyImg(img) {
-  // если Observer не поддерживается — ставим src сразу
   const obs = ensureLazyObserver();
   const dataSrc = img.getAttribute('data-src');
   const dataSrcSet = img.getAttribute('data-srcset');
@@ -47,7 +44,6 @@ function lazyifyImg(img) {
     if (dataSrcSet) img.srcset = dataSrcSet;
     return;
   }
-  // уже видимый в viewport главный img можно грузить сразу
   const rect = img.getBoundingClientRect?.();
   const immediately =
     rect && rect.top < (window.innerHeight || 0) + 100 && rect.bottom > -100;
@@ -78,8 +74,9 @@ function hasFirstOrderBoost(){
   }catch{ return false; }
 }
 
+/* ====== категории ====== */
 function findCategoryBySlug(slug){
-  for (const g of state.categories){
+  for (const g of state.categories||[]){
     if (g.slug === slug) return g;
     for (const ch of (g.children||[])){
       if (ch.slug === slug) return ch;
@@ -194,25 +191,90 @@ function waitImageLoad(img, timeoutMs=1200){
   });
 }
 
+/* ===================== READY STOCK (В НАЛИЧИИ) ===================== */
+function isReadyStockProduct(p){
+  if (!p) return false;
+  if (p.inStockNow === true) return true;
+  if (p.readyStock === true) return true;
+  if (p.inHand === true) return true;
+  if (p.stockType === 'ready') return true;
+  if (String(p.categoryId||'') === 'in-stock') return true;
+  if (Array.isArray(p.tags) && p.tags.map(String).map(s=>s.toLowerCase()).includes('in-stock')) return true;
+  return false;
+}
+
+function buildOrderPrefillMessage(p, { size, color } = {}){
+  const lines = [];
+  lines.push('Здравствуйте! Хочу оформить заказ на товар в наличии.');
+  lines.push(`Товар: ${p.title}`);
+  if (p.slug) lines.push(`Артикул/slug: ${p.slug}`);
+  lines.push(`Цена: ${priceFmt(p.price)}`);
+  if (size)  lines.push(`Размер: ${size}`);
+  if (color) lines.push(`Цвет: ${color}`);
+  try {
+    lines.push(`Ссылка: ${location.href}`);
+  } catch {}
+  return lines.join('\n');
+}
+
+function openOrderChatWithMessage(text){
+  const tga = window.Telegram?.WebApp;
+  const tpl = state?.orderChatUrlTemplate || ''; // например: "https://t.me/evlise_operator_bot?start={TEXT}" или "tg://resolve?domain=evlise_operator&text={TEXT}"
+  const username = state?.operatorUsername || state?.supportChat || state?.botUsername;
+
+  const openUrl = (url) => {
+    try {
+      if (tga?.openTelegramLink) tga.openTelegramLink(url);
+      else window.open(url, '_blank');
+    } catch {
+      window.open(url, '_blank');
+    }
+  };
+
+  if (tpl && tpl.includes('{TEXT}')){
+    const url = tpl.replace('{TEXT}', encodeURIComponent(text));
+    openUrl(url);
+    return;
+  }
+
+  if (username){
+    // Попробуем tg-схему с текстом
+    const deeplink = `tg://resolve?domain=${encodeURIComponent(username)}&text=${encodeURIComponent(text)}`;
+    try {
+      if (tga?.openTelegramLink) {
+        tga.openTelegramLink(deeplink);
+        return;
+      }
+    } catch {}
+    // Фолбэк: откроем чат, а текст скопируем в буфер
+    try {
+      navigator.clipboard?.writeText(text);
+      toast('Текст заказа скопирован — вставьте его в чат.', { variant:'info', icon:'clipboard' });
+    } catch {}
+    openUrl(`https://t.me/${encodeURIComponent(username)}`);
+    return;
+  }
+
+  // Самый общий фолбэк — окно share с предзаполненным текстом
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(location.href)}&text=${encodeURIComponent(text)}`;
+  openUrl(shareUrl);
+}
+
 /* ========= РЕНДЕР СТРАНИЦЫ ТОВАРА ========= */
 export async function renderProduct({id}){
   const p = state.products.find(x=> String(x.id)===String(id));
   if (!p){ location.hash='#/'; return; }
 
-  // Быстрый «анти-дрожь» прокрутки при входе на карточку
+  // Быстрый «анти-дрожь»
   try { ScrollReset.request(); } catch {}
 
-  // Покажем лоадер на время первичного рендера и ожидания главного изображения
   await Loader.wrap(async () => {
     const favActive = isFav(p.id);
+    const readyMode = isReadyStockProduct(p);
 
     activateProductFixHeader({
       isFav: () => isFav(p.id),
-      onBack: () => {
-        try { ScrollReset.quiet(400); } catch {}
-        history.back();
-      },
-      // 💔 Без ScrollReset внутри избранного:
+      onBack: () => { try { ScrollReset.quiet(400); } catch {} history.back(); },
       onFavToggle: () => {
         const now = toggleFav(p.id);
         const heroFav = document.getElementById('favBtn');
@@ -221,146 +283,88 @@ export async function renderProduct({id}){
           heroFav.setAttribute('aria-pressed', now ? 'true' : 'false');
         }
         setFixFavActive(now);
-        // Синхро-события для других экранов/сервисов
         try { window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: p.id, active: now } })); } catch {}
         try { window.dispatchEvent(new CustomEvent('favorites:updated')); } catch {}
       },
       showThreshold: 20,
     });
 
-    // ✅ Нормализация источников изображений
+    // Нормализация изображений
     const images = Array.isArray(p.images) ? p.images : (p.images ? [p.images] : []);
     const realPhotos = Array.isArray(p.realPhotos) ? p.realPhotos : [];
-
     const gallery = [
       ...images.map(src => ({ src, isReal:false })),
       ...realPhotos.map(src => ({ src, isReal:true })),
     ];
     const first = gallery[0] || { src:'', isReal:false };
 
-    // Подбор «Похожие»
-    const related = state.products
-      .filter(x => x.categoryId === p.categoryId && String(x.id) !== String(p.id))
-      .slice(0, 12);
+    // Похожие — только если НЕ readyMode
+    const related = !readyMode
+      ? state.products.filter(x => x.categoryId === p.categoryId && String(x.id) !== String(p.id)).slice(0, 12)
+      : [];
 
-    // 🔹 метка категории для заголовка
     const catLabel = categoryNameBySlug(p.categoryId) || '';
 
     const v=document.getElementById('view');
     v.innerHTML = `
       <style>
-        /* эффекты загрузки */
         img.lazy { filter: blur(10px); transform: scale(1.02); transition: filter .25s ease, transform .25s ease; }
         img.lazy.loaded { filter: blur(0); transform: scale(1); }
 
-        /* ===== Заголовок + подкатегория в строку ===== */
-        .p-title{
-          display:flex; align-items:baseline; gap:8px;
-          font-weight:900; font-size:clamp(18px,5.2vw,22px);
-        }
+        .p-title{ display:flex; align-items:baseline; gap:8px; font-weight:900; font-size:clamp(18px,5.2vw,22px); }
         .p-title .p-name{ color:var(--text); }
-        .p-title .p-cat{
-          font-weight:800; opacity:.55; /* тише названия */
-        }
-        @media (prefers-color-scheme:dark){
-          .p-title .p-cat{ opacity:.65; }
+        .p-title .p-cat{ font-weight:800; opacity:.55; }
+        @media (prefers-color-scheme:dark){ .p-title .p-cat{ opacity:.65; } }
+
+        .badge-ready {
+          display:inline-flex; gap:6px; align-items:center;
+          padding:6px 10px; border-radius:999px; font-weight:800;
+          background:#10b981; color:#fff; border:1px solid rgba(0,0,0,.08);
         }
 
-        /* ===== Кэшбек ===== */
         .p-cashback{display:flex;align-items:center;gap:10px;margin:8px 0;padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#f59e0b 0%,#ef4444 100%);color:#fff;max-width:100%;}
-        .p-cashback i[data-lucide="coins"]{flex:0 0 auto;width:20px;height:20px;opacity:.95;}
         .p-cb-line{display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:visible;font-weight:800;font-size:clamp(12px,3.6vw,16px);line-height:1.2;}
         .p-cb-pts{font-variant-numeric:tabular-nums;}
         .p-cb-x2{flex:0 0 auto;font-size:.78em;line-height:1;padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);font-weight:800;}
-        .p-cb-help{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);transition:filter .15s ease;}
-        .p-cb-help svg{width:16px;height:16px;stroke:#fff;}
-        @media(hover:hover){.p-cb-help:hover{filter:brightness(1.05);} }
+        .p-cb-help{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);}
 
-        /* ===== Срок доставки ===== */
         .p-delivery{display:flex;align-items:center;gap:10px;margin:6px 0 12px;padding:10px 12px;border-radius:12px;background:#ffffff;color:#0f172a;border:1px solid rgba(15,23,42,.12);}
-        .p-delivery svg{width:18px;height:18px;stroke:currentColor;opacity:1;}
-        .p-delivery__title{font-weight:800;margin-right:4px;color:#0b1220;}
-        .p-delivery .muted{color:#0b1220;opacity:1;font-weight:800;}
         @media (prefers-color-scheme:dark){
           .p-delivery{background:#111827;border-color:rgba(255,255,255,.14);color:#ffffff;}
-          .p-delivery__title{color:#ffffff;}
-          .p-delivery .muted{color:#ffffff;opacity:1;}
         }
 
-        /* ===== Бейдж «Реальное фото товара» ===== */
         .real-badge{
           position:absolute; right:10px; bottom:10px; z-index:2;
           display:inline-flex; align-items:center; gap:6px;
-          padding:8px 10px; border-radius:999px;
-          font-size:12px; font-weight:800; line-height:1;
-          color:#0f172a;
-          background:rgba(255,255,255,.72);
-          backdrop-filter:saturate(1.4) blur(8px);
-          -webkit-backdrop-filter:saturate(1.4) blur(8px);
-          border:1px solid rgba(15,23,42,.12);
-          box-shadow:0 8px 24px rgba(15,23,42,.12);
-          letter-spacing:.2px;
+          padding:8px 10px; border-radius:999px; font-size:12px; font-weight:800; line-height:1;
+          color:#0f172a; background:rgba(255,255,255,.72);
+          backdrop-filter:saturate(1.4) blur(8px); -webkit-backdrop-filter:saturate(1.4) blur(8px);
+          border:1px solid rgba(15,23,42,.12); box-shadow:0 8px 24px rgba(15,23,42,.12);
         }
-        .real-badge i{ width:14px; height:14px; opacity:.9; stroke-width:2.2; }
         @media (prefers-color-scheme:dark){
-          .real-badge{
-            color:#fff;
-            background:rgba(11,18,32,.66);
-            border-color:rgba(255,255,255,.18);
-            box-shadow:0 8px 24px rgba(0,0,0,.35);
-          }
+          .real-badge{ color:#fff; background:rgba(11,18,32,.66); border-color:rgba(255,255,255,.18); box-shadow:0 8px 24px rgba(0,0,0,.35); }
         }
         .thumb .real-dot{
-          position:absolute; left:6px; top:6px; z-index:1;
-          font-size:10px; font-weight:900; letter-spacing:.3px;
-          padding:3px 7px; border-radius:999px;
-          background:#ffffff; color:#0f172a; border:1px solid rgba(15,23,42,.12);
+          position:absolute; left:6px; top:6px; z-index:1; font-size:10px; font-weight:900; letter-spacing:.3px;
+          padding:3px 7px; border-radius:999px; background:#ffffff; color:#0f172a; border:1px solid rgba(15,23,42,.12);
         }
-        @media (prefers-color-scheme:dark){
-          .thumb .real-dot{ background:#0b1220; color:#fff; border-color:rgba(255,255,255,.18); }
-        }
+        @media (prefers-color-scheme:dark){ .thumb .real-dot{ background:#0b1220; color:#fff; border-color:rgba(255,255,255,.18); } }
 
-        /* ===== Раздел «Похожие» ===== */
         .related-wrap{margin:18px -12px -8px;padding:14px 12px 10px;background:linear-gradient(0deg,rgba(15,23,42,.04),rgba(15,23,42,.04));border-top:1px solid rgba(15,23,42,.10);}
+        @media (prefers-color-scheme:dark){ .related-wrap{background:linear-gradient(0deg,rgba(255,255,255,.04),rgba(255,255,255,.04));border-top-color:rgba(255,255,255,.14);} }
         .related-head{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-weight:800;font-size:clamp(16px,4.2vw,18px);}
-        .related-head i{width:18px;height:18px;opacity:.9;}
-        @media (prefers-color-scheme:dark){
-          .related-wrap{background:linear-gradient(0deg,rgba(255,255,255,.04),rgba(255,255,255,.04));border-top-color:rgba(255,255,255,.14);}
-        }
-        .grid.related-grid{margin-top:6px;}
 
-        /* Контейнер миниатюр: убрать скругление нижних углов */
-        .p-hero .thumbs{
-          border-bottom-left-radius: 0 !important;
-          border-bottom-right-radius: 0 !important;
-          overflow: hidden;
-        }
+        .p-hero .thumbs{ border-bottom-left-radius:0!important; border-bottom-right-radius:0!important; overflow:hidden; }
 
-        /* ====== СВОТЧИ И РАЗМЕРЫ ====== */
         .p-options{ display:grid; grid-template-columns:1fr; gap:16px; margin:14px 0; }
         .opt-title{ font-weight:800; margin:6px 0 8px; }
         .sizes,.colors{ display:flex; flex-wrap:wrap; gap:10px; }
 
-        /* — Цвета — */
-        .sw{
-          position:relative; width:38px; height:38px; border-radius:999px;
-          border:2px solid rgba(15,23,42,.18);
-          box-shadow: inset 0 0 0 2px rgba(255,255,255,.7);
-          outline:none; cursor:pointer;
-          transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, outline-color .12s ease;
-        }
-        @media (prefers-color-scheme:dark){
-          .sw{ border-color: rgba(255,255,255,.22); box-shadow: inset 0 0 0 2px rgba(0,0,0,.55); }
-        }
+        .sw{ position:relative; width:38px; height:38px; border-radius:999px; border:2px solid rgba(15,23,42,.18); box-shadow: inset 0 0 0 2px rgba(255,255,255,.7); outline:none; cursor:pointer; transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, outline-color .12s ease; }
+        @media (prefers-color-scheme:dark){ .sw{ border-color: rgba(255,255,255,.22); box-shadow: inset 0 0 0 2px rgba(0,0,0,.55); } }
         .sw:focus-visible{ outline:3px solid #0ea5e9; outline-offset:2px; }
         .sw:hover{ transform:translateY(-1px); }
-
-        @keyframes swPulse { from{ transform:scale(1.04); } to{ transform:scale(1); } }
-        .sw.active{
-          border-color:#0ea5e9 !important;
-          box-shadow: inset 0 0 0 2px rgba(255,255,255,.85), 0 0 0 3px rgba(14,165,233,.28);
-          animation: swPulse .25s ease;
-        }
+        .sw.active{ border-color:#0ea5e9!important; box-shadow: inset 0 0 0 2px rgba(255,255,255,.85), 0 0 0 3px rgba(14,165,233,.28); }
 
         .size{ padding:10px 14px; border:1px solid var(--stroke); border-radius:999px; background:#fff; font-weight:700; cursor:pointer; }
         .size:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
@@ -372,6 +376,13 @@ export async function renderProduct({id}){
         .size-table thead th{ background:#f8f8f8; font-weight:800; text-align:center; }
         .size-table th:first-child, .size-table td:first-child{ text-align:left; }
         .size-table tbody tr:not(:last-child) td{ border-bottom:1px solid var(--stroke); }
+
+        /* Readonly строки опций в readyMode */
+        .kv{ display:flex; align-items:center; gap:8px; font-weight:700; }
+        .kv .kv-key{ opacity:.65; font-weight:800; min-width:72px; }
+        .kv .kv-val{ font-weight:800; }
+
+        .hero-btn.hero-back, .hero-btn.hero-fav { backdrop-filter: blur(10px) saturate(1.2); }
       </style>
 
       <div class="product">
@@ -380,7 +391,6 @@ export async function renderProduct({id}){
           <div class="gallery" role="region" aria-label="Галерея товара">
             <div class="gallery-main">
               ${first.isReal ? `<span class="real-badge"><i data-lucide="camera"></i><span>Реальное фото товара</span></span>` : ``}
-              <!-- главный кадр: грузим сразу (без data-src) -->
               <img id="mainImg" class="zoomable" src="${first.src||''}" alt="${escapeHtml(p.title)}${first.isReal?' (реальное фото)':''}">
               <button class="hero-btn hero-back" id="goBack" aria-label="Назад"><i data-lucide="chevron-left"></i></button>
               <button class="hero-btn hero-fav ${favActive?'active':''}" id="favBtn" aria-pressed="${favActive?'true':'false'}" aria-label="В избранное"><i data-lucide="heart"></i></button>
@@ -402,53 +412,31 @@ export async function renderProduct({id}){
           <div class="p-title">
             <span class="p-name">${escapeHtml(p.title)}</span>
             ${catLabel ? `<span class="p-cat">${escapeHtml(catLabel)}</span>` : ``}
+            ${readyMode ? `<span class="badge-ready" title="Товар в наличии"><i data-lucide="zap"></i> В наличии</span>` : ``}
           </div>
 
-          <!-- Кэшбек -->
+          ${!readyMode ? `
           <div class="p-cashback" role="note" aria-label="Информация о кэшбеке">
             <i data-lucide="coins" aria-hidden="true"></i>
             ${cashbackSnippetHTML(p.price)}
             <button id="cbHelpBtn" class="p-cb-help" type="button" aria-label="Как работает кэшбек?">
               <i data-lucide="help-circle"></i>
             </button>
-          </div>
+          </div>` : ``}
 
-          <!-- Срок доставки -->
+          ${!readyMode ? `
           <div class="p-delivery" role="note" aria-label="Срок доставки">
             <i data-lucide="clock"></i>
             <span class="p-delivery__title">Срок доставки:</span>
             <span class="muted"><b>14–16 дней</b></span>
-          </div>
+          </div>` : ``}
 
           <!-- Опции -->
           <div class="p-options">
-            ${(p.sizes?.length||0) ? `
-            <div>
-              <div class="opt-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                <span>Размер</span>
-                ${p.sizeChart ? `<button id="btnSizeCalc" class="pill small" type="button"><i data-lucide="ruler"></i><span>Подобрать размер</span></button>` : ``}
-              </div>
-              <div class="sizes" id="sizes">${p.sizes.map(s=>`<button class="size" data-v="${s}">${s}</button>`).join('')}</div>
-              ${!p.sizeChart ? `<div class="muted" style="font-size:12px;margin-top:6px">Таблица размеров недоступна для этого товара.</div>` : ``}
-            </div>`:''}
-            <div>
-              <div class="opt-title">Цвет</div>
-              <div class="colors" id="colors">
-                ${(p.colors||[]).map((c,i)=>`
-                  <button
-                    class="sw${i===0?' active':''}"
-                    title="${c}${i===0?' — выбран':''}"
-                    aria-label="Цвет ${c}${i===0?' — выбран':''}"
-                    aria-pressed="${i===0?'true':'false'}"
-                    data-v="${c}"
-                    style="background:${colorToHex(c)}"
-                  ></button>
-                `).join('')}
-              </div>
-            </div>
+            ${readyMode ? renderReadyModeOptions(p) : renderRegularOptions(p)}
           </div>
 
-          ${p.sizeChart ? `
+          ${!readyMode && p.sizeChart ? `
           <div class="opt-title" style="margin-top:8px">Размерная сетка</div>
           <div class="table-wrap">
             <table class="size-table">
@@ -459,8 +447,7 @@ export async function renderProduct({id}){
             </table>
           </div>`:''}
 
-          <!-- БЛОК «Похожие» -->
-          ${related.length ? `
+          ${(!readyMode && related.length) ? `
           <section class="related-wrap" aria-label="Похожие товары">
             <div class="related-head">
               <i data-lucide="sparkles" aria-hidden="true"></i>
@@ -474,59 +461,21 @@ export async function renderProduct({id}){
 
     window.lucide?.createIcons && lucide.createIcons();
 
-    // ЛЕНИВАЯ ИНИЦИАЛИЗАЦИЯ: миниатюры
+    // ЛЕНИВЫЕ превью
     document.querySelectorAll('#thumbs img[data-src]').forEach(lazyifyImg);
 
-    // отрисовать «Похожие»
-    drawRelatedCards(related);
+    // Похожие
+    if (!readyMode) drawRelatedCards(related);
 
     // help modal
-    document.getElementById('cbHelpBtn')?.addEventListener('click', showCashbackHelpModal);
-
-    // Size calculator open
-    document.getElementById('btnSizeCalc')?.addEventListener('click', ()=> openSizeCalculator(p));
-
-    const needSize = Array.isArray(p.sizes) && p.sizes.length>0;
-    let size=null, color=(p.colors||[])[0]||null;
-
-    const sizes=document.getElementById('sizes');
-    if (sizes){
-      sizes.addEventListener('click', e=>{
-        const b=e.target.closest('.size'); if(!b)return;
-        sizes.querySelectorAll('.size').forEach(x=>x.classList.remove('active'));
-        b.classList.add('active'); size=b.getAttribute('data-v');
-        refreshCTAByState();
-      });
-    }
-    const colors=document.getElementById('colors');
-    if (colors){
-      colors.addEventListener('click', e=>{
-        const b=e.target.closest('.sw'); if(!b)return;
-        colors.querySelectorAll('.sw').forEach(x=>{
-          x.classList.remove('active');
-          x.setAttribute('aria-pressed','false');
-          const t = x.getAttribute('title')||'';
-          x.setAttribute('title', t.replace(' — выбран',''));
-          const al = x.getAttribute('aria-label')||'';
-          x.setAttribute('aria-label', al.replace(' — выбран',''));
-        });
-        b.classList.add('active');
-        b.setAttribute('aria-pressed','true');
-        b.setAttribute('title', (b.getAttribute('title')||'') + ' — выбран');
-        b.setAttribute('aria-label', (b.getAttribute('aria-label')||'') + ' — выбран');
-        color=b.getAttribute('data-v');
-        refreshCTAByState();
-      });
-    }
+    if (!readyMode) document.getElementById('cbHelpBtn')?.addEventListener('click', showCashbackHelpModal);
 
     const heroBack = document.getElementById('goBack');
-    if (heroBack) {
-      heroBack.addEventListener('click', (e) => {
-        e.preventDefault();
-        try { ScrollReset.quiet(400); } catch {}
-        history.back();
-      }, { passive: false });
-    }
+    heroBack?.addEventListener('click', (e) => {
+      e.preventDefault();
+      try { ScrollReset.quiet(400); } catch {}
+      history.back();
+    }, { passive: false });
 
     // === Глобальный синк избранного
     function onFavSync(ev){
@@ -563,13 +512,9 @@ export async function renderProduct({id}){
         favBtn.setAttribute('aria-pressed', String(nowActive));
         setFixFavActive(nowActive);
 
-        // глобальные события
         try { window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: p.id, active: nowActive } })); } catch {}
         try { window.dispatchEvent(new CustomEvent('favorites:updated')); } catch {}
       }, { passive:false, capture:false });
-
-      // Больше НИКАКИХ ScrollReset.* около сердечка
-      // и никаких guardNoResetClick.
     }
 
     // Галерея
@@ -582,7 +527,6 @@ export async function renderProduct({id}){
         const idx = Number(t.getAttribute('data-index'))||0;
         const it = gallery[idx] || gallery[0];
 
-        // если миниатюра ещё не прогружена — тянем src из data-src
         const thumbImg = t.querySelector('img');
         if (thumbImg && thumbImg.getAttribute('data-src') && thumbImg.src === BLANK) {
           thumbImg.src = thumbImg.getAttribute('data-src');
@@ -610,7 +554,59 @@ export async function renderProduct({id}){
       });
     }
 
-    /* -------- CTA в таббаре -------- */
+    // ====== CTA (в таббаре) ======
+    const needSize = !readyMode && Array.isArray(p.sizes) && p.sizes.length>0;
+
+    // В обычном режиме — интерактивные селекторы
+    let size=null, color=(p.colors||[])[0]||null;
+
+    if (!readyMode) {
+      const sizes=document.getElementById('sizes');
+      if (sizes){
+        sizes.addEventListener('click', e=>{
+          const b=e.target.closest('.size'); if(!b)return;
+          sizes.querySelectorAll('.size').forEach(x=>x.classList.remove('active'));
+          b.classList.add('active'); size=b.getAttribute('data-v');
+          refreshCTAByState();
+        });
+      }
+      const colors=document.getElementById('colors');
+      if (colors){
+        colors.addEventListener('click', e=>{
+          const b=e.target.closest('.sw'); if(!b)return;
+          colors.querySelectorAll('.sw').forEach(x=>{
+            x.classList.remove('active');
+            x.setAttribute('aria-pressed','false');
+            const t = x.getAttribute('title')||'';
+            x.setAttribute('title', t.replace(' — выбран',''));
+            const al = x.getAttribute('aria-label')||'';
+            x.setAttribute('aria-label', al.replace(' — выбран',''));
+          });
+          b.classList.add('active');
+          b.setAttribute('aria-pressed','true');
+          b.setAttribute('title', (b.getAttribute('title')||'') + ' — выбран');
+          b.setAttribute('aria-label', (b.getAttribute('aria-label')||'') + ' — выбран');
+          color=b.getAttribute('data-v');
+          refreshCTAByState();
+        });
+      }
+    } else {
+      // В readyMode — фиксированные одно значение/без переключателей
+      size = (p.sizes && p.sizes[0]) || null;
+      color = (p.colors && p.colors[0]) || null;
+    }
+
+    function showOrderCTA(){
+      const msg = buildOrderPrefillMessage(p, { size, color });
+      window.setTabbarCTA?.({
+        id: 'ctaOrder',
+        html: `<i data-lucide="send"></i><span>Оформить заказ&nbsp;|&nbsp;${priceFmt(p.price)}</span>`,
+        onClick(){
+          openOrderChatWithMessage(msg);
+        }
+      });
+    }
+
     function showAddCTA(){
       const needPick = needSize && !size;
       window.setTabbarCTA?.({
@@ -618,7 +614,6 @@ export async function renderProduct({id}){
         html: `<i data-lucide="shopping-bag"></i><span>${needPick ? 'Выберите размер' : 'Добавить в корзину&nbsp;|&nbsp;'+priceFmt(p.price)}</span>`,
         onClick(){
           if (needSize && !size){
-            // Новый «островной» тост при отсутствии выбора размера
             toast('Выберите размер', { variant: 'info', icon: 'ruler' });
             document.getElementById('sizes')?.scrollIntoView({ behavior:'smooth', block:'center' });
             return;
@@ -641,12 +636,13 @@ export async function renderProduct({id}){
     }
 
     function refreshCTAByState(){
+      if (readyMode) { showOrderCTA(); return; }
       if (needSize && !size){ showAddCTA(); return; }
       if (isInCart(p.id, size||null, color||null)) showInCartCTAs(); else showAddCTA();
     }
     refreshCTAByState();
 
-    /* -------- Зум -------- */
+    // ====== Зум ======
     ensureZoomOverlay();
     initZoomableInPlace(mainImg);
     document.querySelectorAll('img.zoomable').forEach(img=>{
@@ -654,10 +650,10 @@ export async function renderProduct({id}){
     });
     function resetZoom(){ if (!mainImg) return; mainImg.style.transform=''; mainImg.dataset.zoom='1'; }
 
-    /* -------- Диагностика (опционально) -------- */
+    // Диагностика
     if (PHDBG.enabled) PHDBG.init();
 
-    /* -------- Авто-деактивация фикс-хедера при уходе -------- */
+    // Авто-деактивация фикс-хедера при уходе
     const _onHashChange = () => {
       const h = String(location.hash || '');
       const leavingProduct = !h.startsWith('#/product/') && !h.startsWith('#/p/');
@@ -669,14 +665,13 @@ export async function renderProduct({id}){
     };
     window.addEventListener('hashchange', _onHashChange);
 
-    // Дождаться первичной загрузки главного кадра (или таймаут) внутри лоадера
+    // Дождаться первичной загрузки главного кадра (или таймаут)
     await waitImageLoad(document.getElementById('mainImg'), 1200);
 
-    // Сообщим, что экран готов (важно для второго хедера)
     try {
       window.dispatchEvent(new CustomEvent('view:product-mounted', { detail: { id: p.id } }));
     } catch {}
-  }, 'Загружаем товар…'); // подпись лоадера
+  }, 'Загружаем товар…');
 }
 
 /* ===== карточки «Похожие» — ленивые картинки ===== */
@@ -690,8 +685,7 @@ function drawRelatedCards(list){
     const t = document.getElementById('product-card');
     if (t && t.content?.firstElementChild){
       const node = t.content.firstElementChild.cloneNode(true);
-      // node — это <a href="#/product/...">
-      // На фазе capture запрещаем переход, если клик пришёл по .fav, но не останавливаем всплытие.
+
       node.addEventListener('click', (e) => {
         if (e.target?.closest?.('.fav')) {
           e.preventDefault();
@@ -728,7 +722,6 @@ function drawRelatedCards(list){
         favBtn.setAttribute('aria-pressed', String(active));
         try { favBtn.setAttribute('type','button'); favBtn.setAttribute('role','button'); } catch {}
 
-        // Только локальный click без ScrollReset
         favBtn.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -759,7 +752,6 @@ function drawRelatedCards(list){
   }
 
   grid.appendChild(frag);
-  // Подписываем все ленивые изображения в блоке «Похожие»
   grid.querySelectorAll('img.lazy[data-src]').forEach(lazyifyImg);
 
   window.lucide?.createIcons && lucide.createIcons();
@@ -818,7 +810,6 @@ function showCashbackHelpModal(){
   window.lucide?.createIcons && lucide.createIcons();
   document.getElementById('modalClose')?.addEventListener('click', close, { once:true });
   document.getElementById('cbHelpOk')?.addEventListener('click', close, { once:true });
-
   function close(){ modal.classList.remove('show'); }
 }
 
@@ -915,7 +906,6 @@ function ensureZoomOverlay(){
   document.body.appendChild(wrap);
   window.lucide?.createIcons && lucide.createIcons();
 }
-
 function openZoomOverlay(src){
   const ov = document.getElementById('zoomOverlay');
   const img = document.getElementById('zoomImg');
@@ -987,7 +977,6 @@ function openSizeCalculator(p){
 
   const chart = p.sizeChart;
   if (!chart){
-    // ⬇️ новый тост API
     toast('Для этого товара таблица размеров недоступна', { variant: 'warn', icon: 'ruler' });
     return;
   }
@@ -1245,4 +1234,43 @@ function closestOfCell(cell, target){
   if (target < lo) return lo;
   if (target > hi) return hi;
   return target;
+}
+
+/* ===== РЕНДЕР БЛОКОВ ОПЦИЙ ===== */
+function renderRegularOptions(p){
+  return `
+    ${(p.sizes?.length||0) ? `
+    <div>
+      <div class="opt-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span>Размер</span>
+        ${p.sizeChart ? `<button id="btnSizeCalc" class="pill small" type="button"><i data-lucide="ruler"></i><span>Подобрать размер</span></button>` : ``}
+      </div>
+      <div class="sizes" id="sizes">${(p.sizes||[]).map(s=>`<button class="size" data-v="${s}">${s}</button>`).join('')}</div>
+      ${!p.sizeChart ? `<div class="muted" style="font-size:12px;margin-top:6px">Таблица размеров недоступна для этого товара.</div>` : ``}
+    </div>`:''}
+    <div>
+      <div class="opt-title">Цвет</div>
+      <div class="colors" id="colors">
+        ${(p.colors||[]).map((c,i)=>`
+          <button
+            class="sw${i===0?' active':''}"
+            title="${c}${i===0?' — выбран':''}"
+            aria-label="Цвет ${c}${i===0?' — выбран':''}"
+            aria-pressed="${i===0?'true':'false'}"
+            data-v="${c}"
+            style="background:${colorToHex(c)}"
+          ></button>
+        `).join('')}
+      </div>
+    </div>`;
+}
+
+function renderReadyModeOptions(p){
+  const size = (p.sizes && p.sizes[0]) || '—';
+  const color = (p.colors && p.colors[0]) || '—';
+  return `
+    <div class="kv"><span class="kv-key">Размер</span><span class="kv-val">${escapeHtml(size)}</span></div>
+    <div class="kv"><span class="kv-key">Цвет</span><span class="kv-val">${escapeHtml(color)}</span></div>
+    <div class="muted" style="font-size:12px;margin-top:4px">Единичный экземпляр со склада — быстрый самовывоз/доставка.</div>
+  `;
 }

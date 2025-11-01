@@ -23,11 +23,21 @@ function categoryNameBySlug(slug){
   return findCategoryBySlug(slug)?.name || '';
 }
 
-/* ================== скелетоны ================== */
+/* ===== skeleton suppressor ===== */
+function suppressGridSkeleton(ms = 900){
+  try { window.__suppressHomeSkeletonUntil = Date.now() + Math.max(0, ms|0); } catch {}
+}
+function shouldShowGridSkeleton(){
+  const until = Number(window.__suppressHomeSkeletonUntil || 0);
+  return Date.now() > until;
+}
 
+/* ================== скелетоны ================== */
 
 // ⬇️ ДОБАВЬТЕ (рядом с уже существующим calcSkeletonCount/renderSkeletonGrid)
 export function showHomeSkeleton() {
+  if (!shouldShowGridSkeleton()) return; // не показываем при супрессии
+
   const v = document.getElementById('view');
   if (!v) return;
   // Каркас такой же, как в renderHome, но только скелет-сетка
@@ -55,7 +65,6 @@ export function showHomeSkeleton() {
   grid.appendChild(frag);
 }
 
-
 function calcSkeletonCount(){
   const h = (window.visualViewport?.height || window.innerHeight || 700);
   const rows = Math.max(3, Math.min(4, Math.round(h / 260))); // 3–4 ряда
@@ -64,6 +73,8 @@ function calcSkeletonCount(){
 }
 
 function renderSkeletonGrid(container, count){
+  if (!shouldShowGridSkeleton()) return; // не генерим сетку при супрессии
+
   const frag = document.createDocumentFragment();
   for (let i=0;i<count;i++){
     const el = document.createElement('a');
@@ -161,6 +172,10 @@ function createProductNode(p){
   }
 
   const titleEl = node.querySelector('.title'); if (titleEl) titleEl.textContent = p.title;
+   if (p.inStock) {
+   const sub = node.querySelector('.subtitle');
+   if (sub) sub.textContent = 'В наличии';
+ }
   const subEl   = node.querySelector('.subtitle');
   if (subEl){
     const label = p.categoryLabel || categoryNameBySlug(p.categoryId) || '';
@@ -238,8 +253,10 @@ export function renderHome(router){
   v.innerHTML = `<div class="grid home-bottom-pad" id="productGrid"></div>`;
   const grid = document.getElementById('productGrid');
 
-  // 1) сразу показываем скелетоны
-  renderSkeletonGrid(grid, calcSkeletonCount());
+  // 1) сразу показываем скелетоны (только если не подавлены)
+  if (shouldShowGridSkeleton()) {
+    renderSkeletonGrid(grid, calcSkeletonCount());
+  }
 
   // 2) рисуем чипы
   drawCategoriesChips(router);
@@ -261,7 +278,7 @@ export function drawCategoriesChips(router){
   wrap.innerHTML='';
   wrap.insertAdjacentHTML('beforeend', mk('all','Все товары', state.filters.category==='all'));
   wrap.insertAdjacentHTML('beforeend', mk('new','Новинки', state.filters.category==='new'));
-
+  wrap.insertAdjacentHTML('beforeend', mk('instock','В наличии', state.filters.category==='instock'));
   state.categories.forEach(c=>{
     if (c.slug === 'new') return;
     wrap.insertAdjacentHTML('beforeend', mk(c.slug, c.name, state.filters.category===c.slug));
@@ -284,16 +301,25 @@ export function drawCategoriesChips(router){
         list = state.products;
       } else if (slug === 'new') {
         list = state.products.slice(0, 24);
+      } else if (slug === 'instock') {
+      state.filters.inStock = true;           // синхронизируем с фильтром
+       list = state.products.filter(p => !!p.inStock);
       } else {
         const pool = new Set(expandSlugs(slug));
         list = state.products.filter(p => pool.has(p.categoryId));
       }
+    // если ушли с «В наличии» — сбрасываем чекбокс фильтра,
+    // чтобы поведение было предсказуемым
+    if (slug !== 'instock') state.filters.inStock = false;
+
 
       // На переключении — показываем скелетоны и затем рендерим
       const grid = document.getElementById('productGrid');
       if (grid){
         grid.innerHTML = '';
-        renderSkeletonGrid(grid, calcSkeletonCount());
+        if (shouldShowGridSkeleton()) {
+          renderSkeletonGrid(grid, calcSkeletonCount());
+        }
       }
 
       drawProducts(list);
@@ -342,6 +368,10 @@ export function drawProducts(list){
       if (!pid) return;
 
       const now = toggleFav(pid);
+
+      // Глушим сеточный скелетон на короткое окно, чтобы не мигал при локальном апдейте
+      suppressGridSkeleton(1100);
+
       favBtn.classList.toggle('active', now);
       favBtn.setAttribute('aria-pressed', String(now));
 

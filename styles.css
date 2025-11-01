@@ -1786,3 +1786,69 @@ html.route-home .product-fixhdr{
     );
   }
 }
+/* === Skeletons: pale grey override =============================== */
+:root{
+  --skel-base: #eeeeee;   /* основной серый блок */
+  --skel-lite: #f6f6f6;   /* фон для областей изображения */
+  --skel-gloss-a: rgba(255,255,255,.35);
+  --skel-gloss-b: rgba(255,255,255,.55);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --skel-base: #2a2a2a;
+    --skel-lite: #1b1b1b;
+    --skel-gloss-a: rgba(255,255,255,.10);
+    --skel-gloss-b: rgba(255,255,255,.16);
+  }
+}
+
+/* карточка-скелет и фон изображения — светло-серые */
+.card.is-skeleton{ pointer-events:none; }
+.card.is-skeleton .card-img{ background: var(--skel-lite) !important; }
+
+/* универсальный блок-скелет — бледно-серый */
+.skel{
+  background: var(--skel-base) !important;
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* размеры полосок (оставил как у тебя; при желании можно не дублировать) */
+.skel-title{ height:18px; width:70%; margin:10px 6px 6px; }
+.skel-sub{   height:14px; width:45%; margin:0 6px 8px; opacity:.85; }
+.skel-price{ height:18px; width:82px; }
+.skel-chip{  height:22px; width:64px; border-radius:999px; }
+
+/* мягкий шиммер без «яркой белой полосы» */
+.skel::after,
+.img-skel::after{
+  content:"";
+  position:absolute; inset:0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--skel-gloss-a) 40%,
+    var(--skel-gloss-b) 50%,
+    var(--skel-gloss-a) 60%,
+    transparent 100%
+  );
+  animation: skel-shimmer 1.2s ease-in-out infinite;
+}
+@keyframes skel-shimmer{
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* overlay-скелет для конкретной картинки до onload — тоже бледно-серый */
+.img-skel{
+  position:absolute; inset:0;
+  background: var(--skel-base) !important;
+  border-radius: 22px;
+  overflow:hidden;
+}
+
+/* сама область .card-img имеет светлый фон и плавное появление изображения */
+.card-img{ position:relative; background: var(--skel-lite); overflow:hidden; }
+.card-img img{ opacity:0; transition: opacity .22s ease; }
+.card-img img.is-ready{ opacity:1; }

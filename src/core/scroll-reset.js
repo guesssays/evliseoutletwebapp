@@ -207,6 +207,10 @@ export const ScrollReset = {
     __lastResetEpoch = __navEpoch;
 
     const token = _newToken();
+
+    // ⬇️ Глушим сеточный скелетон на короткое окно, чтобы не мигал при программном reset
+    try { window.__suppressHomeSkeletonUntil = Date.now() + 1000; } catch {}
+
     queueMicrotask(() => {
       if (token.cancelled) return;
       _scheduleShort(token);
@@ -231,6 +235,10 @@ export const ScrollReset = {
     __lastResetEpoch = __navEpoch;
 
     const token = _newToken();
+
+    // ⬇️ Глушим сеточный скелетон на короткое окно, чтобы не мигал при программном reset
+    try { window.__suppressHomeSkeletonUntil = Date.now() + 1000; } catch {}
+
     _scheduleShort(token);
   },
 

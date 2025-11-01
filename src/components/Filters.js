@@ -239,7 +239,7 @@ export function applyFilters(list){
 
     if (f.minPrice != null && p.price < f.minPrice) return false;
     if (f.maxPrice != null && p.price > f.maxPrice) return false;
-    if (f.inStock && p.soldOut) return false;
+    if (f.inStock && !p.inStock) return false;
 
     return true;
   });

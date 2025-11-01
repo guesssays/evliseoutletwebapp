@@ -30,6 +30,7 @@ function categoryNameBySlug(slug){
 function categoryLabel(slug){
   if (!slug || slug === DEFAULT_SLUG) return 'Все товары';
   if (slug === 'new') return 'Новинки';
+  if (slug === 'instock') return 'В наличии';
   return categoryNameBySlug(slug) || 'Все товары';
 }
 
@@ -110,11 +111,14 @@ export function renderCategory(params){
   if (slug === 'all') {
     list = state.products || [];
   } else if (slug === 'new') {
-    list = (state.products || []).slice(0, 24);
+    
+  } else if (slug === 'instock') {
+    state.filters.inStock = true; // синк
+    list = (state.products || []).filter(p => !!p.inStock);
   } else {
     const pool = new Set(expandSlugs(slug));
     list = (state.products || []).filter(p => pool.has(p.categoryId));
   }
-
+if (slug !== 'instock') state.filters.inStock = false;
   drawProducts(list);
 }
