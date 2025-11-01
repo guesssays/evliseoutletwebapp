@@ -1965,7 +1965,7 @@ html body .img-skel::after{
   background-image:
     radial-gradient(1100px 700px at 8% -8%, rgba(255, 120, 120, .08) 0%, rgba(0,0,0,0) 55%),
     radial-gradient(1100px 700px at 100% 0%, rgba(255, 196,   0, .06) 0%, rgba(0,0,0,0) 55%),
-    url('assets/promo/newyear/xmas-pattern2.svg'),
+    url('assets/promo/newyear/xmas-pattern3.svg'),
     linear-gradient(180deg, var(--xmas-bg-2) 0%, var(--xmas-bg) 100%);
   background-repeat: no-repeat, no-repeat, repeat, no-repeat;
   background-size: auto, auto, 420px, auto;
@@ -2174,7 +2174,7 @@ html body .img-skel::after{
   background:
     radial-gradient(1200px 800px at 10% -10%, rgba(255,255,255,.08) 0%, rgba(255,255,255,0) 55%),
     radial-gradient(1200px 800px at 100% 0%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 55%),
-    url('assets/promo/newyear/xmas-pattern2.svg'),
+    url('assets/promo/newyear/xmas-pattern3.svg'),
     linear-gradient(180deg, var(--xmas-bg-2) 0%, var(--xmas-bg) 100%);
   background-repeat: no-repeat, no-repeat, repeat, no-repeat;
   background-size: auto, auto, 420px, auto;
@@ -2327,36 +2327,36 @@ html body .img-skel::after{
   position: relative;
   z-index: 2;
 }
-/* === GLOBAL PAGE BACKDROP (тот же тон, что у сетки) =============== */
-/* 1) Токены — подложка страницы */
+/* === PROMO PAGE: только тёмная подложка, без «дымки» =============== */
 :root{
-  /* подправь на свои оттенки при необходимости */
-  --page-bg:   #ffe7ea;  /* основной тон фона */
-  --page-bg-2: #fff1f3;  /* верхняя «дымка» */
+  /* регулируй интенсивность затемнения: 0.20–0.80 */
+  --promo-dim: .52;
 }
 
-/* 2) Общий фон приложения (всегда на body/html) */
-html, body{
-  background:
-    radial-gradient(1100px 700px at 8% -8%, rgba(255,120,120,.08) 0%, rgba(0,0,0,0) 55%),
-    radial-gradient(1100px 700px at 100% 0%, rgba(255,196,0,.06) 0%, rgba(0,0,0,0) 55%),
-    linear-gradient(180deg, var(--page-bg-2) 0%, var(--page-bg) 100%) !important;
-  background-repeat: no-repeat, no-repeat, no-repeat !important;
-  background-size: auto, auto, auto !important;
+/* контент промо-экрана работает поверх подложки */
+#view.promo-page{
+  position: relative !important;
+  isolation: isolate !important;
+  background-color: #0d0d0f !important; /* базовый тёмный фон */
 }
 
-/* 3) Контейнеры и сетка — прозрачные, чтобы виден был общий фон */
-#view, .view, .section, .grid{
-  background: transparent !important;
-  background-color: transparent !important;
+/* полностью отключаем прежнюю «дымку»/туман */
+#view.promo-page::before{
+  content: none !important;
+  display: none !important;
 }
 
-/* 4) Карточки и области изображений — в той же «бумаге», что и раньше */
-.card,
-.card .card-img{
-  background: #fff; /* или var(--paper) если используешь переменную */
+/* одна ровная тёмная подложка под контентом (без градиентов/блюров) */
+#view.promo-page::after{
+  content: "";
+  position: absolute; inset: 0;
+  z-index: 0;                   /* ниже контента, выше фоновой картинки */
+  pointer-events: none;
+  background: rgba(0,0,0,var(--promo-dim));
 }
 
-/* 5) Если используешь новогоднюю тему — наследуем общий фон и убираем локальный */
-.theme-xmas .grid{ background: transparent !important; }
-.theme-xmas #view{ background: transparent !important; }
+/* гарантируем, что весь внутренний контент выше подложки */
+#view.promo-page > *{
+  position: relative;
+  z-index: 1;
+}

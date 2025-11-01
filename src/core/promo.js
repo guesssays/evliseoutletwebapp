@@ -17,7 +17,7 @@ function defaults() {
       pageBg:      '#3e0a0a',   // основной бордовый
       pageBg2:     '#5a0f12',   // верхний оттенок для градиента
       pageBgImg:   'assets/promo/newyear/bg-snow-red.svg',
-            pageBgImg:'assets/promo/newyear/xmas-pattern2.svg', // ⬅ твой svg-паттерн
+            pageBgImg:'assets/promo/newyear/xmas-pattern3.svg', // ⬅ твой svg-паттерн
       pageTint:    'rgba(255,255,255,.03)',
 
       // сетка/карточки берут тот же цвет через CSS-переменные
