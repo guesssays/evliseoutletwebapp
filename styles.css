@@ -2360,3 +2360,64 @@ html body .img-skel::after{
   position: relative;
   z-index: 1;
 }
+/* === PROMO PAGE: ровная лёгкая подложка на ВЕСЬ экран =============== */
+:root{
+  /* сделаем заметно светлее (можешь крутить 0.18–0.40) */
+  --promo-dim: .26;
+  --promo-bg:  #0e0e10;   /* базовый тёмный тон под паттерн */
+}
+
+/* сам view получает тёмный фон, создаём изоляцию слоёв */
+#view.promo-page{
+  background-color: var(--promo-bg) !important;
+  position: relative !important;
+  isolation: isolate !important;
+}
+
+/* полностью убираем «дымку», чтобы не темнить дважды */
+#view.promo-page::before{
+  content: none !important;
+  display: none !important;
+}
+
+/* ГЛАВНОЕ: затемнение фиксируем на весь вьюпорт, не на высоту сетки */
+#view.promo-page::after{
+  content: "";
+  position: fixed;            /* ← фикс на весь экран */
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;                 /* ниже контента промо */
+  background: rgba(0,0,0,var(--promo-dim));
+}
+
+/* контент промо-экрана всегда выше подложки */
+#view.promo-page > *{
+  position: relative;
+  z-index: 1;
+}
+
+/* страховки: убираем «бумагу» у внутренних контейнеров именно на промо */
+#view.promo-page .view,
+#view.promo-page .section,
+#view.promo-page .grid{
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* карточки на промо — без собственной подложки/тени (чтобы фон был общий) */
+#view.promo-page .card{
+  background: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+/* тексты на промо — светлые по умолчанию (заголовки/лиды/мьютед) */
+#view.promo-page h1,
+#view.promo-page h2,
+#view.promo-page .page-title h1,
+#view.promo-page .promo-title,
+#view.promo-page .promo-lead{
+  color:#fff !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,.22);
+}
+#view.promo-page .muted{ color:rgba(255,255,255,.78) !important; }
