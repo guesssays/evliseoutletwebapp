@@ -2133,3 +2133,14 @@ html body .img-skel::after{
 /* На случай старых правил — отключаем прошлые эффекты,
    чтобы не было двойного свечения/фильтров */
 .card .price .cur.deal{ filter:none !important; }
+/* === OFF: underline/glow under deal price === */
+.card .price .cur.deal::after{
+  content: none !important;
+  display: none !important;
+}
+
+/* На всякий: никаких текстовых подчёркиваний у цен */
+.card .price .cur,
+.card .price .cur.deal{
+  text-decoration: none !important;
+}
