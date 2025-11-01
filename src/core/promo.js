@@ -17,6 +17,7 @@ function defaults() {
       pageBg:      '#3e0a0a',   // основной бордовый
       pageBg2:     '#5a0f12',   // верхний оттенок для градиента
       pageBgImg:   'assets/promo/newyear/bg-snow-red.svg',
+            pageBgImg:'assets/promo/newyear/xmas-pattern.svg', // ⬅ твой svg-паттерн
       pageTint:    'rgba(255,255,255,.03)',
 
       // сетка/карточки берут тот же цвет через CSS-переменные
@@ -142,7 +143,6 @@ export function shouldShowOnHome(p) {
 export function promoTitle(){ return (state?.promo?.title) || 'Новогодняя акция'; }
 export function promoSubtitle(){ return (state?.promo?.subtitle) || 'скидки и x2 кэшбек'; }
 
-/* ===== THEME APPLY/CLEAR ===== */
 export function applyPromoTheme(on = true) {
   try {
     const root = document.documentElement;
@@ -153,45 +153,39 @@ export function applyPromoTheme(on = true) {
       const th = promoTheme();
       root.classList.add('theme-xmas');
 
-      // токены для CSS
       if (th.pageBg)  root.style.setProperty('--xmas-bg', th.pageBg);
       if (th.pageBg2) root.style.setProperty('--xmas-bg-2', th.pageBg2);
 
       v.classList.add('promo-page');
       v.style.setProperty('--promo-page-bg', th.pageBg || '#3e0a0a');
-      v.style.setProperty('--promo-page-tint', th.pageTint || 'rgba(255,255,255,.03)');
 
+      // ⬇️ ключ: один url для view и grid через переменную
       if (th.pageBgImg) {
-        v.style.backgroundImage = `url('${th.pageBgImg}')`;
-        v.style.backgroundRepeat = 'repeat';
-        v.style.backgroundSize = '420px';
+        const url = `url('${th.pageBgImg}')`;
+        v.style.setProperty('--promo-bg-img', url);
       } else {
-        v.style.backgroundImage = 'none';
+        v.style.removeProperty('--promo-bg-img');
       }
 
-      if (th.gridBg)       v.style.setProperty('--promo-grid-bg', th.gridBg);
-      if (th.gridBgImage)  v.style.setProperty('--promo-grid-img', th.gridBgImage);
-      if (th.gridTint)     v.style.setProperty('--promo-grid-tint', th.gridTint);
+      if (th.gridBg)      v.style.setProperty('--promo-grid-bg', th.gridBg);
+      if (th.gridBgImage) v.style.setProperty('--promo-grid-img', th.gridBgImage);
+      if (th.gridTint)    v.style.setProperty('--promo-grid-tint', th.gridTint);
 
     } else {
       root.classList.remove('theme-xmas');
-
       root.style.removeProperty('--xmas-bg');
       root.style.removeProperty('--xmas-bg-2');
 
       v.classList.remove('promo-page');
       v.style.removeProperty('--promo-page-bg');
-      v.style.removeProperty('--promo-page-tint');
-      v.style.backgroundImage = 'none';
-      v.style.backgroundRepeat = '';
-      v.style.backgroundSize = '';
-
+      v.style.removeProperty('--promo-bg-img');   // ⬅ очистка
       v.style.removeProperty('--promo-grid-bg');
       v.style.removeProperty('--promo-grid-img');
       v.style.removeProperty('--promo-grid-tint');
     }
   } catch {}
 }
+
 
 export function clearPromoTheme() {
   applyPromoTheme(false);
