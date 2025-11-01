@@ -2433,3 +2433,26 @@ html body .img-skel::after{
   border-color: transparent !important;
   box-shadow: none !important;
 }
+/* === PROMO /view: принудительно ПРОЗРАЧНЫЙ фон и без оверлеев === */
+html body main#view.view.promo-page{
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* убираем затемнение/туман, если где-то задано */
+html body main#view.view.promo-page::before,
+html body main#view.view.promo-page::after{
+  content: none !important;
+  display: none !important;
+}
+
+/* на всякий — внутренние контейнеры промо тоже без «бумаги» */
+html body main#view.view.promo-page .view,
+html body main#view.view.promo-page .promo-wrap,
+html body main#view.view.promo-page .section,
+html body main#view.view.promo-page .grid{
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
