@@ -25,16 +25,24 @@ function ensureLazyObserver() {
     for (const e of entries) {
       if (!e.isIntersecting) continue;
       const el = e.target;
-      const src = el.getAttribute('data-src');
+      const src    = el.getAttribute('data-src');
       const srcset = el.getAttribute('data-srcset');
       if (src) el.src = src;
       if (srcset) el.srcset = srcset;
-      el.onload = () => el.classList.add('loaded');
+
+      el.onload = () => {
+        el.classList.add('loaded', 'is-ready');
+        el.removeAttribute('data-src');
+        el.removeAttribute('data-srcset');
+        try { el.parentElement?.querySelector('.img-skel')?.remove(); } catch {}
+      };
+
       __lazyObserver.unobserve(el);
     }
   }, { root: null, rootMargin: '250px 0px', threshold: 0.01 });
   return __lazyObserver;
 }
+
 function lazyifyImg(img) {
   const obs = ensureLazyObserver();
   const dataSrc = img.getAttribute('data-src');
@@ -48,13 +56,19 @@ function lazyifyImg(img) {
   const immediately =
     rect && rect.top < (window.innerHeight || 0) + 100 && rect.bottom > -100;
   if (immediately) {
-    const s = img.getAttribute('data-src');
+    const s  = img.getAttribute('data-src');
     const ss = img.getAttribute('data-srcset');
-    if (s) img.src = s;
+    if (s)  img.src = s;
     if (ss) img.srcset = ss;
-    img.onload = () => img.classList.add('loaded');
+    img.onload = () => {
+      img.classList.add('loaded', 'is-ready');
+      img.removeAttribute('data-src');
+      img.removeAttribute('data-srcset');
+      try { img.parentElement?.querySelector('.img-skel')?.remove(); } catch {}
+    };
     return;
   }
+
   obs.observe(img);
 }
 
@@ -219,7 +233,7 @@ function buildOrderPrefillMessage(p, { size, color } = {}){
 
 function openOrderChatWithMessage(text){
   const tga = window.Telegram?.WebApp;
-  const tpl = state?.orderChatUrlTemplate || ''; // например: "https://t.me/evlise_operator_bot?start={TEXT}" или "tg://resolve?domain=evlise_operator&text={TEXT}"
+  const tpl = state?.orderChatUrlTemplate || '';
   const username = state?.operatorUsername || state?.supportChat || state?.botUsername;
 
   const openUrl = (url) => {
@@ -238,7 +252,6 @@ function openOrderChatWithMessage(text){
   }
 
   if (username){
-    // Попробуем tg-схему с текстом
     const deeplink = `tg://resolve?domain=${encodeURIComponent(username)}&text=${encodeURIComponent(text)}`;
     try {
       if (tga?.openTelegramLink) {
@@ -246,7 +259,6 @@ function openOrderChatWithMessage(text){
         return;
       }
     } catch {}
-    // Фолбэк: откроем чат, а текст скопируем в буфер
     try {
       navigator.clipboard?.writeText(text);
       toast('Текст заказа скопирован — вставьте его в чат.', { variant:'info', icon:'clipboard' });
@@ -255,7 +267,6 @@ function openOrderChatWithMessage(text){
     return;
   }
 
-  // Самый общий фолбэк — окно share с предзаполненным текстом
   const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(location.href)}&text=${encodeURIComponent(text)}`;
   openUrl(shareUrl);
 }
@@ -265,7 +276,6 @@ export async function renderProduct({id}){
   const p = state.products.find(x=> String(x.id)===String(id));
   if (!p){ location.hash='#/'; return; }
 
-  // Быстрый «анти-дрожь»
   try { ScrollReset.request(); } catch {}
 
   await Loader.wrap(async () => {
@@ -316,10 +326,17 @@ export async function renderProduct({id}){
         .p-title .p-cat{ font-weight:800; opacity:.55; }
         @media (prefers-color-scheme:dark){ .p-title .p-cat{ opacity:.65; } }
 
-        .badge-ready {
-          display:inline-flex; gap:6px; align-items:center;
-          padding:6px 10px; border-radius:999px; font-weight:800;
-          background:#10b981; color:#fff; border:1px solid rgba(0,0,0,.08);
+        /* зелёная панель "В наличии" */
+        .p-ready{
+          display:flex;align-items:center;gap:10px;margin:8px 0;
+          padding:12px 14px;border-radius:14px;
+          background:linear-gradient(135deg,#10b981 0%,#06b6d4 100%);
+          color:#fff;max-width:100%;
+          border:1px solid rgba(15,23,42,.10);
+        }
+        .p-ready-line{
+          display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:visible;
+          font-weight:800;font-size:clamp(12px,3.6vw,16px);line-height:1.2;
         }
 
         .p-cashback{display:flex;align-items:center;gap:10px;margin:8px 0;padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#f59e0b 0%,#ef4444 100%);color:#fff;max-width:100%;}
@@ -370,6 +387,18 @@ export async function renderProduct({id}){
         .size:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
         .size.active{ background:#121111; color:#fff; border-color:#121111; }
 
+        /* readonly для readyMode (визуально как "выбрано") */
+        .readonly .size{
+          pointer-events:none; cursor:default; opacity:1;
+          background:#121111; color:#fff; border-color:#121111;
+        }
+        .readonly .size[disabled]{ opacity:1; }
+        .readonly .sw{
+          pointer-events:none; cursor:default;
+          border-color:#0ea5e9!important;
+          box-shadow: inset 0 0 0 2px rgba(255,255,255,.85), 0 0 0 3px rgba(14,165,233,.28);
+        }
+
         .table-wrap{ overflow:auto; -webkit-overflow-scrolling:touch; margin-top:10px; border:1px solid var(--stroke); border-radius:16px; }
         .size-table{ width:100%; border-collapse:separate; border-spacing:0; }
         .size-table th,.size-table td{ padding:10px 12px; white-space:nowrap; font-size:14px; text-align:center; font-variant-numeric: tabular-nums; }
@@ -377,7 +406,7 @@ export async function renderProduct({id}){
         .size-table th:first-child, .size-table td:first-child{ text-align:left; }
         .size-table tbody tr:not(:last-child) td{ border-bottom:1px solid var(--stroke); }
 
-        /* Readonly строки опций в readyMode */
+        /* Readonly строки опций в readyMode (старый стиль, оставим на всякий случай) */
         .kv{ display:flex; align-items:center; gap:8px; font-weight:700; }
         .kv .kv-key{ opacity:.65; font-weight:800; min-width:72px; }
         .kv .kv-val{ font-weight:800; }
@@ -412,8 +441,13 @@ export async function renderProduct({id}){
           <div class="p-title">
             <span class="p-name">${escapeHtml(p.title)}</span>
             ${catLabel ? `<span class="p-cat">${escapeHtml(catLabel)}</span>` : ``}
-            ${readyMode ? `<span class="badge-ready" title="Товар в наличии"><i data-lucide="zap"></i> В наличии</span>` : ``}
           </div>
+
+          ${readyMode ? `
+          <div class="p-ready" role="note" aria-label="Товар в наличии">
+            <i data-lucide="zap" aria-hidden="true"></i>
+            <div class="p-ready-line"><b>В наличии.</b>&nbsp;<span>Быстрый самовывоз/доставка.</span></div>
+          </div>` : ``}
 
           ${!readyMode ? `
           <div class="p-cashback" role="note" aria-label="Информация о кэшбеке">
@@ -687,9 +721,7 @@ function drawRelatedCards(list){
       const node = t.content.firstElementChild.cloneNode(true);
 
       node.addEventListener('click', (e) => {
-        if (e.target?.closest?.('.fav')) {
-          e.preventDefault();
-        }
+        if (e.target?.closest?.('.fav')) e.preventDefault();
       }, { capture: true, passive: false });
 
       node.href = `#/product/${p.id}`;
@@ -1265,12 +1297,40 @@ function renderRegularOptions(p){
     </div>`;
 }
 
+/* Новый readyMode: тот же вид, но readonly и единственные значения */
 function renderReadyModeOptions(p){
-  const size = (p.sizes && p.sizes[0]) || '—';
+  const size  = (p.sizes && p.sizes[0]) || '—';
   const color = (p.colors && p.colors[0]) || '—';
+  const colorHex = colorToHex(color);
+
   return `
-    <div class="kv"><span class="kv-key">Размер</span><span class="kv-val">${escapeHtml(size)}</span></div>
-    <div class="kv"><span class="kv-key">Цвет</span><span class="kv-val">${escapeHtml(color)}</span></div>
-    <div class="muted" style="font-size:12px;margin-top:4px">Единичный экземпляр со склада — быстрый самовывоз/доставка.</div>
+    <div>
+      <div class="opt-title">Размер</div>
+      <div class="sizes readonly" id="sizes">
+        <button class="size active" data-v="${escapeHtml(size)}"
+          disabled aria-disabled="true" title="Единственный доступный размер">
+          ${escapeHtml(size)}
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="opt-title">Цвет</div>
+      <div class="colors readonly" id="colors">
+        <button
+          class="sw active"
+          data-v="${escapeHtml(color)}"
+          disabled aria-disabled="true"
+          title="${escapeHtml(color)} — доступный"
+          aria-pressed="true"
+          style="background:${colorHex}"
+        ></button>
+      </div>
+    </div>
+
+    <div class="muted" style="font-size:12px;margin-top:4px">
+      Единичный экземпляр со склада — быстрый самовывоз/доставка.
+    </div>
   `;
 }
+

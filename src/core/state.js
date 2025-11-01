@@ -14,6 +14,13 @@ export const state = {
   addresses: { list: [], defaultId: null },
   profile: { phone:'', payerFullName:'' },
   favorites: new Set(),
+
+  // ==== Настройка чата оформления заказа ====
+  // Юзернейм чата/аккаунта без @
+  operatorUsername: 'evliseorder',
+  // Жёсткий deeplink-шаблон с автотекстом (имеет приоритет):
+  // {TEXT} будет заменён на encodeURIComponent(текст заказа)
+  orderChatUrlTemplate: 'tg://resolve?domain=evliseorder&text={TEXT}',
 };
 
 /* ===== user scoping (per-user localStorage) ===== */
