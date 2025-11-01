@@ -3,15 +3,14 @@ import { state, isFav, toggleFav } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { applyFilters } from './Filters.js';
 import { ScrollReset } from '../core/scroll-reset.js';
-
-// 🔸 Акции
 import {
   promoIsActive,
   getPromoBanners,
   promoBadgesFor,
   discountInfo,
   effectivePrice,
-  shouldShowOnHome, // ⬅️ скрываем лимитки вне акции
+  shouldShowOnHome,
+  clearPromoTheme,              // ← добавлено: всегда чистим тему при заходе на Home
 } from '../core/promo.js';
 
 /* ================== helpers: категории ================== */
@@ -35,7 +34,6 @@ function categoryNameBySlug(slug){
 }
 
 /* ================== helpers: наличие ================== */
-// единый способ понять, «в наличии» ли товар, даже если поля разрознены
 function isInStock(p){
   return p?.inStock === true
     || p?.inStockNow === true
@@ -43,7 +41,6 @@ function isInStock(p){
     || p?.stockType === 'ready'
     || (Array.isArray(p?.tags) && p.tags.includes('in-stock'));
 }
-// нормализуем к полю p.inStock, чтобы остальной код и стили работали стабильно
 function normalizeStockFlags(products){
   if (!Array.isArray(products)) return;
   for (const p of products){
@@ -63,14 +60,15 @@ function shouldShowGridSkeleton(){
 }
 
 /* ================== скелетоны ================== */
-
-// ⬇️ Публичная функция показа стартовой сетки скелетонов
 export function showHomeSkeleton() {
-  if (!shouldShowGridSkeleton()) return; // не показываем при супрессии
+  if (!shouldShowGridSkeleton()) return;
 
   const v = document.getElementById('view');
   if (!v) return;
-  // Каркас такой же, как в renderHome, но только скелет-сетка
+
+  // на вход в Home — снимаем любую промо-тему
+  try { clearPromoTheme(); } catch {}
+
   v.innerHTML = `
     <div class="chips" id="catChips"></div>
     <div class="grid home-bottom-pad" id="productGrid"></div>`;
@@ -99,13 +97,13 @@ export function showHomeSkeleton() {
 
 function calcSkeletonCount(){
   const h = (window.visualViewport?.height || window.innerHeight || 700);
-  const rows = Math.max(3, Math.min(4, Math.round(h / 260))); // 3–4 ряда
+  const rows = Math.max(3, Math.min(4, Math.round(h / 260)));
   const cols = (window.innerWidth <= 380) ? 1 : 2;
-  return rows * cols; // 6–8
+  return rows * cols;
 }
 
 function renderSkeletonGrid(container, count){
-  if (!shouldShowGridSkeleton()) return; // не генерим сетку при супрессии
+  if (!shouldShowGridSkeleton()) return;
 
   const frag = document.createDocumentFragment();
   for (let i=0;i<count;i++){
@@ -166,7 +164,6 @@ function createProductNode(p){
     `;
   }
 
-  // anchor guard (клик по сердцу не открывает карточку)
   node.addEventListener('click', (e) => {
     if (e.target?.closest?.('.fav')) e.preventDefault();
   }, { capture: true, passive: false });
@@ -174,16 +171,14 @@ function createProductNode(p){
   node.href = `#/product/${p.id}`;
   node.dataset.id = String(p.id);
 
-  // === IMG + пер-карточный скелет до загрузки ===
+  // IMG + overlay skeleton
   const imgWrap = node.querySelector('.card-img');
   const im = node.querySelector('img');
   if (imgWrap && im){
-    // overlay-скелет только для конкретной карточки
     const ov = document.createElement('b');
     ov.className = 'img-skel';
     imgWrap.appendChild(ov);
 
-    // fade-in после load
     im.loading = 'lazy';
     im.decoding = 'async';
     im.alt = p.title;
@@ -194,21 +189,19 @@ function createProductNode(p){
       ov.remove();
       im.classList.add('is-ready');
     };
-
     im.addEventListener('load', clear, { once: true });
     setTimeout(() => { if (ov.isConnected) clear(); }, 2000);
   }
 
   const titleEl = node.querySelector('.title'); if (titleEl) titleEl.textContent = p.title;
 
-  // Подпись/лейбл
   const subEl   = node.querySelector('.subtitle');
   if (subEl){
     const label = p.categoryLabel || categoryNameBySlug(p.categoryId) || '';
     subEl.textContent = label || (p.inStock ? 'В наличии' : '');
   }
 
-  // 🔸 Цена с учётом акции + зачёркнутая старая при скидке (влезает в одну строку)
+  // Цена (учёт скидки)
   const priceEl = node.querySelector('.price');
   if (priceEl){
     const di = discountInfo(p);
@@ -220,7 +213,7 @@ function createProductNode(p){
     }
   }
 
-  // 🔸 Промо-бейджи (левый верх карточки)
+  // Промо-бейджи (левый верх карточки) — эти классы уже описаны в styles.css
   const badges = promoBadgesFor(p);
   if (badges.length){
     const media = node.querySelector('.card-img') || node;
@@ -246,86 +239,18 @@ function createProductNode(p){
   return node;
 }
 
-function renderPromoBannerNode(bn){
-  const a = document.createElement('a');
-  a.className = 'promo-banner';
-  a.href = '#/promo';
-  a.setAttribute('aria-label','Перейти к акции');
-  a.innerHTML = `<img src="${bn?.img||''}" alt="${escapeHtml(bn?.alt||'Акция')}" loading="lazy">`;
-  return a;
-}
-
-function progressiveAppend(grid, list, {firstBatch=12, batch=16, delay=0} = {}){
-  const total = list.length;
-  let idx = 0;
-
-  if (total === 0) return;
-
-  // 🔸 Врезки баннеров
-  const promo = promoIsActive();
-  const banners = promo ? getPromoBanners() : [];
-  let bnIndex = 0;
-  let insertedProducts = 0;
-
-  // Если акция активна — первым элементом рендерим баннер
-  if (promo && banners.length){
-    grid.appendChild(renderPromoBannerNode(banners[bnIndex % banners.length]));
-    bnIndex++;
-  }
-
-  const appendSlice = (from, to) => {
-    const frag = document.createDocumentFragment();
-    for (let i=from; i<to; i++){
-      frag.appendChild(createProductNode(list[i]));
-      insertedProducts++;
-
-      // после каждого 6-го — баннер
-      if (promo && banners.length && (insertedProducts % 6 === 0)){
-        frag.appendChild(renderPromoBannerNode(banners[bnIndex % banners.length]));
-        bnIndex++;
-      }
-    }
-    grid.appendChild(frag);
-    window.lucide?.createIcons && lucide.createIcons();
-  };
-
-  const first = Math.min(firstBatch, total);
-  if (first > 0){
-    appendSlice(0, first);
-    idx = first;
-    grid.querySelectorAll('.is-skeleton')?.forEach(el => el.remove());
-  }
-
-  const pump = () => {
-    if (idx >= total) return;
-    const next = Math.min(idx + batch, total);
-    appendSlice(idx, next);
-    idx = next;
-    if ('requestIdleCallback' in window){
-      requestIdleCallback(pump, { timeout: 120 });
-    } else {
-      setTimeout(pump, delay);
-    }
-  };
-
-  if (idx < total){
-    if ('requestIdleCallback' in window){
-      requestIdleCallback(pump, { timeout: 120 });
-    } else {
-      setTimeout(pump, delay);
-    }
-  }
-}
-
 /* ================== публичные функции ================== */
 export function renderHome(router){
   const v = document.getElementById('view');
   if (!v) return;
 
-  // ✅ нормализуем наличие
+  // ВХОД В HOME: гарантированно снимаем промо-оформление
+  try { clearPromoTheme(); } catch {}
+
+  // нормализуем наличие
   normalizeStockFlags(state.products);
 
-  // если ещё нет товаров — показываем скелет сразу
+  // если нет товаров — скелет
   if (!Array.isArray(state.products) || state.products.length === 0) {
     showHomeSkeleton();
     try { window.dispatchEvent(new CustomEvent('view:home-mounted')); } catch {}
@@ -337,28 +262,24 @@ export function renderHome(router){
     <div class="grid home-bottom-pad" id="productGrid"></div>`;
   const grid = document.getElementById('productGrid');
 
-  // 0) «зонтик» против фликера
+  // anti-flicker
   if (!grid.dataset.quietGuardBound){
     ScrollReset.guardNoResetClick(grid, { duration: 1100 });
     grid.dataset.quietGuardBound = '1';
   }
 
-  // 1) сеточные скелетоны (если не подавлены)
   if (shouldShowGridSkeleton()) {
     renderSkeletonGrid(grid, calcSkeletonCount());
   }
 
-  // 2) чипы категорий
   drawCategoriesChips(router);
 
-  // 3) прогрессивный рендер
   requestAnimationFrame(() => {
     drawProducts(state.products);
     try { window.dispatchEvent(new CustomEvent('view:home-mounted')); } catch {}
   });
 }
 
-/** Рендер чипов категорий (верхние группы + «Все», «Новинки», «В наличии», «Акции»). */
 export function drawCategoriesChips(router){
   const wrap = document.getElementById('catChips');
   if (!wrap) return;
@@ -366,7 +287,6 @@ export function drawCategoriesChips(router){
   const mk=(slug, name, active)=>`<button class="chip ${active?'active':''}" data-slug="${slug}">${name}</button>`;
 
   wrap.innerHTML='';
-  // 🔸 при активной акции — показываем чип "Акции" самым первым
   if (promoIsActive()){
     wrap.insertAdjacentHTML('beforeend', mk('promo','Акции', state.filters.category==='promo'));
   }
@@ -390,7 +310,6 @@ export function drawCategoriesChips(router){
 
       state.filters.category = slug;
 
-      // 🔸 переход на страницу акции
       if (slug === 'promo'){
         location.hash = '#/promo';
         return;
@@ -412,7 +331,6 @@ export function drawCategoriesChips(router){
         state.filters.inStock = false;
       }
 
-      // На переключении — показываем сеточные скелетоны и затем рендерим
       const grid = document.getElementById('productGrid');
       if (grid){
         grid.innerHTML = '';
@@ -428,17 +346,12 @@ export function drawCategoriesChips(router){
   }
 }
 
-/** Рисуем карточки товаров (с фильтрами, поиском и прогрессивной подгрузкой). */
 export function drawProducts(list){
   const grid = document.getElementById('productGrid');
   if (!grid) return;
 
   const source = Array.isArray(list) ? list : [];
-
-  // ⬇️ главный предфильтр общей сетки: скрываем лимитки вне акции
   const visibleSource = source.filter(shouldShowOnHome);
-
-  // Дальше — твои фильтры
   const base = applyFilters(visibleSource);
 
   const q = (state.filters.query||'').trim().toLowerCase();
@@ -449,7 +362,6 @@ export function drawProducts(list){
       )
     : base;
 
-  // Делегированный guard на клик по .fav
   if (!grid.dataset.anchorGuard) {
     grid.addEventListener('click', (e) => {
       if (e.target?.closest?.('.fav, button.fav')) e.preventDefault();
@@ -457,7 +369,6 @@ export function drawProducts(list){
     grid.dataset.anchorGuard = '1';
   }
 
-  // Делегат избранного (+ подавление скролл-ресета/скелетона вокруг клика)
   if (!grid.dataset.favHandlerBound) {
     grid.addEventListener('click', (ev) => {
       const favBtn = ev.target.closest('.fav, button.fav');
@@ -511,9 +422,8 @@ export function drawProducts(list){
     grid.dataset.favHandlerBound = '1';
   }
 
-  // Пустые состояния
   if (source.length === 0 && (state.products?.length || 0) === 0){
-    return; // ждём данные — оставляем сеточные скелетоны
+    return;
   }
   if (source.length === 0 && (state.products?.length || 0) > 0){
     grid.querySelectorAll('.is-skeleton')?.forEach(el => el.remove());
@@ -532,8 +442,74 @@ export function drawProducts(list){
     return;
   }
 
-  // Прогрессивно добавляем карточки
   progressiveAppend(grid, filtered, { firstBatch: 12, batch: 16, delay: 0 });
+}
+
+function progressiveAppend(grid, list, {firstBatch=12, batch=16, delay=0} = {}){
+  const total = list.length;
+  let idx = 0;
+  if (total === 0) return;
+
+  const promo = promoIsActive();
+  const banners = promo ? getPromoBanners() : [];
+  let bnIndex = 0;
+  let insertedProducts = 0;
+
+  if (promo && banners.length){
+    grid.appendChild(renderPromoBannerNode(banners[bnIndex % banners.length]));
+    bnIndex++;
+  }
+
+  const appendSlice = (from, to) => {
+    const frag = document.createDocumentFragment();
+    for (let i=from; i<to; i++){
+      frag.appendChild(createProductNode(list[i]));
+      insertedProducts++;
+
+      if (promo && banners.length && (insertedProducts % 6 === 0)){
+        frag.appendChild(renderPromoBannerNode(banners[bnIndex % banners.length]));
+        bnIndex++;
+      }
+    }
+    grid.appendChild(frag);
+    window.lucide?.createIcons && lucide.createIcons();
+  };
+
+  const first = Math.min(firstBatch, total);
+  if (first > 0){
+    appendSlice(0, first);
+    idx = first;
+    grid.querySelectorAll('.is-skeleton')?.forEach(el => el.remove());
+  }
+
+  const pump = () => {
+    if (idx >= total) return;
+    const next = Math.min(idx + batch, total);
+    appendSlice(idx, next);
+    idx = next;
+    if ('requestIdleCallback' in window){
+      requestIdleCallback(pump, { timeout: 120 });
+    } else {
+      setTimeout(pump, delay);
+    }
+  };
+
+  if (idx < total){
+    if ('requestIdleCallback' in window){
+      requestIdleCallback(pump, { timeout: 120 });
+    } else {
+      setTimeout(pump, delay);
+    }
+  }
+}
+
+function renderPromoBannerNode(bn){
+  const a = document.createElement('a');
+  a.className = 'promo-banner';
+  a.href = '#/promo';
+  a.setAttribute('aria-label','Перейти к акции');
+  a.innerHTML = `<img src="${bn?.img||''}" alt="${escapeHtml(bn?.alt||'Акция')}" loading="lazy">`;
+  return a;
 }
 
 /* utils */

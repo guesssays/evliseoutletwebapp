@@ -13,9 +13,8 @@ function defaults() {
       { id: 'bn3', img: 'assets/promo/newyear/banner-3.jpg', alt: 'Хиты сезона — x2 кэшбек' },
     ],
     theme: {
-      // 🎄 красно-рождественская палитра
       pageBg:    '#3e0a0a',
-      pageBgImg: 'assets/promo/newyear/bg-snow-red.svg', // лёгкий снежный паттерн
+      pageBgImg: 'assets/promo/newyear/bg-snow-red.svg',
       pageTint:  'rgba(255,255,255,.03)',
       gridBg:    'transparent',
       gridBgImage: '',
@@ -23,17 +22,18 @@ function defaults() {
       badgeColor:   '#ef4444',
       badgeX2Color: '#06b6d4',
     },
-    discounts: {},        // { [productId]: { oldPrice, price } }
-    x2CashbackIds: [],    // [productId]
+    discounts: {},
+    x2CashbackIds: [],
   };
 }
 
 function promoConfig() {
   const cfg = state?.promo || {};
-  return { ...defaults(), ...cfg, theme: { ...defaults().theme, ...(cfg.theme||{}) } };
+  const d = defaults();
+  return { ...d, ...cfg, theme: { ...d.theme, ...(cfg.theme||{}) } };
 }
 
-/* ===== API ===== */
+/* ===== STATE ===== */
 export function promoIsActive() { return !!promoConfig().enabled; }
 export function getPromoBanners() { return promoConfig().banners || []; }
 export function promoTheme() { return promoConfig().theme || {}; }
@@ -90,3 +90,41 @@ export function shouldShowOnHome(p) {
 
 export function promoTitle(){ return (state?.promo?.title) || 'Новогодняя акция'; }
 export function promoSubtitle(){ return (state?.promo?.subtitle) || 'скидки и x2 кэшбек'; }
+
+/* ===== THEME APPLY/CLEAR (единые утилиты) ===== */
+export function applyPromoTheme(on = true) {
+  try {
+    const root = document.documentElement;
+    const v = document.getElementById('view');
+    if (!v) return;
+
+    if (on) {
+      const th = promoTheme();
+      root.classList.add('theme-xmas');
+
+      v.classList.add('promo-page');
+      v.style.setProperty('--promo-page-bg', th.pageBg || '#3e0a0a');
+      v.style.setProperty('--promo-page-tint', th.pageTint || 'rgba(255,255,255,.03)');
+      if (th.pageBgImg) {
+        v.style.backgroundImage = `url('${th.pageBgImg}')`;
+        v.style.backgroundRepeat = 'repeat';
+        v.style.backgroundSize = '420px';
+      } else {
+        v.style.backgroundImage = 'none';
+      }
+    } else {
+      root.classList.remove('theme-xmas');
+
+      v.classList.remove('promo-page');
+      v.style.removeProperty('--promo-page-bg');
+      v.style.removeProperty('--promo-page-tint');
+      v.style.backgroundImage = 'none';
+      v.style.backgroundRepeat = '';
+      v.style.backgroundSize = '';
+    }
+  } catch {}
+}
+
+export function clearPromoTheme() {
+  applyPromoTheme(false);
+}
