@@ -5,12 +5,13 @@ import {
   promoIsActive, promoTheme, productInPromo,
   effectivePrice, discountInfo, promoBadgesFor,
   promoTitle, promoSubtitle,
-  applyPromoTheme, clearPromoTheme
+  applyPromoTheme, clearPromoTheme,
+  ensureTestPromoSeed,
 } from '../core/promo.js';
 
 /**
  * ВАЖНО:
- * - Используем ОБЫЧНУЮ сетку .grid и карточки .card, чтобы размеры иконок/шрифтов были как на главной.
+ * - Используем ОБЫЧНУЮ сетку .grid и карточки .card → размеры 1:1 с главной.
  * - Меняем только: hero, фон, бейджи и цены (зачёркнутая/со скидкой).
  * - При уходе со страницы — чистим тему.
  */
@@ -21,6 +22,9 @@ export function renderPromo(router) {
     location.hash = '#/';
     return;
   }
+
+  // пробуем засеять тестовые 6 позиций, если всё пусто
+  try { ensureTestPromoSeed(); } catch {}
 
   // включаем оформление промо
   applyPromoTheme(true);
@@ -37,9 +41,12 @@ export function renderPromo(router) {
   v.innerHTML = `
     <style>
       /* Только hero и мелкие декоративные вещи. НИКАКИХ размеров карточек! */
-      .promo-wrap{ padding: 10px 10px calc(var(--tabbar-h) + var(--safe) + 10px); }
+      .promo-wrap{
+        /* фикс «узких» карточек: те же боковые отступы, что и .view */
+        padding: 0 18px calc(var(--tabbar-h) + var(--safe) + 10px);
+      }
       .promo-hero{
-        position:relative; margin: 0 0 12px; padding: 16px 14px;
+        position:relative; margin: 12px 0 12px; padding: 16px 14px;
         border-radius: var(--radius,22px); color:#fff;
         background: ${theme.gridBg || 'transparent'};
         ${theme.gridBgImage ? `background-image:url('${theme.gridBgImage}'); background-size: 420px; background-repeat: repeat;` : ''}
@@ -76,7 +83,7 @@ export function renderPromo(router) {
 
       ${isFallback ? `<div class="promo-note" style="color:var(--muted,#787676);font-size:12px;margin:0 2px 10px;">Пока подборка акции настраивается — временно показываем несколько товаров.</div>` : ``}
 
-      <!-- СТАНДАРТНАЯ сетка/карточки -->
+      <!-- СТАНДАРТНАЯ сетка/карточки (та же .grid, что и на главной) -->
       <div class="grid" id="promoGrid"></div>
     </div>
   `;
@@ -116,7 +123,7 @@ export function renderPromo(router) {
 
 /* ===== helpers ===== */
 
-// Рисуем карточку В ТОМ ЖЕ МАРКАПЕ, что и на главной (чтобы размеры совпадали)
+// Рисуем карточку В ТОМ ЖЕ МАРКАПЕ, что и на главной
 function renderStandardCard(p){
   const di = discountInfo(p);
   const price = effectivePrice(p);
@@ -126,12 +133,11 @@ function renderStandardCard(p){
     <a class="card" data-id="${p.id}" href="#/product/${p.id}">
       <div class="card-img">
         ${badges.length ? `<div class="promo-badges">
-          ${badges.map(b => `<span class="promo-badge ${b.type}">
-            ${b.type==='discount' ? `<i data-lucide="percent"></i>` : `<i data-lucide="zap"></i>`}
-            <span>${escapeHtml(b.label)}</span>
-          </span>`).join('')}
+          ${badges.map(b => `<span class="promo-badge ${b.type}">${
+            b.type==='discount' ? `<i data-lucide="percent"></i>` : `<i data-lucide="zap"></i>`
+          }<span>${escapeHtml(b.label)}</span></span>`).join('')}
         </div>` : ``}
-        <img class="" src="${p.images?.[0]||''}" alt="${escapeHtml(p.title)}" loading="lazy" decoding="async">
+        <img src="${p.images?.[0]||''}" alt="${escapeHtml(p.title)}" loading="lazy" decoding="async">
       </div>
       <button class="fav ${isFav(p.id)?'active':''}" data-id="${p.id}" aria-pressed="${isFav(p.id)?'true':'false'}" type="button" title="В избранное">
         <i data-lucide="heart"></i>

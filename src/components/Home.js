@@ -10,7 +10,7 @@ import {
   discountInfo,
   effectivePrice,
   shouldShowOnHome,
-  clearPromoTheme,              // ← добавлено: всегда чистим тему при заходе на Home
+  clearPromoTheme,              // ← важно: на вход в Home снимаем тему промо
 } from '../core/promo.js';
 
 /* ================== helpers: категории ================== */
@@ -213,7 +213,7 @@ function createProductNode(p){
     }
   }
 
-  // Промо-бейджи (левый верх карточки) — эти классы уже описаны в styles.css
+  // Промо-бейджи
   const badges = promoBadgesFor(p);
   if (badges.length){
     const media = node.querySelector('.card-img') || node;
