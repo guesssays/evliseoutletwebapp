@@ -2287,3 +2287,43 @@ html body .img-skel::after{
   box-shadow: none !important;
   border-color: rgba(255,255,255,.14) !important; /* можно убрать, если не нужно */
 }
+/* === PROMO PAGE: тёмная подложка под контент ===================== */
+:root{
+  /* интенсивность затемнения можно менять 0.20–0.70 */
+  --promo-dim: .45;
+}
+
+#view.promo-page{
+  position: relative;           /* свой стек слоёв */
+  isolation: isolate;           /* застраховаться от внешних слоёв */
+}
+
+/* существующий «туман» (::before) держим поверх тёмной подложки */
+#view.promo-page::before{
+  z-index: 1;                   /* туман над затемнением */
+}
+
+/* новая тёмная подложка — ниже тумана, но выше фоновой картинки */
+#view.promo-page::after{
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(1200px 700px at 50% -10%,
+      rgba(0,0,0, calc(var(--promo-dim) + .10)) 0%,
+      rgba(0,0,0, var(--promo-dim)) 40%,
+      rgba(0,0,0, calc(var(--promo-dim) - .10)) 65%,
+      rgba(0,0,0, calc(var(--promo-dim) - .20)) 100%
+    ),
+    linear-gradient(180deg,
+      rgba(0,0,0, calc(var(--promo-dim) - .10)) 0%,
+      rgba(0,0,0, calc(var(--promo-dim) + .05)) 100%
+    );
+}
+
+/* весь контент промо выше обоих оверлеев */
+#view.promo-page > *{
+  position: relative;
+  z-index: 2;
+}
