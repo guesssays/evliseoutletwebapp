@@ -2226,3 +2226,24 @@ html body .img-skel::after{
   mix-blend-mode: screen;
   opacity:.8;
 }
+/* === Promo page only: прозрачный фон сетки ===================== */
+#view.promo-page .grid{
+  background: transparent !important;
+}
+/* === PROMO PAGE: светлый текст заголовков и лидов =================== */
+#view.promo-page .page-title h1,
+#view.promo-page h1,
+#view.promo-page h2,
+#view.promo-page .promo-title,
+#view.promo-page .promo-lead,
+#view.promo-page .xmas-headline{
+  color:#fff !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,.22);
+}
+
+/* вспомогательные тексты/ссылки — тоже светлее */
+#view.promo-page .muted{ color:rgba(255,255,255,.78) !important; }
+#view.promo-page a{ color:#fff !important; }
+
+/* если фраза выводится отдельным блоком — можно дать класс и не гадать по селекторам */
+#view.promo-page .promo-text--light{ color:#fff !important; }
