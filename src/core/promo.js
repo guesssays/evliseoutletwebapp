@@ -48,16 +48,19 @@ function _ensureArrays(obj) {
 }
 
 export function ensureTestPromoSeed() {
-  const cfg = state?.promo;
-  if (!cfg || !cfg.enabled) return;
+  // если промо выключено глобально — уходим
+  if (!promoIsActive()) return;
 
-  _ensureArrays(cfg);
+  // 1) гарантируем объект state.promo (сливаем дефолты один раз)
+  if (!state.promo) state.promo = defaults();
+  _ensureArrays(state.promo);
 
   const goods = Array.isArray(state.products) ? state.products.slice(0) : [];
   if (goods.length < 6) return;
 
-  const hasManualDiscounts = Object.keys(cfg.discounts||{}).length > 0;
-  if (!hasManualDiscounts){
+  // 2) если нет ручных скидок — проставим тестовые на 3 товара
+  const hasManualDiscounts = Object.keys(state.promo.discounts || {}).length > 0;
+  if (!hasManualDiscounts) {
     const sample = goods.slice(0, 3);
     const disc = {};
     for (const p of sample) {
@@ -69,20 +72,21 @@ export function ensureTestPromoSeed() {
     state.promo.discounts = disc;
   }
 
+  // 3) добьём x2-товары до минимума (например, 3)
   const needX2Min = 3;
-  const existingX2 = new Set(cfg.x2CashbackIds || []);
-  if (existingX2.size < needX2Min){
+  const existingX2 = new Set(state.promo.x2CashbackIds || []);
+  if (existingX2.size < needX2Min) {
     const discountIds = new Set(Object.keys(state.promo.discounts || {}));
-    for (const p of goods){
+    for (const p of goods) {
       const id = String(p.id);
       if (existingX2.size >= needX2Min) break;
       if (discountIds.has(id)) continue;
-      if (existingX2.has(id)) continue;
       existingX2.add(id);
     }
     state.promo.x2CashbackIds = [...existingX2];
   }
 }
+
 
 /* ===== STATE API ===== */
 export function promoIsActive() { return !!promoConfig().enabled; }

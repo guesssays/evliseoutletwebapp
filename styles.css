@@ -2205,3 +2205,24 @@ html body .img-skel::after{
 .theme-xmas .card .price{ color:#fff !important; }
 
 /* Баннер промо и бейджи можно оставить как есть; при желании — подмерцай контрастом */
+/* PROMO view: используем картинку из JS-переменной */
+#view.promo-page{
+  background-color: var(--promo-page-bg, #3e0a0a) !important;
+  background-image: var(--promo-bg-img, none);   /* ← из applyPromoTheme */
+  background-repeat: repeat;
+  background-size: 420px auto;                   /* подгон под твой паттерн */
+  position: relative;
+}
+
+/* туман сверху можно оставить как есть */
+#view.promo-page::before{
+  content:"";
+  position:absolute; inset:0;
+  pointer-events:none;
+  background: linear-gradient(180deg,
+    rgba(255,255,255,0.04) 0%,
+    rgba(255,255,255,0.00) 24%,
+    rgba(255,255,255,0.03) 100%);
+  mix-blend-mode: screen;
+  opacity:.8;
+}
