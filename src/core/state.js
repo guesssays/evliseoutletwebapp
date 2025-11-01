@@ -25,11 +25,37 @@ export const state = {
 // ==== АКЦИИ: только переопределения ====
 // Всё остальное (баннеры, тема по умолчанию) — в promo.js/defaults()
 promo: {
-  enabled: true,   // включить/выключить
-  // slug: 'newyear-2026',      // укажи при нужде
-  // title: 'Новогодняя акция', // укажи при нужде
-  // discounts: { "ID": { oldPrice: 1099000, price: 799000 } },
-  // x2CashbackIds: ["ID1","ID2"]
+  enabled: true,
+  slug: 'newyear-2026',
+  title: 'Новогодняя акция',
+  subtitle: 'скидки и x2 кэшбек',
+
+  // скидочные позиции (ID => { oldPrice, price })
+  discounts: {
+    "14091752084078242": { oldPrice: 1099000, price: 799000 }, // MetrA
+    "14089026748679914": { oldPrice: 799000,  price: 599000 }, // ForDream
+    // добавляй дальше по необходимости
+  },
+
+  // товары с удвоенным кэшбеком
+  x2CashbackIds: [
+    "14091752084078242",
+    // добавляй ID
+  ],
+
+  // можно НЕ указывать: возьмутся дефолты из promo.js
+  // banners: [
+  //   { id: 'bn1', img: 'assets/promo/newyear/banner-1.jpg', alt: 'Новогодняя акция — скидки и x2 кэшбек' },
+  //   { id: 'bn2', img: 'assets/promo/newyear/banner-2.jpg', alt: 'Новогодняя коллекция — большие скидки' },
+  //   { id: 'bn3', img: 'assets/promo/newyear/banner-3.jpg', alt: 'Хиты сезона — x2 кэшбек' },
+  // ],
+  // theme: {
+  //   gridBg: '#0b1220',
+  //   gridBgImage: 'assets/promo/newyear/bg-snow.svg',
+  //   gridTint: 'rgba(255,255,255,.04)',
+  //   badgeColor: '#ef4444',
+  //   badgeX2Color: '#06b6d4',
+  // },
 },
 
 };
