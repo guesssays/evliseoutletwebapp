@@ -90,7 +90,7 @@ function hasFirstOrderBoost(){
 
 /* ====== категории ====== */
 function findCategoryBySlug(slug){
-  for (const g of state.categories||[]){
+  for (const g of (state.categories||[])){
     if (g.slug === slug) return g;
     for (const ch of (g.children||[])){
       if (ch.slug === slug) return ch;
@@ -326,17 +326,27 @@ export async function renderProduct({id}){
         .p-title .p-cat{ font-weight:800; opacity:.55; }
         @media (prefers-color-scheme:dark){ .p-title .p-cat{ opacity:.65; } }
 
-        /* зелёная панель "В наличии" */
+        /* компактный бейдж "В наличии" */
         .p-ready{
-          display:flex;align-items:center;gap:10px;margin:8px 0;
-          padding:12px 14px;border-radius:14px;
-          background:linear-gradient(135deg,#10b981 0%,#06b6d4 100%);
-          color:#fff;max-width:100%;
-          border:1px solid rgba(15,23,42,.10);
+          display:inline-flex; align-items:center; gap:8px;
+          margin:8px 0 6px;
+          padding:6px 10px;
+          border-radius:999px;
+          background:#10b981; /* emerald-500 */
+          color:#fff;
+          font-weight:800;
+          border:1px solid rgba(0,0,0,.06);
         }
-        .p-ready-line{
-          display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:visible;
-          font-weight:800;font-size:clamp(12px,3.6vw,16px);line-height:1.2;
+        .p-ready i{ width:18px; height:18px; }
+        .p-ready .p-ready-help{
+          margin-left:6px;
+          display:inline-flex; align-items:center; justify-content:center;
+          width:24px; height:24px; border-radius:999px;
+          background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.28);
+        }
+        .p-ready .p-ready-help:hover{ filter:brightness(1.05); }
+        @media (prefers-color-scheme:dark){
+          .p-ready{ background:#059669; border-color:rgba(255,255,255,.12); }
         }
 
         .p-cashback{display:flex;align-items:center;gap:10px;margin:8px 0;padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#f59e0b 0%,#ef4444 100%);color:#fff;max-width:100%;}
@@ -387,7 +397,7 @@ export async function renderProduct({id}){
         .size:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
         .size.active{ background:#121111; color:#fff; border-color:#121111; }
 
-        /* readonly для readyMode (визуально как "выбрано") */
+        /* readonly для readyMode */
         .readonly .size{
           pointer-events:none; cursor:default; opacity:1;
           background:#121111; color:#fff; border-color:#121111;
@@ -406,7 +416,6 @@ export async function renderProduct({id}){
         .size-table th:first-child, .size-table td:first-child{ text-align:left; }
         .size-table tbody tr:not(:last-child) td{ border-bottom:1px solid var(--stroke); }
 
-        /* Readonly строки опций в readyMode (старый стиль, оставим на всякий случай) */
         .kv{ display:flex; align-items:center; gap:8px; font-weight:700; }
         .kv .kv-key{ opacity:.65; font-weight:800; min-width:72px; }
         .kv .kv-val{ font-weight:800; }
@@ -444,9 +453,12 @@ export async function renderProduct({id}){
           </div>
 
           ${readyMode ? `
-          <div class="p-ready" role="note" aria-label="Товар в наличии">
-            <i data-lucide="zap" aria-hidden="true"></i>
-            <div class="p-ready-line"><b>В наличии.</b>&nbsp;<span>Быстрый самовывоз/доставка.</span></div>
+          <div class="p-ready" role="note" aria-label="В наличии">
+            <i data-lucide="check-circle-2" aria-hidden="true"></i>
+            <span>В наличии</span>
+            <button id="readyHelpBtn" class="p-ready-help" type="button" aria-label="Как оформить товар в наличии?">
+              <i data-lucide="help-circle"></i>
+            </button>
           </div>` : ``}
 
           ${!readyMode ? `
@@ -470,7 +482,7 @@ export async function renderProduct({id}){
             ${readyMode ? renderReadyModeOptions(p) : renderRegularOptions(p)}
           </div>
 
-          ${!readyMode && p.sizeChart ? `
+          ${p.sizeChart ? `
           <div class="opt-title" style="margin-top:8px">Размерная сетка</div>
           <div class="table-wrap">
             <table class="size-table">
@@ -501,8 +513,12 @@ export async function renderProduct({id}){
     // Похожие
     if (!readyMode) drawRelatedCards(related);
 
-    // help modal
+    // help модалки
     if (!readyMode) document.getElementById('cbHelpBtn')?.addEventListener('click', showCashbackHelpModal);
+    if (readyMode)  document.getElementById('readyHelpBtn')?.addEventListener('click', ()=> showReadyHelpModal(p));
+
+    // size calc button — ТОЛЬКО для НЕ readyMode
+    if (!readyMode) document.getElementById('btnSizeCalc')?.addEventListener('click', ()=> openSizeCalculator(p));
 
     const heroBack = document.getElementById('goBack');
     heroBack?.addEventListener('click', (e) => {
@@ -802,7 +818,7 @@ function cashbackSnippetHTML(price){
     </div>`;
 }
 
-/* ==== МОДАЛКА «Как работает кэшбек» ==== */
+/* ==== МОДАЛКИ ==== */
 function showCashbackHelpModal(){
   const modal = document.getElementById('modal');
   const mb = document.getElementById('modalBody');
@@ -842,6 +858,48 @@ function showCashbackHelpModal(){
   window.lucide?.createIcons && lucide.createIcons();
   document.getElementById('modalClose')?.addEventListener('click', close, { once:true });
   document.getElementById('cbHelpOk')?.addEventListener('click', close, { once:true });
+  function close(){ modal.classList.remove('show'); }
+}
+
+function showReadyHelpModal(p){
+  const modal = document.getElementById('modal');
+  const mb = document.getElementById('modalBody');
+  const mt = document.getElementById('modalTitle');
+  const ma = document.getElementById('modalActions');
+  if (!modal || !mb || !mt || !ma) return;
+
+  mt.textContent = 'Как оформить товар «в наличии»';
+  mb.innerHTML = `
+    <style>
+      .rd-how{ display:grid; gap:10px; }
+      .rd-row{ display:grid; grid-template-columns:24px 1fr; gap:10px; align-items:start; }
+      .rd-row i{ width:20px; height:20px; }
+      .muted{ color:var(--muted,#6b7280); }
+    </style>
+    <div class="rd-how">
+      <div class="rd-row">
+        <i data-lucide="send"></i>
+        <div><b>Нажмите «Оформить заказ».</b> Мы автоматически подготовим сообщение для оператора.</div>
+      </div>
+      <div class="rd-row">
+        <i data-lucide="message-square"></i>
+        <div><b>Отправьте сообщение и согласуйте доставку.</b> Оператор уточнит дату/время и способ получения.</div>
+      </div>
+      <div class="rd-row">
+        <i data-lucide="wallet"></i>
+        <div><b>Оплата при получении.</b> Можно перевести на карту или оплатить наличными при встрече/курьеру.</div>
+      </div>
+      <div class="rd-row">
+        <i data-lucide="check-circle-2"></i>
+        <div class="muted">Товар: <b>${escapeHtml(p.title)}</b>${p.slug?`, артикул: <b>${escapeHtml(p.slug)}</b>`:''}. Цена: <b>${priceFmt(p.price)}</b>.</div>
+      </div>
+    </div>
+  `;
+  ma.innerHTML = `<button id="rdHelpOk" class="pill primary">Понятно</button>`;
+  modal.classList.add('show');
+  window.lucide?.createIcons && lucide.createIcons();
+  document.getElementById('modalClose')?.addEventListener('click', close, { once:true });
+  document.getElementById('rdHelpOk')?.addEventListener('click', close, { once:true });
   function close(){ modal.classList.remove('show'); }
 }
 
@@ -1297,7 +1355,7 @@ function renderRegularOptions(p){
     </div>`;
 }
 
-/* Новый readyMode: тот же вид, но readonly и единственные значения */
+/* ReadyMode: без кнопки подбора, readonly */
 function renderReadyModeOptions(p){
   const size  = (p.sizes && p.sizes[0]) || '—';
   const color = (p.colors && p.colors[0]) || '—';
@@ -1333,4 +1391,3 @@ function renderReadyModeOptions(p){
     </div>
   `;
 }
-
