@@ -1852,3 +1852,54 @@ html.route-home .product-fixhdr{
 .card-img{ position:relative; background: var(--skel-lite); overflow:hidden; }
 .card-img img{ opacity:0; transition: opacity .22s ease; }
 .card-img img.is-ready{ opacity:1; }
+/* === SKELETON: FINAL OVERRIDES (always pale grey) =================== */
+html body .card.is-skeleton .card-img{ 
+  background:#f5f5f5 !important;
+}
+html body .skel,
+html body .img-skel{
+  background:#eeeeee !important;
+  border-radius:10px;
+  position:relative;
+  overflow:hidden;
+}
+html body .skel::after,
+html body .img-skel::after{
+  content:"";
+  position:absolute; inset:0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,.35) 40%,
+    rgba(255,255,255,.55) 50%,
+    rgba(255,255,255,.35) 60%,
+    rgba(255,255,255,0) 100%
+  );
+  animation: skel-shimmer 1.2s ease-in-out infinite;
+  mix-blend-mode: normal !important; /* глушим screen/разночтения */
+}
+@keyframes skel-shimmer{
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* У обычных превью-шек тоже светлый фон до загрузки */
+html body .card-img{ background:#f6f6f6 !important; }
+html body .card-img img{ opacity:0; transition:opacity .22s ease; }
+html body .card-img img.is-ready{ opacity:1; }
+
+@media (prefers-color-scheme: dark){
+  html body .card.is-skeleton .card-img{ background:#1b1b1b !important; }
+  html body .skel,
+  html body .img-skel{ background:#2a2a2a !important; }
+  html body .skel::after,
+  html body .img-skel::after{
+    background: linear-gradient(90deg,
+      rgba(255,255,255,0) 0%,
+      rgba(255,255,255,.10) 40%,
+      rgba(255,255,255,.16) 50%,
+      rgba(255,255,255,.10) 60%,
+      rgba(255,255,255,0) 100%
+    ) !important;
+  }
+}

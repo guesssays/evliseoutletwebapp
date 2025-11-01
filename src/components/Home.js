@@ -2,6 +2,7 @@
 import { state, isFav, toggleFav } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { applyFilters } from './Filters.js';
+import { ScrollReset } from '../core/scroll-reset.js';
 
 /* ================== helpers: категории ================== */
 function findCategoryBySlug(slug){
@@ -23,6 +24,25 @@ function categoryNameBySlug(slug){
   return findCategoryBySlug(slug)?.name || '';
 }
 
+/* ================== helpers: наличие ================== */
+// единый способ понять, «в наличии» ли товар, даже если поля разрознены
+function isInStock(p){
+  return p?.inStock === true
+    || p?.inStockNow === true
+    || p?.readyStock === true
+    || p?.stockType === 'ready'
+    || (Array.isArray(p?.tags) && p.tags.includes('in-stock'));
+}
+// нормализуем к полю p.inStock, чтобы остальной код и стили работали стабильно
+function normalizeStockFlags(products){
+  if (!Array.isArray(products)) return;
+  for (const p of products){
+    if (typeof p.inStock === 'undefined' || p.inStock === null) {
+      p.inStock = isInStock(p);
+    }
+  }
+}
+
 /* ===== skeleton suppressor ===== */
 function suppressGridSkeleton(ms = 900){
   try { window.__suppressHomeSkeletonUntil = Date.now() + Math.max(0, ms|0); } catch {}
@@ -34,7 +54,7 @@ function shouldShowGridSkeleton(){
 
 /* ================== скелетоны ================== */
 
-// ⬇️ ДОБАВЬТЕ (рядом с уже существующим calcSkeletonCount/renderSkeletonGrid)
+// ⬇️ Публичная функция показа стартовой сетки скелетонов
 export function showHomeSkeleton() {
   if (!shouldShowGridSkeleton()) return; // не показываем при супрессии
 
@@ -146,12 +166,12 @@ function createProductNode(p){
   const imgWrap = node.querySelector('.card-img');
   const im = node.querySelector('img');
   if (imgWrap && im){
-    // добавляем overlay-скелет только для конкретной карточки
+    // overlay-скелет только для конкретной карточки
     const ov = document.createElement('b');
-    ov.className = 'img-skel';           // стилизуем в CSS
+    ov.className = 'img-skel';
     imgWrap.appendChild(ov);
 
-    // начальное состояние: img невидим (fade-in после load)
+    // fade-in после load
     im.loading = 'lazy';
     im.decoding = 'async';
     im.alt = p.title;
@@ -160,27 +180,22 @@ function createProductNode(p){
 
     const clear = () => {
       ov.remove();
-      im.classList.add('is-ready');      // включает opacity:1 через CSS
+      im.classList.add('is-ready');
     };
 
-    // успех
     im.addEventListener('load', clear, { once: true });
-    // фолбэк по таймеру, если onload не прилетел (например, кэш/ошибка)
-    setTimeout(() => {
-      if (ov.isConnected) clear();
-    }, 2000);
+    setTimeout(() => { if (ov.isConnected) clear(); }, 2000);
   }
 
   const titleEl = node.querySelector('.title'); if (titleEl) titleEl.textContent = p.title;
-   if (p.inStock) {
-   const sub = node.querySelector('.subtitle');
-   if (sub) sub.textContent = 'В наличии';
- }
+
+  // Подпись/лейбл
   const subEl   = node.querySelector('.subtitle');
   if (subEl){
     const label = p.categoryLabel || categoryNameBySlug(p.categoryId) || '';
-    subEl.textContent = label;
+    subEl.textContent = label || (p.inStock ? 'В наличии' : '');
   }
+
   const priceEl = node.querySelector('.price'); if (priceEl) priceEl.textContent = priceFmt(p.price);
 
   const favBtn = node.querySelector('.fav, button.fav');
@@ -243,32 +258,41 @@ export function renderHome(router){
   const v = document.getElementById('view');
   if (!v) return;
 
+  // ✅ нормализуем наличие, чтобы дальше всё опиралось на p.inStock
+  normalizeStockFlags(state.products);
+
   // если ещё нет товаров — показываем скелет сразу
   if (!Array.isArray(state.products) || state.products.length === 0) {
     showHomeSkeleton();
-    // категории/чипы над сеткой вы уже рендерите отдельно — оставляем как есть
     try { window.dispatchEvent(new CustomEvent('view:home-mounted')); } catch {}
     return;
   }
+
   v.innerHTML = `<div class="grid home-bottom-pad" id="productGrid"></div>`;
   const grid = document.getElementById('productGrid');
 
-  // 1) сразу показываем скелетоны (только если не подавлены)
+  // 0) «зонтик» против фликера: любой тап по гриду открывает quiet/suppress окно
+  if (!grid.dataset.quietGuardBound){
+    ScrollReset.guardNoResetClick(grid, { duration: 1100 });
+    grid.dataset.quietGuardBound = '1';
+  }
+
+  // 1) сразу показываем сеточные скелетоны (если не подавлены)
   if (shouldShowGridSkeleton()) {
     renderSkeletonGrid(grid, calcSkeletonCount());
   }
 
-  // 2) рисуем чипы
+  // 2) чипы категорий
   drawCategoriesChips(router);
 
-  // 3) запускаем рендер товаров (progressive) в следующий кадр
+  // 3) прогрессивный рендер
   requestAnimationFrame(() => {
     drawProducts(state.products);
     try { window.dispatchEvent(new CustomEvent('view:home-mounted')); } catch {}
   });
 }
 
-/** Рендер чипов категорий (верхние группы + «Все», «Новинки»). */
+/** Рендер чипов категорий (верхние группы + «Все», «Новинки», «В наличии»). */
 export function drawCategoriesChips(router){
   const wrap = document.getElementById('catChips');
   if (!wrap) return;
@@ -299,21 +323,21 @@ export function drawCategoriesChips(router){
       let list;
       if (slug === 'all') {
         list = state.products;
+        state.filters.inStock = false;
       } else if (slug === 'new') {
         list = state.products.slice(0, 24);
+        state.filters.inStock = false;
       } else if (slug === 'instock') {
-      state.filters.inStock = true;           // синхронизируем с фильтром
-       list = state.products.filter(p => !!p.inStock);
+        state.filters.inStock = true;                     // синхронизируем с фильтром
+        // 🔸 критично: используем хелпер isInStock, а не «p.inStock» напрямую
+        list = state.products.filter(isInStock);
       } else {
         const pool = new Set(expandSlugs(slug));
         list = state.products.filter(p => pool.has(p.categoryId));
+        state.filters.inStock = false;                    // если ушли с «В наличии»
       }
-    // если ушли с «В наличии» — сбрасываем чекбокс фильтра,
-    // чтобы поведение было предсказуемым
-    if (slug !== 'instock') state.filters.inStock = false;
 
-
-      // На переключении — показываем скелетоны и затем рендерим
+      // На переключении — показываем сеточные скелетоны и затем рендерим
       const grid = document.getElementById('productGrid');
       if (grid){
         grid.innerHTML = '';
@@ -353,13 +377,22 @@ export function drawProducts(list){
     grid.dataset.anchorGuard = '1';
   }
 
-  // Делегат избранного
+  // Делегат избранного (+ подавление скролл-ресета/скелетона вокруг клика)
   if (!grid.dataset.favHandlerBound) {
     grid.addEventListener('click', (ev) => {
       const favBtn = ev.target.closest('.fav, button.fav');
       if (!favBtn) return;
 
       ev.preventDefault();
+
+      // ⬇️ жёстко глушим любые reset/окна/фликер на время локального апдейта
+      try {
+        ScrollReset.quiet(1200);
+        ScrollReset.suppress(1200);
+      } catch {}
+
+      // и чуть дольше подавим именно сеточный скелетон (с запасом)
+      suppressGridSkeleton(1600);
 
       const card = favBtn.closest('.card, a.card');
       const href = card?.getAttribute('href') || '';
@@ -368,9 +401,6 @@ export function drawProducts(list){
       if (!pid) return;
 
       const now = toggleFav(pid);
-
-      // Глушим сеточный скелетон на короткое окно, чтобы не мигал при локальном апдейте
-      suppressGridSkeleton(1100);
 
       favBtn.classList.toggle('active', now);
       favBtn.setAttribute('aria-pressed', String(now));
