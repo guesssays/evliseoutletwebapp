@@ -2247,3 +2247,43 @@ html body .img-skel::after{
 
 /* если фраза выводится отдельным блоком — можно дать класс и не гадать по селекторам */
 #view.promo-page .promo-text--light{ color:#fff !important; }
+/* === PROMO PAGE: прозрачный фон и светлый текст (точечный фикс) === */
+
+/* 1) фон: делаем прозрачным у всех внутренних обёрток промо-экрана */
+#view.promo-page,
+#view.promo-page .view,
+#view.promo-page .promo-wrap,
+#view.promo-page .section,
+#view.promo-page .grid{
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: transparent !important; /* на случай бордеров */
+}
+
+/* если используешь туман ::before — оставляем его; иначе можно отключить:
+#view.promo-page::before{ display:none !important; }
+*/
+
+/* 2) текст: именно те классы, что у тебя в DOM (p-title / p-desc) */
+#view.promo-page .p-title{
+  color:#fff !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,.22);
+}
+#view.promo-page .p-desc,
+#view.promo-page .muted{
+  color: rgba(255,255,255,.78) !important;
+}
+
+/* 3) ссылки/кнопки внутри промо (если есть) — читаемые на тёмном фоне */
+#view.promo-page a{ color:#fff !important; }
+#view.promo-page .pill,
+#view.promo-page .chip{
+  border-color: rgba(255,255,255,.28) !important;
+}
+
+/* 4) сетка карточек на промо — без собственной «бумаги» */
+#view.promo-page .card{
+  background: transparent !important;
+  box-shadow: none !important;
+  border-color: rgba(255,255,255,.14) !important; /* можно убрать, если не нужно */
+}
