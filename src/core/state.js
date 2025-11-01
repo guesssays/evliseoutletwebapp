@@ -21,6 +21,34 @@ export const state = {
   // Жёсткий deeplink-шаблон с автотекстом (имеет приоритет):
   // {TEXT} будет заменён на encodeURIComponent(текст заказа)
   orderChatUrlTemplate: 'tg://resolve?domain=evliseorder&text={TEXT}',
+
+  // ==== АКЦИИ (универсальная схема настройки) ====
+  // ЭТО МОЖНО МЕНЯТЬ ПОД СЛЕДУЮЩИЕ АКЦИИ. Чтобы выключить — enabled:false
+  promo: {
+    enabled: false,                 // включить/выключить акцию целиком
+    slug: 'newyear-2026',
+    title: 'Новогодняя акция',
+    banners: [
+      { id:'bn1', img:'assets/promo/newyear/banner-1.jpg', alt:'Новогодняя акция — скидки и x2 кэшбек' },
+      { id:'bn2', img:'assets/promo/newyear/banner-2.jpg', alt:'Новогодняя коллекция — большие скидки' },
+      { id:'bn3', img:'assets/promo/newyear/banner-3.jpg', alt:'Хиты сезона — x2 кэшбек' },
+    ],
+    theme: {
+      gridBg:'#0b1220',
+      gridBgImage:'assets/promo/newyear/bg-snow.svg',
+      gridTint:'rgba(255,255,255,.04)',
+      badgeColor:'#ef4444',
+      badgeX2Color:'#06b6d4',
+    },
+    // Скидочные товары (лимит): { productId: { oldPrice, price } }
+    discounts: {
+      // "14091752084078242": { oldPrice: 1099000, price: 799000 },
+    },
+    // Товары с удвоенным кешбеком
+    x2CashbackIds: [
+      // "14089026748679914"
+    ],
+  },
 };
 
 /* ===== user scoping (per-user localStorage) ===== */
@@ -134,6 +162,10 @@ export function loadCart(){
           size: it.size ?? null,
           color: it.color ?? null,
           qty: Math.max(0, Number(it.qty) || 0),
+          price: Number(it.price || 0),        // поддержка сохранённой цены
+          title: it.title || '',
+          image: it.image || '',
+          slug: it.slug || '',
         }))
         .filter(it => it.productId && it.qty > 0)
     };

@@ -4,6 +4,15 @@ import { priceFmt } from '../core/utils.js';
 import { applyFilters } from './Filters.js';
 import { ScrollReset } from '../core/scroll-reset.js';
 
+// 🔸 Акции
+import {
+  promoIsActive,
+  getPromoBanners,
+  promoBadgesFor,
+  discountInfo,
+  effectivePrice,
+} from '../core/promo.js';
+
 /* ================== helpers: категории ================== */
 function findCategoryBySlug(slug){
   for (const g of state.categories){
@@ -61,7 +70,9 @@ export function showHomeSkeleton() {
   const v = document.getElementById('view');
   if (!v) return;
   // Каркас такой же, как в renderHome, но только скелет-сетка
-  v.innerHTML = `<div class="grid home-bottom-pad" id="productGrid"></div>`;
+  v.innerHTML = `
+    <div class="chips" id="catChips"></div>
+    <div class="grid home-bottom-pad" id="productGrid"></div>`;
   const grid = v.querySelector('#productGrid');
   if (!grid) return;
 
@@ -196,7 +207,32 @@ function createProductNode(p){
     subEl.textContent = label || (p.inStock ? 'В наличии' : '');
   }
 
-  const priceEl = node.querySelector('.price'); if (priceEl) priceEl.textContent = priceFmt(p.price);
+  // 🔸 Цена с учётом акции + зачёркнутая старая при скидке
+  const priceEl = node.querySelector('.price');
+  if (priceEl){
+    const di = discountInfo(p);
+    const cur = priceFmt(effectivePrice(p));
+    if (di) {
+      priceEl.innerHTML = `<span class="old">${priceFmt(di.oldPrice)}</span> <span class="cur">${cur}</span>`;
+    } else {
+      priceEl.innerHTML = `<span class="cur">${cur}</span>`;
+    }
+  }
+
+  // 🔸 Промо-бейджи (левый верх карточки)
+  const badges = promoBadgesFor(p);
+  if (badges.length){
+    const media = node.querySelector('.card-img') || node;
+    const wrap = document.createElement('div');
+    wrap.className = 'promo-badges';
+    wrap.innerHTML = badges.map(b => `
+      <span class="promo-badge ${b.type}">
+        ${b.type==='discount' ? '<i data-lucide="percent"></i>' : '<i data-lucide="zap"></i>'}
+        <span>${b.label}</span>
+      </span>
+    `).join('');
+    media.appendChild(wrap);
+  }
 
   const favBtn = node.querySelector('.fav, button.fav');
   if (favBtn){
@@ -209,16 +245,45 @@ function createProductNode(p){
   return node;
 }
 
+function renderPromoBannerNode(bn){
+  const a = document.createElement('a');
+  a.className = 'promo-banner';
+  a.href = '#/promo';
+  a.setAttribute('aria-label','Перейти к акции');
+  a.innerHTML = `<img src="${bn?.img||''}" alt="${escapeHtml(bn?.alt||'Акция')}" loading="lazy">`;
+  return a;
+}
+
 function progressiveAppend(grid, list, {firstBatch=12, batch=16, delay=0} = {}){
   const total = list.length;
   let idx = 0;
 
   if (total === 0) return;
 
+  // 🔸 Врезки баннеров: начинаем с баннера и далее после каждых 6 карточек
+  const promo = promoIsActive();
+  const banners = promo ? getPromoBanners() : [];
+  let bnIndex = 0;
+  let insertedProducts = 0;
+
+  // Если акция активна — первым элементом рендерим баннер
+  if (promo && banners.length){
+    grid.appendChild(renderPromoBannerNode(banners[bnIndex % banners.length]));
+    bnIndex++;
+  }
+
   const appendSlice = (from, to) => {
     const frag = document.createDocumentFragment();
     for (let i=from; i<to; i++){
+      // вставляем товар
       frag.appendChild(createProductNode(list[i]));
+      insertedProducts++;
+
+      // после каждого 6го — баннер (если активна акция)
+      if (promo && banners.length && (insertedProducts % 6 === 0)){
+        frag.appendChild(renderPromoBannerNode(banners[bnIndex % banners.length]));
+        bnIndex++;
+      }
     }
     grid.appendChild(frag);
     window.lucide?.createIcons && lucide.createIcons();
@@ -268,7 +333,9 @@ export function renderHome(router){
     return;
   }
 
-  v.innerHTML = `<div class="grid home-bottom-pad" id="productGrid"></div>`;
+  v.innerHTML = `
+    <div class="chips" id="catChips"></div>
+    <div class="grid home-bottom-pad" id="productGrid"></div>`;
   const grid = document.getElementById('productGrid');
 
   // 0) «зонтик» против фликера: любой тап по гриду открывает quiet/suppress окно
@@ -292,7 +359,7 @@ export function renderHome(router){
   });
 }
 
-/** Рендер чипов категорий (верхние группы + «Все», «Новинки», «В наличии»). */
+/** Рендер чипов категорий (верхние группы + «Все», «Новинки», «В наличии», «Акции»). */
 export function drawCategoriesChips(router){
   const wrap = document.getElementById('catChips');
   if (!wrap) return;
@@ -300,6 +367,10 @@ export function drawCategoriesChips(router){
   const mk=(slug, name, active)=>`<button class="chip ${active?'active':''}" data-slug="${slug}">${name}</button>`;
 
   wrap.innerHTML='';
+  // 🔸 при активной акции — показываем чип "Акции" самым первым
+  if (promoIsActive()){
+    wrap.insertAdjacentHTML('beforeend', mk('promo','Акции', state.filters.category==='promo'));
+  }
   wrap.insertAdjacentHTML('beforeend', mk('all','Все товары', state.filters.category==='all'));
   wrap.insertAdjacentHTML('beforeend', mk('new','Новинки', state.filters.category==='new'));
   wrap.insertAdjacentHTML('beforeend', mk('instock','В наличии', state.filters.category==='instock'));
@@ -320,6 +391,12 @@ export function drawCategoriesChips(router){
 
       state.filters.category = slug;
 
+      // 🔸 переход на страницу акции
+      if (slug === 'promo'){
+        location.hash = '#/promo';
+        return;
+      }
+
       let list;
       if (slug === 'all') {
         list = state.products;
@@ -328,13 +405,12 @@ export function drawCategoriesChips(router){
         list = state.products.slice(0, 24);
         state.filters.inStock = false;
       } else if (slug === 'instock') {
-        state.filters.inStock = true;                     // синхронизируем с фильтром
-        // 🔸 критично: используем хелпер isInStock, а не «p.inStock» напрямую
+        state.filters.inStock = true;
         list = state.products.filter(isInStock);
       } else {
         const pool = new Set(expandSlugs(slug));
         list = state.products.filter(p => pool.has(p.categoryId));
-        state.filters.inStock = false;                    // если ушли с «В наличии»
+        state.filters.inStock = false;
       }
 
       // На переключении — показываем сеточные скелетоны и затем рендерим
@@ -459,3 +535,6 @@ export function drawProducts(list){
   // а пер-карточные (overlay .img-skel) останутся до загрузки конкретного img.
   progressiveAppend(grid, filtered, { firstBatch: 12, batch: 16, delay: 0 });
 }
+
+/* utils */
+function escapeHtml(s=''){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }

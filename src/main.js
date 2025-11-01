@@ -55,6 +55,7 @@ import { renderNotifications } from './components/Notifications.js';
 import { ScrollReset } from './core/scroll-reset.js';
 import './core/navLoader.js';
 import './ui/icons-patch.js';
+import { renderPromo } from './components/Promo.js';
 
 // Вынесенный фикс-хедер товара
 import { deactivateProductFixHeader } from './components/ProductFixHeader.js';
@@ -752,7 +753,7 @@ async function router(){
   const clean = path.replace(/#.*/,'');
 
   const parts = path.split('/').filter(Boolean);
-  const map = { '':'home','/':'home','/favorites':'saved','/cart':'cart','/account':'account','/orders':'account','/admin':'admin' };
+  const map = { '':'home','/':'home','/favorites':'saved','/cart':'cart','/account':'account','/orders':'account','/admin':'admin',  '/promo':'home'   };
 
   setTabbarMenu(map[clean] || 'home');
   hideProductHeader();
@@ -779,6 +780,8 @@ async function router(){
     const params = {}; for (let i=0;i<p.length;i++){ if (p[i].startsWith(':')) params[p[i].slice(1)] = decodeURIComponent(parts[i]); else if (p[i] !== parts[i]) return null; }
     return params;
   };
+const mPromo = match('promo');
+if (mPromo) { clearBootSkeletonMark(); return renderPromo(router); }
 
   const m1=match('category/:slug'); if (m1){ clearBootSkeletonMark(); return renderCategory(m1); }
   const m2=match('product/:id');   if (m2){ clearBootSkeletonMark(); return renderProduct(m2); }

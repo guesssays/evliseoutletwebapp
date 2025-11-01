@@ -1,6 +1,8 @@
-// src/core/cart.js (или ваш путь к модулю корзины)
+// src/core/cart.js
 import { state, persistCart, updateCartBadge } from '../core/state.js';
 import { toast } from '../core/toast.js';
+// 🔸 Акции: цена в корзину — с учётом скидки
+import { effectivePrice } from '../core/promo.js';
 
 export function addToCart(product, size, color, qty){
   const key = (a)=> String(a.productId)===String(product.id)
@@ -8,13 +10,23 @@ export function addToCart(product, size, color, qty){
     && (a.color||null)===(color||null);
 
   const ex = state.cart.items.find(key);
-  if (ex) ex.qty += qty;
-  else state.cart.items.push({
-    productId: String(product.id),          // всегда строкой → унифицировано
-    size: size||null,
-    color: color||null,
-    qty
-  });
+  if (ex) {
+    ex.qty += qty;
+    // на всякий — обновим цену, если промо поменялось
+    ex.price = effectivePrice(product);
+  } else {
+    state.cart.items.push({
+      productId: String(product.id),          // всегда строкой → унифицировано
+      size: size||null,
+      color: color||null,
+      qty,
+      // 🔸 фиксируем цену с учётом акции на момент добавления
+      price: effectivePrice(product),
+      title: product.title,
+      image: product.images?.[0] || '',
+      slug: product.slug || ''
+    });
+  }
 
   persistCart();
   updateCartBadge();
