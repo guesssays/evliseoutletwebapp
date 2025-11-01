@@ -2098,3 +2098,38 @@ html body .img-skel::after{
 
 /* Страховка: если где-то осталась вёрстка процента у цены — скрыть */
 .price-chip{ display:none !important; }
+/* === DEAL PRICE COLOR THEME ===================================== */
+/* Токены цвета для акционной цены — можно менять под фирстиль */
+:root{
+  --deal-fg:    #ef4444;  /* основной цвет цены со скидкой */
+  --deal-glow:  rgba(239,68,68,.16); /* лёгкое свечение/подложка */
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --deal-fg:   #ff6b6b;
+    --deal-glow: rgba(255,107,107,.24);
+  }
+}
+
+/* Базовый вид: просто другой цвет + лёгкий оптический акцент */
+.card .price .cur.deal{
+  color: var(--deal-fg) !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,.05);
+}
+
+/* Очень деликатное «подсвечивание» под текстом — можно отключить, если не нужно */
+.card .price .cur.deal::after{
+  content:"";
+  position:absolute;
+  left:-2px; right:-2px; bottom:-3px;
+  height:6px; border-radius:6px;
+  background: var(--deal-glow);
+  pointer-events:none;
+}
+
+/* Если хочешь вообще без подложки — раскомментируй ниже строчку */
+/* .card .price .cur.deal::after{ display:none !important; } */
+
+/* На случай старых правил — отключаем прошлые эффекты,
+   чтобы не было двойного свечения/фильтров */
+.card .price .cur.deal{ filter:none !important; }
