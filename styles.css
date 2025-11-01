@@ -2120,12 +2120,12 @@ html body .img-skel::after{
 /* === DEAL PRICE COLOR THEME ===================================== */
 /* Токены цвета для акционной цены — можно менять под фирстиль */
 :root{
-  --deal-fg:    #ef4444;  /* основной цвет цены со скидкой */
+  --deal-fg:    #efd544;  /* основной цвет цены со скидкой */
   --deal-glow:  rgba(239,68,68,.16); /* лёгкое свечение/подложка */
 }
 @media (prefers-color-scheme: dark){
   :root{
-    --deal-fg:   #ff6b6b;
+    --deal-fg:   #fff06b;
     --deal-glow: rgba(255,107,107,.24);
   }
 }
