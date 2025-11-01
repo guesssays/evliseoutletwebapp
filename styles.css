@@ -1947,50 +1947,65 @@ html body .img-skel::after{
   mix-blend-mode: screen;
   opacity: .8;
 }
-/* === XMAS THEME: светлый фон + такие же светлые карточки ============ */
+/* === XMAS THEME (light red) — фон и карточки одного тона ============ */
+:root{
+  /* при желании быстро поменять оттенок — правь эти токены */
+  --xmas-bg:   #ffe7ea;  /* светло-красный фон страницы и карточек */
+  --xmas-bg-2: #fff1f3;  /* чуть светлее для мягкого градиента */
+  --xmas-stroke: rgba(0,0,0,.08);
+  --xmas-shadow: 0 8px 24px rgba(0,0,0,.06);
+}
 
-/* 1) Фон страницы в теме .theme-xmas — светло-красный/снежный */
+/* 1) Общий фон приложения в .theme-xmas — светло-красный */
 .theme-xmas body{
-  /* деликатные “лучи” + лёгкий снежный паттерн + светлая подложка */
   background:
-    radial-gradient(1100px 700px at 8% -8%, rgba(255, 102, 102, .06) 0%, rgba(0,0,0,0) 55%),
-    radial-gradient(1100px 700px at 100% 0%, rgba(255, 196, 0, .06) 0%, rgba(0,0,0,0) 55%),
-    linear-gradient(180deg, #ffffff 0%, #fff5f5 100%);
+    radial-gradient(1100px 700px at 8% -8%, rgba(255, 120, 120, .08) 0%, rgba(0,0,0,0) 55%),
+    radial-gradient(1100px 700px at 100% 0%, rgba(255, 196,   0, .06) 0%, rgba(0,0,0,0) 55%),
+    linear-gradient(180deg, var(--xmas-bg-2) 0%, var(--xmas-bg) 100%);
   background-image:
-    radial-gradient(1100px 700px at 8% -8%, rgba(255, 102, 102, .06) 0%, rgba(0,0,0,0) 55%),
-    radial-gradient(1100px 700px at 100% 0%, rgba(255, 196, 0, .06) 0%, rgba(0,0,0,0) 55%),
+    radial-gradient(1100px 700px at 8% -8%, rgba(255, 120, 120, .08) 0%, rgba(0,0,0,0) 55%),
+    radial-gradient(1100px 700px at 100% 0%, rgba(255, 196,   0, .06) 0%, rgba(0,0,0,0) 55%),
     url('assets/promo/newyear/xmas-pattern.svg'),
-    linear-gradient(180deg, #ffffff 0%, #fff5f5 100%);
+    linear-gradient(180deg, var(--xmas-bg-2) 0%, var(--xmas-bg) 100%);
   background-repeat: no-repeat, no-repeat, repeat, no-repeat;
   background-size: auto, auto, 420px, auto;
   color: var(--text);
 }
 
-/* 2) Бэкграунд самой промо-страницы (если вдруг не проставился из JS) */
+/* 2) Фон промо-страницы (если задаётся из JS — это её бэкап/дефолт) */
 #view.promo-page{
-  background-color: var(--promo-page-bg, #fff5f5) !important; /* ← было #3e0a0a */
+  background-color: var(--promo-page-bg, var(--xmas-bg)) !important;
 }
 
-/* 3) Карточки товара в теме .theme-xmas — того же светлого цвета */
+/* 3) Сетка и карточки — того же цвета, что и фон */
+.theme-xmas .grid{ background: transparent; } /* сетка прозрачная, фон берётся со страницы */
 .theme-xmas .card{
-  /* тот же тон, что и фон, чтобы всё выглядело цельно */
-  background: #fff5f5 !important;
-  border: 1px solid rgba(0,0,0,.06);
-  box-shadow: 0 8px 24px rgba(0,0,0,.06); /* мягче, чем обычно */
+  background: var(--xmas-bg) !important;
+  border: 1px solid var(--xmas-stroke) !important;
+  box-shadow: var(--xmas-shadow) !important;
 }
-.theme-xmas .card .card-img{ background: #fff5f5 !important; }
+.theme-xmas .card .card-img{ background: var(--xmas-bg) !important; }
 
-/* бейджи и чипы на таком фоне выглядят чище с чуть более тёмной рамкой */
+/* 4) Мелкие элементы — чтобы всё выглядело цельно на светло-красном */
 .theme-xmas .chip,
 .theme-xmas .pill,
 .theme-xmas .thumb{
-  border-color: rgba(0,0,0,.08);
+  background: #fff;                /* чёткая читаемость на красном */
+  border: 1px solid var(--xmas-stroke);
 }
-
-/* промо-бейджи читаемее на светлом */
 .theme-xmas .promo-badge{
   border-color: rgba(255,255,255,.28);
   box-shadow: 0 6px 16px rgba(0,0,0,.18);
+}
+
+/* 5) Хедер и таббар — без изменений контрастности (можно убрать блок, если не нужно) */
+.theme-xmas .app-header{
+  background: linear-gradient(180deg, rgba(255,255,255,.94) 0%, rgba(255,255,255,.86) 100%);
+  border-bottom-color: rgba(0,0,0,.06);
+}
+.theme-xmas .tabbar-inner{
+  background: rgba(31,30,30,.96);
+  box-shadow: 0 10px 40px rgba(0,0,0,.25);
 }
 
 
