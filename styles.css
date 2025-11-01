@@ -2421,3 +2421,15 @@ html body .img-skel::after{
   text-shadow: 0 1px 0 rgba(0,0,0,.22);
 }
 #view.promo-page .muted{ color:rgba(255,255,255,.78) !important; }
+/* === PROMO PAGE: прозрачная товарная сетка (final override) === */
+#view.promo-page .grid,
+#view.promo-page #productGrid,
+#view.promo-page .product-grid,
+#view.promo-page .section,
+#view.promo-page .promo-wrap,
+#view.promo-page .view{
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
