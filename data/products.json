@@ -1144,7 +1144,12 @@
           ["XL","106","82","108","64","42.4"],
           ["2XL","108","86","112","66","43.8"]
         ]
-      }
+      },
+        "readyStock": true,
+  "inStockNow": true,
+  "stockType": "ready",
+  "tags": ["in-stock"]
+      
     }
   ],
   "categories": [
