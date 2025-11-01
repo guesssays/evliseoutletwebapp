@@ -1387,7 +1387,7 @@ function renderReadyModeOptions(p){
     </div>
 
     <div class="muted" style="font-size:12px;margin-top:4px">
-      Единичный экземпляр со склада — быстрый самовывоз/доставка.
+      Данный товар в наличии — доступна доставка в любой день и оплата при получении.
     </div>
   `;
 }
