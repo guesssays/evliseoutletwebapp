@@ -12,16 +12,18 @@ function defaults() {
       { id: 'bn2', img: 'assets/promo/newyear/banner-2.jpg', alt: 'Новогодняя коллекция — большие скидки' },
       { id: 'bn3', img: 'assets/promo/newyear/banner-3.jpg', alt: 'Хиты сезона — x2 кэшбек' },
     ],
-    theme: {
-      pageBg:    '#3e0a0a',
-      pageBgImg: 'assets/promo/newyear/bg-snow-red.svg',
-      pageTint:  'rgba(255,255,255,.03)',
-      gridBg:    'transparent',
-      gridBgImage: '',
-      gridTint:  '',
-      badgeColor:   '#ef4444',
-      badgeX2Color: '#06b6d4',
-    },
+// promo.js -> defaults().theme
+theme: {
+  pageBg:    '#f6fbff',
+  pageBgImg: 'assets/promo/newyear/bg-snow-red.svg', // можно оставить тот же паттерн
+  pageTint:  'rgba(0,0,0,.03)',
+  gridBg:    'transparent',
+  gridBgImage: '',
+  gridTint:  '',
+  badgeColor:   '#ef4444',
+  badgeX2Color: '#06b6d4',
+},
+
     // Если эти поля пустые — мы аккуратно засеем тестовые 6 позиций на лету
     discounts: {},
     x2CashbackIds: [],

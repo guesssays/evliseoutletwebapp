@@ -1947,48 +1947,61 @@ html body .img-skel::after{
   mix-blend-mode: screen;
   opacity: .8;
 }
-/* === XMAS THEME: включается классом .theme-xmas на <html> ============ */
+/* === XMAS THEME (LIGHT) — включается классом .theme-xmas на <html> ===== */
 .theme-xmas body{
-  /* тёплый красный градиент по всей странице приложения */
+  /* мягкий «снежный» фон в светлых тонах */
   background:
-    radial-gradient(1200px 800px at 10% -10%, rgba(255,255,255,.08) 0%, rgba(255,255,255,0) 55%),
-    radial-gradient(1200px 800px at 100% 0%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 55%),
-    linear-gradient(180deg, #5a0f12 0%, #3e0a0a 100%);
-  /* лёгкий праздничный паттерн: снежинки/ёлочки (повторяющееся svg) */
+    radial-gradient(1100px 700px at 8% -8%, rgba(0, 153, 255, .06) 0%, rgba(0,0,0,0) 55%),
+    radial-gradient(1100px 700px at 100% 0%, rgba(255, 196, 0, .06) 0%, rgba(0,0,0,0) 55%),
+    linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
+  /* лёгкий праздничный паттерн поверх, но очень деликатно */
   background-image:
-    radial-gradient(1200px 800px at 10% -10%, rgba(255,255,255,.08) 0%, rgba(255,255,255,0) 55%),
-    radial-gradient(1200px 800px at 100% 0%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 55%),
+    radial-gradient(1100px 700px at 8% -8%, rgba(0, 153, 255, .06) 0%, rgba(0,0,0,0) 55%),
+    radial-gradient(1100px 700px at 100% 0%, rgba(255, 196, 0, .06) 0%, rgba(0,0,0,0) 55%),
     url('assets/promo/newyear/xmas-pattern.svg'),
-    linear-gradient(180deg, #5a0f12 0%, #3e0a0a 100%);
+    linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
   background-repeat: no-repeat, no-repeat, repeat, no-repeat;
   background-size: auto, auto, 420px, auto;
   color: var(--text);
 }
 
-/* стеклянные элементы на красном фоне слегка посветлее */
+/* стеклянные элементы — чуть светлее и с тонкой границей */
 .theme-xmas .app-header{
   background: linear-gradient(180deg, rgba(255,255,255,.94) 0%, rgba(255,255,255,.86) 100%);
-  border-bottom-color: rgba(255,255,255,.55);
+  border-bottom-color: rgba(0,0,0,.08);
 }
+
+/* таббар — светлый, с тёмным текстом */
 .theme-xmas .tabbar-inner{
-  background: rgba(31,30,30,.96);
-  box-shadow: 0 10px 40px rgba(0,0,0,.25);
+  background: rgba(255,255,255,.96);
+  border: 1px solid var(--stroke);
+  box-shadow: 0 10px 36px rgba(0,0,0,.12);
+}
+.theme-xmas .tabbar-inner .tab{
+  color: var(--text);
+}
+.theme-xmas .tabbar-inner .tab.active{
+  background: rgba(0,0,0,.06);
 }
 
-/* декоративные «лампочки» можно вешать на правую часть хедера (по желанию) */
+/* мини-гирлянда в хедере остаётся, но на светлом чуть мягче */
 .theme-xmas .hdr-right::after{
-  content: "";
-  display: inline-block;
-  width: 42px; height: 16px;
-  margin-left: 6px;
-  background: url('assets/promo/newyear/mini-garland.svg') no-repeat center / contain;
-  opacity: .9;
+  content:"";
+  display:inline-block;
+  width:42px; height:16px;
+  margin-left:6px;
+  background:url('assets/promo/newyear/mini-garland.svg') no-repeat center / contain;
+  opacity:.7;
 }
 
-/* страница акции уже красится в Promo.js через #view.promo-page */
-#view.promo-page{
-  background-color: var(--promo-page-bg, #3e0a0a) !important;
+/* страница акции — тоже светлая. 
+   Ставим переменные при включённой теме, чтобы перебить тёмные дефолты */
+.theme-xmas #view.promo-page{
+  --promo-page-bg:  #f6fbff;
+  --promo-page-tint: rgba(0,0,0,.03);
+  background-color: var(--promo-page-bg) !important;
 }
+
 
 /* === SAFE PRICES: карточки в любых сетках не «ломаются» ============== */
 .card .price{
