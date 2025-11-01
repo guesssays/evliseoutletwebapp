@@ -42,9 +42,9 @@ export function renderPromo(router) {
     <style>
       /* Только hero и мелкие декоративные вещи. НИКАКИХ размеров карточек! */
       .promo-wrap{
-        /* фикс «узких» карточек: те же боковые отступы, что и .view */
-        padding: 0 18px calc(var(--tabbar-h) + var(--safe) + 10px);
-      }
+       /* НЕТ боковых отступов: используем те же, что у #view (.view) */
+        padding: 0 0 calc(var(--tabbar-h) + var(--safe) + 10px);
+     }
       .promo-hero{
         position:relative; margin: 12px 0 12px; padding: 16px 14px;
         border-radius: var(--radius,22px); color:#fff;
