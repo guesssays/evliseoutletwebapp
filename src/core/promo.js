@@ -99,3 +99,5 @@ export function promoBadgesFor(p) {
 export function productInPromo(p) {
   return isDiscountedProduct(p) || isX2CashbackProduct(p);
 }
+export function promoTitle(){ return (state?.promo?.title) || 'Новогодняя акция'; }
+export function promoSubtitle(){ return (state?.promo?.subtitle) || 'скидки и x2 кэшбек'; }
