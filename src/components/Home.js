@@ -11,7 +11,7 @@ import {
   promoBadgesFor,
   discountInfo,
   effectivePrice,
-  shouldShowOnHome, // ⬅️ добавлено
+  shouldShowOnHome, // ⬅️ скрываем лимитки вне акции
 } from '../core/promo.js';
 
 /* ================== helpers: категории ================== */
@@ -208,7 +208,7 @@ function createProductNode(p){
     subEl.textContent = label || (p.inStock ? 'В наличии' : '');
   }
 
-  // 🔸 Цена с учётом акции + зачёркнутая старая при скидке
+  // 🔸 Цена с учётом акции + зачёркнутая старая при скидке (влезает в одну строку)
   const priceEl = node.querySelector('.price');
   if (priceEl){
     const di = discountInfo(p);
@@ -279,7 +279,7 @@ function progressiveAppend(grid, list, {firstBatch=12, batch=16, delay=0} = {}){
       frag.appendChild(createProductNode(list[i]));
       insertedProducts++;
 
-      // после каждого 6го — баннер
+      // после каждого 6-го — баннер
       if (promo && banners.length && (insertedProducts % 6 === 0)){
         frag.appendChild(renderPromoBannerNode(banners[bnIndex % banners.length]));
         bnIndex++;

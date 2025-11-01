@@ -1947,3 +1947,63 @@ html body .img-skel::after{
   mix-blend-mode: screen;
   opacity: .8;
 }
+/* === XMAS THEME: включается классом .theme-xmas на <html> ============ */
+.theme-xmas body{
+  /* тёплый красный градиент по всей странице приложения */
+  background:
+    radial-gradient(1200px 800px at 10% -10%, rgba(255,255,255,.08) 0%, rgba(255,255,255,0) 55%),
+    radial-gradient(1200px 800px at 100% 0%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 55%),
+    linear-gradient(180deg, #5a0f12 0%, #3e0a0a 100%);
+  /* лёгкий праздничный паттерн: снежинки/ёлочки (повторяющееся svg) */
+  background-image:
+    radial-gradient(1200px 800px at 10% -10%, rgba(255,255,255,.08) 0%, rgba(255,255,255,0) 55%),
+    radial-gradient(1200px 800px at 100% 0%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 55%),
+    url('assets/promo/newyear/xmas-pattern.svg'),
+    linear-gradient(180deg, #5a0f12 0%, #3e0a0a 100%);
+  background-repeat: no-repeat, no-repeat, repeat, no-repeat;
+  background-size: auto, auto, 420px, auto;
+  color: var(--text);
+}
+
+/* стеклянные элементы на красном фоне слегка посветлее */
+.theme-xmas .app-header{
+  background: linear-gradient(180deg, rgba(255,255,255,.94) 0%, rgba(255,255,255,.86) 100%);
+  border-bottom-color: rgba(255,255,255,.55);
+}
+.theme-xmas .tabbar-inner{
+  background: rgba(31,30,30,.96);
+  box-shadow: 0 10px 40px rgba(0,0,0,.25);
+}
+
+/* декоративные «лампочки» можно вешать на правую часть хедера (по желанию) */
+.theme-xmas .hdr-right::after{
+  content: "";
+  display: inline-block;
+  width: 42px; height: 16px;
+  margin-left: 6px;
+  background: url('assets/promo/newyear/mini-garland.svg') no-repeat center / contain;
+  opacity: .9;
+}
+
+/* страница акции уже красится в Promo.js через #view.promo-page */
+#view.promo-page{
+  background-color: var(--promo-page-bg, #3e0a0a) !important;
+}
+
+/* === SAFE PRICES: карточки в любых сетках не «ломаются» ============== */
+.card .price{
+  display:flex; align-items:baseline; gap:8px; margin-top:6px; flex-wrap:wrap;
+}
+.card .price .old{
+  text-decoration: line-through; color:#a1a1aa; font-weight:700;
+  font-size: 13px; line-height:1;
+}
+.card .price .cur{
+  font-weight:900; font-size: 16px; line-height:1;
+}
+
+/* если вдруг карточка очень узкая — ещё компактнее */
+@media (max-width: 360px){
+  .card .price .old{ font-size:12px }
+  .card .price .cur{ font-size:14px }
+}

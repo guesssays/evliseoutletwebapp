@@ -8,7 +8,15 @@ import {
 } from '../core/promo.js';
 
 export function renderPromo(router) {
-  if (!promoIsActive()) { location.hash = '#/'; return; }
+  if (!promoIsActive()) { 
+    // если акция выключена — гарантированно снимаем праздничную тему
+    try { document.documentElement.classList.remove('theme-xmas'); } catch {}
+    location.hash = '#/'; 
+    return; 
+  }
+
+  // включаем «новогоднюю» тему на всём приложении
+  try { document.documentElement.classList.add('theme-xmas'); } catch {}
 
   const theme = promoTheme();
   const products = Array.isArray(state.products) ? state.products : [];
@@ -20,7 +28,7 @@ export function renderPromo(router) {
 
   const v = document.getElementById('view'); if (!v) return;
 
-  // ← включаем фон для контейнера
+  // фон для контейнера promo-страницы
   v.classList.add('promo-page');
 
   v.innerHTML = `
@@ -63,11 +71,22 @@ export function renderPromo(router) {
       }
       .promo-card .img{ width:100%; aspect-ratio:1/1; object-fit:cover; display:block; }
       .promo-card .body{ padding:10px }
-      .promo-card .title{ font-weight:800; font-size:14px; line-height:1.2; color:#121111 }
+      .promo-card .title{
+        font-weight:800; font-size:14px; line-height:1.2; color:#121111;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+        min-height: 2.4em;
+      }
       .promo-card .sub{ color:var(--muted,#787676); font-size:12px; margin-top:4px }
-      .promo-card .price{ display:flex; align-items:center; gap:8px; margin-top:8px; font-weight:900 }
-      .promo-card .old{ text-decoration:line-through; color:#a1a1aa; font-weight:700 }
-      .promo-card .new{ color:#121111 }
+      .promo-card .price{
+        display:flex; align-items:baseline; gap:8px; margin-top:8px; font-weight:900;
+        flex-wrap: wrap; /* ← перенос, если не влазит */
+      }
+      .promo-card .old{
+        text-decoration:line-through; color:#a1a1aa; font-weight:700; font-size:12px; line-height:1;
+      }
+      .promo-card .new{
+        color:#121111; font-size:14px; line-height:1;
+      }
 
       .promo-badge{
         position:absolute; left:8px; top:8px; z-index:2;
@@ -117,9 +136,9 @@ export function renderPromo(router) {
     </div>
   `;
 
-  // фон всего #view под акцию
-  v.style.setProperty('--promo-page-bg', theme.pageBg || '#0b1220');
-  v.style.setProperty('--promo-page-tint', theme.pageTint || 'rgba(255,255,255,.02)');
+  // фон #view под акцию (дополнительно к глобальному .theme-xmas)
+  v.style.setProperty('--promo-page-bg', theme.pageBg || '#3e0a0a');
+  v.style.setProperty('--promo-page-tint', theme.pageTint || 'rgba(255,255,255,.03)');
   if (theme.pageBgImg) {
     v.style.backgroundImage = `url('${theme.pageBgImg}')`;
     v.style.backgroundRepeat = 'repeat';

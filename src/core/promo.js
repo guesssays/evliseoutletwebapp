@@ -13,9 +13,10 @@ function defaults() {
       { id: 'bn3', img: 'assets/promo/newyear/banner-3.jpg', alt: 'Хиты сезона — x2 кэшбек' },
     ],
     theme: {
-      pageBg:    '#0b1220',
-      pageBgImg: 'assets/promo/newyear/bg-snow.svg',
-      pageTint:  'rgba(255,255,255,.02)',
+      // 🎄 красно-рождественская палитра
+      pageBg:    '#3e0a0a',
+      pageBgImg: 'assets/promo/newyear/bg-snow-red.svg', // лёгкий снежный паттерн
+      pageTint:  'rgba(255,255,255,.03)',
       gridBg:    'transparent',
       gridBgImage: '',
       gridTint:  '',
@@ -37,16 +38,14 @@ export function promoIsActive() { return !!promoConfig().enabled; }
 export function getPromoBanners() { return promoConfig().banners || []; }
 export function promoTheme() { return promoConfig().theme || {}; }
 
-/** Участвует в скидке как «лимитка» */
 export function isDiscountedProduct(p) {
   const d = promoConfig().discounts || {};
   const info = d?.[String(p.id)];
   return !!info && isFinite(info.price) && info.price > 0;
 }
 
-/** Информация о скидке — ТОЛЬКО пока акция активна */
 export function discountInfo(p) {
-  if (!promoIsActive()) return null; // ключевой «гейт»
+  if (!promoIsActive()) return null;
   const d = promoConfig().discounts || {};
   const info = d?.[String(p.id)];
   if (!info) return null;
@@ -61,16 +60,11 @@ export function isX2CashbackProduct(p) {
   return ids.includes(String(p.id));
 }
 
-/** Итоговая цена (для скидочных товаров во время акции) */
 export function effectivePrice(p) {
   const di = discountInfo(p);
   return di ? di.newPrice : Number(p.price || 0);
 }
 
-/**
- * Бейджи для любой сетки/карточки: только при активной акции.
- * - скидка имеет приоритет над x2
- */
 export function promoBadgesFor(p) {
   if (!promoIsActive()) return [];
   const badges = [];
@@ -85,20 +79,11 @@ export function promoBadgesFor(p) {
   return badges;
 }
 
-/** Товар входит в акцию (для страницы акции) */
 export function productInPromo(p) {
   if (!promoIsActive()) return false;
   return isDiscountedProduct(p) || isX2CashbackProduct(p);
 }
-
-/** Лимитка = скидочный промо-товар */
 export function isLimitedProduct(p) { return isDiscountedProduct(p); }
-
-/**
- * Показывать ли товар в общей сетке (Home):
- * - во время акции — показываем всех (и лимитки, и обычные)
- * - после — скрываем лимитки из Home
- */
 export function shouldShowOnHome(p) {
   return promoIsActive() ? true : !isLimitedProduct(p);
 }
