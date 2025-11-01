@@ -2163,3 +2163,45 @@ html body .img-skel::after{
 .card .price .cur.deal{
   text-decoration: none !important;
 }
+/* === XMAS (BORDEAUX): фон и карточки одного цвета, БЕЗ теней/рамок === */
+:root{
+  --xmas-bg:   #3e0a0a;  /* основной бордовый */
+  --xmas-bg-2: #5a0f12;  /* верхний оттенок градиента */
+}
+
+/* Фон приложения */
+.theme-xmas body{
+  background:
+    radial-gradient(1200px 800px at 10% -10%, rgba(255,255,255,.08) 0%, rgba(255,255,255,0) 55%),
+    radial-gradient(1200px 800px at 100% 0%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 55%),
+    url('assets/promo/newyear/xmas-pattern.svg'),
+    linear-gradient(180deg, var(--xmas-bg-2) 0%, var(--xmas-bg) 100%);
+  background-repeat: no-repeat, no-repeat, repeat, no-repeat;
+  background-size: auto, auto, 420px, auto;
+}
+
+/* Сетка берёт фон страницы; карточки — ТАКОГО ЖЕ цвета, без обводок/теней */
+.theme-xmas .grid{ background: transparent !important; }
+.theme-xmas .card{
+  background: var(--xmas-bg) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Область изображения карточки — чтобы не выбивалась по тону */
+.theme-xmas .card .card-img{ background: var(--xmas-bg) !important; }
+
+/* Кнопка-избранное на карточке — без белой «таблетки», чтобы не резало глаз */
+.theme-xmas .card .fav{
+  background: rgba(255,255,255,.10) !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #fff !important;
+}
+
+/* Текст в карточке чуть светлее для читаемости */
+.theme-xmas .card .card-body .title{ color:#fff !important; }
+.theme-xmas .card .card-body .subtitle{ color:rgba(255,255,255,.75) !important; }
+.theme-xmas .card .price{ color:#fff !important; }
+
+/* Баннер промо и бейджи можно оставить как есть; при желании — подмерцай контрастом */

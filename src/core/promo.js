@@ -13,13 +13,13 @@ function defaults() {
       { id: 'bn3', img: 'assets/promo/newyear/banner-3.jpg', alt: 'Хиты сезона — x2 кэшбек' },
     ],
     theme: {
-      /* === LIGHT-RED palette (в синхроне со styles.css) === */
-      pageBg:      '#ffe7ea',  // основной светло-красный фон
-      pageBg2:     '#fff1f3',  // верхний мягкий оттенок для градиента
-      pageBgImg:   'assets/promo/newyear/bg-snow-red.svg', // можно оставить тот же паттерн
+      /* === BORDEAUX palette (как было изначально) === */
+      pageBg:      '#3e0a0a',   // основной бордовый
+      pageBg2:     '#5a0f12',   // верхний оттенок для градиента
+      pageBgImg:   'assets/promo/newyear/bg-snow-red.svg',
       pageTint:    'rgba(255,255,255,.03)',
 
-      // сетка фоном прозрачная — карточки подберут цвет из --xmas-bg
+      // сетка/карточки берут тот же цвет через CSS-переменные
       gridBg:      'transparent',
       gridBgImage: '',
       gridTint:    '',
@@ -27,7 +27,6 @@ function defaults() {
       badgeColor:   '#ef4444',
       badgeX2Color: '#06b6d4',
     },
-    // Если эти поля пустые — мы аккуратно засеем тестовые 6 позиций на лету
     discounts: {},
     x2CashbackIds: [],
   };
@@ -36,7 +35,6 @@ function defaults() {
 function promoConfig() {
   const cfg = state?.promo || {};
   const d = defaults();
-  // глубокое слияние theme
   return { ...d, ...cfg, theme: { ...d.theme, ...(cfg.theme || {}) } };
 }
 
@@ -48,14 +46,6 @@ function _ensureArrays(obj) {
   return obj;
 }
 
-/**
- * Аккуратно засеять тестовую акцию на 6 товаров (3 скидки, 3 x2),
- * если в state.promo ничего не выставлено вручную.
- * НИЧЕГО не делаем, если:
- *   - акция выключена, или
- *   - уже есть явные скидки/x2, или
- *   - нет товаров
- */
 export function ensureTestPromoSeed() {
   const cfg = state?.promo;
   if (!cfg || !cfg.enabled) return;
@@ -65,7 +55,6 @@ export function ensureTestPromoSeed() {
   const goods = Array.isArray(state.products) ? state.products.slice(0) : [];
   if (goods.length < 6) return;
 
-  // 3.1) если НЕТ явных скидок — засеем 3 шт. -20%
   const hasManualDiscounts = Object.keys(cfg.discounts||{}).length > 0;
   if (!hasManualDiscounts){
     const sample = goods.slice(0, 3);
@@ -79,7 +68,6 @@ export function ensureTestPromoSeed() {
     state.promo.discounts = disc;
   }
 
-  // 3.2) гарантируем минимум 3 x2-позиции: добираем из не-дискаунтных
   const needX2Min = 3;
   const existingX2 = new Set(cfg.x2CashbackIds || []);
   if (existingX2.size < needX2Min){
@@ -87,14 +75,13 @@ export function ensureTestPromoSeed() {
     for (const p of goods){
       const id = String(p.id);
       if (existingX2.size >= needX2Min) break;
-      if (discountIds.has(id)) continue;     // не мешаем скидкам
+      if (discountIds.has(id)) continue;
       if (existingX2.has(id)) continue;
       existingX2.add(id);
     }
     state.promo.x2CashbackIds = [...existingX2];
   }
 }
-
 
 /* ===== STATE API ===== */
 export function promoIsActive() { return !!promoConfig().enabled; }
@@ -148,7 +135,6 @@ export function productInPromo(p) {
 }
 export function isLimitedProduct(p) { return isDiscountedProduct(p); }
 
-/** На главной при активной акции показываем всё (включая акционные). */
 export function shouldShowOnHome(p) {
   return promoIsActive() ? true : !isLimitedProduct(p);
 }
@@ -167,12 +153,12 @@ export function applyPromoTheme(on = true) {
       const th = promoTheme();
       root.classList.add('theme-xmas');
 
-      // Прокидываем CSS-токены, чтобы стили карточек/сетки взяли нужные оттенки
+      // токены для CSS
       if (th.pageBg)  root.style.setProperty('--xmas-bg', th.pageBg);
       if (th.pageBg2) root.style.setProperty('--xmas-bg-2', th.pageBg2);
 
       v.classList.add('promo-page');
-      v.style.setProperty('--promo-page-bg', th.pageBg || '#ffe7ea');
+      v.style.setProperty('--promo-page-bg', th.pageBg || '#3e0a0a');
       v.style.setProperty('--promo-page-tint', th.pageTint || 'rgba(255,255,255,.03)');
 
       if (th.pageBgImg) {
@@ -183,7 +169,6 @@ export function applyPromoTheme(on = true) {
         v.style.backgroundImage = 'none';
       }
 
-      // Если вдруг используешь grid-* где-то в стилях — тоже прокинем
       if (th.gridBg)       v.style.setProperty('--promo-grid-bg', th.gridBg);
       if (th.gridBgImage)  v.style.setProperty('--promo-grid-img', th.gridBgImage);
       if (th.gridTint)     v.style.setProperty('--promo-grid-tint', th.gridTint);
@@ -191,7 +176,6 @@ export function applyPromoTheme(on = true) {
     } else {
       root.classList.remove('theme-xmas');
 
-      // Чистим CSS-токены
       root.style.removeProperty('--xmas-bg');
       root.style.removeProperty('--xmas-bg-2');
 
