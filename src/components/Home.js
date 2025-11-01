@@ -11,6 +11,7 @@ import {
   promoBadgesFor,
   discountInfo,
   effectivePrice,
+  shouldShowOnHome, // ⬅️ добавлено
 } from '../core/promo.js';
 
 /* ================== helpers: категории ================== */
@@ -260,7 +261,7 @@ function progressiveAppend(grid, list, {firstBatch=12, batch=16, delay=0} = {}){
 
   if (total === 0) return;
 
-  // 🔸 Врезки баннеров: начинаем с баннера и далее после каждых 6 карточек
+  // 🔸 Врезки баннеров
   const promo = promoIsActive();
   const banners = promo ? getPromoBanners() : [];
   let bnIndex = 0;
@@ -275,11 +276,10 @@ function progressiveAppend(grid, list, {firstBatch=12, batch=16, delay=0} = {}){
   const appendSlice = (from, to) => {
     const frag = document.createDocumentFragment();
     for (let i=from; i<to; i++){
-      // вставляем товар
       frag.appendChild(createProductNode(list[i]));
       insertedProducts++;
 
-      // после каждого 6го — баннер (если активна акция)
+      // после каждого 6го — баннер
       if (promo && banners.length && (insertedProducts % 6 === 0)){
         frag.appendChild(renderPromoBannerNode(banners[bnIndex % banners.length]));
         bnIndex++;
@@ -293,7 +293,6 @@ function progressiveAppend(grid, list, {firstBatch=12, batch=16, delay=0} = {}){
   if (first > 0){
     appendSlice(0, first);
     idx = first;
-    // удаляем ТОЛЬКО сеточные скелетоны; пер-карточные остаются до onload
     grid.querySelectorAll('.is-skeleton')?.forEach(el => el.remove());
   }
 
@@ -323,7 +322,7 @@ export function renderHome(router){
   const v = document.getElementById('view');
   if (!v) return;
 
-  // ✅ нормализуем наличие, чтобы дальше всё опиралось на p.inStock
+  // ✅ нормализуем наличие
   normalizeStockFlags(state.products);
 
   // если ещё нет товаров — показываем скелет сразу
@@ -338,13 +337,13 @@ export function renderHome(router){
     <div class="grid home-bottom-pad" id="productGrid"></div>`;
   const grid = document.getElementById('productGrid');
 
-  // 0) «зонтик» против фликера: любой тап по гриду открывает quiet/suppress окно
+  // 0) «зонтик» против фликера
   if (!grid.dataset.quietGuardBound){
     ScrollReset.guardNoResetClick(grid, { duration: 1100 });
     grid.dataset.quietGuardBound = '1';
   }
 
-  // 1) сразу показываем сеточные скелетоны (если не подавлены)
+  // 1) сеточные скелетоны (если не подавлены)
   if (shouldShowGridSkeleton()) {
     renderSkeletonGrid(grid, calcSkeletonCount());
   }
@@ -435,7 +434,12 @@ export function drawProducts(list){
   if (!grid) return;
 
   const source = Array.isArray(list) ? list : [];
-  const base = applyFilters(source);
+
+  // ⬇️ главный предфильтр общей сетки: скрываем лимитки вне акции
+  const visibleSource = source.filter(shouldShowOnHome);
+
+  // Дальше — твои фильтры
+  const base = applyFilters(visibleSource);
 
   const q = (state.filters.query||'').trim().toLowerCase();
   const filtered = q
@@ -461,13 +465,11 @@ export function drawProducts(list){
 
       ev.preventDefault();
 
-      // ⬇️ жёстко глушим любые reset/окна/фликер на время локального апдейта
       try {
         ScrollReset.quiet(1200);
         ScrollReset.suppress(1200);
       } catch {}
 
-      // и чуть дольше подавим именно сеточный скелетон (с запасом)
       suppressGridSkeleton(1600);
 
       const card = favBtn.closest('.card, a.card');
@@ -511,8 +513,7 @@ export function drawProducts(list){
 
   // Пустые состояния
   if (source.length === 0 && (state.products?.length || 0) === 0){
-    // ждём данные — оставляем сеточные скелетоны
-    return;
+    return; // ждём данные — оставляем сеточные скелетоны
   }
   if (source.length === 0 && (state.products?.length || 0) > 0){
     grid.querySelectorAll('.is-skeleton')?.forEach(el => el.remove());
@@ -531,8 +532,7 @@ export function drawProducts(list){
     return;
   }
 
-  // Прогрессивно добавляем карточки; сеточные скелетоны удалятся после первого батча,
-  // а пер-карточные (overlay .img-skel) останутся до загрузки конкретного img.
+  // Прогрессивно добавляем карточки
   progressiveAppend(grid, filtered, { firstBatch: 12, batch: 16, delay: 0 });
 }
 

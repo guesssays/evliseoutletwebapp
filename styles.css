@@ -1929,3 +1929,21 @@ html body .img-skel::after{
 .card .price .cur{ font-weight:900; }
 
 /* Чип-категория "Акции" не требует отдельного стиля — обычный .chip подходит */
+/* === PROMO PAGE BACKDROP ===================================== */
+#view.promo-page{
+  background-color: var(--promo-page-bg, #0b1220) !important;
+  /* снежный паттерн зашивается инлайн из Promo.js через background-image */
+  position: relative;
+}
+#view.promo-page::before{
+  /* мягкий белый туман поверх фона: усиливает «зимний» вайб */
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg,
+    rgba(255,255,255,0.04) 0%,
+    rgba(255,255,255,0.00) 24%,
+    rgba(255,255,255,0.03) 100%);
+  mix-blend-mode: screen;
+  opacity: .8;
+}
