@@ -201,21 +201,18 @@ function createProductNode(p){
     subEl.textContent = label || (p.inStock ? 'В наличии' : '');
   }
 
-  // Цена (только одна, с учётом скидки) + маленький чип процента при наличии скидки
-  const priceEl = node.querySelector('.price');
-  if (priceEl){
-    const di = discountInfo(p);
-    const eff = priceFmt(effectivePrice(p));
-
-    if (di) {
-      priceEl.innerHTML = `
-        <span class="cur deal">${eff}</span>
-        <span class="price-chip">-${di.percent}%</span>
-      `;
-    } else {
-      priceEl.innerHTML = `<span class="cur">${eff}</span>`;
-    }
+// Цена: только текущее значение, без процента-чипа
+const priceEl = node.querySelector('.price');
+if (priceEl){
+  const di = discountInfo(p);
+  const eff = priceFmt(effectivePrice(p));
+  if (di) {
+    priceEl.innerHTML = `<span class="cur deal">${eff}</span>`;
+  } else {
+    priceEl.innerHTML = `<span class="cur">${eff}</span>`;
   }
+}
+
 
 
   // Промо-бейджи

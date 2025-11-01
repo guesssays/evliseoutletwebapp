@@ -154,13 +154,13 @@ function renderStandardCard(p){
         <div class="title">${escapeHtml(p.title)}</div>
         <div class="subtitle">${escapeHtml(categoryNameBySlug(p.categoryId) || '')}</div>
         <div class="price-row">
-          <div class="price">
-            ${
-              di
-                ? `<span class="cur deal">${priceFmt(price)}</span><span class="price-chip">-${di.percent}%</span>`
-                : `<span class="cur">${priceFmt(p.price)}</span>`
-            }
-          </div>
+<div class="price">
+  ${ di
+      ? `<span class="cur deal">${priceFmt(price)}</span>`
+      : `<span class="cur">${priceFmt(p.price)}</span>`
+    }
+</div>
+
         </div>
       </div>
     </a>
