@@ -13,12 +13,17 @@ function defaults() {
       { id: 'bn3', img: 'assets/promo/newyear/banner-3.jpg', alt: 'Хиты сезона — x2 кэшбек' },
     ],
     theme: {
-      pageBg:    '#3e0a0a',
-      pageBgImg: 'assets/promo/newyear/bg-snow-red.svg',
-      pageTint:  'rgba(255,255,255,.03)',
-      gridBg:    'transparent',
+      /* === LIGHT-RED palette (в синхроне со styles.css) === */
+      pageBg:      '#ffe7ea',  // основной светло-красный фон
+      pageBg2:     '#fff1f3',  // верхний мягкий оттенок для градиента
+      pageBgImg:   'assets/promo/newyear/bg-snow-red.svg', // можно оставить тот же паттерн
+      pageTint:    'rgba(255,255,255,.03)',
+
+      // сетка фоном прозрачная — карточки подберут цвет из --xmas-bg
+      gridBg:      'transparent',
       gridBgImage: '',
-      gridTint:  '',
+      gridTint:    '',
+
       badgeColor:   '#ef4444',
       badgeX2Color: '#06b6d4',
     },
@@ -31,7 +36,8 @@ function defaults() {
 function promoConfig() {
   const cfg = state?.promo || {};
   const d = defaults();
-  return { ...d, ...cfg, theme: { ...d.theme, ...(cfg.theme||{}) } };
+  // глубокое слияние theme
+  return { ...d, ...cfg, theme: { ...d.theme, ...(cfg.theme || {}) } };
 }
 
 /* ===== helpers ===== */
@@ -161,9 +167,14 @@ export function applyPromoTheme(on = true) {
       const th = promoTheme();
       root.classList.add('theme-xmas');
 
+      // Прокидываем CSS-токены, чтобы стили карточек/сетки взяли нужные оттенки
+      if (th.pageBg)  root.style.setProperty('--xmas-bg', th.pageBg);
+      if (th.pageBg2) root.style.setProperty('--xmas-bg-2', th.pageBg2);
+
       v.classList.add('promo-page');
-      v.style.setProperty('--promo-page-bg', th.pageBg || '#3e0a0a');
+      v.style.setProperty('--promo-page-bg', th.pageBg || '#ffe7ea');
       v.style.setProperty('--promo-page-tint', th.pageTint || 'rgba(255,255,255,.03)');
+
       if (th.pageBgImg) {
         v.style.backgroundImage = `url('${th.pageBgImg}')`;
         v.style.backgroundRepeat = 'repeat';
@@ -171,8 +182,18 @@ export function applyPromoTheme(on = true) {
       } else {
         v.style.backgroundImage = 'none';
       }
+
+      // Если вдруг используешь grid-* где-то в стилях — тоже прокинем
+      if (th.gridBg)       v.style.setProperty('--promo-grid-bg', th.gridBg);
+      if (th.gridBgImage)  v.style.setProperty('--promo-grid-img', th.gridBgImage);
+      if (th.gridTint)     v.style.setProperty('--promo-grid-tint', th.gridTint);
+
     } else {
       root.classList.remove('theme-xmas');
+
+      // Чистим CSS-токены
+      root.style.removeProperty('--xmas-bg');
+      root.style.removeProperty('--xmas-bg-2');
 
       v.classList.remove('promo-page');
       v.style.removeProperty('--promo-page-bg');
@@ -180,6 +201,10 @@ export function applyPromoTheme(on = true) {
       v.style.backgroundImage = 'none';
       v.style.backgroundRepeat = '';
       v.style.backgroundSize = '';
+
+      v.style.removeProperty('--promo-grid-bg');
+      v.style.removeProperty('--promo-grid-img');
+      v.style.removeProperty('--promo-grid-tint');
     }
   } catch {}
 }
