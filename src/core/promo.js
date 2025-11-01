@@ -52,34 +52,43 @@ function _ensureArrays(obj) {
  */
 export function ensureTestPromoSeed() {
   const cfg = state?.promo;
-  if (!cfg) return;
-  if (!cfg.enabled) return;
+  if (!cfg || !cfg.enabled) return;
 
   _ensureArrays(cfg);
-
-  const hasManual = (Object.keys(cfg.discounts||{}).length > 0) || (cfg.x2CashbackIds||[]).length > 0;
-  if (hasManual) return;
 
   const goods = Array.isArray(state.products) ? state.products.slice(0) : [];
   if (goods.length < 6) return;
 
-  // возьмём первые 6: 3 под скидку, 3 под x2
-  const sample = goods.slice(0, 6);
-  const discounted = sample.slice(0, 3);
-  const x2 = sample.slice(3, 6);
-
-  // цены со скидкой: -20% (округлим до целого)
-  const disc = {};
-  for (const p of discounted) {
-    const oldP = Number(p.price || 0);
-    if (!isFinite(oldP) || oldP <= 0) continue;
-    const newP = Math.max(1, Math.round(oldP * 0.8));
-    disc[String(p.id)] = { oldPrice: oldP, price: newP };
+  // 3.1) если НЕТ явных скидок — засеем 3 шт. -20%
+  const hasManualDiscounts = Object.keys(cfg.discounts||{}).length > 0;
+  if (!hasManualDiscounts){
+    const sample = goods.slice(0, 3);
+    const disc = {};
+    for (const p of sample) {
+      const oldP = Number(p.price || 0);
+      if (!isFinite(oldP) || oldP <= 0) continue;
+      const newP = Math.max(1, Math.round(oldP * 0.8));
+      disc[String(p.id)] = { oldPrice: oldP, price: newP };
+    }
+    state.promo.discounts = disc;
   }
 
-  state.promo.discounts = disc;
-  state.promo.x2CashbackIds = x2.map(p => String(p.id));
+  // 3.2) гарантируем минимум 3 x2-позиции: добираем из не-дискаунтных
+  const needX2Min = 3;
+  const existingX2 = new Set(cfg.x2CashbackIds || []);
+  if (existingX2.size < needX2Min){
+    const discountIds = new Set(Object.keys(state.promo.discounts || {}));
+    for (const p of goods){
+      const id = String(p.id);
+      if (existingX2.size >= needX2Min) break;
+      if (discountIds.has(id)) continue;     // не мешаем скидкам
+      if (existingX2.has(id)) continue;
+      existingX2.add(id);
+    }
+    state.promo.x2CashbackIds = [...existingX2];
+  }
 }
+
 
 /* ===== STATE API ===== */
 export function promoIsActive() { return !!promoConfig().enabled; }

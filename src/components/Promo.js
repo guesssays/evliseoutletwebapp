@@ -123,12 +123,13 @@ export function renderPromo(router) {
 
 /* ===== helpers ===== */
 
-// Рисуем карточку В ТОМ ЖЕ МАРКАПЕ, что и на главной
 function renderStandardCard(p){
   const di = discountInfo(p);
   const price = effectivePrice(p);
   const badges = promoBadgesFor(p);
+  const img0 = p.images?.[0] || '';
 
+  // пер-картинный скелет + onload → is-ready, чтобы обойти глобальный fade-in
   return `
     <a class="card" data-id="${p.id}" href="#/product/${p.id}">
       <div class="card-img">
@@ -137,7 +138,14 @@ function renderStandardCard(p){
             b.type==='discount' ? `<i data-lucide="percent"></i>` : `<i data-lucide="zap"></i>`
           }<span>${escapeHtml(b.label)}</span></span>`).join('')}
         </div>` : ``}
-        <img src="${p.images?.[0]||''}" alt="${escapeHtml(p.title)}" loading="lazy" decoding="async">
+        <b class="img-skel" aria-hidden="true"></b>
+        <img
+          src="${img0}"
+          alt="${escapeHtml(p.title)}"
+          loading="lazy"
+          decoding="async"
+          onload="this.classList.add('is-ready'); this.previousElementSibling?.remove()"
+        >
       </div>
       <button class="fav ${isFav(p.id)?'active':''}" data-id="${p.id}" aria-pressed="${isFav(p.id)?'true':'false'}" type="button" title="В избранное">
         <i data-lucide="heart"></i>
@@ -147,14 +155,18 @@ function renderStandardCard(p){
         <div class="subtitle">${escapeHtml(categoryNameBySlug(p.categoryId) || '')}</div>
         <div class="price-row">
           <div class="price">
-            ${di ? `<span class="old">${priceFmt(di.oldPrice)}</span> <span class="cur">${priceFmt(price)}</span>`
-                 : `<span class="cur">${priceFmt(p.price)}</span>`}
+            ${
+              di
+                ? `<span class="cur deal">${priceFmt(price)}</span><span class="price-chip">-${di.percent}%</span>`
+                : `<span class="cur">${priceFmt(p.price)}</span>`
+            }
           </div>
         </div>
       </div>
     </a>
   `;
 }
+
 
 function calcSkeletonCount(){
   const h = (window.visualViewport?.height || window.innerHeight || 700);

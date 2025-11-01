@@ -2007,3 +2007,50 @@ html body .img-skel::after{
   .card .price .old{ font-size:12px }
   .card .price .cur{ font-size:14px }
 }
+/* === PRICE: единый стандартный размер + деликатное выделение скидки === */
+
+/* базовый размер как раньше (карточки) */
+.card .price{
+  font-weight: 800;
+  font-size: 20px;   /* ← стандарт */
+  line-height: 1.1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* показываем только .cur — .old больше не используем */
+.card .price .cur{
+  font: inherit;
+}
+
+/* скидочная цена чуть подсвечена (тонкая тень) */
+.card .price .cur.deal{
+  position: relative;
+  text-shadow: 0 1px 0 rgba(0,0,0,.06);
+}
+
+/* маленький процент-чип рядом с ценой */
+.price-chip{
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  background: #ef4444;                /* как промо-бэйдж скидки */
+  border: 1px solid rgba(255,255,255,.22);
+  box-shadow: 0 6px 16px rgba(0,0,0,.16);
+}
+
+/* на очень узких экранах не уменьшаем саму цену, только чип */
+@media (max-width: 360px){
+  .price-chip{ height: 18px; font-size: 11px; padding: 0 7px; }
+}
+
+/* подчистим старые эксперименты, если они были ниже по файлу */
+.card .price .old{ display: none !important; }
+.card .price .cur{ font-size: 20px !important; } /* защита от прежних переопределений */
