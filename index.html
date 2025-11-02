@@ -103,56 +103,38 @@
       setTimeout(ensureLucide, 50);
     })();
 
-    // ======== GATE ДЛЯ ТЕХРАБОТ (админы проходят) ========
-    async function isAdminUser(cfg){
-      // 0) если в maintenance — подчистим "левый" токен у не-админов (страховка)
+    // ======== ПРОСТОЕ ПРАВИЛО: эти TG user.id проходят техработы ========
+    const STATIC_ADMIN_IDS = ['5422089180','6448300416']; // ← ваши ID
+
+    function getTgUserId(){
       try{
-        if (cfg?.maintenance) {
-          const tid = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-          const ids = (cfg.adminIds||[]).map(String);
-          if (!tid || !ids.includes(String(tid))) {
-            try{ localStorage.removeItem('admin_api_token'); }catch{}
-          }
-        }
+        // Надёжно берём из Telegram WebApp
+        const id = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+        if (id) return String(id);
+        // Фоллбек: попытка вытащить из initData (если библиотека не успела инициализироваться)
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const m = initData.match(/"id":\s*(\d+)/);
+        if (m) return m[1];
       }catch{}
+      return null;
+    }
 
-      // 1) локальный/URL токен (но без мягкого прохода — только после валидации)
-      const localToken =
-        (function(){ try{ return localStorage.getItem('admin_api_token') || '' }catch{ return '' } })() ||
-        (window.__ADMIN_API_TOKEN__ || '');
+    function isIdInList(idList, id){
+      if (!id || !Array.isArray(idList)) return false;
+      const norm = String(id);
+      return idList.map(String).includes(norm);
+    }
 
-      // 2) Telegram user id (если есть) — прямой белый список
-      let tgUserId = null;
-      try { tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || null; } catch {}
-      try {
-        if (Array.isArray(cfg?.adminIds) && tgUserId && cfg.adminIds.map(String).includes(String(tgUserId))) {
-          return true;
-        }
-      } catch {}
-
-      // 3) Аварийный обход для дев-режима: ?adminbypass=1
-      try { const p = new URLSearchParams(location.search); if (p.get('adminbypass') === '1') return true; } catch {}
-
-      // 4) Серверная проверка (строгая)
-      try {
-        const payload = {
-          token: localToken || null,
-          initData: (function(){ try{ return window.Telegram?.WebApp?.initData || '' }catch{ return '' } })(),
-        };
-        const r = await fetch('/.netlify/functions/can-access-admin', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          cache: 'no-store',
-          body: JSON.stringify(payload),
-        });
-        if (r.ok) {
-          const j = await r.json().catch(()=> ({}));
-          if (j && (j.ok === true || j.allowed === true)) return true;
-        }
-      } catch {}
-
-      // 5) Никаких мягких правил по одному лишь наличию токена!
-      return false;
+    function mergeAdminIds(cfg){
+      // берём из app-config.adminIds, если сервер отдаёт, иначе пусто
+      const fromCfg = Array.isArray(cfg?.adminIds) ? cfg.adminIds : [];
+      // пробуем распарсить возможную строку с id (если когда-то добавите в app-config)
+      const fromCfgString = (typeof cfg?.ADMIN_CHAT_ID === 'string')
+        ? cfg.ADMIN_CHAT_ID.split(/[,\s]+/).filter(Boolean) : [];
+      // добавляем статический список
+      const all = [...fromCfg, ...fromCfgString, ...STATIC_ADMIN_IDS].map(String);
+      // уникализируем
+      return Array.from(new Set(all));
     }
 
     function showMaintenanceOverlay(cfg){
@@ -160,7 +142,6 @@
       const node = document.getElementById('maintenanceScreen');
       node?.classList?.add('show');
 
-      // Блокируем только приложение
       const app = document.getElementById('app');
       if (app){
         app.setAttribute('aria-hidden','true');
@@ -169,7 +150,6 @@
       document.documentElement.classList.add('maintenance-lock');
       document.body.classList.add('maintenance-lock');
 
-      // Кнопка «оператор»
       const opUrl = cfg?.opChat || 'https://t.me/evliseorder';
       const btn = document.getElementById('mOpBtn');
       if (btn) btn.addEventListener('click', function onClick(e){
@@ -180,34 +160,37 @@
       try { window.lucide?.createIcons?.(); } catch {}
     }
 
-    function showAdminBypassBadge(){
-      try{
-        const b = document.createElement('div');
-        b.textContent = 'MAINTENANCE (admin bypass)';
-        b.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:999999;background:#000c;color:#fff;padding:6px 10px;border-radius:10px;font:12px/1.2 system-ui;backdrop-filter:blur(4px)';
-        document.addEventListener('DOMContentLoaded', ()=> document.body.appendChild(b));
-      }catch{}
-    }
-
     (async () => {
+      // 1) получаем конфиг (может содержать maintenance и массив adminIds)
       let cfg = null;
       try{
         const r = await fetch('/.netlify/functions/app-config', { cache:'no-store' });
         cfg = await r.json();
       }catch{ cfg = { maintenance:false }; }
 
-      if (!cfg?.maintenance) return; // нет техработ — пропускаем всех
+      // 2) если техработ нет — ничего не делаем
+      if (!cfg?.maintenance) return;
 
-      const admin = await isAdminUser(cfg);
-      if (admin) {
-        showAdminBypassBadge(); // опционально
-        return; // админов пропускаем
+      // 3) собираем итоговый белый список ID и узнаём текущий id
+      const allowIds = mergeAdminIds(cfg);
+      const myId = getTgUserId();
+
+      // 4) если мой id в списке — пропускаем (без дополнительных проверок)
+      if (isIdInList(allowIds, myId)) {
+        // Можно оставить маленький бейдж для наглядности (уберите при желании)
+        try{
+          const b = document.createElement('div');
+          b.textContent = 'ADMIN BYPASS: maintenance mode';
+          b.style.cssText='position:fixed;left:8px;bottom:8px;z-index:999999;background:#000c;color:#fff;padding:6px 10px;border-radius:10px;font:12px/1.2 system-ui;backdrop-filter:blur(4px)';
+          document.addEventListener('DOMContentLoaded', ()=> document.body.appendChild(b));
+        }catch{}
+        return;
       }
 
-      // не админ → показываем оверлей
+      // 5) не админ → показываем оверлей
       showMaintenanceOverlay(cfg);
     })();
-    // ======== /GATE ========
+    // ======== /ПРАВИЛО ========
   </script>
   <!-- ▲ Maintenance gate -->
 
@@ -483,10 +466,9 @@
     <template id="filter-chip"><span class="chip chip-mini"></span></template>
   </div>
 
-  <!-- ADMIN TOKEN VIA URL ONLY -->
+  <!-- Приём admin токена только из URL (опционально, не влияет на техработы) -->
   <script>
   (function(){
-    // принимаем токен только из URL (?admintoken=...), ничего не инжектим всем подряд
     try{
       var p = new URLSearchParams(location.search);
       var q = p.get('admintoken');
