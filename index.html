@@ -3,141 +3,207 @@
 <head>
   <meta charset="UTF-8" />
 
-<!-- ▼ Maintenance gate (must be before your main scripts) -->
-<link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <!-- ▼ Maintenance gate (must be before your main scripts) -->
+  <link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
 
-<style>
-  :root{
-    --m-bg:#ffffff; --m-text:#121111; --m-muted:#787676; --m-card:#f6f6f6; --m-border:#ececec; --m-primary:#121111;
-  }
-  .tg-dark, [data-theme="dark"]{
-    --m-bg:#0f0f0f; --m-text:#f5f5f5; --m-muted:#a3a1a2; --m-card:#161616; --m-border:#262626; --m-primary:#f5f5f5;
-  }
-  #maintenanceScreen{
-    position:fixed; inset:0; z-index:999999;
-    display:none; align-items:center; justify-content:center; text-align:center;
-    background:var(--m-bg); color:var(--m-text);
-    padding:28px;
-    font-family:"Encode Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", sans-serif;
-  }
-  #maintenanceScreen.show{ display:flex; }
-  .m-card{
-    width:min(560px, 100%);
-    border:1px solid var(--m-border);
-    background:var(--m-card);
-    border-radius:22px;
-    box-shadow:0 12px 30px rgba(0,0,0,.10);
-    padding:26px 22px;
-  }
-  .m-hero{
-    width:64px; height:64px; margin:0 auto 14px; border-radius:18px;
-    display:grid; place-items:center;
-    background:rgba(0,0,0,.06); border:1px solid var(--m-border);
-  }
-  .tg-dark .m-hero, [data-theme="dark"] .m-hero{ background:rgba(255,255,255,.05); }
-  .m-hero i{ width:28px; height:28px; } /* Lucide target */
-  .m-title{ font-size:22px; font-weight:800; letter-spacing:.2px; }
-  .m-sub{ color:var(--m-muted); margin-top:8px; line-height:1.35; font-size:15px; }
-  .m-cta{ margin-top:18px; display:flex; justify-content:center; }
-  .m-btn{
-    display:inline-flex; align-items:center; gap:10px;
-    padding:12px 16px; border-radius:999px;
-    border:1px solid var(--m-primary); background:var(--m-primary); color:var(--m-bg);
-    font-weight:700; cursor:pointer;
-  }
-  .m-btn i{ width:18px; height:18px; }
-  .m-note{ margin-top:12px; font-size:.92rem; color:var(--m-muted); }
-  html.maintenance-lock, body.maintenance-lock{ overflow:hidden !important; }
-</style>
+  <style>
+    :root{
+      --m-bg:#ffffff; --m-text:#121111; --m-muted:#787676; --m-card:#f6f6f6; --m-border:#ececec; --m-primary:#121111;
+    }
+    .tg-dark, [data-theme="dark"]{
+      --m-bg:#0f0f0f; --m-text:#f5f5f5; --m-muted:#a3a1a2; --m-card:#161616; --m-border:#262626; --m-primary:#f5f5f5;
+    }
+    #maintenanceScreen{
+      position:fixed; inset:0; z-index:999999;
+      display:none; align-items:center; justify-content:center; text-align:center;
+      background:var(--m-bg); color:var(--m-text);
+      padding:28px;
+      font-family:"Encode Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", sans-serif;
+    }
+    #maintenanceScreen.show{ display:flex; }
+    .m-card{
+      width:min(560px, 100%);
+      border:1px solid var(--m-border);
+      background:var(--m-card);
+      border-radius:22px;
+      box-shadow:0 12px 30px rgba(0,0,0,.10);
+      padding:26px 22px;
+    }
+    .m-hero{
+      width:64px; height:64px; margin:0 auto 14px; border-radius:18px;
+      display:grid; place-items:center;
+      background:rgba(0,0,0,.06); border:1px solid var(--m-border);
+    }
+    .tg-dark .m-hero, [data-theme="dark"] .m-hero{ background:rgba(255,255,255,.05); }
+    .m-hero i{ width:28px; height:28px; } /* Lucide target */
+    .m-title{ font-size:22px; font-weight:800; letter-spacing:.2px; }
+    .m-sub{ color:var(--m-muted); margin-top:8px; line-height:1.35; font-size:15px; }
+    .m-cta{ margin-top:18px; display:flex; justify-content:center; }
+    .m-btn{
+      display:inline-flex; align-items:center; gap:10px;
+      padding:12px 16px; border-radius:999px;
+      border:1px solid var(--m-primary); background:var(--m-primary); color:var(--m-bg);
+      font-weight:700; cursor:pointer;
+    }
+    .m-btn i{ width:18px; height:18px; }
+    .m-note{ margin-top:12px; font-size:.92rem; color:var(--m-muted); }
+    html.maintenance-lock, body.maintenance-lock{ overflow:hidden !important; }
+  </style>
 
-<div id="maintenanceScreen" role="dialog" aria-modal="true" aria-live="polite" aria-label="Технические работы">
-  <div class="m-card">
-    <div class="m-hero" aria-hidden="true">
-      <!-- Lucide icon from library -->
-      <i data-lucide="hard-hat"></i>
+  <div id="maintenanceScreen" role="dialog" aria-modal="true" aria-live="polite" aria-label="Технические работы">
+    <div class="m-card">
+      <div class="m-hero" aria-hidden="true">
+        <!-- Lucide icon from library -->
+        <i data-lucide="hard-hat"></i>
+      </div>
+      <div class="m-title">Технические работы</div>
+      <div class="m-sub">
+        Мы обновляем приложение и улучшаем сервис.<br/>
+        По заказу или другим вопросам — напишите оператору.
+      </div>
+      <div class="m-cta">
+        <button id="mOpBtn" class="m-btn" type="button" aria-label="Написать оператору">
+          <i data-lucide="send"></i><span>Написать оператору</span>
+        </button>
+      </div>
+      <div class="m-note">Обычно это занимает немного времени.</div>
     </div>
-    <div class="m-title">Технические работы</div>
-    <div class="m-sub">
-      Мы обновляем приложение и улучшаем сервис.<br/>
-      По заказу или другим вопросам — напишите оператору.
-    </div>
-    <div class="m-cta">
-      <button id="mOpBtn" class="m-btn" type="button" aria-label="Написать оператору">
-        <i data-lucide="send"></i><span>Написать оператору</span>
-      </button>
-    </div>
-    <div class="m-note">Обычно это занимает немного времени.</div>
   </div>
-</div>
 
-<script>
-  // Тема из Telegram
-  try{
-    const tp = window?.Telegram?.WebApp?.themeParams || {};
-    if (tp && (tp.bg_color || tp.secondary_bg_color || tp.text_color)){
-      const root = document.documentElement;
-      if (tp.bg_color)               root.style.setProperty('--m-bg',        '#'+tp.bg_color);
-      if (tp.text_color)             root.style.setProperty('--m-text',      '#'+tp.text_color);
-      if (tp.hint_color)             root.style.setProperty('--m-muted',     '#'+tp.hint_color);
-      if (tp.secondary_bg_color)     root.style.setProperty('--m-card',      '#'+tp.secondary_bg_color);
-      if (tp.section_separator_color)root.style.setProperty('--m-border',    '#'+tp.section_separator_color);
-      if (tp.button_color)           root.style.setProperty('--m-primary',   '#'+tp.button_color);
-    }
-    if (window?.Telegram?.WebApp?.colorScheme === 'dark'){
-      document.documentElement.classList.add('tg-dark');
-    }
-  }catch{}
-
-  // Мини-хелпер открытия чата
-  function openExternal(url){
+  <script>
+    // Тема из Telegram
     try{
-      const tg = window?.Telegram?.WebApp;
-      if (tg?.openTelegramLink){ tg.openTelegramLink(url); return; }
-      if (tg?.openLink){ tg.openLink(url, { try_instant_view:false }); return; }
+      const tp = window?.Telegram?.WebApp?.themeParams || {};
+      if (tp && (tp.bg_color || tp.secondary_bg_color || tp.text_color)){
+        const root = document.documentElement;
+        if (tp.bg_color)               root.style.setProperty('--m-bg',        '#'+tp.bg_color);
+        if (tp.text_color)             root.style.setProperty('--m-text',      '#'+tp.text_color);
+        if (tp.hint_color)             root.style.setProperty('--m-muted',     '#'+tp.hint_color);
+        if (tp.secondary_bg_color)     root.style.setProperty('--m-card',      '#'+tp.secondary_bg_color);
+        if (tp.section_separator_color)root.style.setProperty('--m-border',    '#'+tp.section_separator_color);
+        if (tp.button_color)           root.style.setProperty('--m-primary',   '#'+tp.button_color);
+      }
+      if (window?.Telegram?.WebApp?.colorScheme === 'dark'){
+        document.documentElement.classList.add('tg-dark');
+      }
     }catch{}
-    window.open(url, '_blank', 'noopener');
-  }
 
-  // Поддержка рендеринга Lucide для этого экрана (ждём, пока библиотека загрузится)
-  (function ensureLucide(){
-    if (window.lucide?.createIcons) { try { window.lucide.createIcons(); } catch {} return; }
-    setTimeout(ensureLucide, 50);
-  })();
+    // Мини-хелпер открытия чата
+    function openExternal(url){
+      try{
+        const tg = window?.Telegram?.WebApp;
+        if (tg?.openTelegramLink){ tg.openTelegramLink(url); return; }
+        if (tg?.openLink){ tg.openLink(url, { try_instant_view:false }); return; }
+      }catch{}
+      window.open(url, '_blank', 'noopener');
+    }
 
-  // Проверка режима (не кэшировать)
-  (async () => {
-    let cfg = null;
-    try{
-      const r = await fetch('/.netlify/functions/app-config', { cache:'no-store' });
-      cfg = await r.json();
-    }catch{ cfg = { maintenance:false }; }
+    // Поддержка рендеринга Lucide для этого экрана (ждём, пока библиотека загрузится)
+    (function ensureLucide(){
+      if (window.lucide?.createIcons) { try { window.lucide.createIcons(); } catch {} return; }
+      setTimeout(ensureLucide, 50);
+    })();
 
-    if (cfg?.maintenance){
-      // Показать оверлей
+    // ======== УМНЫЙ GATE ДЛЯ ТЕХРАБОТ (админы проходят) ========
+    async function isAdminUser(cfg){
+      // 1) локальный токен
+      const localToken =
+        (function(){ try{ return localStorage.getItem('admin_api_token') || '' }catch{ return '' } })() ||
+        (window.__ADMIN_API_TOKEN__ || '');
+
+      // 2) Telegram user id (если есть)
+      let tgUserId = null;
+      try { tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || null; } catch {}
+
+      // 3) Белый список из конфига
+      try {
+        if (Array.isArray(cfg?.adminIds) && tgUserId && cfg.adminIds.includes(String(tgUserId))) {
+          return true;
+        }
+      } catch {}
+
+      // 4) Аварийный обход для дев-режима: ?adminbypass=1
+      try { const p = new URLSearchParams(location.search); if (p.get('adminbypass') === '1') return true; } catch {}
+
+      // 5) Серверная проверка (если есть)
+      try {
+        const payload = {
+          token: localToken || null,
+          initData: (function(){ try{ return window.Telegram?.WebApp?.initData || '' }catch{ return '' } })(),
+        };
+        const r = await fetch('/.netlify/functions/can-access-admin', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify(payload),
+        });
+        if (r.ok) {
+          const j = await r.json().catch(()=> ({}));
+          if (j && (j.ok === true || j.allowed === true)) return true;
+        }
+      } catch {}
+
+      // 6) Мягкое правило: если токен есть, а строгая проверка не включена — пускаем
+      if (localToken && !cfg?.strictAdminCheck) return true;
+
+      return false;
+    }
+
+    function showMaintenanceOverlay(cfg){
       window.__APP_MAINTENANCE__ = true;
       const node = document.getElementById('maintenanceScreen');
-      node.classList.add('show');
+      node?.classList?.add('show');
 
-      // Блокируем только приложение, не весь body (иначе кнопки станут некликабельны)
-      document.getElementById('app')?.setAttribute('aria-hidden','true');
-      try { document.getElementById('app').inert = true; } catch {}
+      // Блокируем только приложение
+      const app = document.getElementById('app');
+      if (app){
+        app.setAttribute('aria-hidden','true');
+        try { app.inert = true; } catch {}
+      }
       document.documentElement.classList.add('maintenance-lock');
       document.body.classList.add('maintenance-lock');
 
-      // Кнопка «Написать оператору»
-      const opUrl = cfg.opChat || 'https://t.me/evliseorder';
+      // Кнопка «оператор»
+      const opUrl = cfg?.opChat || 'https://t.me/evliseorder';
       const btn = document.getElementById('mOpBtn');
       if (btn) btn.addEventListener('click', function onClick(e){
         e.preventDefault();
         openExternal(opUrl);
       }, { passive: true });
+
+      try { window.lucide?.createIcons?.(); } catch {}
     }
-  })();
-</script>
-<!-- ▲ Maintenance gate -->
 
+    function showAdminBypassBadge(){
+      try{
+        const b = document.createElement('div');
+        b.textContent = 'MAINTENANCE (admin bypass)';
+        b.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:999999;background:#000c;color:#fff;padding:6px 10px;border-radius:10px;font:12px/1.2 system-ui;backdrop-filter:blur(4px)';
+        document.addEventListener('DOMContentLoaded', ()=> document.body.appendChild(b));
+      }catch{}
+    }
 
+    (async () => {
+      let cfg = null;
+      try{
+        const r = await fetch('/.netlify/functions/app-config', { cache:'no-store' });
+        cfg = await r.json();
+      }catch{ cfg = { maintenance:false }; }
 
+      if (!cfg?.maintenance) return; // нет техработ — пропускаем всех
+
+      const admin = await isAdminUser(cfg);
+      if (admin) {
+        showAdminBypassBadge(); // опционально
+        return; // админов пропускаем
+      }
+
+      // не админ → показываем оверлей
+      showMaintenanceOverlay(cfg);
+    })();
+    // ======== /УМНЫЙ GATE ========
+  </script>
+  <!-- ▲ Maintenance gate -->
 
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
