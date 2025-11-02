@@ -239,20 +239,22 @@ function createProductNode(p){
     }
   }
 
-  // Бейдж 🔥 для новинок — слева сверху (напротив сердечка)
-  if (p.__isNew) {
-    const media = node.querySelector('.card-img') || node;
-    const hot = document.createElement('div');
-    hot.className = 'promo-badges';
-    hot.style.right = 'auto';
-    hot.style.left  = '8px';
-    hot.innerHTML = `
-      <span class="promo-badge hot">
-        <i data-lucide="flame"></i><span>hot</span>
-      </span>
-    `;
-    media.appendChild(hot);
-  }
+// Бейдж 🔥 для новинок — левый верх, без текста
+if (p.__isNew) {
+  const media = node.querySelector('.card-img') || node;
+  const hot = document.createElement('div');
+  hot.className = 'promo-badges';
+  hot.style.right = 'auto';
+  hot.style.left  = '8px';
+  hot.style.top   = '8px';
+  hot.innerHTML = `
+    <span class="promo-badge hot" aria-label="Новинка">
+      <i data-lucide="flame"></i>
+    </span>
+  `;
+  media.appendChild(hot);
+}
+
 
   // Промо-бейджи (скидка/x2)
   const badges = promoBadgesFor(p);
@@ -281,24 +283,25 @@ function createProductNode(p){
 }
 
 /* ================== публичные функции ================== */
+// === ЗАМЕНИТЕ всю функцию renderHome ЭТОЙ ВЕРСИЕЙ ===
 export function renderHome(router){
   const v = document.getElementById('view');
   if (!v) return;
 
-  // ВХОД В HOME: гарантированно снимаем промо-оформление
+  // Снимаем промо-оформление
   try { clearPromoTheme(); } catch {}
 
-  // нормализуем наличие
+  // Нормализуем флаги наличия
   normalizeStockFlags(state.products);
 
-  // если нет товаров — скелет
+  // Если нет товаров — показываем скелет
   if (!Array.isArray(state.products) || state.products.length === 0) {
     showHomeSkeleton();
     try { window.dispatchEvent(new CustomEvent('view:home-mounted')); } catch {}
     return;
   }
 
-  // при первом заходе — мягко актуализируем окно «Новинок» (не влияет на выдачу сразу)
+  // Актуализируем окно «Новинок» (мягко)
   try { getNewestWindow(12); } catch {}
 
   v.innerHTML = `
@@ -306,23 +309,45 @@ export function renderHome(router){
     <div class="grid home-bottom-pad" id="productGrid"></div>`;
   const grid = document.getElementById('productGrid');
 
-  // anti-flicker
+  // anti-flicker для кликов по избранному
   if (!grid.dataset.quietGuardBound){
     ScrollReset.guardNoResetClick(grid, { duration: 1100 });
     grid.dataset.quietGuardBound = '1';
   }
 
+  // Показать скелет (если не подавлен)
   if (shouldShowGridSkeleton()) {
     renderSkeletonGrid(grid, calcSkeletonCount());
   }
 
+  // Нарисовать чипсы (они сами подсветят активную категорию по state.filters.category)
   drawCategoriesChips(router);
 
+  // 🔧 ГЛАВНОЕ: рендерим список по текущему выбранному слагу
   requestAnimationFrame(() => {
-    drawProducts(state.products);
+    const slug = state?.filters?.category || 'all';
+    let list;
+
+    if (slug === 'all') {
+      state.filters.inStock = false;
+      list = state.products;
+    } else if (slug === 'new') {
+      state.filters.inStock = false;
+      list = getNewestWindow(12);
+    } else if (slug === 'instock') {
+      state.filters.inStock = true;
+      list = state.products.filter(isInStock);
+    } else {
+      state.filters.inStock = false;
+      const pool = new Set(expandSlugs(slug));
+      list = state.products.filter(p => pool.has(p.categoryId));
+    }
+
+    drawProducts(list);
     try { window.dispatchEvent(new CustomEvent('view:home-mounted')); } catch {}
   });
 }
+
 
 export function drawCategoriesChips(router){
   const wrap = document.getElementById('catChips');

@@ -96,20 +96,22 @@ function drawProducts(list){
     const priceEl = node.querySelector('.price');
     if (priceEl) priceEl.textContent = priceFmt(p.price);
 
-    // бейдж 🔥 для новинок — слева сверху (напротив сердечка)
-    if (p.__isNew) {
-      const media = node.querySelector('.card-img') || node;
-      const badge = document.createElement('div');
-      badge.className = 'promo-badges';
-      badge.style.right = 'auto';
-      badge.style.left  = '8px';
-      badge.innerHTML = `
-        <span class="promo-badge hot">
-          <i data-lucide="flame"></i><span>hot</span>
-        </span>
-      `;
-      media.appendChild(badge);
-    }
+// бейдж 🔥 для новинок — левый верх, без текста
+if (p.__isNew) {
+  const media = node.querySelector('.card-img') || node;
+  const badge = document.createElement('div');
+  badge.className = 'promo-badges';
+  badge.style.right = 'auto';
+  badge.style.left  = '8px';
+  badge.style.top   = '8px';
+  badge.innerHTML = `
+    <span class="promo-badge hot" aria-label="Новинка">
+      <i data-lucide="flame"></i>
+    </span>
+  `;
+  media.appendChild(badge);
+}
+
 
     const favBtn = node.querySelector('.fav');
     if (favBtn){

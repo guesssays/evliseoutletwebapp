@@ -3040,3 +3040,39 @@ html body .card .price .cur.deal::after{
   --deal-fg: inherit !important;
   --deal-glow: transparent !important;
 }
+/* ===== Новинки: бейдж "огонёк" ===== */
+.card .promo-badges {
+  position: absolute;
+  top: 8px;
+  right: 8px; /* по умолчанию справа; для "hot" мы в JS перекидываем left */
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+  pointer-events: none; /* чтобы не мешал клику по карточке/сердцу */
+}
+
+.card .promo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 700;
+  backdrop-filter: none;
+}
+
+.card .promo-badge.hot {
+  background: #ff6a00;   /* плотный цвет без прозрачности */
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+  padding: 6px;          /* без текста — делаем компактную «пилюлю» */
+}
+
+.card .promo-badge.hot i {
+  width: 16px;
+  height: 16px;
+}
+
+.card .promo-badge.hot span { display: none; } /* на всякий случай, если где-то остался текст */
