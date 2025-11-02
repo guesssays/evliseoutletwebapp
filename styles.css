@@ -3012,3 +3012,12 @@ html body .p-desc{
 #view.promo-page .page-title .promo-back{
   position: static !important; margin-right:10px !important;
 }
+/* === PROMO: вариант А — используем только инсет секции (.section),
+   у дочерних заголовков/подзаголовков убираем дублирующий margin === */
+#view.promo-page .page-title,
+#view.promo-page .page-sub,
+#view.promo-page .page-subtitle,
+#view.promo-page .p-desc{
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
