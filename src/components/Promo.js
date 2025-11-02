@@ -78,17 +78,16 @@ export function renderPromo(router) {
         </a>
       ` : ``}
 
-<div class="section promo-head" style="padding:10px 0 0">
-
-        <div class="page-title" style="margin:0 0 6px; position:relative; padding-left:0">
-          <button class="square-btn neutral promo-back" type="button" aria-label="Назад" title="Назад" style="position:static; width:44px; height:44px; margin-right:10px">
+<div class="section promo-head" style="padding:10px 0 0; text-align:left; display:block">
+   <div class="page-title" style="margin:0 0 6px; display:flex; align-items:center; justify-content:flex-start; padding-left:0">
+     <button class="square-btn neutral promo-back" type="button" aria-label="Назад" title="Назад" style="width:44px; height:44px; margin-right:10px">
             <i data-lucide="chevron-left"></i>
           </button>
           <h1 class="p-title" style="margin:0; font-size:28px; font-weight:800">
             ${escapeHtml(promoTitle())}
           </h1>
         </div>
-        <div class="p-desc" style="margin-top:2px; color:var(--muted)">${escapeHtml(promoSubtitle())}</div>
+         <div class="p-desc" style="margin-top:2px; color:var(--muted); text-align:left">${escapeHtml(promoSubtitle())}</div>
       </div>
 
       <!-- сетка промо-товаров -->
