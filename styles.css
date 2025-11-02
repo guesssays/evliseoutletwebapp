@@ -2780,7 +2780,7 @@ html body #view.promo-page .grid{
 }
 /* === HARD ALIGN (grid-left 18px): back arrow, title, subtitle === */
 :root{
-  --content-x: 18px;   /* тот же инсет, что у .view/.grid */
+  --content-x: 0px;   /* тот же инсет, что у .view/.grid */
   --back-btn-w: 44px;  /* ширина квадратной кнопки */
   --back-btn-gap: 10px;
 }
