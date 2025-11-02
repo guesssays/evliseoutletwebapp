@@ -17,9 +17,6 @@ import {
 
 /**
  * Страница «Акции»
- * - Рендерим ТОЛЬКО акционные товары (скидка или x2 кэшбек).
- * - Если акционных нет — показываем пустое состояние.
- * - Оформление/фон задаётся через applyPromoTheme() и снимается при уходе.
  */
 export function renderPromo(router) {
   if (!promoIsActive()) {
@@ -28,10 +25,7 @@ export function renderPromo(router) {
     return;
   }
 
-  // гарантируем тестовые данные при оффлайне
   try { ensureTestPromoSeed(); } catch {}
-
-  // тема промо (фон/токены)
   applyPromoTheme(true);
 
   const v = document.getElementById('view');
@@ -44,23 +38,25 @@ export function renderPromo(router) {
   const banners = getPromoBanners();
   const topBanner = banners?.[0];
 
-  // === локальные стили только для промо-шапки (новые классы, без конфликтов) ===
-  // оставляем инлайном, чтобы точно переопределить и не зависеть от глобальных css
-  const HEAD_PAD_X = 12; // меньше, чтобы попасть в твою сетку
+  // === локальные стили для промо-шапки (без конфликтов с глобальными) ===
+  const HEAD_PAD_X = 8; // ← уменьшил боковой отступ (было 12)
   const headStyles = `
-    padding:${8}px ${HEAD_PAD_X}px; 
+    padding:${16}px ${HEAD_PAD_X}px;   /* ↑ увеличил вертикальные отступы */
     display:flex; align-items:center; gap:10px;
   `;
   const backBtnStyles = `
-    width:40px; height:40px; 
+    width:40px; height:40px;
     display:grid; place-items:center;
-    background:var(--paper); 
-    border:1px solid var(--stroke); 
+    background:var(--paper);
+    border:1px solid var(--stroke);
     border-radius:12px;
     box-shadow:0 1px 2px rgba(0,0,0,.04);
   `;
   const titleStyles = `margin:0; font-size:28px; font-weight:800;`;
-  const subStyles   = `margin:4px ${HEAD_PAD_X}px 10px; color:var(--muted);`;
+  const subStyles   = `
+    margin:${8}px ${HEAD_PAD_X}px ${14}px;  /* ↑ больше отступ сверху/снизу и меньше слева */
+    color:var(--muted);
+  `;
 
   // Пустое состояние
   if (promoList.length === 0) {
@@ -71,7 +67,6 @@ export function renderPromo(router) {
             <img src="${topBanner.img}" alt="${escapeHtml(topBanner.alt || 'Акция')}" loading="eager" decoding="async">
           </a>` : ``}
 
-        <!-- НОВАЯ шапка -->
         <div class="promo-head2" style="${headStyles}">
           <button class="promo-back2" type="button" aria-label="Назад" title="Назад" style="${backBtnStyles}">
             <i data-lucide="chevron-left"></i>
@@ -104,7 +99,6 @@ export function renderPromo(router) {
         </a>
       ` : ``}
 
-      <!-- НОВАЯ шапка: белая кнопка, компактные вертикальные паддинги, меньшие боковые отступы -->
       <div class="promo-head2" style="${headStyles}">
         <button class="promo-back2" type="button" aria-label="Назад" title="Назад" style="${backBtnStyles}">
           <i data-lucide="chevron-left"></i>
@@ -129,12 +123,10 @@ export function renderPromo(router) {
     grid.innerHTML = promoList.map(renderCard).join('');
     try { window.lucide?.createIcons?.(); } catch {}
 
-    // Перехват «сердечек» без перехода в карточку
     if (!grid.dataset.favHandlerBound) {
       grid.addEventListener('click', (ev) => {
         const favBtn = ev.target?.closest?.('.fav, button.fav');
         if (!favBtn) return;
-
         ev.preventDefault();
 
         const card = favBtn.closest('.card, a.card');
@@ -161,7 +153,6 @@ export function renderPromo(router) {
 }
 
 /* ===== wire helpers ===== */
-
 function wirePromoHead(root){
   const backBtn = root.querySelector('.promo-back2');
   backBtn?.addEventListener('click', (e) => {
@@ -171,7 +162,6 @@ function wirePromoHead(root){
 }
 
 /* ===== render helpers ===== */
-
 function renderCard(p) {
   const di = discountInfo(p);
   const price = effectivePrice(p);
