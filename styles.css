@@ -1965,7 +1965,7 @@ html body .img-skel::after{
   background-image:
     radial-gradient(1100px 700px at 8% -8%, rgba(255, 120, 120, .08) 0%, rgba(0,0,0,0) 55%),
     radial-gradient(1100px 700px at 100% 0%, rgba(255, 196,   0, .06) 0%, rgba(0,0,0,0) 55%),
-    url('assets/promo/newyear/xmas-pattern3.svg'),
+    url('assets/promo/newyear/xmas-pattern5.svg'),
     linear-gradient(180deg, var(--xmas-bg-2) 0%, var(--xmas-bg) 100%);
   background-repeat: no-repeat, no-repeat, repeat, no-repeat;
   background-size: auto, auto, 420px, auto;
@@ -2174,7 +2174,7 @@ html body .img-skel::after{
   background:
     radial-gradient(1200px 800px at 10% -10%, rgba(255,255,255,.08) 0%, rgba(255,255,255,0) 55%),
     radial-gradient(1200px 800px at 100% 0%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 55%),
-    url('assets/promo/newyear/xmas-pattern3.svg'),
+    url('assets/promo/newyear/xmas-pattern5.svg'),
     linear-gradient(180deg, var(--xmas-bg-2) 0%, var(--xmas-bg) 100%);
   background-repeat: no-repeat, no-repeat, repeat, no-repeat;
   background-size: auto, auto, 420px, auto;

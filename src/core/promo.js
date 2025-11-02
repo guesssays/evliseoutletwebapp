@@ -17,7 +17,7 @@ function defaults() {
       pageBg:      '#3e0a0a',
       pageBg2:     '#5a0f12',
       // внимание: в проекте сохранялась эта строка дважды — оставляем один корректный ключ:
-      pageBgImg:   'assets/promo/newyear/xmas-pattern3.svg',
+      pageBgImg:   'assets/promo/newyear/xmas-pattern5.svg',
       pageTint:    'rgba(255,255,255,.03)',
 
       gridBg:      'transparent',

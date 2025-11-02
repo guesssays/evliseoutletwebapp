@@ -11,7 +11,7 @@ import { ScrollReset } from '../core/scroll-reset.js';
 import { Loader } from '../ui/loader.js';
 import { toast } from '../core/toast.js';
 
-// ⬇️ promo-хелперы: используем для блока цен и CTA
+// ⬇️ promo-хелперы
 import {
   isX2CashbackProduct,
   discountInfo,
@@ -224,6 +224,36 @@ function isReadyStockProduct(p){
   return false;
 }
 
+// =========== PRICE INLINE (встроено в файл) =========== // ⬅️ NEW
+function ensurePriceInlineStyles(){ // ⬅️ NEW
+  if (document.getElementById('ev-price-inline-css')) return;
+  const css = `
+  .price-inline{ display:inline-flex; align-items:baseline; gap:8px; font-variant-numeric:tabular-nums; }
+  .price-inline__new{ font-weight:900; line-height:1; font-size:clamp(14px,4.6vw,16px); }
+  .price-inline__old{ font-weight:800; line-height:1; font-size:clamp(12px,3.8vw,13px); opacity:.6; text-decoration:line-through; text-decoration-thickness:2px; text-decoration-color:rgba(239,68,68,.9); }
+  .price-inline__off{ font-weight:900; font-size:11px; line-height:1; padding:3px 6px; border-radius:999px; background:#ef4444; color:#fff; border:1px solid rgba(0,0,0,.06); }
+  @media (prefers-color-scheme:dark){
+    .price-inline__old{ opacity:.7; text-decoration-color:rgba(239,68,68,.9); }
+    .price-inline__off{ border-color:rgba(255,255,255,.18); }
+  }`;
+  const style = document.createElement('style');
+  style.id = 'ev-price-inline-css';
+  style.textContent = css;
+  document.head.appendChild(style);
+}
+function priceInlineHTML(product){ // ⬅️ NEW
+  const di = discountInfo(product);
+  if (!di) {
+    return `<span class="price-inline__new">${priceFmt(effectivePrice(product))}</span>`;
+  }
+  return `
+    <span class="price-inline__new">${priceFmt(di.newPrice)}</span>
+    <span class="price-inline__old">${priceFmt(di.oldPrice)}</span>
+    <span class="price-inline__off">-${di.percent}%</span>
+  `;
+}
+// ======================================================= // ⬅️ NEW
+
 // ⬇️ используем эффективную цену (учитывает скидку)
 function buildOrderPrefillMessage(p, { size, color } = {}){
   const lines = [];
@@ -280,7 +310,7 @@ function openOrderChatWithMessage(text){
   openUrl(shareUrl);
 }
 
-/* ========= БЛОК ЦЕНЫ ДЛЯ СКИДОК ========= */
+/* ========= БЛОК ЦЕНЫ ДЛЯ СКИДОК (для страницы товара) ========= */
 function priceBlockHTML(p){
   const di = discountInfo(p); // null если нет скидки
   if (!di) return ''; // показываем только для скидочных товаров
@@ -301,12 +331,14 @@ export async function renderProduct({id}){
 
   try { ScrollReset.request(); } catch {}
 
+  ensurePriceInlineStyles(); // ⬅️ NEW: подключаем стили для мини-цены
+
   await Loader.wrap(async () => {
     const favActive = isFav(p.id);
     const readyMode = isReadyStockProduct(p);
 
-    const effPrice = effectivePrice(p);     // ⬅️ единая «эффективная» цена для кнопок/текста
-    const di = discountInfo(p);             // ⬅️ если есть, рендерим красивый блок под заголовком
+    const effPrice = effectivePrice(p);
+    const di = discountInfo(p);
 
     activateProductFixHeader({
       isFav: () => isFav(p.id),
@@ -350,7 +382,7 @@ export async function renderProduct({id}){
         .p-title .p-cat{ font-weight:800; opacity:.55; }
         @media (prefers-color-scheme:dark){ .p-title .p-cat{ opacity:.65; } }
 
-        /* ===== Блок цены для скидочных товаров ===== */
+        /* ===== Блок цены на странице товара ===== */
         .p-price{
           display:inline-flex; align-items:baseline; gap:10px;
           margin-top:6px; margin-bottom:6px;
@@ -749,7 +781,7 @@ export async function renderProduct({id}){
   }, 'Загружаем товар…');
 }
 
-/* ===== карточки «Похожие» — ленивые картинки ===== */
+/* ===== карточки «Похожие» — ленивые картинки + ЦЕНА ===== */
 function drawRelatedCards(list){
   const grid = document.getElementById('relatedGrid');
   if (!grid) return;
@@ -785,10 +817,11 @@ function drawRelatedCards(list){
         subEl.textContent = p.categoryLabel || labelById;
       }
 
-      // (здесь оставил как было: на «Похожих» показываем базовую цену.
-      // Если хочешь — могу тоже сделать двойную цену)
-      const priceEl = node.querySelector('.price');
-      if (priceEl) priceEl.textContent = priceFmt(p.price);
+      // ⬇️ ЦЕНА: мини-компонент, учитывает скидки
+      const priceEl = node.querySelector('.price, .price-inline');
+      if (priceEl) {
+        priceEl.innerHTML = `<span class="price-inline">${priceInlineHTML(p)}</span>`;
+      }
 
       const favBtn = node.querySelector('button.fav, .fav');
       if (favBtn){
@@ -820,7 +853,8 @@ function drawRelatedCards(list){
       a.innerHTML = `
         <img class="lazy" src="${BLANK}" data-src="${p.images?.[0]||''}" alt="${escapeHtml(p.title)}">
         <div class="title">${escapeHtml(p.title)}</div>
-        <div class="price">${priceFmt(p.price)}</div>
+        <div class="subtitle">${escapeHtml(p.categoryLabel || categoryNameBySlug(p.categoryId) || '')}</div>
+        <div class="price"><span class="price-inline">${priceInlineHTML(p)}</span></div>
       `;
       frag.appendChild(a);
     }
