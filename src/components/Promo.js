@@ -39,7 +39,7 @@ export function renderPromo(router) {
   const topBanner = banners?.[0];
 
   // === локальные стили (только для промо-страницы) ===
-  const HEAD_PAD_X = 6; // ещё меньше слева
+  const HEAD_PAD_X = 0; // ещё меньше слева
   // отступы внешнего контейнера шапки от баннера и от сетки
   const WRAP_MARGIN_TOP = 18;
   const WRAP_MARGIN_BOTTOM = 16;
