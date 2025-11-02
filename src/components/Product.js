@@ -10,7 +10,13 @@ import {
 import { ScrollReset } from '../core/scroll-reset.js';
 import { Loader } from '../ui/loader.js';
 import { toast } from '../core/toast.js';
-import { isX2CashbackProduct } from '../core/promo.js'; // ⬅️ добавлено
+
+// ⬇️ promo-хелперы: используем для блока цен и CTA
+import {
+  isX2CashbackProduct,
+  discountInfo,
+  effectivePrice,
+} from '../core/promo.js';
 
 /* ====== КОНСТАНТЫ КЭШБЕКА/РЕФЕРАЛОВ ====== */
 const CASHBACK_RATE_BASE  = 0.05;
@@ -218,12 +224,14 @@ function isReadyStockProduct(p){
   return false;
 }
 
+// ⬇️ используем эффективную цену (учитывает скидку)
 function buildOrderPrefillMessage(p, { size, color } = {}){
   const lines = [];
+  const eff = effectivePrice(p);
   lines.push('Здравствуйте! Хочу оформить заказ на товар в наличии.');
   lines.push(`Товар: ${p.title}`);
   if (p.slug) lines.push(`Артикул/slug: ${p.slug}`);
-  lines.push(`Цена: ${priceFmt(p.price)}`);
+  lines.push(`Цена: ${priceFmt(eff)}`);
   if (size)  lines.push(`Размер: ${size}`);
   if (color) lines.push(`Цвет: ${color}`);
   try {
@@ -272,6 +280,20 @@ function openOrderChatWithMessage(text){
   openUrl(shareUrl);
 }
 
+/* ========= БЛОК ЦЕНЫ ДЛЯ СКИДОК ========= */
+function priceBlockHTML(p){
+  const di = discountInfo(p); // null если нет скидки
+  if (!di) return ''; // показываем только для скидочных товаров
+
+  return `
+    <div class="p-price" role="group" aria-label="Цена со скидкой">
+      <span class="p-price__new" aria-label="Цена со скидкой">${priceFmt(di.newPrice)}</span>
+      <span class="p-price__old" aria-label="Старая цена">${priceFmt(di.oldPrice)}</span>
+      <span class="p-price__off" aria-label="Размер скидки">-${di.percent}%</span>
+    </div>
+  `;
+}
+
 /* ========= РЕНДЕР СТРАНИЦЫ ТОВАРА ========= */
 export async function renderProduct({id}){
   const p = state.products.find(x=> String(x.id)===String(id));
@@ -282,6 +304,9 @@ export async function renderProduct({id}){
   await Loader.wrap(async () => {
     const favActive = isFav(p.id);
     const readyMode = isReadyStockProduct(p);
+
+    const effPrice = effectivePrice(p);     // ⬅️ единая «эффективная» цена для кнопок/текста
+    const di = discountInfo(p);             // ⬅️ если есть, рендерим красивый блок под заголовком
 
     activateProductFixHeader({
       isFav: () => isFav(p.id),
@@ -324,6 +349,29 @@ export async function renderProduct({id}){
         .p-title .p-name{ color:var(--text); }
         .p-title .p-cat{ font-weight:800; opacity:.55; }
         @media (prefers-color-scheme:dark){ .p-title .p-cat{ opacity:.65; } }
+
+        /* ===== Блок цены для скидочных товаров ===== */
+        .p-price{
+          display:inline-flex; align-items:baseline; gap:10px;
+          margin-top:6px; margin-bottom:6px;
+        }
+        .p-price__new{
+          font-weight:900; font-size:clamp(18px,6vw,24px); line-height:1;
+        }
+        .p-price__old{
+          font-weight:800; font-size:clamp(13px,3.8vw,16px); line-height:1;
+          opacity:.6; text-decoration:line-through; text-decoration-thickness: 2px;
+          text-decoration-color: rgba(239,68,68,.9);
+        }
+        .p-price__off{
+          font-weight:900; font-size:12px; line-height:1;
+          padding:4px 8px; border-radius:999px;
+          background:#ef4444; color:#fff; border:1px solid rgba(0,0,0,.06);
+        }
+        @media (prefers-color-scheme:dark){
+          .p-price__old{ opacity:.7; text-decoration-color: rgba(239,68,68,.9); }
+          .p-price__off{ border-color: rgba(255,255,255,.18); }
+        }
 
         .p-ready{
           display:inline-flex; align-items:center; gap:8px;
@@ -437,6 +485,8 @@ export async function renderProduct({id}){
             <span class="p-name">${escapeHtml(p.title)}</span>
             ${catLabel ? `<span class="p-cat">${escapeHtml(catLabel)}</span>` : ``}
           </div>
+
+          ${di ? priceBlockHTML(p) : ''}
 
           ${readyMode ? `
           <div class="p-ready" role="note" aria-label="В наличии">
@@ -629,7 +679,7 @@ export async function renderProduct({id}){
       const msg = buildOrderPrefillMessage(p, { size, color });
       window.setTabbarCTA?.({
         id: 'ctaOrder',
-        html: `<i data-lucide="send"></i><span>Оформить заказ&nbsp;|&nbsp;${priceFmt(p.price)}</span>`,
+        html: `<i data-lucide="send"></i><span>Оформить заказ&nbsp;|&nbsp;${priceFmt(effPrice)}</span>`,
         onClick(){
           openOrderChatWithMessage(msg);
         }
@@ -640,7 +690,7 @@ export async function renderProduct({id}){
       const needPick = needSize && !size;
       window.setTabbarCTA?.({
         id: 'ctaAdd',
-        html: `<i data-lucide="shopping-bag"></i><span>${needPick ? 'Выберите размер' : 'Добавить в корзину&nbsp;|&nbsp;'+priceFmt(p.price)}</span>`,
+        html: `<i data-lucide="shopping-bag"></i><span>${needPick ? 'Выберите размер' : 'Добавить в корзину&nbsp;|&nbsp;'+priceFmt(effPrice)}</span>`,
         onClick(){
           if (needSize && !size){
             toast('Выберите размер', { variant: 'info', icon: 'ruler' });
@@ -735,6 +785,8 @@ function drawRelatedCards(list){
         subEl.textContent = p.categoryLabel || labelById;
       }
 
+      // (здесь оставил как было: на «Похожих» показываем базовую цену.
+      // Если хочешь — могу тоже сделать двойную цену)
       const priceEl = node.querySelector('.price');
       if (priceEl) priceEl.textContent = priceFmt(p.price);
 
@@ -879,7 +931,7 @@ function showReadyHelpModal(p){
       </div>
       <div class="rd-row">
         <i data-lucide="check-circle-2"></i>
-        <div class="muted">Товар: <b>${escapeHtml(p.title)}</b>${p.slug?`, артикул: <b>${escapeHtml(p.slug)}</b>`:''}. Цена: <b>${priceFmt(p.price)}</b>.</div>
+        <div class="muted">Товар: <b>${escapeHtml(p.title)}</b>${p.slug?`, артикул: <b>${escapeHtml(p.slug)}</b>`:''}. Цена: <b>${priceFmt(effectivePrice(p))}</b>.</div>
       </div>
     </div>
   `;
