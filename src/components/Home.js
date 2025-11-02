@@ -1,5 +1,4 @@
-// src/components/Home.js
-import { state, isFav, toggleFav } from '../core/state.js';
+import { state, isFav, toggleFav, k } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { applyFilters } from './Filters.js';
 import { ScrollReset } from '../core/scroll-reset.js';
@@ -10,7 +9,7 @@ import {
   discountInfo,
   effectivePrice,
   shouldShowOnHome,
-  clearPromoTheme,              // ← важно: на вход в Home снимаем тему промо
+  clearPromoTheme,
 } from '../core/promo.js';
 
 /* ================== helpers: категории ================== */
@@ -48,6 +47,33 @@ function normalizeStockFlags(products){
       p.inStock = isInStock(p);
     }
   }
+}
+
+/* ===== Новинки: rolling-окно на 12 ===== */
+function getNewestWindow(limit = 12){
+  const products = Array.isArray(state.products) ? state.products.slice() : [];
+  const idsNow = products.map(p => String(p.id));
+
+  let win = [];
+  try { win = JSON.parse(localStorage.getItem(k('news_window')) || '[]'); } catch {}
+  if (!Array.isArray(win)) win = [];
+
+  const seen = new Set(win);
+  const incoming = [];
+  for (const id of idsNow){
+    if (!seen.has(id)) incoming.push(id);
+  }
+
+  const preserved = win.filter(id => idsNow.includes(id));
+  const updated = [...incoming, ...preserved].slice(0, limit);
+
+  try { localStorage.setItem(k('news_window'), JSON.stringify(updated)); } catch {}
+
+  const byId = new Map(products.map(p => [String(p.id), p]));
+  return updated.map(id => {
+    const p = byId.get(id);
+    return p ? { ...p, __isNew: true } : null;
+  }).filter(Boolean);
 }
 
 /* ===== skeleton suppressor ===== */
@@ -201,21 +227,34 @@ function createProductNode(p){
     subEl.textContent = label || (p.inStock ? 'В наличии' : '');
   }
 
-// Цена: только текущее значение, без процента-чипа
-const priceEl = node.querySelector('.price');
-if (priceEl){
-  const di = discountInfo(p);
-  const eff = priceFmt(effectivePrice(p));
-  if (di) {
-    priceEl.innerHTML = `<span class="cur deal">${eff}</span>`;
-  } else {
-    priceEl.innerHTML = `<span class="cur">${eff}</span>`;
+  // Цена: только текущее значение, без процента-чипа (скидки — другим слоем)
+  const priceEl = node.querySelector('.price');
+  if (priceEl){
+    const di = discountInfo(p);
+    const eff = priceFmt(effectivePrice(p));
+    if (di) {
+      priceEl.innerHTML = `<span class="cur deal">${eff}</span>`;
+    } else {
+      priceEl.innerHTML = `<span class="cur">${eff}</span>`;
+    }
   }
-}
 
+  // Бейдж 🔥 для новинок — слева сверху (напротив сердечка)
+  if (p.__isNew) {
+    const media = node.querySelector('.card-img') || node;
+    const hot = document.createElement('div');
+    hot.className = 'promo-badges';
+    hot.style.right = 'auto';
+    hot.style.left  = '8px';
+    hot.innerHTML = `
+      <span class="promo-badge hot">
+        <i data-lucide="flame"></i><span>hot</span>
+      </span>
+    `;
+    media.appendChild(hot);
+  }
 
-
-  // Промо-бейджи
+  // Промо-бейджи (скидка/x2)
   const badges = promoBadgesFor(p);
   if (badges.length){
     const media = node.querySelector('.card-img') || node;
@@ -259,6 +298,9 @@ export function renderHome(router){
     return;
   }
 
+  // при первом заходе — мягко актуализируем окно «Новинок» (не влияет на выдачу сразу)
+  try { getNewestWindow(12); } catch {}
+
   v.innerHTML = `
     <div class="chips" id="catChips"></div>
     <div class="grid home-bottom-pad" id="productGrid"></div>`;
@@ -288,7 +330,7 @@ export function drawCategoriesChips(router){
 
   const mk=(slug, name, active)=>`<button class="chip ${active?'active':''}" data-slug="${slug}">${name}</button>`;
 
-  // helpers для сортировки и фильтра
+  // helpers для сортировки и фильтра верхних групп + исключаем «Другое»
   const isOther = (g)=>{
     const s = (g.slug||'').toLowerCase();
     const n = (g.name||'').toLowerCase();
@@ -307,7 +349,6 @@ export function drawCategoriesChips(router){
     .filter(g => !isOther(g))
     .sort((a,b)=> sortKey(a) - sortKey(b));
 
-  // текущая выбранная
   const cur = state.filters?.category || 'all';
 
   // — строго заданный порядок чипсов:
@@ -344,7 +385,7 @@ export function drawCategoriesChips(router){
         list = state.products;
         state.filters.inStock = false;
       } else if (slug === 'new') {
-        list = state.products.slice(0, 24);
+        list = getNewestWindow(12);   // <= максимум 12
         state.filters.inStock = false;
       } else if (slug === 'instock') {
         state.filters.inStock = true;
