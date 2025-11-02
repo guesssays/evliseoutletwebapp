@@ -2778,3 +2778,46 @@ html body #view.promo-page .grid{
 .p-desc{
   margin-left: 18px !important;
 }
+/* === HARD ALIGN (grid-left 18px): back arrow, title, subtitle === */
+:root{
+  --content-x: 18px;   /* тот же инсет, что у .view/.grid */
+  --back-btn-w: 44px;  /* ширина квадратной кнопки */
+  --back-btn-gap: 10px;
+}
+
+/* 1) Заголовочная строка: слева как у сетки, без центрирования */
+html body .page-title{
+  margin: 10px var(--content-x) 12px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: var(--back-btn-gap) !important;
+  text-align: left !important;            /* ломаем возможный center */
+}
+
+/* 2) Кнопка «назад» — в обычном потоке, без абсолютов и трансформов */
+html body .page-title .square-btn{
+  position: static !important;
+  flex: 0 0 var(--back-btn-w) !important;
+  width: var(--back-btn-w) !important;
+  height: var(--back-btn-w) !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+/* 3) Сам заголовок — занимает оставшееся, без центрирования */
+html body .page-title h1{
+  margin: 0 !important;
+  min-width: 0 !important;
+  text-align: left !important;
+}
+
+/* 4) Подзаголовок/описание — на той же левой линии, что и сетка */
+html body .page-sub,
+html body .page-subtitle,
+html body .p-desc{
+  margin-left:  var(--content-x) !important;
+  margin-right: var(--content-x) !important;
+  text-align: left !important;
+}
