@@ -2726,3 +2726,33 @@ html body #view.promo-page .grid{
 @media (max-width: 380px){
   html body #view.promo-page .grid{ grid-template-columns: 1fr !important; }
 }
+/* === GRID FULL-BLEED (убираем лишние поля у товарной ленты) === */
+
+/* Домашняя и промо-страницы: .view без боковых инкетов */
+html.route-home .view,
+#view.promo-page.view,
+#view.promo-page .view{
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Любые товарные гриды — без внутренних отступов/смещений */
+#productGrid,
+.product-grid,
+#view.promo-page #productGrid,
+#view.promo-page .product-grid{
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Сетка ровно в край экрана (без сужения от min-content) */
+#productGrid,
+.product-grid{
+  width: 100% !important;
+}
+#productGrid > *,
+.product-grid > *{
+  min-width: 0 !important;
+}
