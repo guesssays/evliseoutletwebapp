@@ -303,13 +303,21 @@ export async function handler(event) {
             ? withUid.cart.reduce((s,x)=> s + (Number(x.price||0) * (Number(x.qty||0)||1)), 0)
             : Number(withUid?.total||0);
 
+        // Передаём на бэк срез корзины, достаточный для расчёта продуктового x2
         await callLoyalty('accrue', {
           uid: String(withUid.userId),
           orderId: String(id),
           total: cartTotal,
           currency: String(withUid?.currency || 'UZS'),
-          shortId: withUid?.shortId || null
-        });
+          shortId: withUid?.shortId || null,
+          items: Array.isArray(withUid?.cart)
+            ? withUid.cart.map(r => ({
+                price: Number(r?.price || 0),
+                qty:   Number(r?.qty   || 0),
+               x2:    !!r?.x2
+              }))
+            : []
+       });
       } catch (e) {
         console.warn('[orders] loyalty.accrue failed:', e?.message||e);
       }

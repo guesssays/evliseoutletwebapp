@@ -988,7 +988,9 @@ function openPayModal({ items, address, phone, payer, totalRaw, bill }){
             qty: x.qty,
             size: x.size || null,
             color: x.color || null,
-            images: x.product.images || []
+            images: x.product.images || [],
+            // ⬇️ очень важно: помечаем строки, которые дают продуктовый x2
+            x2: !!isX2CashbackProduct(x.product)
           })),
           productId: first?.product?.id || null,
           size: first?.size || null,

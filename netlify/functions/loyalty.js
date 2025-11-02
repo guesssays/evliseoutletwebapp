@@ -470,9 +470,31 @@ function makeCore(readAll, writeAll){
       if (!inviter && db?.referrals?.inviteesFirst?.[uid]) delete db.referrals.inviteesFirst[uid];
 
       const eligibleForBoost = !!inviter && !wasFirstAlready(db, uid);
-      const buyerRate = CFG.BASE_RATE * (eligibleForBoost ? CFG.REF_FIRST_MULTIPLIER : 1);
-      const newBuyerPts = Math.floor(total * buyerRate);
-      const newRefPts   = inviter ? Math.floor(total * CFG.REFERRER_EARN_RATE) : 0;
+
+      // Если пришли построчные позиции, считаем базу построчно с учётом продуктового x2
+      // (ровно как на клиенте: floor(5% * lineTotal) и затем * (x2 ? 2 : 1))
+      const items = Array.isArray(arguments?.[3]?.items) ? arguments[3].items : (typeof items !== 'undefined' ? items : []);
+      let baseFromItems = 0;
+      if (Array.isArray(items) && items.length) {
+        for (const it of items) {
+          const lineTotal = Math.max(0, Number(it?.price || 0)) * Math.max(0, Number(it?.qty || 0));
+          if (lineTotal <= 0) continue;
+          const baseLine = Math.floor(lineTotal * CFG.BASE_RATE);
+          baseFromItems += baseLine * (it?.x2 ? 2 : 1);
+        }
+      }
+
+      // Если позиций нет, падаем обратно на "целым чеком"
+      // (тут продуктовый x2 не будет учтён — как раньше)
+      let newBuyerPts = baseFromItems > 0
+        ? baseFromItems
+        : Math.floor(total * CFG.BASE_RATE);
+
+      // x2 за первый заказ по рефералке (стекается с продуктовым)
+      if (eligibleForBoost) newBuyerPts = newBuyerPts * CFG.REF_FIRST_MULTIPLIER;
+
+      // Рефералу всегда начисляем от "total" по фиксированной ставке
+      const newRefPts = inviter ? Math.floor(total * CFG.REFERRER_EARN_RATE) : 0;
 
       const prevBuyerPts = existing?.accrual?.buyer || 0;
       const prevRefPts   = existing?.accrual?.refPts || 0;
