@@ -3021,3 +3021,56 @@ html body .p-desc{
   margin-left: 0 !important;
   margin-right: 0 !important;
 }
+/* === DEAL PRICE: black text on red pill + fire icon ================== */
+:root{
+  --deal-pill-bg: #ef4444;      /* тот же красный, что у промо-бейджа */
+  --deal-pill-fg: #121111;      /* чёрный текст как в дефолте */
+}
+
+.card .price{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* базовая цена — оставляем чёрной */
+.card .price .cur{ color: var(--text,#121111); }
+
+/* обнуляем прежние стили "deal", если где-то ниже были */
+.card .price .cur.deal{
+  color: var(--deal-pill-fg) !important;
+  filter: none !important;
+  text-shadow: none !important;
+  position: static !important;
+}
+
+/* собственно «пилюля» под скидочной ценой */
+.card .price .deal-pill{
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--deal-pill-bg);
+  color: var(--deal-pill-fg);
+  line-height: 1;
+  border: 1px solid rgba(255,255,255,.22);
+  box-shadow: 0 6px 16px rgba(0,0,0,.16);
+  white-space: nowrap;
+}
+
+/* огонёк справа от цены */
+.card .price .i-fire{
+  width: 16px; height: 16px;
+  display: inline-block;
+  color: var(--deal-pill-bg);       /* красный огонёк */
+  vertical-align: middle;
+}
+.card .price .i-fire svg{
+  width: 16px; height: 16px;
+  stroke: currentColor;
+  fill: none;
+}
+
+/* очень узкие экраны — чуть компактнее пилюля */
+@media (max-width: 360px){
+  .card .price .deal-pill{ padding: 3px 8px; }
+}

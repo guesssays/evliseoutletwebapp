@@ -201,17 +201,19 @@ function createProductNode(p){
     subEl.textContent = label || (p.inStock ? 'В наличии' : '');
   }
 
-// Цена: только текущее значение, без процента-чипа
+// Цена: только текущее значение; при скидке — красная пилюля + огонёк
 const priceEl = node.querySelector('.price');
 if (priceEl){
   const di = discountInfo(p);
   const eff = priceFmt(effectivePrice(p));
   if (di) {
-    priceEl.innerHTML = `<span class="cur deal">${eff}</span>`;
+    priceEl.innerHTML =
+      `<span class="cur deal"><span class="deal-pill">${eff}</span><i class="i-fire" data-lucide="flame"></i></span>`;
   } else {
     priceEl.innerHTML = `<span class="cur">${eff}</span>`;
   }
 }
+
 
 
 
