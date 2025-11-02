@@ -2753,3 +2753,28 @@ html body #view.promo-page .grid{
 @media (max-width: 380px){
   #view.promo-page .grid{ grid-template-columns: 1fr !important; }
 }
+/* === Align back-arrow, title and subtitle to grid's left edge (18px) === */
+
+/* 1) Заголовок страницы на той же линии, что и сетка (18px) */
+.page-title{
+  position: relative;
+  margin-left: 18px !important;
+  margin-right: 18px !important;
+  /* резерв под кнопку: 44px (кнопка) + 10px (зазор) */
+  padding-left: calc(44px + 10px) !important;
+}
+
+/* 2) Кнопка «назад» ровно по левому краю сетки (18px) */
+.page-title .square-btn{
+  position: absolute !important;
+  left: 18px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+/* 3) Подзаголовки/описания под заголовком — та же левая линия (18px) */
+.page-sub,
+.page-subtitle,
+.p-desc{
+  margin-left: 18px !important;
+}
