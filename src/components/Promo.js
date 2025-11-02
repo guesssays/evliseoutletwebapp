@@ -166,12 +166,16 @@ export function renderPromo(router) {
   bindCleanup();
 }
 
-/* ===== wire helpers ===== */
 function wirePromoHead(root){
   const backBtn = root.querySelector('.promo-back2');
   backBtn?.addEventListener('click', (e) => {
     e.preventDefault();
-    try { window.__forceHomeAllOnce = Date.now(); } catch {}
+    try {
+      state.filters = state.filters || {};
+      state.filters.category = 'all';          // ✅ сразу сбрасываем
+      window.__forceHomeAllOnce = Date.now();  // ✅ даём Home понять, что это «возврат»
+    } catch {}
+
     // Если есть история — идём назад, иначе явно на главную
     if (history.length > 1) {
       history.back();
@@ -180,6 +184,7 @@ function wirePromoHead(root){
     }
   });
 }
+
 
 /* ===== render helpers ===== */
 function renderCard(p) {
@@ -254,8 +259,11 @@ function bindCleanup() {
   const cleanup = () => {
     if (!location.hash.startsWith('#/promo')) {
       try {
-        window.__forceHomeAllOnce = Date.now(); // одноразовый форс для Home
+        state.filters = state.filters || {};
+        state.filters.category = 'all';          // ✅ гарантированно
+        window.__forceHomeAllOnce = Date.now();  // ✅ флажок для Home
       } catch {}
+
       try { clearPromoTheme(); } catch {}
       const v = document.getElementById('view');
       v?.classList?.remove?.('promo-page');

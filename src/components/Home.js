@@ -314,19 +314,20 @@ export function renderHome(router){
   const v = document.getElementById('view');
   if (!v) return;
 
-  // === одноразовый форс-сброс категории на "all" после выхода с промо ===
-  try {
-    const h = location.hash || '';
-    const isHome = (h === '#/' || h === '' || h.startsWith('#/home'));
-    const forcedAt = Number(window.__forceHomeAllOnce || 0);
-    const forceRecent = forcedAt && (Date.now() - forcedAt < 4000); // 4s окно
-    const cameFromPromo = (window.__lastHash === '#/promo');
-    if (isHome && (forceRecent || cameFromPromo)) {
-      state.filters = state.filters || {};
-      state.filters.category = 'all';
-      window.__forceHomeAllOnce = 0; // одноразово
-    }
-  } catch {}
+// === одноразовый форс-сброс категории на "all" после выхода с промо ===
+try {
+  const h = location.hash || '';
+  const isHome = (h === '#/' || h === '' || h.startsWith('#/home'));
+  const forcedAt = Number(window.__forceHomeAllOnce || 0);
+  const forceRecent = forcedAt && (Date.now() - forcedAt < 4000); // 4s окно
+  const cameFromPromo = (window.__prevHash === '#/promo'); // ✅ вот тут главное
+  if (isHome && (forceRecent || cameFromPromo)) {
+    state.filters = state.filters || {};
+    state.filters.category = 'all';
+    window.__forceHomeAllOnce = 0; // одноразово
+  }
+} catch {}
+
 
   // Снимаем промо-оформление
   try { clearPromoTheme(); } catch {}
@@ -402,6 +403,13 @@ export function drawCategoriesChips(router){
 
   const mk=(slug, name, active)=>`<button class="chip ${active?'active':''}" data-slug="${slug}">${name}</button>`;
 
+  // нормализация активного слага: promo недопустим на Home
+  let cur = (state.filters?.category || 'all');
+  if (cur === 'promo' && !location.hash.startsWith('#/promo')) {
+    cur = 'all';
+    try { state.filters.category = 'all'; } catch {}
+  }
+
   // helpers для сортировки верхних групп + исключаем «Другое»
   const isOther = (g)=>{
     const s = (g.slug||'').toLowerCase();
@@ -411,23 +419,20 @@ export function drawCategoriesChips(router){
   const sortKey = (g)=>{
     const s = (g.slug||'').toLowerCase();
     const n = (g.name||'').toLowerCase();
-    if (['top','верх','verh','up'].includes(s) || ['верх'].includes(n)) return 0;     // Верх
-    if (['bottom','низ','niz','down'].includes(s) || ['низ'].includes(n)) return 1;  // Низ
-    if (['shoes','обувь','obu'].includes(s) || ['обувь'].includes(n)) return 2;      // Обувь
-    if (['bags','сумки','sumki'].includes(s) || ['сумки'].includes(n)) return 3;     // Сумки
+    if (['top','верх','verh','up'].includes(s) || ['верх'].includes(n)) return 0;
+    if (['bottom','низ','niz','down'].includes(s) || ['низ'].includes(n)) return 1;
+    if (['shoes','обувь','obu'].includes(s) || ['обувь'].includes(n)) return 2;
+    if (['bags','сумки','sumki'].includes(s) || ['сумки'].includes(n)) return 3;
     return 99;
   };
   const topGroupsOrdered = (state.categories||[])
     .filter(g => !isOther(g))
     .sort((a,b)=> sortKey(a) - sortKey(b));
 
-  const cur = state.filters?.category || 'all';
-
-  // — строго заданный порядок чипсов:
   wrap.innerHTML = '';
   wrap.insertAdjacentHTML('beforeend', mk('all','Все товары', cur==='all'));
   if (promoIsActive()){
-    wrap.insertAdjacentHTML('beforeend', mk('promo','Акции', cur==='promo')); // сразу после «Все товары»
+    wrap.insertAdjacentHTML('beforeend', mk('promo','Акции', cur==='promo'));
   }
   wrap.insertAdjacentHTML('beforeend', mk('new','Новинки', cur==='new'));
   wrap.insertAdjacentHTML('beforeend', mk('instock','В наличии', cur==='instock'));
@@ -653,11 +658,16 @@ function renderPromoBannerNode(bn){
 function escapeHtml(s=''){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 /* === Promo → Home: отслеживаем предыдущий hash для дополнительной логики === */
-(function trackLastHash(){
+/* === Promo → Home: корректно храним ПРЕДЫДУЩИЙ hash === */
+(function trackPrevHash(){
   try {
-    window.__lastHash = location.hash || '#/';
+    // cur — текущий, prev — предыдущий
+    window.__curHash = location.hash || '#/';
+    window.__prevHash = '#/';
+
     window.addEventListener('hashchange', () => {
-      window.__lastHash = location.hash || '';
+      window.__prevHash = window.__curHash;
+      window.__curHash  = location.hash || '';
     }, { passive: true });
   } catch {}
 })();
