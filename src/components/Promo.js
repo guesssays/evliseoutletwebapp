@@ -78,7 +78,8 @@ export function renderPromo(router) {
         </a>
       ` : ``}
 
-      <div class="section" style="padding:10px 18px 0">
+<div class="section promo-head" style="padding:10px 0 0">
+
         <div class="page-title" style="margin:0 0 6px; position:relative; padding-left:0">
           <button class="square-btn neutral promo-back" type="button" aria-label="Назад" title="Назад" style="position:static; width:44px; height:44px; margin-right:10px">
             <i data-lucide="chevron-left"></i>

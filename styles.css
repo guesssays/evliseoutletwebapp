@@ -2606,3 +2606,21 @@ html body #view.promo-page .grid{
 
 /* 4) На всякий — уберём возможные внутренние min-width-зажимы */
 html body #view.promo-page .grid > *{ min-width: 0 !important; }
+/* === PROMO HEAD: выравниваем с full-bleed сеткой === */
+#view.promo-page .promo-head{
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Кнопка «назад» чуть отступает от края, но визуально совпадает с началом сетки */
+#view.promo-page .promo-head .promo-back{
+  margin-left: 12px !important;   /* можно 10–14 по вкусу */
+}
+
+/* Текстовый блок смещаем так, чтобы базовая линия совпала со start сетки */
+#view.promo-page .promo-head .p-title{
+  margin-left: 0 !important;
+}
+#view.promo-page .p-desc{
+  padding-left: 12px !important;  /* подстроить под кнопку, чтобы всё шло одним столбцом */
+}
