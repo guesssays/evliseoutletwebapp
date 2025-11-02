@@ -2940,3 +2940,63 @@ html body .p-desc{
   margin-left:  0 !important;
   margin-right: 0 !important;
 }
+/* === PROMO HARD-ALIGN (BACK+TITLE+SUB LEFT) — last override === */
+#view.promo-page .promo-head,
+#view.promo-page .page-title{
+  /* глушим любые центровщики */
+  text-align: left !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+
+  /* сбрасываем возможные grid-центрирования */
+  place-items: stretch start !important;
+  justify-items: start !important;
+
+  /* убираем «резервы»/центровку */
+  margin-left: 18px !important;
+  margin-right: 18px !important;
+  padding: 0 !important;
+
+  /* страхуемся от ширин/авто-центров */
+  width: auto !important;
+  max-width: none !important;
+}
+
+#view.promo-page .page-title .square-btn{
+  /* НИКАКОГО absolute: встаёт слева как обычный элемент */
+  position: static !important;
+  margin: 0 !important;
+  transform: none !important;
+  flex: 0 0 44px !important;
+  width: 44px !important;
+  height: 44px !important;
+  left: auto !important; right: auto !important; top: auto !important;
+}
+
+#view.promo-page .page-title h1{
+  margin: 0 !important;
+  min-width: 0 !important;
+  text-align: left !important;
+  flex: 1 1 auto !important;
+}
+
+/* Подзаголовок (описание) — та же левая линия, запрет центрирования */
+#view.promo-page .page-sub,
+#view.promo-page .page-subtitle,
+#view.promo-page .p-desc{
+  margin-left: 18px !important;
+  margin-right: 18px !important;
+  text-align: left !important;
+}
+
+/* Страховка против наследованного центрирования на предках */
+#view.promo-page,
+#view.promo-page *:where(.promo-head, .page-title, .page-sub, .page-subtitle, .p-desc){
+  text-align: left !important;
+}
+
+/* Если родитель — grid с «центр по обоим», жёстко переводим в flow */
+#view.promo-page .promo-head{
+  display: block !important;   /* ломаем grid/center, если был */
+}
