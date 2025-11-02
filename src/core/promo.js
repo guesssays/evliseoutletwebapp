@@ -13,14 +13,13 @@ function defaults() {
       { id: 'bn3', img: 'assets/promo/newyear/banner-3.jpg', alt: 'Хиты сезона — x2 кэшбек' },
     ],
     theme: {
-      /* === BORDEAUX palette (как было изначально) === */
-      pageBg:      '#3e0a0a',   // основной бордовый
-      pageBg2:     '#5a0f12',   // верхний оттенок для градиента
-      pageBgImg:   'assets/promo/newyear/bg-snow-red.svg',
-            pageBgImg:'assets/promo/newyear/xmas-pattern3.svg', // ⬅ твой svg-паттерн
+      /* === BORDEAUX palette === */
+      pageBg:      '#3e0a0a',
+      pageBg2:     '#5a0f12',
+      // внимание: в проекте сохранялась эта строка дважды — оставляем один корректный ключ:
+      pageBgImg:   'assets/promo/newyear/xmas-pattern3.svg',
       pageTint:    'rgba(255,255,255,.03)',
 
-      // сетка/карточки берут тот же цвет через CSS-переменные
       gridBg:      'transparent',
       gridBgImage: '',
       gridTint:    '',
@@ -48,17 +47,14 @@ function _ensureArrays(obj) {
 }
 
 export function ensureTestPromoSeed() {
-  // если промо выключено глобально — уходим
   if (!promoIsActive()) return;
 
-  // 1) гарантируем объект state.promo (сливаем дефолты один раз)
   if (!state.promo) state.promo = defaults();
   _ensureArrays(state.promo);
 
   const goods = Array.isArray(state.products) ? state.products.slice(0) : [];
   if (goods.length < 6) return;
 
-  // 2) если нет ручных скидок — проставим тестовые на 3 товара
   const hasManualDiscounts = Object.keys(state.promo.discounts || {}).length > 0;
   if (!hasManualDiscounts) {
     const sample = goods.slice(0, 3);
@@ -72,7 +68,6 @@ export function ensureTestPromoSeed() {
     state.promo.discounts = disc;
   }
 
-  // 3) добьём x2-товары до минимума (например, 3)
   const needX2Min = 3;
   const existingX2 = new Set(state.promo.x2CashbackIds || []);
   if (existingX2.size < needX2Min) {
@@ -86,7 +81,6 @@ export function ensureTestPromoSeed() {
     state.promo.x2CashbackIds = [...existingX2];
   }
 }
-
 
 /* ===== STATE API ===== */
 export function promoIsActive() { return !!promoConfig().enabled; }
@@ -112,7 +106,7 @@ export function discountInfo(p) {
 
 export function isX2CashbackProduct(p) {
   const ids = promoConfig().x2CashbackIds || [];
-  return ids.includes(String(p.id));
+  return promoIsActive() && ids.includes(String(p.id));
 }
 
 export function effectivePrice(p) {
@@ -120,13 +114,17 @@ export function effectivePrice(p) {
   return di ? di.newPrice : Number(p.price || 0);
 }
 
+/**
+ * Бейджи для карточки:
+ * - если есть скидка → показываем %-бейдж
+ * - если есть x2 → ДОПОЛНИТЕЛЬНО показываем бейдж x2 (раньше x2 терялся при скидке)
+ */
 export function promoBadgesFor(p) {
   if (!promoIsActive()) return [];
   const badges = [];
   if (isDiscountedProduct(p)) {
     const di = discountInfo(p);
     badges.push({ type: 'discount', label: `-${di.percent}%` });
-    return badges;
   }
   if (isX2CashbackProduct(p)) {
     badges.push({ type: 'x2', label: 'x2 кэшбек' });
@@ -163,7 +161,6 @@ export function applyPromoTheme(on = true) {
       v.classList.add('promo-page');
       v.style.setProperty('--promo-page-bg', th.pageBg || '#3e0a0a');
 
-      // ⬇️ ключ: один url для view и grid через переменную
       if (th.pageBgImg) {
         const url = `url('${th.pageBgImg}')`;
         v.style.setProperty('--promo-bg-img', url);
@@ -182,14 +179,13 @@ export function applyPromoTheme(on = true) {
 
       v.classList.remove('promo-page');
       v.style.removeProperty('--promo-page-bg');
-      v.style.removeProperty('--promo-bg-img');   // ⬅ очистка
+      v.style.removeProperty('--promo-bg-img');
       v.style.removeProperty('--promo-grid-bg');
       v.style.removeProperty('--promo-grid-img');
       v.style.removeProperty('--promo-grid-tint');
     }
   } catch {}
 }
-
 
 export function clearPromoTheme() {
   applyPromoTheme(false);

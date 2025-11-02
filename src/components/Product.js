@@ -10,6 +10,7 @@ import {
 import { ScrollReset } from '../core/scroll-reset.js';
 import { Loader } from '../ui/loader.js';
 import { toast } from '../core/toast.js';
+import { isX2CashbackProduct } from '../core/promo.js'; // ⬅️ добавлено
 
 /* ====== КОНСТАНТЫ КЭШБЕКА/РЕФЕРАЛОВ ====== */
 const CASHBACK_RATE_BASE  = 0.05;
@@ -102,7 +103,7 @@ function categoryNameBySlug(slug){
   return findCategoryBySlug(slug)?.name || '';
 }
 
-/* ========= МАЛЕНЬКАЯ ДИАГНОСТИКА ДЛЯ ФИКС-ХЕДЕРА (опционально) ========= */
+/* ========= МАЛЕНЬКАЯ ДИАГНОСТИКА (опционально) ========= */
 const PHDBG = {
   enabled: false,
   panel: null,
@@ -187,7 +188,7 @@ const PHDBG = {
   }
 };
 
-/* ==== вспомогалки для лоадера в этом модуле ==== */
+/* ==== вспомогалки для лоадера ==== */
 function waitImageLoad(img, timeoutMs=1200){
   return new Promise((resolve)=>{
     if (!img) return resolve();
@@ -205,7 +206,7 @@ function waitImageLoad(img, timeoutMs=1200){
   });
 }
 
-/* ===================== READY STOCK (В НАЛИЧИИ) ===================== */
+/* ===================== READY STOCK ===================== */
 function isReadyStockProduct(p){
   if (!p) return false;
   if (p.inStockNow === true) return true;
@@ -299,7 +300,6 @@ export async function renderProduct({id}){
       showThreshold: 20,
     });
 
-    // Нормализация изображений
     const images = Array.isArray(p.images) ? p.images : (p.images ? [p.images] : []);
     const realPhotos = Array.isArray(p.realPhotos) ? p.realPhotos : [];
     const gallery = [
@@ -308,7 +308,6 @@ export async function renderProduct({id}){
     ];
     const first = gallery[0] || { src:'', isReal:false };
 
-    // Похожие — только если НЕ readyMode
     const related = !readyMode
       ? state.products.filter(x => x.categoryId === p.categoryId && String(x.id) !== String(p.id)).slice(0, 12)
       : [];
@@ -326,16 +325,12 @@ export async function renderProduct({id}){
         .p-title .p-cat{ font-weight:800; opacity:.55; }
         @media (prefers-color-scheme:dark){ .p-title .p-cat{ opacity:.65; } }
 
-        /* компактный бейдж "В наличии" */
         .p-ready{
           display:inline-flex; align-items:center; gap:8px;
           margin:8px 0 6px;
           padding:6px 10px;
           border-radius:999px;
-          background:#10b981; /* emerald-500 */
-          color:#fff;
-          font-weight:800;
-          border:1px solid rgba(0,0,0,.06);
+          background:#10b981; color:#fff; font-weight:800; border:1px solid rgba(0,0,0,.06);
         }
         .p-ready i{ width:18px; height:18px; }
         .p-ready .p-ready-help{
@@ -344,7 +339,6 @@ export async function renderProduct({id}){
           width:24px; height:24px; border-radius:999px;
           background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.28);
         }
-        .p-ready .p-ready-help:hover{ filter:brightness(1.05); }
         @media (prefers-color-scheme:dark){
           .p-ready{ background:#059669; border-color:rgba(255,255,255,.12); }
         }
@@ -397,17 +391,9 @@ export async function renderProduct({id}){
         .size:focus-visible{ outline:2px solid #121111; outline-offset:3px; }
         .size.active{ background:#121111; color:#fff; border-color:#121111; }
 
-        /* readonly для readyMode */
-        .readonly .size{
-          pointer-events:none; cursor:default; opacity:1;
-          background:#121111; color:#fff; border-color:#121111;
-        }
+        .readonly .size{ pointer-events:none; cursor:default; opacity:1; background:#121111; color:#fff; border-color:#121111; }
         .readonly .size[disabled]{ opacity:1; }
-        .readonly .sw{
-          pointer-events:none; cursor:default;
-          border-color:#0ea5e9!important;
-          box-shadow: inset 0 0 0 2px rgba(255,255,255,.85), 0 0 0 3px rgba(14,165,233,.28);
-        }
+        .readonly .sw{ pointer-events:none; cursor:default; border-color:#0ea5e9!important; box-shadow: inset 0 0 0 2px rgba(255,255,255,.85), 0 0 0 3px rgba(14,165,233,.28); }
 
         .table-wrap{ overflow:auto; -webkit-overflow-scrolling:touch; margin-top:10px; border:1px solid var(--stroke); border-radius:16px; }
         .size-table{ width:100%; border-collapse:separate; border-spacing:0; }
@@ -464,7 +450,7 @@ export async function renderProduct({id}){
           ${!readyMode ? `
           <div class="p-cashback" role="note" aria-label="Информация о кэшбеке">
             <i data-lucide="coins" aria-hidden="true"></i>
-            ${cashbackSnippetHTML(p.price)}
+            ${cashbackSnippetHTML(p)}
             <button id="cbHelpBtn" class="p-cb-help" type="button" aria-label="Как работает кэшбек?">
               <i data-lucide="help-circle"></i>
             </button>
@@ -507,17 +493,13 @@ export async function renderProduct({id}){
 
     window.lucide?.createIcons && lucide.createIcons();
 
-    // ЛЕНИВЫЕ превью
     document.querySelectorAll('#thumbs img[data-src]').forEach(lazyifyImg);
 
-    // Похожие
     if (!readyMode) drawRelatedCards(related);
 
-    // help модалки
     if (!readyMode) document.getElementById('cbHelpBtn')?.addEventListener('click', showCashbackHelpModal);
     if (readyMode)  document.getElementById('readyHelpBtn')?.addEventListener('click', ()=> showReadyHelpModal(p));
 
-    // size calc button — ТОЛЬКО для НЕ readyMode
     if (!readyMode) document.getElementById('btnSizeCalc')?.addEventListener('click', ()=> openSizeCalculator(p));
 
     const heroBack = document.getElementById('goBack');
@@ -527,7 +509,6 @@ export async function renderProduct({id}){
       history.back();
     }, { passive: false });
 
-    // === Глобальный синк избранного
     function onFavSync(ev){
       try{
         const evId = String(ev?.detail?.id ?? '');
@@ -564,10 +545,11 @@ export async function renderProduct({id}){
 
         try { window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: p.id, active: nowActive } })); } catch {}
         try { window.dispatchEvent(new CustomEvent('favorites:updated')); } catch {}
-      }, { passive:false, capture:false });
+
+        return false;
+      }, { passive:false });
     }
 
-    // Галерея
     const thumbs = document.getElementById('thumbs');
     const mainImg = document.getElementById('mainImg');
     const galleryMain = document.querySelector('.gallery-main');
@@ -604,10 +586,8 @@ export async function renderProduct({id}){
       });
     }
 
-    // ====== CTA (в таббаре) ======
     const needSize = !readyMode && Array.isArray(p.sizes) && p.sizes.length>0;
 
-    // В обычном режиме — интерактивные селекторы
     let size=null, color=(p.colors||[])[0]||null;
 
     if (!readyMode) {
@@ -641,7 +621,6 @@ export async function renderProduct({id}){
         });
       }
     } else {
-      // В readyMode — фиксированные одно значение/без переключателей
       size = (p.sizes && p.sizes[0]) || null;
       color = (p.colors && p.colors[0]) || null;
     }
@@ -692,7 +671,6 @@ export async function renderProduct({id}){
     }
     refreshCTAByState();
 
-    // ====== Зум ======
     ensureZoomOverlay();
     initZoomableInPlace(mainImg);
     document.querySelectorAll('img.zoomable').forEach(img=>{
@@ -700,10 +678,8 @@ export async function renderProduct({id}){
     });
     function resetZoom(){ if (!mainImg) return; mainImg.style.transform=''; mainImg.dataset.zoom='1'; }
 
-    // Диагностика
     if (PHDBG.enabled) PHDBG.init();
 
-    // Авто-деактивация фикс-хедера при уходе
     const _onHashChange = () => {
       const h = String(location.hash || '');
       const leavingProduct = !h.startsWith('#/product/') && !h.startsWith('#/p/');
@@ -715,11 +691,10 @@ export async function renderProduct({id}){
     };
     window.addEventListener('hashchange', _onHashChange);
 
-    // Дождаться первичной загрузки главного кадра (или таймаут)
     await waitImageLoad(document.getElementById('mainImg'), 1200);
 
     try {
-      window.dispatchEvent(new CustomEvent('view:product-mounted', { detail: { id: p.id } }));
+      window.dispatchEvent(new CustomEvent('view:product-mounted', { detail: { id: p.id } })); 
     } catch {}
   }, 'Загружаем товар…');
 }
@@ -806,15 +781,28 @@ function drawRelatedCards(list){
 }
 
 /* ===== Кэшбек бейдж ===== */
-function cashbackSnippetHTML(price){
-  const boost = hasFirstOrderBoost();
-  const rate = boost ? CASHBACK_RATE_BOOST : CASHBACK_RATE_BASE;
-  const pts  = Math.floor((Number(price)||0) * rate);
+function cashbackSnippetHTML(product){
+  const price = Number(product?.price || 0);
+  const firstBoost = hasFirstOrderBoost();
+  const x2ByProduct = isX2CashbackProduct(product);
+
+  // Базовые баллы (5% от цены товара)
+  const basePts = Math.floor(price * CASHBACK_RATE_BASE);
+
+  // Эффективный множитель (стеккуется): x2 за товар и x2 за первый заказ
+  const mul = (x2ByProduct ? 2 : 1) * (firstBoost ? 2 : 1);
+  const pts  = basePts * mul;
+
+  // Лейблы: показываем все активные множители
+  const labels = [];
+  if (x2ByProduct) labels.push('x2 за товар');
+  if (firstBoost)  labels.push('x2 за 1-й заказ');
+
   return `
     <div class="p-cb-line">
       <span>Кэшбек</span>
       +<span class="p-cb-pts">${pts}</span>&nbsp;баллов
-      ${boost ? `<span class="p-cb-x2" title="x2 на первый заказ">x2</span>` : ``}
+      ${labels.length ? labels.map(l => `<span class="p-cb-x2" title="${l}">x2</span>`).join('') : ``}
     </div>`;
 }
 
@@ -837,7 +825,11 @@ function showCashbackHelpModal(){
     <div class="cb-how">
       <div class="cb-row">
         <i data-lucide="percent"></i>
-        <div><b>Начисляем за покупку.</b> Сумма кэшбека зависит от цены товара.</div>
+        <div><b>Начисляем за покупку.</b> Базовая ставка 5% от цены товара. Для некоторых товаров действует <b>x2</b>.</div>
+      </div>
+      <div class="cb-row">
+        <i data-lucide="zap"></i>
+        <div>Если вы пришли по реф-ссылке, на <b>первый заказ — x2</b>. Множители суммируются.</div>
       </div>
       <div class="cb-row">
         <i data-lucide="clock"></i>
@@ -845,11 +837,7 @@ function showCashbackHelpModal(){
       </div>
       <div class="cb-row">
         <i data-lucide="badge-check"></i>
-        <div><b>Как использовать.</b> На этапе оформления можно оплатить часть заказа баллами. Ваш баланс можно увидеть в корзине.</div>
-      </div>
-      <div class="cb-row">
-        <i data-lucide="zap"></i>
-        <div class="muted">Если вы пришли по реф-ссылке, на <b>первый заказ — x2 кэшбек</b>.</div>
+        <div><b>Использование.</b> На этапе оформления можно оплатить часть заказа баллами.</div>
       </div>
     </div>
   `;
@@ -883,11 +871,11 @@ function showReadyHelpModal(p){
       </div>
       <div class="rd-row">
         <i data-lucide="message-square"></i>
-        <div><b>Отправьте сообщение и согласуйте доставку.</b> Оператор уточнит дату/время и способ получения.</div>
+        <div><b>Согласуйте доставку.</b> Оператор уточнит дату/время и способ получения.</div>
       </div>
       <div class="rd-row">
         <i data-lucide="wallet"></i>
-        <div><b>Оплата при получении.</b> Можно перевести на карту или оплатить наличными при встрече/курьеру.</div>
+        <div><b>Оплата при получении.</b> Перевод на карту или наличные.</div>
       </div>
       <div class="rd-row">
         <i data-lucide="check-circle-2"></i>
@@ -981,7 +969,7 @@ function initZoomableInPlace(img){
   function dist(a,b){ const dx=a.clientX-b.clientX, dy=a.clientY-b.clientY; return Math.hypot(dx,dy); }
 }
 
-/* ===== ФУЛЛСКРИН-ОВЕРЛЕЙ ДЛЯ ФОТО ===== */
+/* ===== ФУЛЛСКРИН-ОВЕРЛЕЙ ===== */
 function ensureZoomOverlay(){
   if (document.getElementById('zoomOverlay')) return;
   const wrap = document.createElement('div');
