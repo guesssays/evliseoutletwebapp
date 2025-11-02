@@ -3,7 +3,7 @@ import { state } from './state.js';
 
 function defaults() {
   return {
-    enabled: false,
+    enabled: true,
     slug: 'newyear-2026',
     title: 'Новогодняя акция',
     subtitle: ' грандиозные скидки и двойной кэшбек!',

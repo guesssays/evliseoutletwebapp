@@ -25,7 +25,7 @@ export const state = {
 // ==== АКЦИИ: только переопределения ====
 // Всё остальное (баннеры, тема по умолчанию) — в promo.js/defaults()
 promo: {
-  enabled: false,
+  enabled: true,
   slug: 'newyear-2026',
   title: 'Новогодняя акция',
   subtitle: 'Грандиозные скидки и двойной кэшбек!',
