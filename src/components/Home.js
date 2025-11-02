@@ -1,3 +1,4 @@
+// src/components/Home.js
 import { state, isFav, toggleFav, k } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import { applyFilters } from './Filters.js';
@@ -50,31 +51,54 @@ function normalizeStockFlags(products){
 }
 
 /* ===== Новинки: rolling-окно на 12 ===== */
+/* ===== Новинки: всегда мгновенно отдаём top-N из текущих товаров ===== */
 function getNewestWindow(limit = 12){
   const products = Array.isArray(state.products) ? state.products.slice() : [];
-  const idsNow = products.map(p => String(p.id));
 
+  // 1) базовый быстрый путь — первые N товаров как "самые новые"
+  const topNow = products.slice(0, limit).map(p => ({ ...p, __isNew: true }));
+
+  // 2) пробуем мягко использовать прошлое окно (если оно осмысленное)
   let win = [];
   try { win = JSON.parse(localStorage.getItem(k('news_window')) || '[]'); } catch {}
   if (!Array.isArray(win)) win = [];
 
-  const seen = new Set(win);
-  const incoming = [];
-  for (const id of idsNow){
-    if (!seen.has(id)) incoming.push(id);
+  // если кэш пустой или короче лимита — просто возвращаем topNow и обновляем кэш
+  if (win.length < limit){
+    try { localStorage.setItem(k('news_window'), JSON.stringify(products.slice(0, limit).map(p => String(p.id)))); } catch {}
+    return topNow;
   }
 
-  const preserved = win.filter(id => idsNow.includes(id));
-  const updated = [...incoming, ...preserved].slice(0, limit);
-
-  try { localStorage.setItem(k('news_window'), JSON.stringify(updated)); } catch {}
-
+  // 3) если кэш есть — валидируем id против текущего ассортимента
   const byId = new Map(products.map(p => [String(p.id), p]));
-  return updated.map(id => {
-    const p = byId.get(id);
-    return p ? { ...p, __isNew: true } : null;
-  }).filter(Boolean);
+  const validated = win
+    .map(id => byId.get(String(id)))
+    .filter(Boolean)
+    .slice(0, limit)
+    .map(p => ({ ...p, __isNew: true }));
+
+  // если после валидации что-то «усохло» — дополним topNow (без дублей)
+  if (validated.length < limit){
+    const have = new Set(validated.map(p => String(p.id)));
+    for (const p of products){
+      if (validated.length >= limit) break;
+      const id = String(p.id);
+      if (!have.has(id)){
+        validated.push({ ...p, __isNew: true });
+        have.add(id);
+      }
+    }
+  }
+
+  // 4) обновим кэш аккуратно
+  try {
+    const ids = validated.map(p => String(p.id));
+    localStorage.setItem(k('news_window'), JSON.stringify(ids));
+  } catch {}
+
+  return validated;
 }
+
 
 /* ===== skeleton suppressor ===== */
 function suppressGridSkeleton(ms = 900){
@@ -227,7 +251,7 @@ function createProductNode(p){
     subEl.textContent = label || (p.inStock ? 'В наличии' : '');
   }
 
-  // Цена: только текущее значение, без процента-чипа (скидки — другим слоем)
+  // Цена
   const priceEl = node.querySelector('.price');
   if (priceEl){
     const di = discountInfo(p);
@@ -239,37 +263,42 @@ function createProductNode(p){
     }
   }
 
-// Бейдж 🔥 для новинок — левый верх, без текста
-if (p.__isNew) {
+  // Бейдж 🔥 для новинок — левый верх, без текста
+  if (p.__isNew) {
+    const media = node.querySelector('.card-img') || node;
+    const hot = document.createElement('div');
+    hot.className = 'promo-badges';
+    hot.style.right = 'auto';
+    hot.style.left  = '8px';
+    hot.style.top   = '8px';
+    hot.innerHTML = `
+      <span class="promo-badge hot" aria-label="Новинка">
+        <i data-lucide="flame"></i>
+      </span>
+    `;
+    media.appendChild(hot);
+  }
+
+// Промо-бейджи (скидка/x2)
+const badges = promoBadgesFor(p);
+if (badges.length){
   const media = node.querySelector('.card-img') || node;
-  const hot = document.createElement('div');
-  hot.className = 'promo-badges';
-  hot.style.right = 'auto';
-  hot.style.left  = '8px';
-  hot.style.top   = '8px';
-  hot.innerHTML = `
-    <span class="promo-badge hot" aria-label="Новинка">
-      <i data-lucide="flame"></i>
+  const wrap = document.createElement('div');
+  wrap.className = 'promo-badges';
+  // Жёстко фиксируем позиционирование, чтобы не растягивалось
+  wrap.style.left   = '8px';
+  wrap.style.bottom = '8px';
+  wrap.style.top    = 'auto';
+  wrap.style.right  = 'auto';
+  wrap.innerHTML = badges.map(b => `
+    <span class="promo-badge ${b.type}">
+      ${b.type==='discount' ? '<i data-lucide="percent"></i>' : '<i data-lucide="zap"></i>'}
+      <span class="lbl">${b.label}</span>
     </span>
-  `;
-  media.appendChild(hot);
+  `).join('');
+  media.appendChild(wrap);
 }
 
-
-  // Промо-бейджи (скидка/x2)
-  const badges = promoBadgesFor(p);
-  if (badges.length){
-    const media = node.querySelector('.card-img') || node;
-    const wrap = document.createElement('div');
-    wrap.className = 'promo-badges';
-    wrap.innerHTML = badges.map(b => `
-      <span class="promo-badge ${b.type}">
-        ${b.type==='discount' ? '<i data-lucide="percent"></i>' : '<i data-lucide="zap"></i>'}
-        <span>${b.label}</span>
-      </span>
-    `).join('');
-    media.appendChild(wrap);
-  }
 
   const favBtn = node.querySelector('.fav, button.fav');
   if (favBtn){
@@ -283,13 +312,20 @@ if (p.__isNew) {
 }
 
 /* ================== публичные функции ================== */
-// === ЗАМЕНИТЕ всю функцию renderHome ЭТОЙ ВЕРСИЕЙ ===
 export function renderHome(router){
   const v = document.getElementById('view');
   if (!v) return;
 
   // Снимаем промо-оформление
   try { clearPromoTheme(); } catch {}
+
+  // Если мы на главной, а фильтр почему-то 'promo' — сбросим на 'all'
+  try {
+    const h = location.hash || '';
+    if ((h === '#/' || h === '' || h.startsWith('#/home')) && state?.filters?.category === 'promo') {
+      state.filters.category = 'all';
+    }
+  } catch {}
 
   // Нормализуем флаги наличия
   normalizeStockFlags(state.products);
@@ -323,7 +359,7 @@ export function renderHome(router){
   // Нарисовать чипсы (они сами подсветят активную категорию по state.filters.category)
   drawCategoriesChips(router);
 
-  // 🔧 ГЛАВНОЕ: рендерим список по текущему выбранному слагу
+  // Рендерим список по текущему выбранному слагу
   requestAnimationFrame(() => {
     const slug = state?.filters?.category || 'all';
     let list;
@@ -348,14 +384,13 @@ export function renderHome(router){
   });
 }
 
-
 export function drawCategoriesChips(router){
   const wrap = document.getElementById('catChips');
   if (!wrap) return;
 
   const mk=(slug, name, active)=>`<button class="chip ${active?'active':''}" data-slug="${slug}">${name}</button>`;
 
-  // helpers для сортировки и фильтра верхних групп + исключаем «Другое»
+  // helpers для сортировки верхних групп + исключаем «Другое»
   const isOther = (g)=>{
     const s = (g.slug||'').toLowerCase();
     const n = (g.name||'').toLowerCase();
@@ -604,3 +639,21 @@ function renderPromoBannerNode(bn){
 
 /* utils */
 function escapeHtml(s=''){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+/* === Promo → Home: при возврате со страницы акции сбрасываем категорию на "all" === */
+(function setupPromoBackReset(){
+  try {
+    window.__lastHash = location.hash || '#/';
+    window.addEventListener('hashchange', () => {
+      const prev = window.__lastHash || '';
+      const cur  = location.hash || '';
+      const cameFromPromo = (prev === '#/promo');
+      const nowHome = (cur === '#/' || cur === '' || cur.startsWith('#/home'));
+      if (cameFromPromo && nowHome) {
+        state.filters = state.filters || {};
+        state.filters.category = 'all';
+      }
+      window.__lastHash = cur;
+    }, { passive: true });
+  } catch {}
+})();
