@@ -2509,3 +2509,28 @@ html body main#view.view.promo-page::after{
   pointer-events: none !important;
   background: rgba(0,0,0, var(--promo-dim, .52)) !important;
 }
+/* === PROMO PAGE: fav = как на главной (белая таблетка) ============== */
+#view.promo-page .card .fav{
+  background:#fff !important;
+  border:1px solid var(--stroke) !important;
+  box-shadow:var(--shadow) !important;
+  color:var(--text) !important;
+
+  /* на всякий случай, если промо-стили меняли размеры/радиус */
+  width:42px; height:42px;
+  border-radius:50%;
+  display:grid; place-items:center;
+}
+
+/* контур сердца как на главной в неактивном состоянии */
+#view.promo-page .card .fav .lucide-heart{
+  fill:none !important;
+  stroke:currentColor !important;
+}
+
+/* активное — красное сердце с заливкой, как на главной */
+#view.promo-page .card .fav.active .lucide-heart{
+  color:#ff4d5a !important;
+  fill:currentColor !important;
+  stroke:none !important;
+}
