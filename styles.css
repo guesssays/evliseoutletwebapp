@@ -2889,3 +2889,54 @@ html body .p-desc{
   margin-left: 0 !important;
   margin-right: 0 !important;
 }
+/* === PROMO ONLY: align back arrow, title, subtitle to grid (18px) === */
+#view.promo-page{
+  --content-x: 18px;            /* локальный инсет только для promo */
+  --back-btn-w: 44px;
+  --back-btn-gap: 10px;
+}
+
+/* Заголовочная строка: ровно по левой линии promo-сетки */
+#view.promo-page .page-title{
+  margin: 10px var(--content-x) 12px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: var(--back-btn-gap) !important;
+  text-align: left !important;
+}
+
+/* Кнопка «назад» — обычный flex-элемент (без absolute) */
+#view.promo-page .page-title .square-btn{
+  position: static !important;
+  flex: 0 0 var(--back-btn-w) !important;
+  width: var(--back-btn-w) !important;
+  height: var(--back-btn-w) !important;
+  margin: 0 !important;
+  transform: none !important;
+  left: auto !important; right: auto !important; /* глушим возможные остатки */
+}
+
+/* Текст заголовка — занимает остаток, без центрирования */
+#view.promo-page .page-title h1{
+  margin: 0 !important;
+  min-width: 0 !important;
+  line-height: 1.2 !important;
+  text-align: left !important;
+}
+
+/* Подзаголовок/описание — та же левая линия (18px) */
+#view.promo-page :where(.page-sub, .page-subtitle, .p-desc){
+  margin-left:  var(--content-x) !important;
+  margin-right: var(--content-x) !important;
+  text-align: left !important;
+}
+
+/* Сетка промо — без своих паддингов (под ту же линию) */
+#view.promo-page :where(#promoGrid, .product-grid, .grid){
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left:  0 !important;
+  margin-right: 0 !important;
+}
