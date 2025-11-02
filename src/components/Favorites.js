@@ -17,24 +17,22 @@ export function renderFavorites(){
   `;
 
   if (!list.length){
+    // ❌ без вложенного .view
     v.innerHTML = `
-      <div class="view">
-        ${header}
-        <section class="checkout">
-          <div class="cart-sub">Список избранного пуст</div>
-        </section>
-      </div>
+      ${header}
+      <section class="checkout">
+        <div class="cart-sub">Список избранного пуст</div>
+      </section>
     `;
     window.lucide?.createIcons && lucide.createIcons();
     document.getElementById('favBack')?.addEventListener('click', ()=> history.back());
     return;
   }
 
+  // ❌ без вложенного .view
   v.innerHTML = `
-    <div class="view">
-      ${header}
-      <div class="grid" id="productGrid" data-fav-mode="1"></div>
-    </div>
+    ${header}
+    <div class="grid" id="productGrid" data-fav-mode="1"></div>
   `;
   drawProducts(list);
 
