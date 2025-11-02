@@ -47,23 +47,31 @@ export function renderPromo(router) {
   // Пустое состояние
   if (promoList.length === 0) {
     v.innerHTML = `
-      <div class="promo-wrap" style="padding:20px 18px calc(var(--tabbar-h) + var(--safe) + 10px)">
+      <div class="promo-wrap" style="padding:20px 0 calc(var(--tabbar-h) + var(--safe) + 10px)">
         ${topBanner ? `
           <a class="promo-banner promo-top" href="#/promo" aria-label="Промо">
             <img src="${topBanner.img}" alt="${escapeHtml(topBanner.alt || 'Акция')}" loading="eager" decoding="async">
           </a>` : ``}
-        <div class="section-title" style="margin:10px 0 8px; display:flex; align-items:center; gap:10px">
-          <span style="font-weight:800">${escapeHtml(promoTitle())}</span>
+
+        <!-- НОВАЯ шапка: только новые классы -->
+        <div class="promo-head2" style="margin:10px 18px 6px; display:flex; align-items:center; gap:10px;">
+          <button class="promo-back2 hero-btn neutral" type="button" aria-label="Назад" title="Назад" style="width:44px; height:44px;">
+            <i data-lucide="chevron-left"></i>
+          </button>
+          <h1 class="promo-title2" style="margin:0; font-size:28px; font-weight:800;">${escapeHtml(promoTitle())}</h1>
         </div>
-        <div class="notes-empty">
+        <div class="promo-sub2" style="margin:2px 18px 10px; color:var(--muted);">
+          ${escapeHtml(promoSubtitle())}
+        </div>
+
+        <div class="notes-empty" style="margin:0 18px;">
           <b style="display:block;font-weight:800;margin-bottom:6px">Скоро акции</b>
           <div>Подготовим скидки и x2 кэшбек — загляните позже</div>
         </div>
       </div>
     `;
 
-
-
+    try { wirePromoHead(v); } catch {}
     bindCleanup();
     try { window.lucide?.createIcons?.(); } catch {}
     return;
@@ -78,34 +86,26 @@ export function renderPromo(router) {
         </a>
       ` : ``}
 
-<div class="section promo-head" style="padding:10px 0 0; text-align:left; display:block">
-   <div class="page-title" style="margin:0 0 6px; display:flex; align-items:center; justify-content:flex-start; padding-left:0">
-     <button class="square-btn neutral promo-back" type="button" aria-label="Назад" title="Назад" style="width:44px; height:44px; margin-right:10px">
-            <i data-lucide="chevron-left"></i>
-          </button>
-          <h1 class="p-title" style="margin:0; font-size:28px; font-weight:800">
-            ${escapeHtml(promoTitle())}
-          </h1>
-        </div>
-         <div class="p-desc" style="margin-top:2px; color:var(--muted); text-align:left">${escapeHtml(promoSubtitle())}</div>
+      <!-- НОВАЯ шапка: новые классы, выровнено по общей сетке (18px) -->
+      <div class="promo-head2" style="margin:10px 18px 6px; display:flex; align-items:center; gap:10px;">
+        <button class="promo-back2 hero-btn neutral" type="button" aria-label="Назад" title="Назад" style="width:44px; height:44px;">
+          <i data-lucide="chevron-left"></i>
+        </button>
+        <h1 class="promo-title2" style="margin:0; font-size:28px; font-weight:800;">${escapeHtml(promoTitle())}</h1>
+      </div>
+      <div class="promo-sub2" style="margin:2px 18px 0; color:var(--muted);">
+        ${escapeHtml(promoSubtitle())}
       </div>
 
       <!-- сетка промо-товаров -->
-<div id="promoGrid" class="grid home-bottom-pad" style="padding:10px 0 0"></div>
-
+      <div id="promoGrid" class="grid home-bottom-pad" style="padding:10px 0 0"></div>
     </div>
   `;
 
-
-
   try { window.lucide?.createIcons?.(); } catch {}
 
-  // Назад
-  const backBtn = v.querySelector('.promo-back');
-  backBtn?.addEventListener('click', (e) => {
-    e.preventDefault();
-    history.back();
-  });
+  // Назад (новый селектор)
+  try { wirePromoHead(v); } catch {}
 
   // Сетка карточек
   const grid = document.getElementById('promoGrid');
@@ -144,25 +144,17 @@ export function renderPromo(router) {
   bindCleanup();
 }
 
-/* ===== helpers ===== */
+/* ===== wire helpers ===== */
 
-
-
-
-function bindCleanup() {
-  const cleanup = () => {
-    if (!location.hash.startsWith('#/promo')) {
-      try { clearPromoTheme(); } catch {}
-      const v = document.getElementById('view');
-      v?.classList?.remove?.('promo-page');
-
-
-
-      window.removeEventListener('hashchange', cleanup);
-    }
-  };
-  window.addEventListener('hashchange', cleanup);
+function wirePromoHead(root){
+  const backBtn = root.querySelector('.promo-back2');
+  backBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    history.back();
+  });
 }
+
+/* ===== render helpers ===== */
 
 function renderCard(p) {
   const di = discountInfo(p);
@@ -230,4 +222,16 @@ function escapeHtml(s = '') {
 
 function escapeAttr(s = '') {
   return String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function bindCleanup() {
+  const cleanup = () => {
+    if (!location.hash.startsWith('#/promo')) {
+      try { clearPromoTheme(); } catch {}
+      const v = document.getElementById('view');
+      v?.classList?.remove?.('promo-page');
+      window.removeEventListener('hashchange', cleanup);
+    }
+  };
+  window.addEventListener('hashchange', cleanup);
 }
