@@ -2586,16 +2586,14 @@ html body main#view.view.promo-page::after{
 }
 /* === PROMO: full-bleed баннер + такая же широкая товарная сетка ==== */
 
-/* 1) Баннер снова на всю ширину экрана */
 html body #view.promo-page .promo-banner{
-  margin: 0 !important;
-  border-radius: 0 !important;
+  margin: 0 !important;                 /* баннер остаётся full-bleed */
+  border-radius: var(--radius, 22px) !important;  /* вернуть скругление */
   border: none !important;
+  overflow: hidden !important;          /* чтобы картинка не «протекала» за радиус */
 }
-
-/* 2) Сетка промо — тоже full-bleed (без боковых инсатов) */
-html body #view.promo-page #promoGrid{
-  padding: 10px 0 0 !important;   /* было 10px 18px 0 */
+html body #view.promo-page .promo-banner img{
+  display:block; width:100%; height:auto; border-radius: inherit; /* страховка */
 }
 
 /* 3) Колонки без сужения; при узких — одна колонка */
