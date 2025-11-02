@@ -108,10 +108,8 @@
 
     function getTgUserId(){
       try{
-        // Надёжно берём из Telegram WebApp
         const id = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
         if (id) return String(id);
-        // Фоллбек: попытка вытащить из initData (если библиотека не успела инициализироваться)
         const initData = window.Telegram?.WebApp?.initData || '';
         const m = initData.match(/"id":\s*(\d+)/);
         if (m) return m[1];
@@ -126,14 +124,10 @@
     }
 
     function mergeAdminIds(cfg){
-      // берём из app-config.adminIds, если сервер отдаёт, иначе пусто
       const fromCfg = Array.isArray(cfg?.adminIds) ? cfg.adminIds : [];
-      // пробуем распарсить возможную строку с id (если когда-то добавите в app-config)
       const fromCfgString = (typeof cfg?.ADMIN_CHAT_ID === 'string')
         ? cfg.ADMIN_CHAT_ID.split(/[,\s]+/).filter(Boolean) : [];
-      // добавляем статический список
       const all = [...fromCfg, ...fromCfgString, ...STATIC_ADMIN_IDS].map(String);
-      // уникализируем
       return Array.from(new Set(all));
     }
 
@@ -161,23 +155,22 @@
     }
 
     (async () => {
-      // 1) получаем конфиг (может содержать maintenance и массив adminIds)
+      // 1) получаем конфиг
       let cfg = null;
       try{
         const r = await fetch('/.netlify/functions/app-config', { cache:'no-store' });
         cfg = await r.json();
       }catch{ cfg = { maintenance:false }; }
 
-      // 2) если техработ нет — ничего не делаем
+      // 2) если техработ нет — выходим
       if (!cfg?.maintenance) return;
 
-      // 3) собираем итоговый белый список ID и узнаём текущий id
+      // 3) собираем белый список и узнаём мой id
       const allowIds = mergeAdminIds(cfg);
       const myId = getTgUserId();
 
-      // 4) если мой id в списке — пропускаем (без дополнительных проверок)
+      // 4) если мой id в списке — пропускаем
       if (isIdInList(allowIds, myId)) {
-        // Можно оставить маленький бейдж для наглядности (уберите при желании)
         try{
           const b = document.createElement('div');
           b.textContent = 'ADMIN BYPASS: maintenance mode';
@@ -208,9 +201,12 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
 
-  <!-- Favicon / icons -->
-  <link rel="icon" type="image/png" href="assets/favicon.png" />
-  <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png" />
+  <!-- Icons & PWA (пути к твоим файлам) -->
+  <link rel="icon" type="image/x-icon" href="/assets/icons/favicon.ico?v=2025-10-30-21-17">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32x32.png?v=2025-10-30-21-17">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/icons/favicon-16x16.png?v=2025-10-30-21-17">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png?v=2025-10-30-21-17">
+  <link rel="manifest" href="/assets/icons/site.webmanifest?v=2025-10-30-21-17">
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
@@ -218,14 +214,16 @@
   <meta property="og:title" content="EVLISE OUTLET — интернет-магазин одежды" />
   <meta property="og:description" content="Стильные вещи по Outlet-ценам. Смотрите каталог и заказывайте в пару кликов." />
   <meta property="og:locale" content="ru_RU" />
-  <meta property="og:image" content="assets/images/og-evlise.png" />
+  <meta property="og:image" content="/assets/cover/og-evlise.png?v=2025-10-30-21-17" />
   <meta property="og:image:alt" content="EVLISE OUTLET — баннер магазина" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="EVLISE OUTLET — интернет-магазин одежды" />
   <meta name="twitter:description" content="Стильные вещи по Outlet-ценам. Смотрите каталог и заказывайте в пару кликов." />
-  <meta name="twitter:image" content="assets/images/og-evlise.png" />
+  <meta name="twitter:image" content="/assets/cover/og-evlise.png?v=2025-10-30-21-17" />
 
   <!-- ЕДИНЫЙ БИЛД-ШТАМП -->
   <meta id="APP_BUILD" name="app-build" content="2025-10-30-21-17" />
