@@ -28,7 +28,7 @@ promo: {
   enabled: true,
   slug: 'newyear-2026',
   title: 'Новогодняя акция',
-  subtitle: 'скидки и x2 кэшбек',
+  subtitle: 'Грандиозные скидки и двойной кэшбек!',
 
   // скидочные позиции (ID => { oldPrice, price })
   discounts: {

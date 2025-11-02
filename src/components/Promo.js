@@ -18,26 +18,25 @@ import {
 /**
  * Страница «Акции»
  * - Рендерим ТОЛЬКО акционные товары (скидка или x2 кэшбек).
- * - Если акционных нет — показываем аккуратное пустое состояние.
+ * - Если акционных нет — показываем пустое состояние.
  * - Оформление/фон задаётся через applyPromoTheme() и снимается при уходе.
  */
 export function renderPromo(router) {
-  // промо выключено — редиректим на главную
   if (!promoIsActive()) {
     try { clearPromoTheme(); } catch {}
     location.hash = '#/';
     return;
   }
 
-  // гарантируем наличие данных промо (seed для теста)
+  // гарантируем тестовые данные при оффлайне
   try { ensureTestPromoSeed(); } catch {}
 
-  // применяем тему (CSS токены/паттерн) + класс для стилей промо
+  // тема промо (фон/токены)
   applyPromoTheme(true);
 
   const v = document.getElementById('view');
   if (!v) return;
-  v.classList.add('promo-page'); // ← КРИТИЧНО для тёмной подложки
+  v.classList.add('promo-page');
 
   const products = Array.isArray(state.products) ? state.products : [];
   const promoList = products.filter(productInPromo);
@@ -45,7 +44,7 @@ export function renderPromo(router) {
   const banners = getPromoBanners();
   const topBanner = banners?.[0];
 
-  // ПУСТОЕ СОСТОЯНИЕ
+  // Пустое состояние
   if (promoList.length === 0) {
     v.innerHTML = `
       <div class="promo-wrap" style="padding:20px 18px calc(var(--tabbar-h) + var(--safe) + 10px)">
@@ -62,12 +61,16 @@ export function renderPromo(router) {
         </div>
       </div>
     `;
+
+    // === XMAS LIGHTS (над тёмной подложкой)
+    mountXmasLights(v);
+
     bindCleanup();
     try { window.lucide?.createIcons?.(); } catch {}
     return;
   }
 
-  // ОСНОВНОЙ РЕНДЕР
+  // Основной рендер
   v.innerHTML = `
     <div class="promo-wrap" style="padding:0 0 calc(var(--tabbar-h) + var(--safe) + 10px)">
       ${topBanner ? `
@@ -88,28 +91,30 @@ export function renderPromo(router) {
         <div class="p-desc" style="margin-top:2px; color:var(--muted)">${escapeHtml(promoSubtitle())}</div>
       </div>
 
-      <!-- ВАЖНО: сама сетка промо-товаров -->
+      <!-- сетка промо-товаров -->
       <div id="promoGrid" class="grid home-bottom-pad" style="padding:10px 18px 0"></div>
     </div>
   `;
 
-  // иконки
+  // === XMAS LIGHTS (над тёмной подложкой)
+  mountXmasLights(v);
+
   try { window.lucide?.createIcons?.(); } catch {}
 
-  // кнопка «назад»
+  // Назад
   const backBtn = v.querySelector('.promo-back');
   backBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     history.back();
   });
 
-  // наполняем сетку карточками
+  // Сетка карточек
   const grid = document.getElementById('promoGrid');
   if (grid) {
     grid.innerHTML = promoList.map(renderCard).join('');
     try { window.lucide?.createIcons?.(); } catch {}
 
-    // перехват «сердечек» без навигации
+    // Перехват «сердечек» без перехода в карточку
     if (!grid.dataset.favHandlerBound) {
       grid.addEventListener('click', (ev) => {
         const favBtn = ev.target?.closest?.('.fav, button.fav');
@@ -142,12 +147,27 @@ export function renderPromo(router) {
 
 /* ===== helpers ===== */
 
+function mountXmasLights(viewEl) {
+  try {
+    // удалим старые, если вдруг двойной mount
+    viewEl.querySelector('.xmas-lights')?.remove();
+  } catch {}
+  const lights = document.createElement('div');
+  lights.className = 'xmas-lights';
+  lights.setAttribute('aria-hidden', 'true');
+  viewEl.appendChild(lights);
+}
+
 function bindCleanup() {
   const cleanup = () => {
     if (!location.hash.startsWith('#/promo')) {
       try { clearPromoTheme(); } catch {}
       const v = document.getElementById('view');
-      v?.classList?.remove?.('promo-page'); // снимаем класс при уходе
+      v?.classList?.remove?.('promo-page');
+
+      // снять гирлянду
+      try { v?.querySelector('.xmas-lights')?.remove(); } catch {}
+
       window.removeEventListener('hashchange', cleanup);
     }
   };

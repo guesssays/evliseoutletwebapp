@@ -6,7 +6,7 @@ function defaults() {
     enabled: true,
     slug: 'newyear-2026',
     title: 'Новогодняя акция',
-    subtitle: 'скидки и x2 кэшбек',
+    subtitle: ' грандиозные скидки и двойной кэшбек!',
     banners: [
       { id: 'bn1', img: 'assets/promo/newyear/banner-1.jpg', alt: 'Новогодняя акция — скидки и x2 кэшбек' },
       { id: 'bn2', img: 'assets/promo/newyear/banner-2.jpg', alt: 'Новогодняя коллекция — большие скидки' },
@@ -145,7 +145,7 @@ export function shouldShowOnHome(p) {
 }
 
 export function promoTitle(){ return (state?.promo?.title) || 'Новогодняя акция'; }
-export function promoSubtitle(){ return (state?.promo?.subtitle) || 'скидки и x2 кэшбек'; }
+export function promoSubtitle(){ return (state?.promo?.subtitle) || 'Грандиозные скидки и двойной кэшбек!'; }
 
 export function applyPromoTheme(on = true) {
   try {

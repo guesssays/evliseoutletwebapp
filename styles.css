@@ -2534,3 +2534,40 @@ html body main#view.view.promo-page::after{
   fill:currentColor !important;
   stroke:none !important;
 }
+/* === PROMO: новогодняя гирлянда над подложкой ===================== */
+/* Путь можно поменять на свой: assets/promo/newyear/christmas-lights.svg */
+:root{
+  --xmas-lights-h: 140px;      /* базовая высота зоны гирлянды */
+  --xmas-lights-w: 980px;      /* «целевой» размер SVG по ширине */
+  --xmas-lights-top: 0px;      /* можно опустить на 6–10px, если хочется ниже */
+  --xmas-lights-opacity: 1;    /* 0.85–1 по вкусу */
+}
+
+.xmas-lights{
+  position: fixed;             /* растягиваем над всем экраном */
+  left: 0; right: 0;
+  top: var(--xmas-lights-top);
+  height: var(--xmas-lights-h);
+  z-index: 2;                  /* ← ВАЖНО: выше #view.promo-page::after (z=0/1) */
+  pointer-events: none;        /* не блокирует клики по UI */
+  background:
+    url('assets/promo/newyear/christmas-lights.svg')
+    center top / min(var(--xmas-lights-w), 100%) auto
+    no-repeat;
+  opacity: var(--xmas-lights-opacity);
+  /* лёгкое свечение: аккуратно на тёмной теме */
+  filter: drop-shadow(0 10px 18px rgba(255,255,255,.12));
+  mix-blend-mode: screen;      /* подчёркивает «лампочки» на тёмном фоне */
+}
+
+/* Чуть адаптива на узких экранах: ниже и компактнее */
+@media (max-width: 420px){
+  :root{
+    --xmas-lights-h: 120px;
+    --xmas-lights-w: 820px;
+    --xmas-lights-top: 2px;
+  }
+}
+
+/* Гарантируем, что контент промо ниже слоя гирлянды */
+#view.promo-page > *{ position: relative; z-index: 1; }
