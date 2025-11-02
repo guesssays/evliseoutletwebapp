@@ -35,7 +35,7 @@
       background:rgba(0,0,0,.06); border:1px solid var(--m-border);
     }
     .tg-dark .m-hero, [data-theme="dark"] .m-hero{ background:rgba(255,255,255,.05); }
-    .m-hero i{ width:28px; height:28px; } /* Lucide target */
+    .m-hero i{ width:28px; height:28px; }
     .m-title{ font-size:22px; font-weight:800; letter-spacing:.2px; }
     .m-sub{ color:var(--m-muted); margin-top:8px; line-height:1.35; font-size:15px; }
     .m-cta{ margin-top:18px; display:flex; justify-content:center; }
@@ -53,7 +53,6 @@
   <div id="maintenanceScreen" role="dialog" aria-modal="true" aria-live="polite" aria-label="Технические работы">
     <div class="m-card">
       <div class="m-hero" aria-hidden="true">
-        <!-- Lucide icon from library -->
         <i data-lucide="hard-hat"></i>
       </div>
       <div class="m-title">Технические работы</div>
@@ -98,34 +97,43 @@
       window.open(url, '_blank', 'noopener');
     }
 
-    // Поддержка рендеринга Lucide для этого экрана (ждём, пока библиотека загрузится)
+    // Поддержка рендеринга Lucide для этого экрана
     (function ensureLucide(){
       if (window.lucide?.createIcons) { try { window.lucide.createIcons(); } catch {} return; }
       setTimeout(ensureLucide, 50);
     })();
 
-    // ======== УМНЫЙ GATE ДЛЯ ТЕХРАБОТ (админы проходят) ========
+    // ======== GATE ДЛЯ ТЕХРАБОТ (админы проходят) ========
     async function isAdminUser(cfg){
-      // 1) локальный токен
+      // 0) если в maintenance — подчистим "левый" токен у не-админов (страховка)
+      try{
+        if (cfg?.maintenance) {
+          const tid = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+          const ids = (cfg.adminIds||[]).map(String);
+          if (!tid || !ids.includes(String(tid))) {
+            try{ localStorage.removeItem('admin_api_token'); }catch{}
+          }
+        }
+      }catch{}
+
+      // 1) локальный/URL токен (но без мягкого прохода — только после валидации)
       const localToken =
         (function(){ try{ return localStorage.getItem('admin_api_token') || '' }catch{ return '' } })() ||
         (window.__ADMIN_API_TOKEN__ || '');
 
-      // 2) Telegram user id (если есть)
+      // 2) Telegram user id (если есть) — прямой белый список
       let tgUserId = null;
       try { tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || null; } catch {}
-
-      // 3) Белый список из конфига
       try {
-        if (Array.isArray(cfg?.adminIds) && tgUserId && cfg.adminIds.includes(String(tgUserId))) {
+        if (Array.isArray(cfg?.adminIds) && tgUserId && cfg.adminIds.map(String).includes(String(tgUserId))) {
           return true;
         }
       } catch {}
 
-      // 4) Аварийный обход для дев-режима: ?adminbypass=1
+      // 3) Аварийный обход для дев-режима: ?adminbypass=1
       try { const p = new URLSearchParams(location.search); if (p.get('adminbypass') === '1') return true; } catch {}
 
-      // 5) Серверная проверка (если есть)
+      // 4) Серверная проверка (строгая)
       try {
         const payload = {
           token: localToken || null,
@@ -143,9 +151,7 @@
         }
       } catch {}
 
-      // 6) Мягкое правило: если токен есть, а строгая проверка не включена — пускаем
-      if (localToken && !cfg?.strictAdminCheck) return true;
-
+      // 5) Никаких мягких правил по одному лишь наличию токена!
       return false;
     }
 
@@ -201,7 +207,7 @@
       // не админ → показываем оверлей
       showMaintenanceOverlay(cfg);
     })();
-    // ======== /УМНЫЙ GATE ========
+    // ======== /GATE ========
   </script>
   <!-- ▲ Maintenance gate -->
 
@@ -238,10 +244,10 @@
   <meta name="twitter:description" content="Стильные вещи по Outlet-ценам. Смотрите каталог и заказывайте в пару кликов." />
   <meta name="twitter:image" content="assets/images/og-evlise.png" />
 
-  <!-- ЕДИНЫЙ БИЛД-ШТАМП (обновляется versionize.mjs) -->
+  <!-- ЕДИНЫЙ БИЛД-ШТАМП -->
   <meta id="APP_BUILD" name="app-build" content="2025-10-30-21-17" />
 
-  <!-- Лёгкая телеметрия (без влияния на кэш) -->
+  <!-- Лёгкая телеметрия -->
   <script>
   (function(){
     if (sessionStorage.__diag_sent__) return;
@@ -268,7 +274,7 @@
   </script>
 
   <script>
-  /* Ранний и устойчивый к Telegram-хэшу детектор home-страницы */
+  /* Ранний детектор home-страницы */
   (function routeClassSync(){
     var de = document.documentElement;
 
@@ -307,22 +313,18 @@
       --muted:#787676;
 
       /* spacer под верхние кнопки Telegram */
-      --tg-topbar: 56px; /* при желании 52–60px */
+      --tg-topbar: 56px;
     }
 
-    /* показ секций только на главной */
     [data-home-only]{ display:block !important; }
     .route-other [data-home-only]{ display:none !important; }
 
-    /* === Spacer под кнопки Telegram (глобально) === */
     #tgTopInset{ height:0; }
     .tg-webapp #tgTopInset{ height: calc(var(--safe-top) + var(--tg-topbar)); }
 
-    /* статичный app-header больше не используется */
     .app-header{ display:none !important; }
 
-    /* === Уведомления (новая система "точек") === */
-    .badge-wrap{ position:relative } /* чтобы не сломать бейдж корзины */
+    .badge-wrap{ position:relative }
 
     .section-search .search-wrap{ position:relative }
     .section-search .search{ width:100%; padding-right:44px }
@@ -367,7 +369,7 @@
   <!-- Lucide -->
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.454.0/dist/umd/lucide.min.js" defer></script>
 
-  <!-- Канонический хост — всегда evliseoutlet.netlify.app -->
+  <!-- Канонический хост -->
   <script>
   (function enforceCanonical(){
     var CANON = 'evliseoutlet.netlify.app';
@@ -481,24 +483,16 @@
     <template id="filter-chip"><span class="chip chip-mini"></span></template>
   </div>
 
-  <!-- ADMIN TOKEN INJECTION (только в Telegram-вью) -->
+  <!-- ADMIN TOKEN VIA URL ONLY -->
   <script>
   (function(){
-    var ADMIN_TOKEN = 'UsA^5976JJbD4g6j*t^jkJMoMa%*Ho!j';
-    var h=(document.referrer||'').toLowerCase(), ua=(navigator.userAgent||'').toLowerCase();
-    var isTgRef = h.startsWith('https://t.me') || h.startsWith('https://web.telegram.org') || h.startsWith('https://telegram.org');
-    var isTgUA  = ua.includes('telegram');
-    var hasInitData = (function(){ try{ return typeof window.Telegram?.WebApp?.initData==='string' && Telegram.WebApp.initData.length>0 }catch{ return false } })();
-    if ((isTgRef||isTgUA||hasInitData) && ADMIN_TOKEN){
-      window.__ADMIN_API_TOKEN__=ADMIN_TOKEN;
-      try{ localStorage.setItem('admin_api_token', String(ADMIN_TOKEN)); }catch{}
-    }
+    // принимаем токен только из URL (?admintoken=...), ничего не инжектим всем подряд
     try{
       var p = new URLSearchParams(location.search);
-      var q=p.get('admintoken');
+      var q = p.get('admintoken');
       if(q){
-        window.__ADMIN_API_TOKEN__=q;
-        localStorage.setItem('admin_api_token', q);
+        window.__ADMIN_API_TOKEN__ = q;
+        try{ localStorage.setItem('admin_api_token', q); }catch{}
         p.delete('admintoken');
         history.replaceState({},'',location.pathname+(p.toString()?('?'+p.toString()):'')+location.hash);
       }
@@ -543,7 +537,7 @@
   })();
   </script>
 
-  <!-- ВХОД: обычный модуль (версионируется versionize.mjs) -->
+  <!-- ВХОД: обычный модуль -->
   <script type="module" src="src/main.js?v=2025-10-30-21-17"></script>
 </body>
 </html>
