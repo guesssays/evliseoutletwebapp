@@ -288,16 +288,38 @@ export function drawCategoriesChips(router){
 
   const mk=(slug, name, active)=>`<button class="chip ${active?'active':''}" data-slug="${slug}">${name}</button>`;
 
-  wrap.innerHTML='';
+  // helpers для сортировки и фильтра
+  const isOther = (g)=>{
+    const s = (g.slug||'').toLowerCase();
+    const n = (g.name||'').toLowerCase();
+    return ['другое','разное','other','misc'].includes(s) || ['другое','разное','other','misc'].includes(n);
+  };
+  const sortKey = (g)=>{
+    const s = (g.slug||'').toLowerCase();
+    const n = (g.name||'').toLowerCase();
+    if (['top','верх','verh','up'].includes(s) || ['верх'].includes(n)) return 0;     // Верх
+    if (['bottom','низ','niz','down'].includes(s) || ['низ'].includes(n)) return 1;  // Низ
+    if (['shoes','обувь','obu'].includes(s) || ['обувь'].includes(n)) return 2;      // Обувь
+    if (['bags','сумки','sumki'].includes(s) || ['сумки'].includes(n)) return 3;     // Сумки
+    return 99;
+  };
+  const topGroupsOrdered = (state.categories||[])
+    .filter(g => !isOther(g))
+    .sort((a,b)=> sortKey(a) - sortKey(b));
+
+  // текущая выбранная
+  const cur = state.filters?.category || 'all';
+
+  // — строго заданный порядок чипсов:
+  wrap.innerHTML = '';
+  wrap.insertAdjacentHTML('beforeend', mk('all','Все товары', cur==='all'));
   if (promoIsActive()){
-    wrap.insertAdjacentHTML('beforeend', mk('promo','Акции', state.filters.category==='promo'));
+    wrap.insertAdjacentHTML('beforeend', mk('promo','Акции', cur==='promo')); // сразу после «Все товары»
   }
-  wrap.insertAdjacentHTML('beforeend', mk('all','Все товары', state.filters.category==='all'));
-  wrap.insertAdjacentHTML('beforeend', mk('new','Новинки', state.filters.category==='new'));
-  wrap.insertAdjacentHTML('beforeend', mk('instock','В наличии', state.filters.category==='instock'));
-  state.categories.forEach(c=>{
-    if (c.slug === 'new') return;
-    wrap.insertAdjacentHTML('beforeend', mk(c.slug, c.name, state.filters.category===c.slug));
+  wrap.insertAdjacentHTML('beforeend', mk('new','Новинки', cur==='new'));
+  wrap.insertAdjacentHTML('beforeend', mk('instock','В наличии', cur==='instock'));
+  topGroupsOrdered.forEach(c=>{
+    wrap.insertAdjacentHTML('beforeend', mk(c.slug, c.name, cur===c.slug));
   });
 
   if (!wrap.dataset.bound){
