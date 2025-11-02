@@ -38,12 +38,18 @@ export function renderPromo(router) {
   const banners = getPromoBanners();
   const topBanner = banners?.[0];
 
-  // === локальные стили для промо-шапки (без конфликтов с глобальными) ===
-  const HEAD_PAD_X = 8; // ← уменьшил боковой отступ (было 12)
-  const headStyles = `
-    padding:${16}px ${HEAD_PAD_X}px;   /* ↑ увеличил вертикальные отступы */
+  // === локальные стили (только для промо-страницы) ===
+  const HEAD_PAD_X = 6; // ещё меньше слева
+  // отступы внешнего контейнера шапки от баннера и от сетки
+  const WRAP_MARGIN_TOP = 18;
+  const WRAP_MARGIN_BOTTOM = 16;
+
+  // строка с кнопкой и заголовком
+  const headRowStyles = `
     display:flex; align-items:center; gap:10px;
+    padding:0 ${HEAD_PAD_X}px;
   `;
+  // белая квадратная кнопка «назад»
   const backBtnStyles = `
     width:40px; height:40px;
     display:grid; place-items:center;
@@ -53,8 +59,10 @@ export function renderPromo(router) {
     box-shadow:0 1px 2px rgba(0,0,0,.04);
   `;
   const titleStyles = `margin:0; font-size:28px; font-weight:800;`;
-  const subStyles   = `
-    margin:${8}px ${HEAD_PAD_X}px ${14}px;  /* ↑ больше отступ сверху/снизу и меньше слева */
+  // подзаголовок: маленький зазор с заголовком и без лишних боковых отступов
+  const subStyles = `
+    margin:2px 0 0; 
+    padding:0 ${HEAD_PAD_X}px; 
     color:var(--muted);
   `;
 
@@ -67,14 +75,17 @@ export function renderPromo(router) {
             <img src="${topBanner.img}" alt="${escapeHtml(topBanner.alt || 'Акция')}" loading="eager" decoding="async">
           </a>` : ``}
 
-        <div class="promo-head2" style="${headStyles}">
-          <button class="promo-back2" type="button" aria-label="Назад" title="Назад" style="${backBtnStyles}">
-            <i data-lucide="chevron-left"></i>
-          </button>
-          <h1 class="promo-title2" style="${titleStyles}">${escapeHtml(promoTitle())}</h1>
-        </div>
-        <div class="promo-sub2" style="${subStyles}">
-          ${escapeHtml(promoSubtitle())}
+        <!-- внешний контейнер шапки: отступы от баннера/сетки -->
+        <div class="promo-headwrap2" style="margin:${WRAP_MARGIN_TOP}px 0 ${WRAP_MARGIN_BOTTOM}px;">
+          <div class="promo-head2" style="${headRowStyles}">
+            <button class="promo-back2" type="button" aria-label="Назад" title="Назад" style="${backBtnStyles}">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <h1 class="promo-title2" style="${titleStyles}">${escapeHtml(promoTitle())}</h1>
+          </div>
+          <div class="promo-sub2" style="${subStyles}">
+            ${escapeHtml(promoSubtitle())}
+          </div>
         </div>
 
         <div class="notes-empty" style="margin:0 ${HEAD_PAD_X}px;">
@@ -99,18 +110,21 @@ export function renderPromo(router) {
         </a>
       ` : ``}
 
-      <div class="promo-head2" style="${headStyles}">
-        <button class="promo-back2" type="button" aria-label="Назад" title="Назад" style="${backBtnStyles}">
-          <i data-lucide="chevron-left"></i>
-        </button>
-        <h1 class="promo-title2" style="${titleStyles}">${escapeHtml(promoTitle())}</h1>
-      </div>
-      <div class="promo-sub2" style="${subStyles}">
-        ${escapeHtml(promoSubtitle())}
+      <!-- внешний контейнер шапки: аккуратные поля от баннера и от сетки -->
+      <div class="promo-headwrap2" style="margin:${WRAP_MARGIN_TOP}px 0 ${WRAP_MARGIN_BOTTOM}px;">
+        <div class="promo-head2" style="${headRowStyles}">
+          <button class="promo-back2" type="button" aria-label="Назад" title="Назад" style="${backBtnStyles}">
+            <i data-lucide="chevron-left"></i>
+          </button>
+          <h1 class="promo-title2" style="${titleStyles}">${escapeHtml(promoTitle())}</h1>
+        </div>
+        <div class="promo-sub2" style="${subStyles}">
+          ${escapeHtml(promoSubtitle())}
+        </div>
       </div>
 
       <!-- сетка промо-товаров -->
-      <div id="promoGrid" class="grid home-bottom-pad" style="padding:10px 0 0"></div>
+      <div id="promoGrid" class="grid home-bottom-pad" style="padding:0"></div>
     </div>
   `;
 
