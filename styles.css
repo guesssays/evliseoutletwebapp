@@ -2552,3 +2552,24 @@ html body main#view.view.promo-page::after{
   stroke: currentColor !important;
   fill: none !important;
 }
+/* === PROMO GRID WIDTH FIX (full-bleed) ============================ */
+#view.promo-page,
+#view.promo-page .promo-wrap,
+#view.promo-page .section,
+#view.promo-page .view,
+#view.promo-page #productGrid,
+#view.promo-page .product-grid,
+#view.promo-page .grid{
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Колонки сетки без сужения из-за содержимого */
+#view.promo-page .grid{
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+/* Страховка от внутренних min-content зажимов */
+#view.promo-page .grid > *{ min-width: 0 !important; }
