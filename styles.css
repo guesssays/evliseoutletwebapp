@@ -2459,7 +2459,7 @@ html body main#view.view.promo-page .grid{
 /* === PROMO PAGE: ровная тёмная подложка, чуть темнее (final override) === */
 :root{
   /* крути 0.20–0.80; было 0.40 — делаем темнее */
-  --promo-dim: .58;
+  --promo-dim: .80;
   --promo-bg:  #0e0e10;
 }
 
