@@ -2726,33 +2726,30 @@ html body #view.promo-page .grid{
 @media (max-width: 380px){
   html body #view.promo-page .grid{ grid-template-columns: 1fr !important; }
 }
-/* === GRID FULL-BLEED (убираем лишние поля у товарной ленты) === */
+/* === PROMO: ширина сетки = ширине промо-баннера =================== */
+/* 0px = полноэкранный баннер и такая же full-bleed сетка
+   18px = как обычные инкеты приложения (можешь подстроить) */
+:root{ --promo-inset: 0px; }
 
-/* Домашняя и промо-страницы: .view без боковых инкетов */
-html.route-home .view,
-#view.promo-page.view,
-#view.promo-page .view{
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+/* сам баннер */
+#view.promo-page .promo-banner{
+  margin: 0 var(--promo-inset) !important;
+  border-radius: var(--radius, 22px);
+  overflow: hidden;
 }
 
-/* Любые товарные гриды — без внутренних отступов/смещений */
-#productGrid,
-.product-grid,
-#view.promo-page #productGrid,
-#view.promo-page .product-grid{
-  margin-left: 0 !important;
+/* товарная сетка — точно с теми же боковыми инкетами */
+#view.promo-page #promoGrid,
+#view.promo-page .product-grid,
+#view.promo-page .grid{
+  padding-left:  var(--promo-inset) !important;
+  padding-right: var(--promo-inset) !important;
+  margin-left:  0 !important;
   margin-right: 0 !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+  width: 100% !important;
+  grid-template-columns: repeat(2, minmax(0,1fr)) !important;
 }
 
-/* Сетка ровно в край экрана (без сужения от min-content) */
-#productGrid,
-.product-grid{
-  width: 100% !important;
-}
-#productGrid > *,
-.product-grid > *{
-  min-width: 0 !important;
+@media (max-width: 380px){
+  #view.promo-page .grid{ grid-template-columns: 1fr !important; }
 }
