@@ -44,6 +44,24 @@ export function renderPromo(router) {
   const banners = getPromoBanners();
   const topBanner = banners?.[0];
 
+  // === локальные стили только для промо-шапки (новые классы, без конфликтов) ===
+  // оставляем инлайном, чтобы точно переопределить и не зависеть от глобальных css
+  const HEAD_PAD_X = 12; // меньше, чтобы попасть в твою сетку
+  const headStyles = `
+    padding:${8}px ${HEAD_PAD_X}px; 
+    display:flex; align-items:center; gap:10px;
+  `;
+  const backBtnStyles = `
+    width:40px; height:40px; 
+    display:grid; place-items:center;
+    background:var(--paper); 
+    border:1px solid var(--stroke); 
+    border-radius:12px;
+    box-shadow:0 1px 2px rgba(0,0,0,.04);
+  `;
+  const titleStyles = `margin:0; font-size:28px; font-weight:800;`;
+  const subStyles   = `margin:4px ${HEAD_PAD_X}px 10px; color:var(--muted);`;
+
   // Пустое состояние
   if (promoList.length === 0) {
     v.innerHTML = `
@@ -53,18 +71,18 @@ export function renderPromo(router) {
             <img src="${topBanner.img}" alt="${escapeHtml(topBanner.alt || 'Акция')}" loading="eager" decoding="async">
           </a>` : ``}
 
-        <!-- НОВАЯ шапка: только новые классы -->
-        <div class="promo-head2" style="margin:10px 18px 6px; display:flex; align-items:center; gap:10px;">
-          <button class="promo-back2 hero-btn neutral" type="button" aria-label="Назад" title="Назад" style="width:44px; height:44px;">
+        <!-- НОВАЯ шапка -->
+        <div class="promo-head2" style="${headStyles}">
+          <button class="promo-back2" type="button" aria-label="Назад" title="Назад" style="${backBtnStyles}">
             <i data-lucide="chevron-left"></i>
           </button>
-          <h1 class="promo-title2" style="margin:0; font-size:28px; font-weight:800;">${escapeHtml(promoTitle())}</h1>
+          <h1 class="promo-title2" style="${titleStyles}">${escapeHtml(promoTitle())}</h1>
         </div>
-        <div class="promo-sub2" style="margin:2px 18px 10px; color:var(--muted);">
+        <div class="promo-sub2" style="${subStyles}">
           ${escapeHtml(promoSubtitle())}
         </div>
 
-        <div class="notes-empty" style="margin:0 18px;">
+        <div class="notes-empty" style="margin:0 ${HEAD_PAD_X}px;">
           <b style="display:block;font-weight:800;margin-bottom:6px">Скоро акции</b>
           <div>Подготовим скидки и x2 кэшбек — загляните позже</div>
         </div>
@@ -86,14 +104,14 @@ export function renderPromo(router) {
         </a>
       ` : ``}
 
-      <!-- НОВАЯ шапка: новые классы, выровнено по общей сетке (18px) -->
-      <div class="promo-head2" style="margin:10px 18px 6px; display:flex; align-items:center; gap:10px;">
-        <button class="promo-back2 hero-btn neutral" type="button" aria-label="Назад" title="Назад" style="width:44px; height:44px;">
+      <!-- НОВАЯ шапка: белая кнопка, компактные вертикальные паддинги, меньшие боковые отступы -->
+      <div class="promo-head2" style="${headStyles}">
+        <button class="promo-back2" type="button" aria-label="Назад" title="Назад" style="${backBtnStyles}">
           <i data-lucide="chevron-left"></i>
         </button>
-        <h1 class="promo-title2" style="margin:0; font-size:28px; font-weight:800;">${escapeHtml(promoTitle())}</h1>
+        <h1 class="promo-title2" style="${titleStyles}">${escapeHtml(promoTitle())}</h1>
       </div>
-      <div class="promo-sub2" style="margin:2px 18px 0; color:var(--muted);">
+      <div class="promo-sub2" style="${subStyles}">
         ${escapeHtml(promoSubtitle())}
       </div>
 
@@ -103,8 +121,6 @@ export function renderPromo(router) {
   `;
 
   try { window.lucide?.createIcons?.(); } catch {}
-
-  // Назад (новый селектор)
   try { wirePromoHead(v); } catch {}
 
   // Сетка карточек
