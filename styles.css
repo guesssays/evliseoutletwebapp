@@ -2878,3 +2878,18 @@ html body .p-desc{
 /* Страховка: глушим более ранние правила, которые могли сдвигать всё вправо */
 .page-title{ padding-left: 0 !important; }                 /* на случай старого «резерва» */
 .page-title .square-btn{ left: auto !important; }          /* если где-то оставался absolute */
+/* === PROMO PAGE ALIGN: заголовок/стрелка = точно по левой кромке сетки === */
+
+/* 1) На промо-странице подменяем общий контент-инсет на промо-инсет */
+#view.promo-page{
+  --content-x: var(--promo-inset, 18px) !important;
+}
+
+/* 2) (опционально) микро-юстировка, если по оптике надо сдвинуть на 1–2px */
+:root{ --title-nudge: 0px; } /* поставь -2px или -3px, если нужно ещё левее */
+#view.promo-page .page-title{
+  margin-left:  calc(var(--content-x) + var(--title-nudge)) !important;
+  margin-right: calc(var(--content-x)) !important;
+}
+/* Кнопка «назад» остаётся обычным flex-элементом без своих смещений */
+#view.promo-page .page-title .square-btn{ margin:0 !important; }
