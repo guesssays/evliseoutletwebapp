@@ -148,15 +148,34 @@ export function renderPromo(router) {
 /* ===== helpers ===== */
 
 function mountXmasLights(viewEl) {
-  try {
-    // удалим старые, если вдруг двойной mount
-    viewEl.querySelector('.xmas-lights')?.remove();
-  } catch {}
+  try { viewEl.querySelector('.xmas-lights')?.remove(); } catch {}
   const lights = document.createElement('div');
   lights.className = 'xmas-lights';
   lights.setAttribute('aria-hidden', 'true');
+
+  // Рандомизируем смещения X и чуть Y — чтобы ряды выглядели по-разному
+  const rx = () => Math.round(Math.random() * 100) + '%';
+  // небольшие колебания высот (целевые уровни задаёт CSS, мы — чуть «дрожим»)
+  const ry = (baseVh, spread = 4) => {
+    const delta = (Math.random() * spread * 2) - spread; // -spread..+spread
+    return `calc(${baseVh}vh + ${delta.toFixed(1)}vh)`;
+  };
+
+  lights.style.setProperty('--l1x', rx());
+  lights.style.setProperty('--l2x', rx());
+  lights.style.setProperty('--l3x', rx());
+  lights.style.setProperty('--l4x', rx());
+  lights.style.setProperty('--l5x', rx());
+
+  lights.style.setProperty('--l1y', ry(0, 2));
+  lights.style.setProperty('--l2y', ry(20, 3));
+  lights.style.setProperty('--l3y', ry(40, 3));
+  lights.style.setProperty('--l4y', ry(60, 3));
+  lights.style.setProperty('--l5y', ry(80, 3));
+
   viewEl.appendChild(lights);
 }
+
 
 function bindCleanup() {
   const cleanup = () => {

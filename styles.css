@@ -2571,3 +2571,97 @@ html body main#view.view.promo-page::after{
 
 /* Гарантируем, что контент промо ниже слоя гирлянды */
 #view.promo-page > *{ position: relative; z-index: 1; }
+/* === PROMO: грид вровень с баннером (full-bleed) ================== */
+/* баннер уже без боковых отступов → убираем их и у гридов на промо */
+#view.promo-page #promoGrid{
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* на всякий — обнулим любые локальные "section" паддинги внутри промо */
+#view.promo-page .promo-wrap .section{
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* чтобы сетка на промо была той же «оптической» ширины, что и баннер */
+#view.promo-page .promo-wrap{
+  /* промо-обёртка остаётся без боковых паддингов — баннер и грид full-bleed */
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+/* === PROMO: full-screen repeating Xmas lights, under content, over dim === */
+:root{
+  --z-promo-dim: 0;        /* тёмная вуаль (::after) */
+  --z-promo-lights: 1;     /* гирлянда (этот слой) */
+  --z-promo-content: 2;    /* весь контент/promogrid/тексты */
+  --xmas-lights-opacity: .98;
+}
+
+/* гарантируем верную иерархию слоёв именно на промо */
+#view.promo-page{
+  position: relative !important;
+  isolation: isolate !important;
+}
+#view.promo-page::after{ z-index: var(--z-promo-dim) !important; }
+#view.promo-page > *{ position: relative; z-index: var(--z-promo-content) !important; }
+
+/* FULLSCREEN гирлянда (несколько рядов, повтор по X; ряды — по всей высоте) */
+.xmas-lights{
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: var(--z-promo-lights) !important;
+  pointer-events: none !important;
+  opacity: var(--xmas-lights-opacity);
+
+  /* пять «нитей» с разными размерами и вертикальными высотами */
+  background-image:
+    url('assets/promo/newyear/christmas-lights.svg'),
+    url('assets/promo/newyear/christmas-lights.svg'),
+    url('assets/promo/newyear/christmas-lights.svg'),
+    url('assets/promo/newyear/christmas-lights.svg'),
+    url('assets/promo/newyear/christmas-lights.svg');
+
+  /* повторяем по горизонтали; высоты рядов разные для живости */
+  background-repeat: repeat-x, repeat-x, repeat-x, repeat-x, repeat-x;
+
+  /* размер нитей: чуть разный масштаб для каждого ряда */
+  background-size:
+    720px auto,
+    600px auto,
+    660px auto,
+    560px auto,
+    780px auto;
+
+  /* позиции рядов: Y — рядами на весь экран (vh), X — из CSS-переменных */
+  background-position:
+    var(--l1x, 50%) var(--l1y, 0vh),
+    var(--l2x, 10%) var(--l2y, 20vh),
+    var(--l3x, 80%) var(--l3y, 40vh),
+    var(--l4x, 30%) var(--l4y, 60vh),
+    var(--l5x, 60%) var(--l5y, 80vh);
+
+  /* аккуратное свечение и смешивание на тёмном промо-фоне */
+  filter: drop-shadow(0 10px 18px rgba(255,255,255,.10));
+  mix-blend-mode: screen;
+}
+
+/* телефоны: ряды ближе и компактнее */
+@media (max-width: 420px){
+  .xmas-lights{
+    background-size:
+      560px auto,
+      500px auto,
+      520px auto,
+      480px auto,
+      600px auto;
+    background-position:
+      var(--l1x, 50%) var(--l1y, 0vh),
+      var(--l2x, 14%) var(--l2y, 18vh),
+      var(--l3x, 72%) var(--l3y, 36vh),
+      var(--l4x, 26%) var(--l4y, 54vh),
+      var(--l5x, 58%) var(--l5y, 72vh);
+  }
+}
