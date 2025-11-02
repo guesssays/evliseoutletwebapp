@@ -21,32 +21,31 @@ import {
  * - Если акционных нет — показываем аккуратное пустое состояние.
  * - Оформление/фон задаётся через applyPromoTheme() и снимается при уходе.
  */
-
 export function renderPromo(router) {
-  // если промо выключено — уходим на главную
+  // промо выключено — редиректим на главную
   if (!promoIsActive()) {
     try { clearPromoTheme(); } catch {}
     location.hash = '#/';
     return;
   }
 
-  // прогарантируем state.promo и тестовые данные (если ничего не заведено)
+  // гарантируем наличие данных промо (seed для теста)
   try { ensureTestPromoSeed(); } catch {}
 
-  // применим тему: фон страницы/паттерн прокидываются переменными
+  // применяем тему (CSS токены/паттерн) + класс для стилей промо
   applyPromoTheme(true);
+
+  const v = document.getElementById('view');
+  if (!v) return;
+  v.classList.add('promo-page'); // ← КРИТИЧНО для тёмной подложки
 
   const products = Array.isArray(state.products) ? state.products : [];
   const promoList = products.filter(productInPromo);
 
-  const v = document.getElementById('view');
-  if (!v) return;
-
-  // Верхний баннер (если есть)
   const banners = getPromoBanners();
   const topBanner = banners?.[0];
 
-  // Если акционных товаров нет — показываем пустое состояние (без «весь каталог»)
+  // ПУСТОЕ СОСТОЯНИЕ
   if (promoList.length === 0) {
     v.innerHTML = `
       <div class="promo-wrap" style="padding:20px 18px calc(var(--tabbar-h) + var(--safe) + 10px)">
@@ -63,13 +62,12 @@ export function renderPromo(router) {
         </div>
       </div>
     `;
-
-    // автоснятие темы при уходе
     bindCleanup();
+    try { window.lucide?.createIcons?.(); } catch {}
     return;
   }
 
-  // Основной рендер промо-ленты
+  // ОСНОВНОЙ РЕНДЕР
   v.innerHTML = `
     <div class="promo-wrap" style="padding:0 0 calc(var(--tabbar-h) + var(--safe) + 10px)">
       ${topBanner ? `
@@ -83,54 +81,62 @@ export function renderPromo(router) {
           <button class="square-btn neutral promo-back" type="button" aria-label="Назад" title="Назад" style="position:static; width:44px; height:44px; margin-right:10px">
             <i data-lucide="chevron-left"></i>
           </button>
-          <h1 class="p-title" style="margin:0; font-size:28px; font-weight:800">${escapeHtml(promoTitle())}</h1>
+          <h1 class="p-title" style="margin:0; font-size:28px; font-weight:800">
+            ${escapeHtml(promoTitle())}
+          </h1>
         </div>
         <div class="p-desc" style="margin-top:2px; color:var(--muted)">${escapeHtml(promoSubtitle())}</div>
       </div>
 
+      <!-- ВАЖНО: сама сетка промо-товаров -->
+      <div id="promoGrid" class="grid home-bottom-pad" style="padding:10px 18px 0"></div>
+    </div>
   `;
 
+  // иконки
+  try { window.lucide?.createIcons?.(); } catch {}
+
+  // кнопка «назад»
+  const backBtn = v.querySelector('.promo-back');
+  backBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    history.back();
+  });
+
+  // наполняем сетку карточками
   const grid = document.getElementById('promoGrid');
-  if (!grid) {
-    bindCleanup();
-    return;
+  if (grid) {
+    grid.innerHTML = promoList.map(renderCard).join('');
+    try { window.lucide?.createIcons?.(); } catch {}
+
+    // перехват «сердечек» без навигации
+    if (!grid.dataset.favHandlerBound) {
+      grid.addEventListener('click', (ev) => {
+        const favBtn = ev.target?.closest?.('.fav, button.fav');
+        if (!favBtn) return;
+
+        ev.preventDefault();
+
+        const card = favBtn.closest('.card, a.card');
+        const href = card?.getAttribute('href') || '';
+        let pid = card?.dataset?.id || '';
+        if (!pid && href.startsWith('#/product/')) pid = href.replace('#/product/', '').trim();
+        if (!pid) return;
+
+        const now = toggleFav(pid);
+        favBtn.classList.toggle('active', now);
+        favBtn.setAttribute('aria-pressed', String(now));
+
+        try {
+          window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: pid, active: now } }));
+          window.dispatchEvent(new CustomEvent('favorites:updated'));
+        } catch {}
+      }, { passive: false, capture: true });
+
+      grid.dataset.favHandlerBound = '1';
+    }
   }
 
-  grid.innerHTML = promoList.map(renderCard).join('');
-  try { window.lucide?.createIcons && lucide.createIcons(); } catch {}
-
-  // кнопка «назад» в шапке промо
-  const backBtn = document.querySelector('.promo-back');
-  backBtn?.addEventListener('click', (e) => { e.preventDefault(); history.back(); });
-
-  // перехват кликов по «сердечку» без навигации
-  if (!grid.dataset.favHandlerBound) {
-    grid.addEventListener('click', (ev) => {
-      const favBtn = ev.target?.closest?.('.fav, button.fav');
-      if (!favBtn) return;
-
-      ev.preventDefault();
-
-      const card = favBtn.closest('.card, a.card');
-      const href = card?.getAttribute('href') || '';
-      let pid = card?.dataset?.id || '';
-      if (!pid && href.startsWith('#/product/')) pid = href.replace('#/product/', '').trim();
-      if (!pid) return;
-
-      const now = toggleFav(pid);
-      favBtn.classList.toggle('active', now);
-      favBtn.setAttribute('aria-pressed', String(now));
-
-      try {
-        window.dispatchEvent(new CustomEvent('fav:changed', { detail: { id: pid, active: now } }));
-        window.dispatchEvent(new CustomEvent('favorites:updated'));
-      } catch {}
-    }, { passive: false, capture: true });
-
-    grid.dataset.favHandlerBound = '1';
-  }
-
-  // автоснятие темы при уходе
   bindCleanup();
 }
 
@@ -140,6 +146,8 @@ function bindCleanup() {
   const cleanup = () => {
     if (!location.hash.startsWith('#/promo')) {
       try { clearPromoTheme(); } catch {}
+      const v = document.getElementById('view');
+      v?.classList?.remove?.('promo-page'); // снимаем класс при уходе
       window.removeEventListener('hashchange', cleanup);
     }
   };
@@ -211,8 +219,5 @@ function escapeHtml(s = '') {
 }
 
 function escapeAttr(s = '') {
-  // чуть строже для атрибутов/URL
-  return String(s)
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;');
+  return String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
