@@ -91,7 +91,8 @@ export function renderPromo(router) {
       </div>
 
       <!-- сетка промо-товаров -->
-      <div id="promoGrid" class="grid home-bottom-pad" style="padding:10px 18px 0"></div>
+<div id="promoGrid" class="grid home-bottom-pad" style="padding:10px 0 0"></div>
+
     </div>
   `;
 

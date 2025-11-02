@@ -2584,3 +2584,27 @@ html body main#view.view.promo-page::after{
   /* фиксируем: сетка остаётся с тем же 18px, что и баннер */
   padding: 10px 18px 0 !important;
 }
+/* === PROMO: full-bleed баннер + такая же широкая товарная сетка ==== */
+
+/* 1) Баннер снова на всю ширину экрана */
+html body #view.promo-page .promo-banner{
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
+
+/* 2) Сетка промо — тоже full-bleed (без боковых инсатов) */
+html body #view.promo-page #promoGrid{
+  padding: 10px 0 0 !important;   /* было 10px 18px 0 */
+}
+
+/* 3) Колонки без сужения; при узких — одна колонка */
+html body #view.promo-page .grid{
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+@media (max-width: 380px){
+  html body #view.promo-page .grid{ grid-template-columns: 1fr !important; }
+}
+
+/* 4) На всякий — уберём возможные внутренние min-width-зажимы */
+html body #view.promo-page .grid > *{ min-width: 0 !important; }
