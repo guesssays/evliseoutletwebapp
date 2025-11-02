@@ -2780,7 +2780,7 @@ html body #view.promo-page .grid{
 }
 /* === HARD ALIGN (grid-left 18px): back arrow, title, subtitle === */
 :root{
-  --content-x: 0px;   /* тот же инсет, что у .view/.grid */
+  --content-x: 18px;   /* тот же инсет, что у .view/.grid */
   --back-btn-w: 44px;  /* ширина квадратной кнопки */
   --back-btn-gap: 10px;
 }
@@ -2821,3 +2821,60 @@ html body .p-desc{
   margin-right: var(--content-x) !important;
   text-align: left !important;
 }
+/* === ALIGN CANON (final): grid, title, back button on the same 18px line === */
+:root{
+  --content-x: 18px;
+  --back-btn-w: 44px;
+  --back-btn-gap: 10px;
+}
+
+/* Контейнеры дают общий инсет, сетка — без своих паддингов */
+.view, .section, .checkout{
+  padding-left:  var(--content-x) !important;
+  padding-right: var(--content-x) !important;
+}
+#productGrid, .product-grid, .grid{
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left:  0 !important;
+  margin-right: 0 !important;
+}
+
+/* Заголовочная строка: без резервного padding-left и без absolute */
+.page-title{
+  margin: 10px var(--content-x) 12px !important;
+  padding: 0 !important;                         /* <— критично: убираем лишний «резерв» */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: var(--back-btn-gap) !important;
+  text-align: left !important;
+}
+
+/* Кнопка «назад» — обычный flex-элемент, без смещений */
+.page-title .square-btn{
+  position: static !important;
+  flex: 0 0 var(--back-btn-w) !important;
+  width: var(--back-btn-w) !important;
+  height: var(--back-btn-w) !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+/* Текст заголовка занимает остаток ширины */
+.page-title h1{
+  margin: 0 !important;
+  min-width: 0 !important;
+  line-height: 1.2 !important;
+  font-weight: 800 !important;
+}
+
+/* Любые подзаголовки/описания — на той же левой линии */
+.page-sub, .page-subtitle, .p-desc{
+  margin-left:  var(--content-x) !important;
+  margin-right: var(--content-x) !important;
+}
+
+/* Страховка: глушим более ранние правила, которые могли сдвигать всё вправо */
+.page-title{ padding-left: 0 !important; }                 /* на случай старого «резерва» */
+.page-title .square-btn{ left: auto !important; }          /* если где-то оставался absolute */
