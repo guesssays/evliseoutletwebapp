@@ -297,7 +297,6 @@ function mergeReferrals(oldR={}, newR={}){
   out.monthCount = mc;
   const ifirst = { ...(oldR.inviteesFirst||{}) };
   for (const k of Object.keys(newR.inviteesFirst||{})) ifirst[k] = !!(newR.inviteesFirst[k] || ifirst[k]);
-  out.inviteesFirst = ifirst;
   return out;
 }
 function mergeReservations(oldArr = [], newArr = []) {
@@ -457,7 +456,8 @@ function makeCore(readAll, writeAll){
       return { ok:true };
     },
 
-    async accrue(uid, orderId, total, currency, shortId=null){
+    // ====== FIXED SIGNATURE: добавили items как 6-й аргумент
+    async accrue(uid, orderId, total, currency, shortId=null, items=[]){
       const db = await readDb();
       const existing = db.orders[orderId];
       if (existing?.released) {
@@ -471,9 +471,7 @@ function makeCore(readAll, writeAll){
 
       const eligibleForBoost = !!inviter && !wasFirstAlready(db, uid);
 
-      // Если пришли построчные позиции, считаем базу построчно с учётом продуктового x2
-      // (ровно как на клиенте: floor(5% * lineTotal) и затем * (x2 ? 2 : 1))
-      const items = Array.isArray(arguments?.[3]?.items) ? arguments[3].items : (typeof items !== 'undefined' ? items : []);
+      // Построчный расчёт с учётом продуктового x2
       let baseFromItems = 0;
       if (Array.isArray(items) && items.length) {
         for (const it of items) {
@@ -484,8 +482,7 @@ function makeCore(readAll, writeAll){
         }
       }
 
-      // Если позиций нет, падаем обратно на "целым чеком"
-      // (тут продуктовый x2 не будет учтён — как раньше)
+      // Фолбэк: целым чеком
       let newBuyerPts = baseFromItems > 0
         ? baseFromItems
         : Math.floor(total * CFG.BASE_RATE);
@@ -493,7 +490,7 @@ function makeCore(readAll, writeAll){
       // x2 за первый заказ по рефералке (стекается с продуктовым)
       if (eligibleForBoost) newBuyerPts = newBuyerPts * CFG.REF_FIRST_MULTIPLIER;
 
-      // Рефералу всегда начисляем от "total" по фиксированной ставке
+      // Рефералу начисляем от total
       const newRefPts = inviter ? Math.floor(total * CFG.REFERRER_EARN_RATE) : 0;
 
       const prevBuyerPts = existing?.accrual?.buyer || 0;
@@ -504,7 +501,7 @@ function makeCore(readAll, writeAll){
       if (deltaBuyer !== 0) {
         buyer.pending += deltaBuyer;
         const info = deltaBuyer>0
-          ? `Начисление ${eligibleForBoost ? 'x2 ' : ''}${Math.round(buyerRate*100)}% (ожидает 24ч)`
+          ? `Начисление ${eligibleForBoost ? 'x2 ' : ''}${Math.round(CFG.BASE_RATE*100)}% (ожидает 24ч)`
           : `Корректировка начисления (${deltaBuyer})`;
         buyer.history.push({ ts:Date.now(), kind: deltaBuyer>0?'accrue':'accrue_adjust', orderId, pts:deltaBuyer, info });
         if (buyer.history.length>500) buyer.history = buyer.history.slice(-500);
@@ -958,8 +955,16 @@ export async function handler(event){
 
     if (op === 'accrue'){
       if (!internal) return { statusCode:403, headers:cors, body: JSON.stringify({ ok:false, error:'forbidden' }) };
-      const { uid, orderId, total=0, currency='UZS', shortId=null } = body;
-      const r = await store.accrue(String(uid), String(orderId), Number(total||0), String(currency||'UZS'), shortId ? String(shortId) : null);
+      // ===== FIX: принимаем items с клиента и прокидываем в ядро
+      const { uid, orderId, total=0, currency='UZS', shortId=null, items=[] } = body;
+      const r = await store.accrue(
+        String(uid),
+        String(orderId),
+        Number(total||0),
+        String(currency||'UZS'),
+        shortId ? String(shortId) : null,
+        Array.isArray(items) ? items : []
+      );
       return { statusCode:200, headers:cors, body: JSON.stringify(r) };
     }
 
