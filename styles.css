@@ -3000,3 +3000,15 @@ html body .p-desc{
 #view.promo-page .promo-head{
   display: block !important;   /* ломаем grid/center, если был */
 }
+/* PROMO — финальное выравнивание слева */
+#view.promo-page .promo-head,
+#view.promo-page .page-title,
+#view.promo-page .p-desc{
+  text-align: left !important;
+}
+#view.promo-page .page-title{
+  display:flex !important; align-items:center !important; justify-content:flex-start !important;
+}
+#view.promo-page .page-title .promo-back{
+  position: static !important; margin-right:10px !important;
+}
