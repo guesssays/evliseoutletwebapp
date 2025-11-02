@@ -79,14 +79,15 @@ export function renderPromo(router) {
       ` : ``}
 
       <div class="section" style="padding:10px 18px 0">
-        <div class="p-title" style="margin:0; font-size:28px; font-weight:800">${escapeHtml(promoTitle())}</div>
-        <div class="p-desc" style="margin-top:4px; color:var(--muted)">${escapeHtml(promoSubtitle())}</div>
+        <div class="page-title" style="margin:0 0 6px; position:relative; padding-left:0">
+          <button class="square-btn neutral promo-back" type="button" aria-label="Назад" title="Назад" style="position:static; width:44px; height:44px; margin-right:10px">
+            <i data-lucide="chevron-left"></i>
+          </button>
+          <h1 class="p-title" style="margin:0; font-size:28px; font-weight:800">${escapeHtml(promoTitle())}</h1>
+        </div>
+        <div class="p-desc" style="margin-top:2px; color:var(--muted)">${escapeHtml(promoSubtitle())}</div>
       </div>
 
-      <div class="view" style="padding:10px 18px 0">
-        <div class="grid" id="promoGrid"></div>
-      </div>
-    </div>
   `;
 
   const grid = document.getElementById('promoGrid');
@@ -97,6 +98,10 @@ export function renderPromo(router) {
 
   grid.innerHTML = promoList.map(renderCard).join('');
   try { window.lucide?.createIcons && lucide.createIcons(); } catch {}
+
+  // кнопка «назад» в шапке промо
+  const backBtn = document.querySelector('.promo-back');
+  backBtn?.addEventListener('click', (e) => { e.preventDefault(); history.back(); });
 
   // перехват кликов по «сердечку» без навигации
   if (!grid.dataset.favHandlerBound) {

@@ -2456,3 +2456,41 @@ html body main#view.view.promo-page .grid{
   box-shadow: none !important;
   border-color: transparent !important;
 }
+/* === PROMO PAGE: ровная тёмная подложка, чуть темнее (final override) === */
+:root{
+  /* крути 0.20–0.80; было 0.40 — делаем темнее */
+  --promo-dim: .58;
+  --promo-bg:  #0e0e10;
+}
+
+#view.promo-page{
+  background-color: var(--promo-bg) !important;
+  position: relative !important;
+  isolation: isolate !important;
+}
+
+/* на промо больше не используем «дымку» ::before — чтобы не затемнять дважды */
+#view.promo-page::before{
+  content: none !important;
+  display: none !important;
+}
+
+/* единая тёмная вуаль поверх фоновой картинки/паттерна на ВЕСЬ экран */
+#view.promo-page::after{
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: rgba(0,0,0,var(--promo-dim));
+}
+
+/* контент промо всегда выше подложки */
+#view.promo-page > *{ position: relative; z-index: 1; }
+/* === FAVORITE button in grid: всегда белая «таблетка» (final) === */
+html body .card .fav{
+  background:#fff !important;
+  border:1px solid var(--stroke) !important;
+  box-shadow: var(--shadow) !important;
+  color: var(--text) !important;
+}
