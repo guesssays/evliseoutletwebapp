@@ -2624,3 +2624,105 @@ html body #view.promo-page .grid > *{ min-width: 0 !important; }
 #view.promo-page .p-desc{
   padding-left: 12px !important;  /* подстроить под кнопку, чтобы всё шло одним столбцом */
 }
+/* === LAYOUT CANON — единые инсет-поля и выравнивание ================== */
+:root{
+  --content-x: 18px;      /* боковые поля всего контента */
+  --grid-gap: 14px;       /* зазор карточек в сетке (как у тебя) */
+  --back-btn-w: 44px;     /* ширина квадратной кнопки «назад» */
+  --back-btn-gap: 10px;   /* зазор между кнопкой и заголовком */
+}
+
+/* 1) СЕТКА: всегда 2 колонки на телефонах (кроме очень узких), без «сужения» */
+html body .grid{
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: var(--grid-gap) !important;
+  width: 100% !important;
+}
+@media (max-width: 380px){
+  html body .grid{ grid-template-columns: 1fr !important; }
+}
+
+/* страховка от случайных min-content зажимов внутри сетки */
+html body .grid > *{ min-width: 0 !important; }
+
+/* 2) ХЕДЕР СТРАНИЦЫ: кнопка «назад» и заголовок в один ряд, без наложения */
+html body .page-title{
+  /* ровно те же края, что у .view/.grid */
+  margin: 10px var(--content-x) 12px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--back-btn-gap) !important;
+  min-height: var(--back-btn-w) !important;
+  position: relative !important;
+}
+
+/* кнопка — обычный поток, без absolute (это и убирает наложение) */
+html body .page-title .square-btn{
+  position: static !important;
+  flex: 0 0 var(--back-btn-w) !important;
+  width: var(--back-btn-w) !important;
+  height: var(--back-btn-w) !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+/* заголовок — занимает всё оставшееся место, не прыгает */
+html body .page-title h1{
+  margin: 0 !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  min-width: 0;                 /* чтобы не выталкивал кнопку на узких экранах */
+}
+
+/* 3) ПОДЗАГОЛОВОК: всегда ровно по тем же инсетам, что и сетка */
+html body .page-sub,
+html body .page-subtitle,
+html body .p-desc,
+html body .section-title + .muted{
+  margin-left:  var(--content-x) !important;
+  margin-right: var(--content-x) !important;
+}
+
+/* если подзаголовок идёт сразу после .page-title — небольшой вертикальный шаг */
+html body .page-title + .page-sub,
+html body .page-title + .page-subtitle,
+html body .page-title + .p-desc{
+  margin-top: 4px !important;
+}
+
+/* 4) Единые боковые поля для основных контейнеров (на случай локальных переопределений) */
+html body .view,
+html body .section,
+html body .checkout{
+  padding-left:  var(--content-x) !important;
+  padding-right: var(--content-x) !important;
+}
+
+/* а у самой сетки — НЕТ своих внутренних паддингов (она стыкуется с краями) */
+html body #productGrid,
+html body .product-grid{
+  padding-left:  0 !important;
+  padding-right: 0 !important;
+}
+
+/* 5) Страница промо: такие же правила заголовка/подзаголовка и ширины сетки */
+html body #view.promo-page .promo-head{
+  padding-left:  0 !important;
+  padding-right: 0 !important;
+}
+html body #view.promo-page .page-title{
+  margin-left:  var(--content-x) !important;
+  margin-right: var(--content-x) !important;
+}
+html body #view.promo-page .page-title + .p-desc{
+  margin-left:  var(--content-x) !important;
+  margin-right: var(--content-x) !important;
+}
+html body #view.promo-page .grid{
+  grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+}
+@media (max-width: 380px){
+  html body #view.promo-page .grid{ grid-template-columns: 1fr !important; }
+}
