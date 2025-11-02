@@ -171,7 +171,13 @@ function wirePromoHead(root){
   const backBtn = root.querySelector('.promo-back2');
   backBtn?.addEventListener('click', (e) => {
     e.preventDefault();
-    history.back();
+    try { window.__forceHomeAllOnce = Date.now(); } catch {}
+    // Если есть история — идём назад, иначе явно на главную
+    if (history.length > 1) {
+      history.back();
+    } else {
+      location.hash = '#/';
+    }
   });
 }
 
@@ -247,6 +253,9 @@ function escapeAttr(s = '') {
 function bindCleanup() {
   const cleanup = () => {
     if (!location.hash.startsWith('#/promo')) {
+      try {
+        window.__forceHomeAllOnce = Date.now(); // одноразовый форс для Home
+      } catch {}
       try { clearPromoTheme(); } catch {}
       const v = document.getElementById('view');
       v?.classList?.remove?.('promo-page');

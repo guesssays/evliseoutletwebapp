@@ -99,7 +99,6 @@ function getNewestWindow(limit = 12){
   return validated;
 }
 
-
 /* ===== skeleton suppressor ===== */
 function suppressGridSkeleton(ms = 900){
   try { window.__suppressHomeSkeletonUntil = Date.now() + Math.max(0, ms|0); } catch {}
@@ -279,26 +278,25 @@ function createProductNode(p){
     media.appendChild(hot);
   }
 
-// Промо-бейджи (скидка/x2)
-const badges = promoBadgesFor(p);
-if (badges.length){
-  const media = node.querySelector('.card-img') || node;
-  const wrap = document.createElement('div');
-  wrap.className = 'promo-badges';
-  // Жёстко фиксируем позиционирование, чтобы не растягивалось
-  wrap.style.left   = '8px';
-  wrap.style.bottom = '8px';
-  wrap.style.top    = 'auto';
-  wrap.style.right  = 'auto';
-  wrap.innerHTML = badges.map(b => `
-    <span class="promo-badge ${b.type}">
-      ${b.type==='discount' ? '<i data-lucide="percent"></i>' : '<i data-lucide="zap"></i>'}
-      <span class="lbl">${b.label}</span>
-    </span>
-  `).join('');
-  media.appendChild(wrap);
-}
-
+  // Промо-бейджи (скидка/x2)
+  const badges = promoBadgesFor(p);
+  if (badges.length){
+    const media = node.querySelector('.card-img') || node;
+    const wrap = document.createElement('div');
+    wrap.className = 'promo-badges';
+    // Жёстко фиксируем позиционирование, чтобы не растягивалось
+    wrap.style.left   = '8px';
+    wrap.style.bottom = '8px';
+    wrap.style.top    = 'auto';
+    wrap.style.right  = 'auto';
+    wrap.innerHTML = badges.map(b => `
+      <span class="promo-badge ${b.type}">
+        ${b.type==='discount' ? '<i data-lucide="percent"></i>' : '<i data-lucide="zap"></i>'}
+        <span class="lbl">${b.label}</span>
+      </span>
+    `).join('');
+    media.appendChild(wrap);
+  }
 
   const favBtn = node.querySelector('.fav, button.fav');
   if (favBtn){
@@ -315,6 +313,20 @@ if (badges.length){
 export function renderHome(router){
   const v = document.getElementById('view');
   if (!v) return;
+
+  // === одноразовый форс-сброс категории на "all" после выхода с промо ===
+  try {
+    const h = location.hash || '';
+    const isHome = (h === '#/' || h === '' || h.startsWith('#/home'));
+    const forcedAt = Number(window.__forceHomeAllOnce || 0);
+    const forceRecent = forcedAt && (Date.now() - forcedAt < 4000); // 4s окно
+    const cameFromPromo = (window.__lastHash === '#/promo');
+    if (isHome && (forceRecent || cameFromPromo)) {
+      state.filters = state.filters || {};
+      state.filters.category = 'all';
+      window.__forceHomeAllOnce = 0; // одноразово
+    }
+  } catch {}
 
   // Снимаем промо-оформление
   try { clearPromoTheme(); } catch {}
@@ -640,20 +652,12 @@ function renderPromoBannerNode(bn){
 /* utils */
 function escapeHtml(s=''){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-/* === Promo → Home: при возврате со страницы акции сбрасываем категорию на "all" === */
-(function setupPromoBackReset(){
+/* === Promo → Home: отслеживаем предыдущий hash для дополнительной логики === */
+(function trackLastHash(){
   try {
     window.__lastHash = location.hash || '#/';
     window.addEventListener('hashchange', () => {
-      const prev = window.__lastHash || '';
-      const cur  = location.hash || '';
-      const cameFromPromo = (prev === '#/promo');
-      const nowHome = (cur === '#/' || cur === '' || cur.startsWith('#/home'));
-      if (cameFromPromo && nowHome) {
-        state.filters = state.filters || {};
-        state.filters.category = 'all';
-      }
-      window.__lastHash = cur;
+      window.__lastHash = location.hash || '';
     }, { passive: true });
   } catch {}
 })();
