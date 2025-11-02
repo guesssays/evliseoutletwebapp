@@ -2494,3 +2494,18 @@ html body .card .fav{
   box-shadow: var(--shadow) !important;
   color: var(--text) !important;
 }
+/* === PROMO PAGE: force dim overlay back === */
+html body main#view.view.promo-page{
+  position: relative !important;
+  isolation: isolate !important;
+}
+
+html body main#view.view.promo-page::after{
+  content: "" !important;
+  display: block !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 0 !important;          /* под контентом, над фоном */
+  pointer-events: none !important;
+  background: rgba(0,0,0, var(--promo-dim, .52)) !important;
+}
