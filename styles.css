@@ -3262,3 +3262,14 @@ html body .card .price .cur.deal::after{
   .card .promo-badge svg{ width:14px !important; height:14px !important; flex-basis:14px !important; }
   .card .promo-badge .lbl{ font-size: 13px !important; }
 }
+/* === ALT: single line, no ellipsis ================================ */
+.card .promo-badge{
+  max-width: 100% !important;        /* можно 96–100% по вкусу */
+  white-space: nowrap !important;
+  overflow: visible !important;
+}
+.card .promo-badge .lbl{
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
