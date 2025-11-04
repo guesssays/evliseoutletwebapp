@@ -1,9 +1,14 @@
 // src/components/ScrollTop.js
-// Кнопка «Наверх» (ТОЛЬКО на главной).
-// Теперь ПОЯВЛЯЕТСЯ, когда пользователь начинает листать ВВЕРХ,
-// находясь в нижней части страницы (или достаточно далеко от верха).
+// Кнопка «Наверх» (ТОЛЬКО на главной). Ультра-надёжное распознавание «главной»,
+// поддержка любых скролл-контейнеров, живые обработчики, авто-ребиндинг,
+// периодический поллер на случай «молчаливых» скроллов.
 
 /* -------------------- УЛУЧШЕННОЕ РАСПОЗНАВАНИЕ ГЛАВНОЙ -------------------- */
+/**
+ * Главная считается включённой, если:
+ *  1) hash == '', '#', '#/', '#?…', '#/?…'
+ *  2) или в DOM присутствует grid главной: #productGrid (рендерит Home.js)
+ */
 function isHome() {
   const raw = String(location.hash || '');
   if (raw === '' || raw === '#') return true;
@@ -13,6 +18,7 @@ function isHome() {
   if (path === '' || path === '/') return true;
   if (path.startsWith('/?')) return true;     // '#/?utm=...'
 
+  // если роутер уже отрисовал главную — будет grid
   if (document.getElementById('productGrid')) return true;
 
   path = path.split('?')[0].replace(/^\/+/, '');
@@ -38,6 +44,7 @@ function findAnyScrollable(){
       const cs = getComputedStyle(el);
       if (cs.visibility === 'hidden' || cs.display === 'none') continue;
       const oy = cs.overflowY;
+      // допускаем auto/scroll; «overlay» встречается редко, но попадает как 'auto'
       if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) {
         return el;
       }
@@ -55,11 +62,12 @@ function getScrollTargets(){
   return Array.from(out);
 }
 
-// Текущая вертикальная позиция (максимальная среди кандидатов)
 function getScrollY(){
+  // 1) если уже знаем активную цель
   if (__activeScrollTarget && __activeScrollTarget !== window){
     return __activeScrollTarget.scrollTop || 0;
   }
+  // 2) берём МАКСИМУМ из всех возможных источников
   let maxY = 0;
   const cands = getScrollTargets();
   for (const c of cands){
@@ -72,44 +80,6 @@ function getScrollY(){
     }
   }
   return maxY;
-}
-
-// Метрики для вычисления «близости к низу»
-function getScrollMetrics(){
-  // 1) Пытаемся использовать активную цель
-  let t = __activeScrollTarget;
-  if (!t || (t !== window && !(t.scrollHeight > t.clientHeight))) {
-    // 2) Ищем лучший скроллер (с самым большим диапазоном)
-    let best = null, bestRange = -1;
-    for (const c of getScrollTargets()){
-      let range = 0;
-      if (c === window){
-        const doc = document.documentElement || document.body;
-        const sh = Math.max(doc.scrollHeight, document.body?.scrollHeight || 0);
-        const ch = window.innerHeight || doc.clientHeight || 0;
-        range = Math.max(0, sh - ch);
-      } else if (c && c.scrollHeight > c.clientHeight){
-        range = c.scrollHeight - c.clientHeight;
-      }
-      if (range > bestRange){ bestRange = range; best = c; }
-    }
-    t = best || window;
-  }
-
-  let y = 0, maxY = 0;
-  if (t === window){
-    y = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-    const doc = document.documentElement || document.body;
-    const sh = Math.max(doc.scrollHeight, document.body?.scrollHeight || 0);
-    const ch = window.innerHeight || doc.clientHeight || 0;
-    maxY = Math.max(0, sh - ch);
-  } else {
-    y = t.scrollTop || 0;
-    maxY = Math.max(0, (t.scrollHeight || 0) - (t.clientHeight || 0));
-  }
-
-  const distToBottom = Math.max(0, maxY - y);
-  return { target: t, y, maxY, distToBottom };
 }
 
 function bindActiveTargetDetector(node){
@@ -142,14 +112,11 @@ function scrollToTop(){
 }
 
 /* -------------------------------- ПУБЛИЧНОЕ -------------------------------- */
-/**
- * threshold — насколько далеко от верха нужно уйти, чтобы кнопка Могла показываться.
- * bottomZone — «нижняя зона» (px до низа), в которой любое движение ВВЕРХ сразу показывает кнопку.
- */
-export function mountScrollTop(threshold = 400, bottomZone = 400) {
+export function mountScrollTop(threshold = 400) {
   const btn = document.getElementById('scrollTopBtn');
   if (!btn) return;
 
+  // защита от повторной инициализации
   if (btn.dataset.bound === '1') {
     try { btn.dispatchEvent(new Event('__force_update__')); } catch {}
     return;
@@ -161,68 +128,40 @@ export function mountScrollTop(threshold = 400, bottomZone = 400) {
     btn.setAttribute('hidden', '');
     btn.setAttribute('aria-hidden', 'true');
     btn.setAttribute('inert', '');
+    // скрываем надёжно
     btn.style.display = 'none';
-    __visible = false;
   };
 
   const show = () => {
     btn.removeAttribute('hidden');
     btn.removeAttribute('aria-hidden');
     btn.removeAttribute('inert');
+    // даём управлять отображением CSS (grid/flex) — убираем инлайн
     btn.style.removeProperty('display');
-    __visible = true;
   };
 
-  let __lastY = getScrollY();
-  let __visible = false;
 
-  // Порог для «заметного» направления, чтобы не дёргаться на микрошумы
-  const DIR_EPS = 8;
-
-  // Правило показа:
-  //  - показываем только при движении ВВЕРХ;
-  //  - и если пользователь либо достаточно далеко от верха (y > threshold),
-  //    либо находится в нижней зоне (distToBottom <= bottomZone).
-  function decideOnScroll() {
-    if (!isHome()) { hide(); __lastY = getScrollY(); return; }
-
-    const { y, distToBottom } = getScrollMetrics();
-    const dy = y - __lastY;
-    const goingUp   = dy < -DIR_EPS;
-    const goingDown = dy >  DIR_EPS;
-
-    const farFromTop = y > threshold;
-    const inBottom   = distToBottom <= bottomZone;
-
-    if (goingUp && (farFromTop || inBottom)) {
-      if (!__visible) show();
-    } else if (goingDown || !farFromTop) {
-      if (__visible) hide();
-    }
-    __lastY = y;
-  }
-
-  // update() из поллера/форса — только «поддерживающее»:
-  // сам по себе он не включает кнопку (это делает жест «скролл вверх»),
-  // но может скрыть её, если пользователь снова приблизился к верху.
   const update = () => {
+    // ТОЛЬКО на главной
     if (!isHome()) { hide(); return; }
-    const { y } = getScrollMetrics();
-    if (y <= threshold && __visible) hide();
+    const y = getScrollY();
+    if (y > threshold) show(); else hide();
   };
 
-  // Клик
+  // Клик — живой (+ очистка памяти скролла главной)
   btn.addEventListener('click', () => {
     try { document.activeElement?.blur?.(); } catch {}
+  
     scrollToTop();
   });
 
+  // Внутренний форс-апдейт (если mount вызывают повторно)
   btn.addEventListener('__force_update__', () => update());
 
   /* -------- биндинг скроллов + безопасный ребиндинг при hashchange -------- */
   let targets = [];
   let unbinds = [];
-  const onScroll = () => decideOnScroll();
+  const onScroll = () => update();
   const onResize = () => update();
 
   function unbindAll(){
@@ -251,12 +190,11 @@ export function mountScrollTop(threshold = 400, bottomZone = 400) {
         window.addEventListener('resize', onResize);
       } else {
         t.addEventListener('scroll', onScroll, { passive: true });
+        // не все элементы шлют resize — это безопасно
         t.addEventListener('resize', onResize);
       }
     }
-    // Инициализация
-    __lastY = getScrollY();
-    update();
+    update(); // моментальный пересчёт
   }
 
   hide();
@@ -265,14 +203,16 @@ export function mountScrollTop(threshold = 400, bottomZone = 400) {
   const onHash = () => {
     hide();
     unbindAll();
+    // даём роутеру дорендерить DOM
     setTimeout(() => { bindAll(); }, 0);
   };
   window.addEventListener('hashchange', onHash);
 
-  // ПОЛЛЕР (на экзотических кейсах скрывает кнопку у верха)
+  // ПОЛЛЕР (как последняя линия обороны на экзотических раскладках скролла)
   const POLL_MS = 250;
   const pollId = setInterval(update, POLL_MS);
 
+  // Возвращаем размонтаж — на будущее
   return () => {
     clearInterval(pollId);
     window.removeEventListener('hashchange', onHash);
