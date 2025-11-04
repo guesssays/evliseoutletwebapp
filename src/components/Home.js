@@ -289,12 +289,13 @@ function createProductNode(p){
     wrap.style.bottom = '8px';
     wrap.style.top    = 'auto';
     wrap.style.right  = 'auto';
-    wrap.innerHTML = badges.map(b => `
-      <span class="promo-badge ${b.type}">
-        ${b.type==='discount' ? '<i data-lucide="percent"></i>' : '<i data-lucide="sparkles"></i>'}
-        <span class="lbl">${b.label}</span>
-      </span>
-    `).join('');
+wrap.innerHTML = badges.map(b => `
+  <span class="promo-badge ${b.type}">
+    ${b.type==='discount' ? '<i data-lucide="percent"></i>' : '<i data-lucide="zap"></i>'}
+    <span class="lbl">${b.label}</span>
+  </span>
+`).join('');
+
     media.appendChild(wrap);
   }
 

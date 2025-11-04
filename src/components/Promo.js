@@ -203,10 +203,11 @@ function renderCard(p) {
           <div class="promo-badges">
 ${badges.map(b => `
   <span class="promo-badge ${b.type}">
-    ${b.type === 'discount' ? `<i data-lucide="percent"></i>` : `<i data-lucide="sparkles"></i>`}
+    ${b.type === 'discount' ? `<i data-lucide="percent"></i>` : `<i data-lucide="zap"></i>`}
     <span class="lbl">${escapeHtml(b.label)}</span>
   </span>
 `).join('')}
+
 
           </div>
         ` : ``}

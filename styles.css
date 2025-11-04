@@ -3205,3 +3205,21 @@ html body .card .price .cur.deal::after{
   display: block;                     /* чтобы иконка не сидела на базовой линии */
   stroke-width: 2.25;                 /* чуть жирнее — читаемее на плашке */
 }
+/* == Promo badges: bigger icons & balanced spacing == */
+.promo-badge {
+  gap: 6px;                 /* немного больше зазор между иконкой и текстом */
+  padding: 6px 10px;        /* чуть больше «воздуха», чтобы крупная иконка не теснилась */
+}
+.promo-badge i,
+.promo-badge svg {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;           /* фикс ширины, чтобы label не «прыгал» */
+}
+.promo-badge .lbl {
+  font-size: 13px;          /* можно оставить как было; слегка увеличено для баланса */
+  font-weight: 800;
+  line-height: 1;
+}
+/* (необязательно) чуть более плотная линия у иконок lucide в бейджах */
+.promo-badge svg { stroke-width: 2.2; }
