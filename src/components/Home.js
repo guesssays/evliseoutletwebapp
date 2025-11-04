@@ -291,7 +291,7 @@ function createProductNode(p){
     wrap.style.right  = 'auto';
     wrap.innerHTML = badges.map(b => `
       <span class="promo-badge ${b.type}">
-        ${b.type==='discount' ? '<i data-lucide="percent"></i>' : '<i data-lucide="zap"></i>'}
+        ${b.type==='discount' ? '<i data-lucide="percent"></i>' : '<i data-lucide="sparkles"></i>'}
         <span class="lbl">${b.label}</span>
       </span>
     `).join('');

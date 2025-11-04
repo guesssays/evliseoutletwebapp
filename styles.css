@@ -3181,22 +3181,27 @@ html body .card .price .cur.deal::after{
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-/* === BADGE: идеальное вертикальное центрирование === */
-.badge{
-  display:inline-flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-
-  height: 18px !important;        /* фикс высота */
-  min-width: 18px !important;     /* круг для 1 цифры */
-  padding: 0 6px !important;      /* только горизонтальный */
-  line-height: 1 !important;      /* не влияет на центрирование */
-  border-radius: 999px !important;
-
+/* === PROMO BADGES: perfect vertical alignment & crisp icons === */
+.promo-badge{
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  line-height: 1 !important;         /* ключ: без «выше центра» */
   font-weight: 900;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums lining-nums; /* стабильная высота цифр */
 }
 
-/* Если цифра всё ещё «высит» именно в Encode Sans — микро-юстировка: */
-.badge > *{ transform: translateY(0.5px); }  /* можно 0.5–1px по вкусу */
+.promo-badge .lbl{
+  line-height: 1 !important;         /* текст без лишной высоты строки */
+  display: block;                     /* убираем baseline-люфт */
+  transform: translateY(0.5px);       /* микро-юстировка оптического центра */
+}
+
+.promo-badge i,
+.promo-badge svg{
+  width: 16px;
+  height: 16px;
+  display: block;                     /* чтобы иконка не сидела на базовой линии */
+  stroke-width: 2.25;                 /* чуть жирнее — читаемее на плашке */
+}
