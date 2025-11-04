@@ -3,7 +3,7 @@ import { state, isFav, toggleFav } from '../core/state.js';
 import { priceFmt } from '../core/utils.js';
 import {
   promoIsActive,
-  getPromoBanners,
+
   productInPromo,
   effectivePrice,
   discountInfo,
@@ -35,8 +35,11 @@ export function renderPromo(router) {
   const products = Array.isArray(state.products) ? state.products : [];
   const promoList = products.filter(productInPromo);
 
-  const banners = getPromoBanners();
-  const topBanner = banners?.[0];
+  // ✅ Свой герой-баннер для страницы «Акции», независим от главной
+  const topBanner = {
+    img: 'assets/promo/newyear/hero-banner.jpg',     // путь к вашему отдельному файлу
+    alt: 'Предновогодние акции EVLISE'
+  };
 
   // === локальные стили (только для промо-страницы) ===
   const HEAD_PAD_X = 0; // ещё меньше слева
