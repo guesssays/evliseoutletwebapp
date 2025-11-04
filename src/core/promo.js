@@ -6,7 +6,7 @@ function defaults() {
     enabled: true,
     slug: 'newyear-2026',
     title: 'Новогодняя акция',
-    subtitle: ' грандиозные скидки и двойной кэшбек!',
+
     banners: [
       { id: 'bn1', img: 'assets/promo/newyear/banner-10.jpg', alt: 'Новогодняя акция — скидки и x2 кэшбек' },
       { id: 'bn2', img: 'assets/promo/newyear/banner-20.jpg', alt: 'Новогодняя коллекция — большие скидки' },

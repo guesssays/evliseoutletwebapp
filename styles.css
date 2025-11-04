@@ -3098,3 +3098,60 @@ html body .card .price .cur.deal::after{
   white-space: nowrap;
 }
 .promo-badge .lbl{ display:inline-block; }
+/* === Badges: force white icons/text for cashback & ETA === */
+
+/* 0) пусть все SVG-иконки наследуют цвет текста */
+.badge svg,
+.icon svg {
+  width: 1em;
+  height: 1em;
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+/* 1) Кешбэк: белая иконка вопроса и белый текст */
+.badge--cashback,
+[data-badge="cashback"] {
+  color: #fff;             /* текст и иконки через currentColor станут белыми */
+}
+.badge--cashback .icon,
+[data-badge="cashback"] .icon,
+.badge--cashback .icon-question,
+[data-badge="cashback"] .icon-question {
+  color: #fff;
+}
+/* если внутри SVG были жёсткие fill/stroke — перебьём */
+.badge--cashback svg *,
+[data-badge="cashback"] svg * {
+  fill: #fff !important;
+  stroke: #fff !important;
+}
+
+/* 2) Доставка (ETA): белые цифры “14–16 дней” и любые иконки внутри */
+.badge--eta,
+[data-badge="eta"] {
+  color: #fff;
+}
+.badge--eta .num,
+[data-badge="eta"] .num,
+.badge--eta b,
+.badge--eta strong,
+.badge--eta span,
+[data-badge="eta"] b,
+[data-badge="eta"] strong,
+[data-badge="eta"] span {
+  color: #fff;
+}
+.badge--eta svg *,
+[data-badge="eta"] svg * {
+  fill: #fff !important;
+  stroke: #fff !important;
+}
+
+/* (опционально) если фон бейджа светлый и контраст пропал — раскомментируй:
+.badge--cashback,
+[data-badge="cashback"] { background: rgba(18,17,17,.92); }
+
+.badge--eta,
+[data-badge="eta"] { background: rgba(18,17,17,.92); }
+*/
