@@ -3223,3 +3223,42 @@ html body .card .price .cur.deal::after{
 }
 /* вернём стандартную толщину линий, чтобы не выглядело «жирно» */
 .promo-badge svg { stroke-width: 2; }
+/* === PROMO BADGE — balanced scale & no overflow (final override) === */
+.card .promo-badge{
+  display:inline-flex !important;
+  align-items:center !important;
+  gap: 6px !important;
+  padding: 6px 10px !important;
+  border-radius:999px !important;
+  max-width: 88% !important;        /* не даём растягиваться за край картинки */
+  overflow:hidden !important;        /* защита от вылезания текста */
+  white-space:nowrap !important;
+}
+
+.card .promo-badge i,
+.card .promo-badge svg{
+  width: 15px !important;            /* ↓ меньше иконка… */
+  height: 15px !important;
+  flex: 0 0 15px !important;         /* …фикс ширины, чтобы текст не прыгал */
+  display:block !important;
+  stroke-width: 2 !important;        /* читаемый, но не жирный контур */
+}
+
+.card .promo-badge .lbl{
+  font-size: 13.5px !important;      /* ↑ крупнее текст для баланса */
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  min-width: 0 !important;           /* важно для ellipsis во flex */
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display:block !important;
+  transform: translateY(0.2px);      /* микро-юстировка оптически по центру */
+}
+
+/* Очень узкие экраны — ещё компактнее иконка, но текст оставляем крупным */
+@media (max-width: 360px){
+  .card .promo-badge{ max-width: 92% !important; }
+  .card .promo-badge i,
+  .card .promo-badge svg{ width:14px !important; height:14px !important; flex-basis:14px !important; }
+  .card .promo-badge .lbl{ font-size: 13px !important; }
+}
