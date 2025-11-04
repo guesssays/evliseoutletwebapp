@@ -143,7 +143,7 @@ export function shouldShowOnHome(p) {
 }
 
 export function promoTitle(){ return (state?.promo?.title) || 'Новогодняя акция'; }
-export function promoSubtitle(){ return (state?.promo?.subtitle) || 'Грандиозные скидки и двойной кэшбек!'; }
+
 
 export function applyPromoTheme(on = true) {
   try {
