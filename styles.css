@@ -3155,3 +3155,29 @@ html body .card .price .cur.deal::after{
 .badge--eta,
 [data-badge="eta"] { background: rgba(18,17,17,.92); }
 */
+/* === Bebas Neue Cyrillic for promo badges === */
+@font-face{
+  font-family: 'BebasNeueCyrillic';
+  src: url('assets/fonts/bebasneuecyrillic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Применяем ко всем промо-бейджам */
+.promo-badges .promo-badge .lbl,
+.promo-badges .promo-badge span.lbl{
+  font-family: 'BebasNeueCyrillic', 'Bebas Neue', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  line-height: 1;
+  /* чуть плотнее типографика для коротких слов: */
+  font-size: 13px;           /* подгони при желании */
+  font-weight: 400;
+}
+
+/* Чтоб цифры и % выглядели монолитно на маленьком размере */
+.promo-badges .promo-badge .lbl{
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

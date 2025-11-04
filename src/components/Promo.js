@@ -201,12 +201,13 @@ function renderCard(p) {
       <div class="card-img">
         ${badges.length ? `
           <div class="promo-badges">
-            ${badges.map(b => `
-              <span class="promo-badge ${b.type}">
-                ${b.type === 'discount' ? `<i data-lucide="percent"></i>` : `<i data-lucide="zap"></i>`}
-                <span>${escapeHtml(b.label)}</span>
-              </span>
-            `).join('')}
+${badges.map(b => `
+  <span class="promo-badge ${b.type}">
+    ${b.type === 'discount' ? `<i data-lucide="percent"></i>` : `<i data-lucide="zap"></i>`}
+    <span class="lbl">${escapeHtml(b.label)}</span>
+  </span>
+`).join('')}
+
           </div>
         ` : ``}
         <b class="img-skel" aria-hidden="true"></b>
