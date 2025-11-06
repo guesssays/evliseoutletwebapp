@@ -8,9 +8,9 @@ function defaults() {
     title: 'Новогодняя акция',
 
     banners: [
-      { id: 'bn1', img: 'assets/promo/newyear/banner-10.jpg', alt: 'Новогодняя акция — скидки и x2 кэшбек' },
-      { id: 'bn2', img: 'assets/promo/newyear/banner-20.jpg', alt: 'Новогодняя коллекция — большие скидки' },
-      { id: 'bn3', img: 'assets/promo/newyear/banner-30.jpg', alt: 'Хиты сезона — x2 кэшбек' },
+      { id: 'bn1', img: 'assets/promo/newyear/banner-100.jpg', alt: 'Новогодняя акция — скидки и x2 кэшбек' },
+      { id: 'bn2', img: 'assets/promo/newyear/banner-200.jpg', alt: 'Новогодняя коллекция — большие скидки' },
+      { id: 'bn3', img: 'assets/promo/newyear/banner-300.jpg', alt: 'Хиты сезона — x2 кэшбек' },
     ],
     theme: {
       /* === BORDEAUX palette === */

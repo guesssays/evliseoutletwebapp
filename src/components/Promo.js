@@ -37,7 +37,7 @@ export function renderPromo(router) {
 
   // ✅ Свой герой-баннер для страницы «Акции», независим от главной
   const topBanner = {
-    img: 'assets/promo/newyear/hero-banner.jpg',     // путь к вашему отдельному файлу
+    img: 'assets/promo/newyear/hero-banner0.jpg',     // путь к вашему отдельному файлу
     alt: 'Предновогодние акции EVLISE'
   };
 
