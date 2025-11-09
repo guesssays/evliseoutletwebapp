@@ -1290,11 +1290,11 @@
 ],
       "sizes": ["S","M","L","XL","2XL","3XL"],
       "category": "Свитеры",
-      "sizeChartType": "svitery",
+      "sizeChartType": "clothes",
       "sizeChartImages": [
   "data/wearimages/sviter-snowb/sviter-snowb-5.jpg"
 ],
-      "categoryId": "svitshoty",
+      "categoryId": "svitery",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
