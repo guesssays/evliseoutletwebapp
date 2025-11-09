@@ -52,10 +52,15 @@ function normalizeStockFlags(products){
 
 /* ===== Новинки: rolling-окно на 12 ===== */
 /* ===== Новинки: всегда мгновенно отдаём top-N из текущих товаров ===== */
+/* ===== При этом считаем, что state.products в порядке "старые → новые",
+ *       поэтому для новинок и отображения берём reverse() ===== */
 function getNewestWindow(limit = 12){
-  const products = Array.isArray(state.products) ? state.products.slice() : [];
+  // Берём товары как "новые → старые"
+  const products = Array.isArray(state.products)
+    ? state.products.slice().reverse()
+    : [];
 
-  // 1) базовый быстрый путь — первые N товаров как "самые новые"
+  // 1) быстрый путь — первые N товаров в этом порядке как "самые новые"
   const topNow = products.slice(0, limit).map(p => ({ ...p, __isNew: true }));
 
   // 2) пробуем мягко использовать прошлое окно (если оно осмысленное)
@@ -65,7 +70,12 @@ function getNewestWindow(limit = 12){
 
   // если кэш пустой или короче лимита — просто возвращаем topNow и обновляем кэш
   if (win.length < limit){
-    try { localStorage.setItem(k('news_window'), JSON.stringify(products.slice(0, limit).map(p => String(p.id)))); } catch {}
+    try {
+      localStorage.setItem(
+        k('news_window'),
+        JSON.stringify(products.slice(0, limit).map(p => String(p.id)))
+      );
+    } catch {}
     return topNow;
   }
 
@@ -289,12 +299,12 @@ function createProductNode(p){
     wrap.style.bottom = '8px';
     wrap.style.top    = 'auto';
     wrap.style.right  = 'auto';
-wrap.innerHTML = badges.map(b => `
-  <span class="promo-badge ${b.type}">
-    ${b.type==='discount' ? '<i data-lucide="percent"></i>' : '<i data-lucide="zap"></i>'}
-    <span class="lbl">${b.label}</span>
-  </span>
-`).join('');
+    wrap.innerHTML = badges.map(b => `
+      <span class="promo-badge ${b.type}">
+        ${b.type==='discount' ? '<i data-lucide="percent"></i>' : '<i data-lucide="zap"></i>'}
+        <span class="lbl">${b.label}</span>
+      </span>
+    `).join('');
 
     media.appendChild(wrap);
   }
@@ -315,20 +325,19 @@ export function renderHome(router){
   const v = document.getElementById('view');
   if (!v) return;
 
-// === одноразовый форс-сброс категории на "all" после выхода с промо ===
-try {
-  const h = location.hash || '';
-  const isHome = (h === '#/' || h === '' || h.startsWith('#/home'));
-  const forcedAt = Number(window.__forceHomeAllOnce || 0);
-  const forceRecent = forcedAt && (Date.now() - forcedAt < 4000); // 4s окно
-  const cameFromPromo = (window.__prevHash === '#/promo'); // ✅ вот тут главное
-  if (isHome && (forceRecent || cameFromPromo)) {
-    state.filters = state.filters || {};
-    state.filters.category = 'all';
-    window.__forceHomeAllOnce = 0; // одноразово
-  }
-} catch {}
-
+  // === одноразовый форс-сброс категории на "all" после выхода с промо ===
+  try {
+    const h = location.hash || '';
+    const isHome = (h === '#/' || h === '' || h.startsWith('#/home'));
+    const forcedAt = Number(window.__forceHomeAllOnce || 0);
+    const forceRecent = forcedAt && (Date.now() - forcedAt < 4000); // 4s окно
+    const cameFromPromo = (window.__prevHash === '#/promo'); // ✅ вот тут главное
+    if (isHome && (forceRecent || cameFromPromo)) {
+      state.filters = state.filters || {};
+      state.filters.category = 'all';
+      window.__forceHomeAllOnce = 0; // одноразово
+    }
+  } catch {}
 
   // Снимаем промо-оформление
   try { clearPromoTheme(); } catch {}
@@ -376,21 +385,26 @@ try {
   // Рендерим список по текущему выбранному слагу
   requestAnimationFrame(() => {
     const slug = state?.filters?.category || 'all';
-    let list;
 
+    // База: товары в порядке "новые → старые"
+    const all = Array.isArray(state.products)
+      ? state.products.slice().reverse()
+      : [];
+
+    let list;
     if (slug === 'all') {
       state.filters.inStock = false;
-      list = state.products;
+      list = all;
     } else if (slug === 'new') {
       state.filters.inStock = false;
-      list = getNewestWindow(12);
+      list = getNewestWindow(12); // уже возвращает новые → старые
     } else if (slug === 'instock') {
       state.filters.inStock = true;
-      list = state.products.filter(isInStock);
+      list = all.filter(isInStock);
     } else {
       state.filters.inStock = false;
       const pool = new Set(expandSlugs(slug));
-      list = state.products.filter(p => pool.has(p.categoryId));
+      list = all.filter(p => pool.has(p.categoryId));
     }
 
     drawProducts(list);
@@ -458,19 +472,24 @@ export function drawCategoriesChips(router){
         return;
       }
 
+      // База: товары в порядке "новые → старые"
+      const all = Array.isArray(state.products)
+        ? state.products.slice().reverse()
+        : [];
+
       let list;
       if (slug === 'all') {
-        list = state.products;
+        list = all;
         state.filters.inStock = false;
       } else if (slug === 'new') {
-        list = getNewestWindow(12);   // <= максимум 12
+        list = getNewestWindow(12);   // максимум 12, уже новые → старые
         state.filters.inStock = false;
       } else if (slug === 'instock') {
         state.filters.inStock = true;
-        list = state.products.filter(isInStock);
+        list = all.filter(isInStock);
       } else {
         const pool = new Set(expandSlugs(slug));
-        list = state.products.filter(p => pool.has(p.categoryId));
+        list = all.filter(p => pool.has(p.categoryId));
         state.filters.inStock = false;
       }
 
