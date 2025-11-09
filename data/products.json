@@ -1250,12 +1250,7 @@
       "categoryId": "dzhinsy",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "readyStock": true,
-      "inStockNow": true,
-      "stockType": "ready",
-      "tags": [
-  "in-stock"
-],
+     
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Длина брюк (см)", "Талия (см)", "Бёдра (см)", "Обхват бедра (см)", "Низ штанины (см)"],
