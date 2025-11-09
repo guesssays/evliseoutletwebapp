@@ -234,8 +234,8 @@
   "Черный"
 ],
       "sizes": ["M", "L", "XL", "2XL"],
-      "category": "Куртки",
-      "categoryId": "kurtki",
+      "category": "Кожанки",
+      "categoryId": "kozhanki",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
       "sizeChart": {
@@ -496,7 +496,7 @@
     {
       "id": "14089051360497450",
       "slug": "botinki-newrock",
-      "title": "NewRock",
+      "title": "NewRock Silver",
       "price": 849000,
       "images": [
   "data/wearimages/botinki-newrock/botinki-newrock-1.jpg",
@@ -627,8 +627,8 @@
   "Бежевый"
 ],
       "sizes": ["39", "40", "41", "42", "43", "44"],
-      "category": "Ботинки",
-      "categoryId": "botinki",
+      "category": "Туфли",
+      "categoryId": "tufli",
       "sizeChartType": "shoes",
       "sizeChartImages": [],
       "sizeChart": {
@@ -663,8 +663,8 @@
   "Черный"
 ],
       "sizes": ["S", "M", "L", "XL"],
-      "category": "Куртки",
-      "categoryId": "kurtki",
+      "category": "Кожанки",
+      "categoryId": "kozhanki",
       "sizeChartType": "clothes",
       "sizeChartImages": [
   "data/wearimages/kozhanka-theblack/kozhanka-theblack-3.jpg"
@@ -1125,8 +1125,8 @@
   "Серый"
 ],
       "sizes": ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-      "category": "Худи",
-      "categoryId": "khudi",
+      "category": "Зипки",
+      "categoryId": "zipki",
       "sizeChartType": "clothes",
       "sizeChartImages": [
   "data/wearimages/khudi-ford/khudi-ford-3.jpg"
@@ -1288,9 +1288,9 @@
   "Синий",
   "Зелёный"
 ],
-      "sizes": ["S-3XL"],
-      "category": "Свитшоты",
-      "sizeChartType": "clothes",
+      "sizes": ["S","M","L","XL","2XL","3XL"],
+      "category": "Свитеры",
+      "sizeChartType": "svitery",
       "sizeChartImages": [
   "data/wearimages/sviter-snowb/sviter-snowb-5.jpg"
 ],
@@ -1325,7 +1325,7 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["S-XL"],
+      "sizes": ["S","M","L","XL"],
       "category": "Штаны",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -1358,7 +1358,7 @@
   "Красный",
   "Синий"
 ],
-      "sizes": ["S-2XL"],
+      "sizes": ["S","M","L","XL","2XL"],
       "category": "Свитшоты",
       "sizeChartType": "clothes",
       "sizeChartImages": [
@@ -1395,7 +1395,7 @@
       "colors": [
   "Серый"
 ],
-      "sizes": ["S-3XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL"],
       "category": "Штаны",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -1480,7 +1480,7 @@
   "Красный",
   "Синий"
 ],
-      "sizes": ["M-3XL"],
+      "sizes": ["M","L","XL","2XL","3XL"],
       "category": "Штаны",
       "sizeChartType": "clothes",
       "sizeChartImages": [
@@ -1515,7 +1515,7 @@
   "Серый",
   "Синий"
 ],
-      "sizes": ["XS-2XL"],
+      "sizes": ["XS","S","M","L","XL","2XL"],
       "category": "Джинсы",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -1580,11 +1580,11 @@
   "Красный",
   "Синий"
 ],
-      "sizes": ["M-2XL"],
-      "category": "Свитшоты",
+      "sizes": ["M","L","XL","2XL"],
+      "category": "Свитеры",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "categoryId": "svitshoty",
+      "categoryId": "svitery",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -1615,11 +1615,11 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["M-3XL"],
-      "category": "Куртки",
+      "sizes": ["M","L","XL","2XL","3XL"],
+      "category": "Кожанки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "categoryId": "kurtki",
+      "categoryId": "kozhanki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -1650,7 +1650,7 @@
       "colors": [
   "Белый"
 ],
-      "sizes": ["S-L"],
+      "sizes": ["S","M","L"],
       "category": "Куртки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -1687,7 +1687,7 @@
   "Розовый",
   "Коричневый"
 ],
-      "sizes": ["S-XL"],
+      "sizes": ["S","M","L","XL"],
       "category": "Куртки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -1722,11 +1722,11 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["S-XL"],
-      "category": "Куртки",
+      "sizes": ["S","M","L","XL"],
+      "category": "Кожанки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "categoryId": "kurtki",
+      "categoryId": "kozhanki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -1754,11 +1754,11 @@
       "colors": [
   "Серый"
 ],
-      "sizes": ["S-XL"],
-      "category": "Худи",
+      "sizes": ["S","M","L","XL"],
+      "category": "Зипки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "categoryId": "khudi",
+      "categoryId": "zipki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -1786,7 +1786,7 @@
       "colors": [
   "Белый"
 ],
-      "sizes": ["S-3XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL"],
       "category": "Штаны",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -1861,11 +1861,11 @@
       "colors": [
   "Зеленый"
 ],
-      "sizes": ["XS-2XL"],
-      "category": "Свитшоты",
+      "sizes": ["XS","S","M","L","XL","2XL"],
+      "category": "Свитеры",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "categoryId": "svitshoty",
+      "categoryId": "svitery",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -1897,7 +1897,7 @@
   "Черный",
   "Белый"
 ],
-      "sizes": ["S-3XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL"],
       "category": "Свитшоты",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -1929,7 +1929,7 @@
       "colors": [
   "Чёрный"
 ],
-      "sizes": ["S-5XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL","4XL","5XL"],
       "category": "Штаны",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -1948,7 +1948,7 @@
     {
       "id": "14101468408777890",
       "slug": "zipka-flaffy",
-      "title": "Flaffy",
+      "title": "Fluffy",
       "price": 299000,
       "images": [
   "data/wearimages/zipka-flaffy/zipka-flaffy-1.jpg",
@@ -1965,11 +1965,11 @@
   "Черный",
   "Белый"
 ],
-      "sizes": ["S-L"],
-      "category": "Худи",
+      "sizes": ["S","M","L"],
+      "category": "Зипки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "categoryId": "khudi",
+      "categoryId": "zipki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -2000,7 +2000,7 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["S-XL"],
+      "sizes": ["S","M","L","XL"],
       "category": "Куртки",
       "sizeChartType": "clothes",
       "sizeChartImages": [
@@ -2036,11 +2036,11 @@
   "Черный",
   "Фиолетовый"
 ],
-      "sizes": ["M-3XL"],
-      "category": "Свитшоты",
+      "sizes": ["M","L","XL","2XL","3XL"],
+      "category": "Свитеры",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "categoryId": "svitshoty",
+      "categoryId": "svitery",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -2108,7 +2108,7 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["M-2XL"],
+      "sizes": ["M","L","XL","2XL"],
       "category": "Куртки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -2144,13 +2144,13 @@
   "Черный",
   "Коричневый"
 ],
-      "sizes": ["M-2XL"],
-      "category": "Худи",
+      "sizes": ["M","L","XL","2XL"],
+      "category": "Зипки",
       "sizeChartType": "clothes",
       "sizeChartImages": [
   "data/wearimages/khudi-synical/khudi-synical-5.jpg"
 ],
-      "categoryId": "khudi",
+      "categoryId": "zipki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -2225,7 +2225,7 @@
   "Белый",
   "Черный"
 ],
-      "sizes": ["S-3XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL"],
       "category": "Джинсы",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -2261,7 +2261,7 @@
   "Белый",
   "Черный"
 ],
-      "sizes": ["S-3XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL"],
       "category": "Футболки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -2336,7 +2336,7 @@
   "Синий",
   "Черный"
 ],
-      "sizes": ["S-3XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL"],
       "category": "Джинсы",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -2406,7 +2406,7 @@
   "Черный",
   "Красный"
 ],
-      "sizes": ["S-8XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL","4XL","5XL","6XL","7XL","8XL"],
       "category": "Куртки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -2441,7 +2441,7 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["ЦВЕТА: ЧЕРНЫЙ"],
+      "sizes": [],
       "category": "Сумки",
       "sizeChartType": "none",
       "sizeChartImages": [],
@@ -2467,7 +2467,7 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["XS-2XL"],
+      "sizes": ["XS","S","M","L","XL","2XL"],
       "category": "Штаны",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -2541,7 +2541,7 @@
   "Красный",
   "Белый"
 ],
-      "sizes": ["XS-2XL"],
+      "sizes": ["XS","S","M","L","XL","2XL"],
       "category": "Пальто",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -2576,7 +2576,7 @@
       "colors": [
   "Серый"
 ],
-      "sizes": ["XS-2XL"],
+      "sizes": ["XS","S","M","L","XL","2XL"],
       "category": "Джинсы",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -2612,7 +2612,7 @@
   "Белый",
   "Розовый"
 ],
-      "sizes": ["M-3XL"],
+      "sizes": ["M","L","XL","2XL","3XL"],
       "category": "Свитшоты",
       "sizeChartType": "clothes",
       "sizeChartImages": [
@@ -2650,7 +2650,7 @@
   "Черный",
   "Серый"
 ],
-      "sizes": ["S-3XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL"],
       "category": "Джинсы",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -2683,13 +2683,13 @@
   "Белый",
   "Синий"
 ],
-      "sizes": ["M-XL"],
-      "category": "Свитшоты",
+      "sizes": ["M","L","XL"],
+      "category": "Зипки",
       "sizeChartType": "clothes",
       "sizeChartImages": [
   "data/wearimages/sviter-girlst/sviter-girlst-3.jpg"
 ],
-      "categoryId": "svitshoty",
+      "categoryId": "zipki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -2720,7 +2720,7 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["S-3XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL"],
       "category": "Куртки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -2756,7 +2756,7 @@
   "Черный",
   "Белый"
 ],
-      "sizes": ["S-L"],
+      "sizes": ["S","M","L"],
       "category": "Футболки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -2792,7 +2792,7 @@
   "Черный",
   "Белый"
 ],
-      "sizes": ["M-3XL"],
+      "sizes": ["M","L","XL","2XL","3XL"],
       "category": "Худи",
       "sizeChartType": "clothes",
       "sizeChartImages": [
@@ -2864,7 +2864,7 @@
   "Черный",
   "Серый"
 ],
-      "sizes": ["M-5XL"],
+      "sizes": ["M","L","XL","2XL","3XL","4XL","5XL"],
       "category": "Куртки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -2899,7 +2899,7 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["M-3XL"],
+      "sizes": ["M","L","XL","2XL","3XL"],
       "category": "Штаны",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -2972,7 +2972,7 @@
   "Черный",
   "Бежевый"
 ],
-      "sizes": ["S-2XL"],
+      "sizes": ["S","M","L","XL","2XL"],
       "category": "Куртки",
       "sizeChartType": "clothes",
       "sizeChartImages": [
@@ -3009,7 +3009,7 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["M-3XL"],
+      "sizes": ["M","L","XL","2XL","3XL"],
       "category": "Штаны",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -3045,7 +3045,7 @@
   "Синий",
   "Белый"
 ],
-      "sizes": ["M-5XL"],
+      "sizes": ["M","L","XL","2XL","3XL","4XL","5XL"],
       "category": "Свитшоты",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -3080,7 +3080,7 @@
       "colors": [
   "Белый"
 ],
-      "sizes": ["S-3XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL"],
       "category": "Футболки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -3116,7 +3116,7 @@
   "Черный",
   "Бежевый"
 ],
-      "sizes": ["ЦВЕТА: ЧЕРНЫЙ", "БЕЖЕВЫЙ"],
+      "sizes": [],
       "category": "Сумки",
       "sizeChartType": "none",
       "sizeChartImages": [],
@@ -3180,13 +3180,13 @@
   "Коричневый",
   "Белый"
 ],
-      "sizes": ["M-5XL"],
-      "category": "Куртки",
+      "sizes": ["M","L","XL","2XL","3XL","4XL","5XL"],
+      "category": "Кожанки",
       "sizeChartType": "clothes",
       "sizeChartImages": [
   "data/wearimages/kozhanka-houdiein/kozhanka-houdiein-5.jpg"
 ],
-      "categoryId": "kurtki",
+      "categoryId": "kozhanki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -3216,11 +3216,11 @@
   "Белый",
   "Синий"
 ],
-      "sizes": ["S-L"],
-      "category": "Худи",
+      "sizes": ["S","M","L"],
+      "category": "Зипки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "categoryId": "khudi",
+      "categoryId": "zipki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -3290,11 +3290,11 @@
   "Черный",
   "Красный"
 ],
-      "sizes": ["M-2XL"],
-      "category": "Худи",
+      "sizes": ["M","L","XL","2XL"],
+      "category": "Куртки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "categoryId": "khudi",
+      "categoryId": "kurtki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -3322,7 +3322,7 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["M-XL"],
+      "sizes": ["M","L","XL"],
       "category": "Куртки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -3358,11 +3358,11 @@
   "Черный",
   "Серый"
 ],
-      "sizes": ["S-L"],
-      "category": "Худи",
+      "sizes": ["S","M","L"],
+      "category": "Зипки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "categoryId": "khudi",
+      "categoryId": "zipki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -3393,7 +3393,7 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["S-2XL"],
+      "sizes": ["S","M","L","XL","2XL"],
       "category": "Свитшоты",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -3427,7 +3427,7 @@
   "Красный",
   "Желтый"
 ],
-      "sizes": ["M-2XL"],
+      "sizes": ["M","L","XL","2XL"],
       "category": "Куртки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -3460,13 +3460,13 @@
   "Черный",
   "Белый"
 ],
-      "sizes": ["S-XL"],
-      "category": "Свитшоты",
+      "sizes": ["S","M","L","XL"],
+      "category": "Свитеры",
       "sizeChartType": "clothes",
       "sizeChartImages": [
   "data/wearimages/sviter-bone/sviter-bone-3.jpg"
 ],
-      "categoryId": "svitshoty",
+      "categoryId": "svitery",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -3498,7 +3498,7 @@
   "Черный",
   "Синий"
 ],
-      "sizes": ["S-3XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL"],
       "category": "Джинсы",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -3573,7 +3573,7 @@
   "Черный",
   "Белый"
 ],
-      "sizes": ["S-4XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL","4XL"],
       "category": "Свитшоты",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -3687,11 +3687,11 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["S-3XL"],
-      "category": "Худи",
+      "sizes": ["S","M","L","XL","2XL","3XL"],
+      "category": "Зипки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "categoryId": "khudi",
+      "categoryId": "zipki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -3723,7 +3723,7 @@
   "Черный",
   "Коричневый"
 ],
-      "sizes": ["S-XL"],
+      "sizes": ["S","M","L","XL"],
       "category": "Пальто",
       "sizeChartType": "clothes",
       "sizeChartImages": [
@@ -3760,7 +3760,7 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["M-4XL"],
+      "sizes": ["M","L","XL","2XL","3XL","4XL"],
       "category": "Куртки",
       "sizeChartType": "clothes",
       "sizeChartImages": [
@@ -3833,11 +3833,11 @@
   "Черный",
   "Серый"
 ],
-      "sizes": ["M-XL"],
-      "category": "Кардиганы",
+      "sizes": ["M","L","XL"],
+      "category": "Зипки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "categoryId": "kardigany",
+      "categoryId": "zipki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -3868,7 +3868,7 @@
       "colors": [
   "Цена: 349.000 сум"
 ],
-      "sizes": ["S-3XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL"],
       "category": "Штаны",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -3903,7 +3903,7 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["M-2XL"],
+      "sizes": ["M","L","XL","2XL"],
       "category": "Куртки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -3938,7 +3938,7 @@
       "colors": [
   "Белый"
 ],
-      "sizes": ["S-3XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL"],
       "category": "Свитшоты",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -3973,7 +3973,7 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["S-4XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL","4XL"],
       "category": "Джинсы",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -4014,7 +4014,7 @@
       "category": "Куртки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "categoryId": "dzhinsy",
+      "categoryId": "kurtki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -4084,12 +4084,12 @@
   "Коричневый"
 ],
       "sizes": ["S", "M", "L", "XL", "2XL"],
-      "category": "Куртки",
+      "category": "Кожанки",
       "sizeChartType": "clothes",
       "sizeChartImages": [
   "data/wearimages/kozhanka-noisy/kozhanka-noisy-5.jpg"
 ],
-      "categoryId": "kurtki",
+      "categoryId": "kozhanki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -4117,7 +4117,7 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["M-2XL"],
+      "sizes": ["M","L","XL","2XL"],
       "category": "Куртки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -4345,10 +4345,10 @@
   "Серый"
 ],
       "sizes": ["S", "M", "L", "XL"],
-      "category": "Худи",
+      "category": "Зипки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "categoryId": "khudi",
+      "categoryId": "zipki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -4531,7 +4531,7 @@
       "colors": [
   "Черный"
 ],
-      "sizes": ["S-4XL"],
+      "sizes": ["S","M","L","XL","2XL","3XL","4XL"],
       "category": "Джинсы",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
@@ -4623,7 +4623,7 @@
     {
       "id": "14097482008212426",
       "slug": "botinki-newrock",
-      "title": "NewRock Silver",
+      "title": "NewRock Long",
       "price": 799000,
       "images": [
   "data/wearimages/botinki-newrock/botinki-newrock-1.jpg",
@@ -4677,7 +4677,7 @@
   "Черный",
   "Белый"
 ],
-      "sizes": ["ЦВЕТА: ЧЕРНЫЙ", "БЕЛЫЙ"],
+      "sizes": [],
       "category": "Сумки",
       "sizeChartType": "none",
       "sizeChartImages": [],
@@ -4781,10 +4781,10 @@
   "Белый"
 ],
       "sizes": ["M", "L", "XL", "2XL", "3XL", "4XL"],
-      "category": "Худи",
+      "category": "Зипки",
       "sizeChartType": "clothes",
       "sizeChartImages": [],
-      "categoryId": "khudi",
+      "categoryId": "zipki",
       "sizeChart": {
         "type": "clothes",
         "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)", "Рост (см)", "Вес (кг)"],
@@ -4874,99 +4874,57 @@
     }
   ],
   "categories": [
-    {
-      "id": "tops",
-      "slug": "tops",
-      "name": "Верх",
-      "children": [
-        {
-          "slug": "kurtki",
-          "name": "Куртки"
-        },
-        {
-          "slug": "khudi",
-          "name": "Худи"
-        },
-        {
-          "slug": "svitshoty",
-          "name": "Свитшоты"
-        },
-        {
-          "slug": "kardigany",
-          "name": "Кардиганы"
-        },
-        {
-          "slug": "polo",
-          "name": "Поло"
-        },
-        {
-          "slug": "palto",
-          "name": "Пальто"
-        },
-        {
-          "slug": "futbolki",
-          "name": "Футболки"
-        }
-      ]
-    },
-    {
-      "id": "bottoms",
-      "slug": "bottoms",
-      "name": "Низ",
-      "children": [
-        {
-          "slug": "dzhinsy",
-          "name": "Джинсы"
-        },
-        {
-          "slug": "shtany",
-          "name": "Штаны"
-        }
-      ]
-    },
-    {
-      "id": "shoes",
-      "slug": "shoes",
-      "name": "Обувь",
-      "children": [
-        {
-          "slug": "kedy",
-          "name": "Кеды"
-        },
-        {
-          "slug": "krossovki",
-          "name": "Кроссовки"
-        },
-        {
-          "slug": "botinki",
-          "name": "Ботинки"
-        },
-        {
-          "slug": "tufli",
-          "name": "Туфли"
-        },
-        {
-          "slug": "sapogi",
-          "name": "Сапоги"
-        }
-      ]
-    },
-    {
-      "id": "bags",
-      "slug": "bags",
-      "name": "Сумки",
-      "children": [
-        {
-          "slug": "sumki",
-          "name": "Сумки"
-        }
-      ]
-    },
-    {
-      "id": "misc",
-      "slug": "misc",
-      "name": "Другое",
-      "children": []
-    }
-  ]
+  {
+    "id": "tops",
+    "slug": "tops",
+    "name": "Верх",
+    "children": [
+      { "slug": "kurtki", "name": "Куртки" },
+      { "slug": "khudi", "name": "Худи" },
+      { "slug": "svitshoty", "name": "Свитшоты" },
+      { "slug": "svitery", "name": "Свитеры" },
+      { "slug": "zipki", "name": "Зипки" },
+      { "slug": "kozhanki", "name": "Кожанки" },
+      { "slug": "kardigany", "name": "Кардиганы" },
+      { "slug": "polo", "name": "Поло" },
+      { "slug": "palto", "name": "Пальто" },
+      { "slug": "futbolki", "name": "Футболки" }
+    ]
+  },
+  {
+    "id": "bottoms",
+    "slug": "bottoms",
+    "name": "Низ",
+    "children": [
+      { "slug": "dzhinsy", "name": "Джинсы" },
+      { "slug": "shtany", "name": "Штаны" }
+    ]
+  },
+  {
+    "id": "shoes",
+    "slug": "shoes",
+    "name": "Обувь",
+    "children": [
+      { "slug": "kedy", "name": "Кеды" },
+      { "slug": "krossovki", "name": "Кроссовки" },
+      { "slug": "botinki", "name": "Ботинки" },
+      { "slug": "tufli", "name": "Туфли" },
+      { "slug": "sapogi", "name": "Сапоги" }
+    ]
+  },
+  {
+    "id": "bags",
+    "slug": "bags",
+    "name": "Сумки",
+    "children": [
+      { "slug": "sumki", "name": "Сумки" }
+    ]
+  },
+  {
+    "id": "misc",
+    "slug": "misc",
+    "name": "Другое",
+    "children": []
+  }
+]
 }
