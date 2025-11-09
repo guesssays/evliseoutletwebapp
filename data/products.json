@@ -1916,7 +1916,7 @@
     {
       "id": "14101468964273898",
       "slug": "triko-linex",
-      "title": "Трико LineX",
+      "title": "LineX",
       "price": 299000,
       "images": [
   "data/wearimages/triko-linex/triko-linex-1.jpg",
@@ -1948,7 +1948,7 @@
     {
       "id": "14101468408777890",
       "slug": "zipka-flaffy",
-      "title": "Зипка Flaffy",
+      "title": "Flaffy",
       "price": 299000,
       "images": [
   "data/wearimages/zipka-flaffy/zipka-flaffy-1.jpg",
@@ -2055,7 +2055,7 @@
     {
       "id": "14101466575488530",
       "slug": "krosovki-bally",
-      "title": "Кросовки Bally",
+      "title": "Bally",
       "price": 499000,
       "images": [
   "data/wearimages/krosovki-bally/krosovki-bally-1.jpg",
@@ -2392,7 +2392,7 @@
     {
       "id": "14101461264933146",
       "slug": "vetrovka-linesz",
-      "title": "Ветровка LinesZ",
+      "title": "LinesZ",
       "price": 329000,
       "images": [
   "data/wearimages/vetrovka-linesz/vetrovka-linesz-1.jpg",
@@ -2451,7 +2451,7 @@
     {
       "id": "14101460392171546",
       "slug": "triko-triplep",
-      "title": "Трико TripleP",
+      "title": "TripleP",
       "price": 199000,
       "images": [
   "data/wearimages/triko-triplep/triko-triplep-1.jpg",
@@ -2523,7 +2523,7 @@
     {
       "id": "14100343174305914",
       "slug": "plashch-blackbat",
-      "title": "Плащ BlackBat",
+      "title": "BlackBat",
       "price": 449000,
       "images": [
   "data/wearimages/plashch-blackbat/plashch-blackbat-1.jpg",
@@ -3064,7 +3064,7 @@
     {
       "id": "14100336683644162",
       "slug": "futbolka-seylormoon",
-      "title": "SeylorMoon",
+      "title": "SailorMoon",
       "price": 249000,
       "images": [
   "data/wearimages/futbolka-seylormoon/futbolka-seylormoon-1.jpg",
@@ -3201,7 +3201,7 @@
     {
       "id": "14099648269787426",
       "slug": "zipka-verblee",
-      "title": "Зипка VerBlee",
+      "title": "VerBlee",
       "price": 229000,
       "images": [
   "data/wearimages/zipka-verblee/zipka-verblee-1.jpg",
@@ -3273,7 +3273,7 @@
     {
       "id": "14099646970628722",
       "slug": "zipka-chestchris",
-      "title": "Зипка ChestChris",
+      "title": "ChestChris",
       "price": 369000,
       "images": [
   "data/wearimages/zipka-chestchris/zipka-chestchris-1.jpg",
@@ -3671,7 +3671,7 @@
     {
       "id": "14099604590638706",
       "slug": "zipka-diesel",
-      "title": "Зипка Diesel",
+      "title": "Diesel",
       "price": 329000,
       "images": [
   "data/wearimages/zipka-diesel/zipka-diesel-1.jpg",
@@ -3706,7 +3706,7 @@
     {
       "id": "14099604375762266",
       "slug": "plashch-peaky",
-      "title": "Плащ Peaky",
+      "title": "Peaky",
       "price": 469000,
       "images": [
   "data/wearimages/plashch-peaky/plashch-peaky-1.jpg",
@@ -3992,7 +3992,7 @@
     {
       "id": "14099570949298050",
       "slug": "dzhinsovka-jiggy",
-      "title": "Джинсовка Jiggy",
+      "title": "Jiggy",
       "price": 369000,
       "images": [
   "data/wearimages/dzhinsovka-jiggy/dzhinsovka-jiggy-1.jpg",
@@ -4136,7 +4136,7 @@
     {
       "id": "14098175677098890",
       "slug": "sapogi-raiseup",
-      "title": "RaiseUp",
+      "title": "Midnight",
       "price": 569000,
       "images": [
   "data/wearimages/sapogi-raiseup/sapogi-raiseup-1.jpg",
@@ -4327,7 +4327,7 @@
     {
       "id": "14098160253065706",
       "slug": "zipka-2shape",
-      "title": "Зипка 2Shape",
+      "title": "2Shape",
       "price": 469000,
       "images": [
   "data/wearimages/zipka-2shape/zipka-2shape-1.jpg",
