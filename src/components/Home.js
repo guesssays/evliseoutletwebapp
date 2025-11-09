@@ -15,9 +15,9 @@ import {
 
 /* ================== helpers: категории ================== */
 function findCategoryBySlug(slug){
-  for (const g of state.categories){
+  for (const g of state.categories || []){
     if (g.slug === slug) return g;
-    for (const ch of (g.children||[])){
+    for (const ch of (g.children || [])){
       if (ch.slug === slug) return ch;
     }
   }
@@ -26,7 +26,7 @@ function findCategoryBySlug(slug){
 function expandSlugs(slug){
   const c = findCategoryBySlug(slug);
   if (!c) return [slug];
-  if (c.children && c.children.length) return c.children.map(x=>x.slug);
+  if (c.children && c.children.length) return c.children.map(x => x.slug);
   return [c.slug];
 }
 function categoryNameBySlug(slug){
@@ -50,63 +50,27 @@ function normalizeStockFlags(products){
   }
 }
 
-/* ===== Новинки: rolling-окно на 12 ===== */
-/* ===== Новинки: всегда мгновенно отдаём top-N из текущих товаров ===== */
-/* ===== При этом считаем, что state.products в порядке "старые → новые",
- *       поэтому для новинок и отображения берём reverse() ===== */
+/* ===== Новинки: всегда последние N из текущих товаров =====
+ * state.products считаем в порядке "старые → новые",
+ * поэтому берём reverse() и первые N элементов.
+ * Кэш news_window теперь только хранит последнее окно, но не управляет логикой.
+ */
 function getNewestWindow(limit = 12){
-  // Берём товары как "новые → старые"
   const products = Array.isArray(state.products)
-    ? state.products.slice().reverse()
+    ? state.products.slice().reverse()  // новые → старые
     : [];
 
-  // 1) быстрый путь — первые N товаров в этом порядке как "самые новые"
-  const topNow = products.slice(0, limit).map(p => ({ ...p, __isNew: true }));
+  const newest = products.slice(0, limit).map(p => ({ ...p, __isNew: true }));
 
-  // 2) пробуем мягко использовать прошлое окно (если оно осмысленное)
-  let win = [];
-  try { win = JSON.parse(localStorage.getItem(k('news_window')) || '[]'); } catch {}
-  if (!Array.isArray(win)) win = [];
-
-  // если кэш пустой или короче лимита — просто возвращаем topNow и обновляем кэш
-  if (win.length < limit){
-    try {
-      localStorage.setItem(
-        k('news_window'),
-        JSON.stringify(products.slice(0, limit).map(p => String(p.id)))
-      );
-    } catch {}
-    return topNow;
-  }
-
-  // 3) если кэш есть — валидируем id против текущего ассортимента
-  const byId = new Map(products.map(p => [String(p.id), p]));
-  const validated = win
-    .map(id => byId.get(String(id)))
-    .filter(Boolean)
-    .slice(0, limit)
-    .map(p => ({ ...p, __isNew: true }));
-
-  // если после валидации что-то «усохло» — дополним topNow (без дублей)
-  if (validated.length < limit){
-    const have = new Set(validated.map(p => String(p.id)));
-    for (const p of products){
-      if (validated.length >= limit) break;
-      const id = String(p.id);
-      if (!have.has(id)){
-        validated.push({ ...p, __isNew: true });
-        have.add(id);
-      }
-    }
-  }
-
-  // 4) обновим кэш аккуратно
+  // мягко обновим кэш (на будущее), но не полагаемся на него
   try {
-    const ids = validated.map(p => String(p.id));
-    localStorage.setItem(k('news_window'), JSON.stringify(ids));
+    localStorage.setItem(
+      k('news_window'),
+      JSON.stringify(newest.map(p => String(p.id)))
+    );
   } catch {}
 
-  return validated;
+  return newest;
 }
 
 /* ===== skeleton suppressor ===== */
@@ -165,7 +129,7 @@ function renderSkeletonGrid(container, count){
   if (!shouldShowGridSkeleton()) return;
 
   const frag = document.createDocumentFragment();
-  for (let i=0;i<count;i++){
+  for (let i = 0; i < count; i++){
     const el = document.createElement('a');
     el.className = 'card is-skeleton';
     el.setAttribute('aria-hidden','true');
@@ -252,9 +216,10 @@ function createProductNode(p){
     setTimeout(() => { if (ov.isConnected) clear(); }, 2000);
   }
 
-  const titleEl = node.querySelector('.title'); if (titleEl) titleEl.textContent = p.title;
+  const titleEl = node.querySelector('.title');
+  if (titleEl) titleEl.textContent = p.title;
 
-  const subEl   = node.querySelector('.subtitle');
+  const subEl = node.querySelector('.subtitle');
   if (subEl){
     const label = p.categoryLabel || categoryNameBySlug(p.categoryId) || '';
     subEl.textContent = label || (p.inStock ? 'В наличии' : '');
@@ -294,18 +259,18 @@ function createProductNode(p){
     const media = node.querySelector('.card-img') || node;
     const wrap = document.createElement('div');
     wrap.className = 'promo-badges';
-    // Жёстко фиксируем позиционирование, чтобы не растягивалось
     wrap.style.left   = '8px';
     wrap.style.bottom = '8px';
     wrap.style.top    = 'auto';
     wrap.style.right  = 'auto';
     wrap.innerHTML = badges.map(b => `
       <span class="promo-badge ${b.type}">
-        ${b.type==='discount' ? '<i data-lucide="percent"></i>' : '<i data-lucide="zap"></i>'}
+        ${b.type==='discount'
+          ? '<i data-lucide="percent"></i>'
+          : '<i data-lucide="zap"></i>'}
         <span class="lbl">${b.label}</span>
       </span>
     `).join('');
-
     media.appendChild(wrap);
   }
 
@@ -314,7 +279,10 @@ function createProductNode(p){
     const active = isFav(p.id);
     favBtn.classList.toggle('active', active);
     favBtn.setAttribute('aria-pressed', String(active));
-    try { favBtn.setAttribute('type','button'); favBtn.setAttribute('role','button'); } catch {}
+    try {
+      favBtn.setAttribute('type','button');
+      favBtn.setAttribute('role','button');
+    } catch {}
   }
 
   return node;
@@ -330,12 +298,12 @@ export function renderHome(router){
     const h = location.hash || '';
     const isHome = (h === '#/' || h === '' || h.startsWith('#/home'));
     const forcedAt = Number(window.__forceHomeAllOnce || 0);
-    const forceRecent = forcedAt && (Date.now() - forcedAt < 4000); // 4s окно
-    const cameFromPromo = (window.__prevHash === '#/promo'); // ✅ вот тут главное
+    const forceRecent = forcedAt && (Date.now() - forcedAt < 4000);
+    const cameFromPromo = (window.__prevHash === '#/promo');
     if (isHome && (forceRecent || cameFromPromo)) {
       state.filters = state.filters || {};
       state.filters.category = 'all';
-      window.__forceHomeAllOnce = 0; // одноразово
+      window.__forceHomeAllOnce = 0;
     }
   } catch {}
 
@@ -360,7 +328,7 @@ export function renderHome(router){
     return;
   }
 
-  // Актуализируем окно «Новинок» (мягко)
+  // Актуализируем окно «Новинок» (для бейджей и кеша)
   try { getNewestWindow(12); } catch {}
 
   v.innerHTML = `
@@ -397,7 +365,7 @@ export function renderHome(router){
       list = all;
     } else if (slug === 'new') {
       state.filters.inStock = false;
-      list = getNewestWindow(12); // уже возвращает новые → старые
+      list = getNewestWindow(12); // уже новые → старые
     } else if (slug === 'instock') {
       state.filters.inStock = true;
       list = all.filter(isInStock);
@@ -416,7 +384,8 @@ export function drawCategoriesChips(router){
   const wrap = document.getElementById('catChips');
   if (!wrap) return;
 
-  const mk=(slug, name, active)=>`<button class="chip ${active?'active':''}" data-slug="${slug}">${name}</button>`;
+  const mk = (slug, name, active) =>
+    `<button class="chip ${active?'active':''}" data-slug="${slug}">${name}</button>`;
 
   // нормализация активного слага: promo недопустим на Home
   let cur = (state.filters?.category || 'all');
@@ -429,7 +398,8 @@ export function drawCategoriesChips(router){
   const isOther = (g)=>{
     const s = (g.slug||'').toLowerCase();
     const n = (g.name||'').toLowerCase();
-    return ['другое','разное','other','misc'].includes(s) || ['другое','разное','other','misc'].includes(n);
+    return ['другое','разное','other','misc'].includes(s)
+        || ['другое','разное','other','misc'].includes(n);
   };
   const sortKey = (g)=>{
     const s = (g.slug||'').toLowerCase();
@@ -440,7 +410,7 @@ export function drawCategoriesChips(router){
     if (['bags','сумки','sumki'].includes(s) || ['сумки'].includes(n)) return 3;
     return 99;
   };
-  const topGroupsOrdered = (state.categories||[])
+  const topGroupsOrdered = (state.categories || [])
     .filter(g => !isOther(g))
     .sort((a,b)=> sortKey(a) - sortKey(b));
 
@@ -502,8 +472,12 @@ export function drawCategoriesChips(router){
       }
 
       drawProducts(list);
-      try { (document.scrollingElement || document.documentElement).scrollTo({top:0, behavior:'smooth'}); } catch {}
-    });
+      try {
+        (document.scrollingElement || document.documentElement)
+          .scrollTo({top:0, behavior:'smooth'});
+      } catch {}
+    }, { passive: true });
+
     wrap.dataset.bound = '1';
   }
 }
@@ -516,11 +490,11 @@ export function drawProducts(list){
   const visibleSource = source.filter(shouldShowOnHome);
   const base = applyFilters(visibleSource);
 
-  const q = (state.filters.query||'').trim().toLowerCase();
+  const q = (state.filters.query || '').trim().toLowerCase();
   const filtered = q
     ? base.filter(p =>
         p.title.toLowerCase().includes(q) ||
-        (p.subtitle||'').toLowerCase().includes(q)
+        (p.subtitle || '').toLowerCase().includes(q)
       )
     : base;
 
@@ -548,7 +522,9 @@ export function drawProducts(list){
       const card = favBtn.closest('.card, a.card');
       const href = card?.getAttribute('href') || '';
       let pid = card?.dataset?.id || '';
-      if (!pid && href.startsWith('#/product/')) pid = href.replace('#/product/', '').trim();
+      if (!pid && href.startsWith('#/product/')) {
+        pid = href.replace('#/product/', '').trim();
+      }
       if (!pid) return;
 
       const now = toggleFav(pid);
@@ -624,7 +600,7 @@ function progressiveAppend(grid, list, {firstBatch=12, batch=16, delay=0} = {}){
 
   const appendSlice = (from, to) => {
     const frag = document.createDocumentFragment();
-    for (let i=from; i<to; i++){
+    for (let i = from; i < to; i++){
       frag.appendChild(createProductNode(list[i]));
       insertedProducts++;
 
@@ -670,18 +646,20 @@ function renderPromoBannerNode(bn){
   a.className = 'promo-banner';
   a.href = '#/promo';
   a.setAttribute('aria-label','Перейти к акции');
-  a.innerHTML = `<img src="${bn?.img||''}" alt="${escapeHtml(bn?.alt||'Акция')}" loading="lazy">`;
+  a.innerHTML = `<img src="${bn?.img || ''}" alt="${escapeHtml(bn?.alt || 'Акция')}" loading="lazy">`;
   return a;
 }
 
 /* utils */
-function escapeHtml(s=''){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function escapeHtml(s=''){
+  return String(s).replace(/[&<>"']/g, m => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[m]));
+}
 
 /* === Promo → Home: отслеживаем предыдущий hash для дополнительной логики === */
-/* === Promo → Home: корректно храним ПРЕДЫДУЩИЙ hash === */
 (function trackPrevHash(){
   try {
-    // cur — текущий, prev — предыдущий
     window.__curHash = location.hash || '#/';
     window.__prevHash = '#/';
 
