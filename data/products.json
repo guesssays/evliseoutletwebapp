@@ -4,7 +4,7 @@
       "id": "14091752084078242",
       "slug": "kurtka-metra",
       "title": "MetrA",
-      "price": 999000,
+      "price": 899000,
       "images": [
   "data/wearimages/kurtka-metra/kurtka-metra-1.jpg",
   "data/wearimages/kurtka-metra/kurtka-metra-2.jpg"
@@ -40,7 +40,7 @@
       "id": "14091751441210906",
       "slug": "pukhovik-beaster",
       "title": "Beaster",
-      "price": 599000,
+      "price": 499000,
       "images": [
   "data/wearimages/pukhovik-beaster/pukhovik-beaster-1.jpg",
   "data/wearimages/pukhovik-beaster/pukhovik-beaster-2.jpg"
@@ -75,7 +75,7 @@
       "id": "14091750960004026",
       "slug": "khudi-ids",
       "title": "IDS",
-      "price": 529000,
+      "price": 429000,
       "images": [
   "data/wearimages/khudi-ids/khudi-ids-1.jpg",
   "data/wearimages/khudi-ids/khudi-ids-2.jpg"
@@ -111,7 +111,7 @@
       "id": "14089064189921202",
       "slug": "khudi-erd",
       "title": "ERD",
-      "price": 509000,
+      "price": 409000,
       "images": [
   "data/wearimages/khudi-erd/khudi-erd-1.jpg",
   "data/wearimages/khudi-erd/khudi-erd-2.jpg"
@@ -149,7 +149,7 @@
       "id": "14089063450503850",
       "slug": "kurtka-mixgora",
       "title": "MIXGORA",
-      "price": 599000,
+      "price": 499000,
       "images": [
   "data/wearimages/kurtka-mixgora/kurtka-mixgora-1.jpg",
   "data/wearimages/kurtka-mixgora/kurtka-mixgora-2.jpg"
@@ -179,7 +179,7 @@
       "id": "14089061374793362",
       "slug": "dzhinsy-y2k",
       "title": "Y2K",
-      "price": 599000,
+      "price": 499000,
       "images": [
   "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-1.jpg",
   "data/wearimages/dzhinsy-y2k/dzhinsy-y2k-2.jpg"
@@ -219,7 +219,7 @@
       "id": "14089060373749058",
       "slug": "kurtka-f1",
       "title": "F1",
-      "price": 749000,
+      "price": 649000,
       "images": [
   "data/wearimages/kurtka-f1/kurtka-f1-1.jpg",
   "data/wearimages/kurtka-f1/kurtka-f1-2.jpg"
@@ -254,7 +254,7 @@
       "id": "14089059124915306",
       "slug": "svitshot-maxdepy",
       "title": "Maxdepy",
-      "price": 529000,
+      "price": 429000,
       "images": [
   "data/wearimages/svitshot-maxdepy/svitshot-maxdepy-1.jpg"
 ],
@@ -290,7 +290,7 @@
       "id": "14089057691789274",
       "slug": "kurtka-jeans",
       "title": "Jeans",
-      "price": 609000,
+      "price": 409000,
       "images": [
   "data/wearimages/kurtka-jeans/kurtka-jeans-1.jpg"
 ],
@@ -327,7 +327,7 @@
       "id": "14089056726479346",
       "slug": "kedy-xavier3",
       "title": "Xavier3",
-      "price": 659000,
+      "price": 559000,
       "images": [
   "data/wearimages/kedy-xavier3/kedy-xavier3-1.jpg"
 ],
@@ -369,7 +369,7 @@
       "id": "14089055591019258",
       "slug": "kozhanka-dvukhstoronka",
       "title": "FlipSide",
-      "price": 849000,
+      "price": 749000,
       "images": [
   "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-1.jpg",
   "data/wearimages/kozhanka-dvukhstoronka/kozhanka-dvukhstoronka-2.jpg"
@@ -403,7 +403,7 @@
       "id": "14089054715229746",
       "slug": "bomber-greamreaper",
       "title": "GreamReaper",
-      "price": 699000,
+      "price": 599000,
       "images": [
   "data/wearimages/bomber-greamreaper/bomber-greamreaper-1.jpg",
   "data/wearimages/bomber-greamreaper/bomber-greamreaper-2.jpg"
@@ -439,7 +439,7 @@
       "id": "14089053831090978",
       "slug": "sumka-god-s-plan",
       "title": "God's Plan",
-      "price": 369000,
+      "price": 269000,
       "images": [
   "data/wearimages/sumka-god-s-plan/sumka-god-s-plan-1.jpg"
 ],
@@ -464,7 +464,7 @@
       "id": "14089052365673594",
       "slug": "kurtka-pukhovik",
       "title": "Downforce",
-      "price": 749000,
+      "price": 649000,
       "images": [
   "data/wearimages/kurtka-pukhovik/kurtka-pukhovik-1.jpg"
 ],
@@ -497,7 +497,7 @@
       "id": "14089051360497450",
       "slug": "botinki-newrock",
       "title": "NewRock Silver",
-      "price": 1049000,
+      "price": 949000,
       "images": [
   "data/wearimages/botinki-newrock/botinki-newrock-1.jpg",
   "data/wearimages/botinki-newrock/botinki-newrock-2.jpg",
@@ -539,7 +539,7 @@
       "id": "14089050023885714",
       "slug": "dzhinsy-baggy",
       "title": "Baggy",
-      "price": 649000,
+      "price": 549000,
       "images": [
   "data/wearimages/dzhinsy-baggy/dzhinsy-baggy-1.jpg"
 ],
@@ -574,7 +574,7 @@
       "id": "14089049003497482",
       "slug": "palto-osennee",
       "title": "Autumn Line",
-      "price": 749000,
+      "price": 649000,
       "images": [
   "data/wearimages/palto-osennee/palto-osennee-1.jpg"
 ],
@@ -611,7 +611,7 @@
       "id": "14089047933692530",
       "slug": "lofery-classic",
       "title": "Classic",
-      "price": 599000,
+      "price": 499000,
       "images": [
   "data/wearimages/lofery-classic/lofery-classic-1.jpg",
   "data/wearimages/lofery-classic/lofery-classic-2.jpg"
@@ -649,7 +649,7 @@
       "id": "14089046698319930",
       "slug": "kozhanka-theblack",
       "title": "TheBlack",
-      "price": 669000,
+      "price": 569000,
       "images": [
   "data/wearimages/kozhanka-theblack/kozhanka-theblack-1.jpg"
 ],
@@ -684,7 +684,7 @@
       "id": "14089045582240474",
       "slug": "palto-osennee-14089045582240474",
       "title": "Autumn Crest",
-      "price": 769000,
+      "price": 669000,
       "images": [
   "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-1.jpg",
   "data/wearimages/palto-osennee-14089045582240474/palto-osennee-14089045582240474-2.jpg"
@@ -724,7 +724,7 @@
       "id": "14089044068253322",
       "slug": "polo-coreevry",
       "title": "Coreevry",
-      "price": 569000,
+      "price": 469000,
       "images": [
   "data/wearimages/polo-coreevry/polo-coreevry-1.jpg",
   "data/wearimages/polo-coreevry/polo-coreevry-2.jpg"
@@ -764,7 +764,7 @@
       "id": "14089041837821522",
       "slug": "dzhinsy-meshkovatye",
       "title": "Loose Fit",
-      "price": 569000,
+      "price": 469000,
       "images": [
   "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-1.jpg",
   "data/wearimages/dzhinsy-meshkovatye/dzhinsy-meshkovatye-2.jpg"
@@ -801,7 +801,7 @@
       "id": "14089036067180594",
       "slug": "dzhinsy-onfire",
       "title": "OnFire",
-      "price": 569000,
+      "price": 469000,
       "images": [
   "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-1.jpg",
   "data/wearimages/dzhinsy-onfire/dzhinsy-onfire-2.jpg"
@@ -837,7 +837,7 @@
       "id": "14089034423513306",
       "slug": "krosovki-styrsyn",
       "title": "Styrsyn",
-      "price": 749000,
+      "price": 649000,
       "images": [
   "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-1.jpg",
   "data/wearimages/krosovki-styrsyn/krosovki-styrsyn-2.jpg"
@@ -877,7 +877,7 @@
       "id": "14089033130860018",
       "slug": "shtany-stylish",
       "title": "Stylish",
-      "price": 529000,
+      "price": 429000,
       "images": [
   "data/wearimages/shtany-stylish/shtany-stylish-1.jpg"
 ],
@@ -913,7 +913,7 @@
       "id": "14089031772780442",
       "slug": "bomber-teplyi",
       "title": "Heatwave",
-      "price": 889000,
+      "price": 789000,
       "images": [
   "data/wearimages/bomber-teplyi/bomber-teplyi-1.jpg",
   "data/wearimages/bomber-teplyi/bomber-teplyi-2.jpg"
@@ -952,7 +952,7 @@
       "id": "14089030494067394",
       "slug": "kozhanka-snake",
       "title": "Snake",
-      "price": 749000,
+      "price": 649000,
       "images": [
   "data/wearimages/kozhanka-snake/kozhanka-snake-1.jpg",
   "data/wearimages/kozhanka-snake/kozhanka-snake-2.jpg"
@@ -987,7 +987,7 @@
       "id": "14089029623377282",
       "slug": "kedy-venom",
       "title": "Venom",
-      "price": 569000,
+      "price": 469000,
       "images": [
   "data/wearimages/kedy-venom/kedy-venom-1.jpg",
   "data/wearimages/kedy-venom/kedy-venom-2.jpg"
@@ -1030,7 +1030,7 @@
       "id": "14089027572942530",
       "slug": "bomber-meam",
       "title": "Meam",
-      "price": 699000,
+      "price": 599000,
       "images": [
   "data/wearimages/bomber-meam/bomber-meam-1.jpg",
   "data/wearimages/bomber-meam/bomber-meam-2.jpg"
@@ -1068,7 +1068,7 @@
       "id": "14089026748679914",
       "slug": "bomber-fordream",
       "title": "ForDream",
-      "price": 799000,
+      "price": 699000,
       "images": [
   "data/wearimages/bomber-fordream/bomber-fordream-1.jpg",
   "data/wearimages/bomber-fordream/bomber-fordream-2.jpg"
@@ -1110,7 +1110,7 @@
       "id": "14089025639578250",
       "slug": "khudi-ford",
       "title": "Ford",
-      "price": 549000,
+      "price": 449000,
       "images": [
   "data/wearimages/khudi-ford/khudi-ford-1.jpg",
   "data/wearimages/khudi-ford/khudi-ford-2.jpg"
@@ -1149,7 +1149,7 @@
       "id": "14088984580046962",
       "slug": "botinki-rickowens",
       "title": "RickOwens",
-      "price": 1159000,
+      "price": 1059000,
       "images": [
   "data/wearimages/botinki-rickowens/botinki-rickowens-1.jpg",
   "data/wearimages/botinki-rickowens/botinki-rickowens-2.jpg"
@@ -1192,7 +1192,7 @@
       "id": "14088983200817306",
       "slug": "kardigan-dino",
       "title": "Dino",
-      "price": 529000,
+      "price": 429000,
       "images": [
   "data/wearimages/kardigan-dino/kardigan-dino-1.jpg",
   "data/wearimages/kardigan-dino/kardigan-dino-2.jpg"
@@ -1230,7 +1230,7 @@
       "id": "14088980905975450",
       "slug": "dzhinsy-astroboy",
       "title": "AstroBoy",
-      "price": 569000,
+      "price": 469000,
       "images": [
   "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-1.jpg",
   "data/wearimages/dzhinsy-astroboy/dzhinsy-astroboy-2.jpg"
@@ -1267,7 +1267,7 @@
   "id": "14101528596752402",
   "slug": "sviter-snowb",
   "title": "SnowB",
-  "price": 529000,
+  "price": 429000,
   "images": [
     "data/wearimages/sviter-snowb/sviter-snowb-1.jpg",
     "data/wearimages/sviter-snowb/sviter-snowb-2.jpg"
@@ -1307,7 +1307,7 @@
   "id": "14101528226915746",
   "slug": "shtany-soccer2009",
   "title": "Soccer2009",
-  "price": 529000,
+  "price": 429000,
   "images": [
     "data/wearimages/shtany-soccer2009/shtany-soccer2009-1.jpg",
     "data/wearimages/shtany-soccer2009/shtany-soccer2009-2.jpg"
@@ -1341,7 +1341,7 @@
   "id": "14101527948199258",
   "slug": "svitshot-arabica",
   "title": "Arabica",
-  "price": 599000,
+  "price": 499000,
   "images": [
     "data/wearimages/svitshot-arabica/svitshot-arabica-1.jpg",
     "data/wearimages/svitshot-arabica/svitshot-arabica-2.jpg"
@@ -1378,7 +1378,7 @@
   "id": "14101527535402578",
   "slug": "shtany-ak-47",
   "title": "AK-47",
-  "price": 529000,
+  "price": 429000,
   "images": [
     "data/wearimages/shtany-ak-47/shtany-ak-47-1.jpg",
     "data/wearimages/shtany-ak-47/shtany-ak-47-2.jpg"
@@ -1412,7 +1412,7 @@
       "id": "14101527020044130",
       "slug": "sumka-gk",
       "title": "GK",
-      "price": 549000,
+      "price": 449000,
       "images": [
   "data/wearimages/sumka-gk/sumka-gk-1.jpg",
   "data/wearimages/sumka-gk/sumka-gk-2.jpg"
@@ -1436,7 +1436,7 @@
       "id": "14101526829795202",
       "slug": "sumka-facelt",
       "title": "FaceLt",
-      "price": 569000,
+      "price": 469000,
       "images": [
   "data/wearimages/sumka-facelt/sumka-facelt-1.jpg",
   "data/wearimages/sumka-facelt/sumka-facelt-2.jpg"
@@ -1460,7 +1460,7 @@
   "id": "14101526401794362",
   "slug": "shtany-collens",
   "title": "Collens",
-  "price": 499000,
+  "price": 399000,
   "images": [
     "data/wearimages/shtany-collens/shtany-collens-1.jpg",
     "data/wearimages/shtany-collens/shtany-collens-2.jpg"
@@ -1499,7 +1499,7 @@
   "id": "14101525970321810",
   "slug": "dzhinsy-loneless",
   "title": "Loneless",
-  "price": 599000,
+  "price": 499000,
   "images": [
     "data/wearimages/dzhinsy-loneless/dzhinsy-loneless-1.jpg",
     "data/wearimages/dzhinsy-loneless/dzhinsy-loneless-2.jpg"
@@ -1535,7 +1535,7 @@
       "id": "14101525531481474",
       "slug": "sumka-wool",
       "title": "Wool",
-      "price": 469000,
+      "price": 369000,
       "images": [
   "data/wearimages/sumka-wool/sumka-wool-1.jpg",
   "data/wearimages/sumka-wool/sumka-wool-2.jpg"
@@ -1564,7 +1564,7 @@
   "id": "14101525186699018",
   "slug": "sviter-deer",
   "title": "Deer",
-  "price": 499000,
+  "price": 399000,
   "images": [
     "data/wearimages/sviter-deer/sviter-deer-1.jpg",
     "data/wearimages/sviter-deer/sviter-deer-2.jpg"
@@ -1600,7 +1600,7 @@
       "id": "14101524683618594",
       "slug": "kozhanka-hellokitty",
       "title": "HelloKitty",
-      "price": 649000,
+      "price": 549000,
       "images": [
   "data/wearimages/kozhanka-hellokitty/kozhanka-hellokitty-1.jpg",
   "data/wearimages/kozhanka-hellokitty/kozhanka-hellokitty-2.jpg"
@@ -1634,7 +1634,7 @@
   "id": "14101523982277474",
   "slug": "kurtka-cowcoat",
   "title": "CowCoat",
-  "price": 749000,
+  "price": 649000,
   "images": [
     "data/wearimages/kurtka-cowcoat/kurtka-cowcoat-1.jpg",
     "data/wearimages/kurtka-cowcoat/kurtka-cowcoat-2.jpg"
@@ -1667,7 +1667,7 @@
   "id": "14101523665192378",
   "slug": "bomber-greez",
   "title": "Greez",
-  "price": 799000,
+  "price": 699000,
   "images": [
     "data/wearimages/bomber-greez/bomber-greez-1.jpg",
     "data/wearimages/bomber-greez/bomber-greez-2.jpg"
@@ -1702,7 +1702,7 @@
   "id": "14101523262309378",
   "slug": "kozhanka-chinatown",
   "title": "ChinaTown",
-  "price": 699000,
+  "price": 599000,
   "images": [
     "data/wearimages/kozhanka-chinatown/kozhanka-chinatown-1.jpg",
     "data/wearimages/kozhanka-chinatown/kozhanka-chinatown-2.jpg"
@@ -1737,7 +1737,7 @@
   "id": "14101522940312586",
   "slug": "khudi-chaiser",
   "title": "Chaiser",
-  "price": 529000,
+  "price": 429000,
   "images": [
     "data/wearimages/khudi-chaiser/khudi-chaiser-1.jpg",
     "data/wearimages/khudi-chaiser/khudi-chaiser-2.jpg"
@@ -1768,7 +1768,7 @@
   "id": "14101522372288130",
   "slug": "shtany-sneaky",
   "title": "Sneaky",
-  "price": 699000,
+  "price": 599000,
   "images": [
     "data/wearimages/shtany-sneaky/shtany-sneaky-1.jpg",
     "data/wearimages/shtany-sneaky/shtany-sneaky-2.jpg"
@@ -1801,7 +1801,7 @@
       "id": "14101521878897410",
       "slug": "botinki-snowbots",
       "title": "SnowBots",
-      "price": 799000,
+      "price": 699000,
       "images": [
   "data/wearimages/botinki-snowbots/botinki-snowbots-1.jpg",
   "data/wearimages/botinki-snowbots/botinki-snowbots-2.jpg"
@@ -1844,7 +1844,7 @@
       "id": "14101521316074538",
       "slug": "sviter-grinch",
       "title": "Grinch",
-      "price": 399000,
+      "price": 299000,
       "images": [
   "data/wearimages/sviter-grinch/sviter-grinch-1.jpg",
   "data/wearimages/sviter-grinch/sviter-grinch-2.jpg"
@@ -1880,7 +1880,7 @@
   "id": "14101470131901586",
   "slug": "svitshot-luvy",
   "title": "Luvy",
-  "price": 469000,
+  "price": 369000,
   "images": [
     "data/wearimages/svitshot-luvy/svitshot-luvy-1.jpg",
     "data/wearimages/svitshot-luvy/svitshot-luvy-2.jpg"
@@ -1917,7 +1917,7 @@
       "id": "14101468964273898",
       "slug": "triko-linex",
       "title": "LineX",
-      "price": 499000,
+      "price": 399000,
       "images": [
   "data/wearimages/triko-linex/triko-linex-1.jpg",
   "data/wearimages/triko-linex/triko-linex-2.jpg"
@@ -1949,7 +1949,7 @@
   "id": "14101468408777890",
   "slug": "zipka-flaffy",
   "title": "Fluffy",
-  "price": 499000,
+  "price": 399000,
   "images": [
     "data/wearimages/zipka-flaffy/zipka-flaffy-1.jpg",
     "data/wearimages/zipka-flaffy/zipka-flaffy-2.jpg"
@@ -1983,7 +1983,7 @@
   "id": "14101467706955002",
   "slug": "kurtka-vamp",
   "title": "Vamp",
-  "price": 799000,
+  "price": 699000,
   "images": [
     "data/wearimages/kurtka-vamp/kurtka-vamp-1.jpg",
     "data/wearimages/kurtka-vamp/kurtka-vamp-2.jpg"
@@ -2019,7 +2019,7 @@
       "id": "14101467094322482",
       "slug": "sviter-tern",
       "title": "Tern",
-      "price": 569000,
+      "price": 469000,
       "images": [
   "data/wearimages/sviter-tern/sviter-tern-1.jpg",
   "data/wearimages/sviter-tern/sviter-tern-2.jpg"
@@ -2053,7 +2053,7 @@
       "id": "14101466575488530",
       "slug": "krosovki-bally",
       "title": "Bally",
-      "price": 699000,
+      "price": 599000,
       "images": [
   "data/wearimages/krosovki-bally/krosovki-bally-1.jpg",
   "data/wearimages/krosovki-bally/krosovki-bally-2.jpg"
@@ -2094,7 +2094,7 @@
   "id": "14101466110649978",
   "slug": "kurtka-blacotton",
   "title": "Blacotton",
-  "price": 549000,
+  "price": 449000,
   "images": [
     "data/wearimages/kurtka-blacotton/kurtka-blacotton-1.jpg",
     "data/wearimages/kurtka-blacotton/kurtka-blacotton-2.jpg"
@@ -2128,7 +2128,7 @@
   "id": "14101465470260226",
   "slug": "khudi-synical",
   "title": "Synical",
-  "price": 449000,
+  "price": 349000,
   "images": [
     "data/wearimages/khudi-synical/khudi-synical-1.jpg",
     "data/wearimages/khudi-synical/khudi-synical-2.jpg"
@@ -2165,7 +2165,7 @@
       "id": "14101465023901250",
       "slug": "kedy-blakev",
       "title": "BlakeV",
-      "price": 529000,
+      "price": 429000,
       "images": [
   "data/wearimages/kedy-blakev/kedy-blakev-1.jpg",
   "data/wearimages/kedy-blakev/kedy-blakev-2.jpg"
@@ -2211,7 +2211,7 @@
   "id": "14101464240602674",
   "slug": "dzhinsy-westy",
   "title": "Westy",
-  "price": 529000,
+  "price": 429000,
   "images": [
     "data/wearimages/dzhinsy-westy/dzhinsy-westy-1.jpg",
     "data/wearimages/dzhinsy-westy/dzhinsy-westy-2.jpg"
@@ -2248,7 +2248,7 @@
   "id": "14101463557881066",
   "slug": "futbolka-jesrseyasi",
   "title": "JesrseyAsi",
-  "price": 469000,
+  "price": 369000,
   "images": [
     "data/wearimages/futbolka-jesrseyasi/futbolka-jesrseyasi-1.jpg",
     "data/wearimages/futbolka-jesrseyasi/futbolka-jesrseyasi-2.jpg"
@@ -2285,7 +2285,7 @@
   "id": "14101463130040714",
   "slug": "tufli-anabel",
   "title": "Anabel",
-  "price": 649000,
+  "price": 549000,
   "images": [
     "data/wearimages/tufli-anabel/tufli-anabel-1.jpg",
     "data/wearimages/tufli-anabel/tufli-anabel-2.jpg"
@@ -2322,7 +2322,7 @@
   "id": "14101462168332954",
   "slug": "dzhinsy-pannyp",
   "title": "PannyP",
-  "price": 449000,
+  "price": 349000,
   "images": [
     "data/wearimages/dzhinsy-pannyp/dzhinsy-pannyp-1.jpg",
     "data/wearimages/dzhinsy-pannyp/dzhinsy-pannyp-2.jpg"
@@ -2359,7 +2359,7 @@
   "id": "14101461624336466",
   "slug": "botinki-xrise",
   "title": "Xrise",
-  "price": 699000,
+  "price": 599000,
   "images": [
     "data/wearimages/botinki-xrise/botinki-xrise-1.jpg",
     "data/wearimages/botinki-xrise/botinki-xrise-2.jpg"
@@ -2397,7 +2397,7 @@
   "id": "14101461264933146",
   "slug": "vetrovka-linesz",
   "title": "LinesZ",
-  "price": 529000,
+  "price": 429000,
   "images": [
     "data/wearimages/vetrovka-linesz/vetrovka-linesz-1.jpg",
     "data/wearimages/vetrovka-linesz/vetrovka-linesz-2.jpg"
@@ -2435,7 +2435,7 @@
       "id": "14101460850304138",
       "slug": "riukzak-gothicstyle",
       "title": "GothicStyle",
-      "price": 469000,
+      "price": 369000,
       "images": [
   "data/wearimages/riukzak-gothicstyle/riukzak-gothicstyle-1.jpg",
   "data/wearimages/riukzak-gothicstyle/riukzak-gothicstyle-2.jpg"
@@ -2461,7 +2461,7 @@
       "id": "14101460392171546",
       "slug": "triko-triplep",
       "title": "TripleP",
-      "price": 399000,
+      "price": 299000,
       "images": [
   "data/wearimages/triko-triplep/triko-triplep-1.jpg",
   "data/wearimages/triko-triplep/triko-triplep-2.jpg"
@@ -2496,7 +2496,7 @@
       "id": "14100343524606850",
       "slug": "botinki-rickowens-undez",
       "title": "RickOwens Undez",
-      "price": 729000,
+      "price": 629000,
       "images": [
   "data/wearimages/botinki-rickowens-undez/botinki-rickowens-undez-1.jpg",
   "data/wearimages/botinki-rickowens-undez/botinki-rickowens-undez-2.jpg"
@@ -2538,7 +2538,7 @@
   "id": "14100343174305914",
   "slug": "plashch-blackbat",
   "title": "BlackBat",
-  "price": 649000,
+  "price": 549000,
   "images": [
     "data/wearimages/plashch-blackbat/plashch-blackbat-1.jpg",
     "data/wearimages/plashch-blackbat/plashch-blackbat-2.jpg"
@@ -2576,7 +2576,7 @@
   "id": "14100342741332314",
   "slug": "dzhinsy-pantsz",
   "title": "PantSZ",
-  "price": 529000,
+  "price": 429000,
   "images": [
     "data/wearimages/dzhinsy-pantsz/dzhinsy-pantsz-1.jpg",
     "data/wearimages/dzhinsy-pantsz/dzhinsy-pantsz-2.jpg"
@@ -2611,7 +2611,7 @@
   "id": "14100342294856898",
   "slug": "svitshot-marselin",
   "title": "Марселин",
-  "price": 459000,
+  "price": 359000,
   "images": [
     "data/wearimages/svitshot-marselin/svitshot-marselin-1.jpg",
     "data/wearimages/svitshot-marselin/svitshot-marselin-2.jpg"
@@ -2649,7 +2649,7 @@
   "id": "14100341883388018",
   "slug": "dzhinsy-firebotm",
   "title": "FireBotm",
-  "price": 539000,
+  "price": 439000,
   "images": [
     "data/wearimages/dzhinsy-firebotm/dzhinsy-firebotm-1.jpg",
     "data/wearimages/dzhinsy-firebotm/dzhinsy-firebotm-2.jpg"
@@ -2687,7 +2687,7 @@
   "id": "14100341390063250",
   "slug": "sviter-girlst",
   "title": "GirlSt",
-  "price": 499000,
+  "price": 399000,
   "images": [
     "data/wearimages/sviter-girlst/sviter-girlst-1.jpg",
     "data/wearimages/sviter-girlst/sviter-girlst-2.jpg"
@@ -2720,7 +2720,7 @@
       "id": "14100340985562458",
       "slug": "kurtka-onfire",
       "title": "OnFire",
-      "price": 599000,
+      "price": 499000,
       "images": [
   "data/wearimages/kurtka-onfire/kurtka-onfire-1.jpg",
   "data/wearimages/kurtka-onfire/kurtka-onfire-2.jpg"
@@ -2756,7 +2756,7 @@
   "id": "14100340611205066",
   "slug": "futbolka-vultures",
   "title": "Vultures",
-  "price": 499000,
+  "price": 399000,
   "images": [
     "data/wearimages/futbolka-vultures/futbolka-vultures-1.jpg",
     "data/wearimages/futbolka-vultures/futbolka-vultures-2.jpg"
@@ -2790,7 +2790,7 @@
   "id": "14100340196146882",
   "slug": "khudi-chernye-psy",
   "title": "Черные Псы",
-  "price": 599000,
+  "price": 499000,
   "images": [
     "data/wearimages/khudi-chernye-psy/khudi-chernye-psy-1.jpg",
     "data/wearimages/khudi-chernye-psy/khudi-chernye-psy-2.jpg"
@@ -2828,7 +2828,7 @@
   "id": "14100339909339130",
   "slug": "botinki-podna",
   "title": "PodNa",
-  "price": 899000,
+  "price": 799000,
   "images": [
     "data/wearimages/botinki-podna/botinki-podna-1.jpg",
     "data/wearimages/botinki-podna/botinki-podna-2.jpg"
@@ -2864,7 +2864,7 @@
   "id": "14100339543542170",
   "slug": "bomber-doubletap",
   "title": "DoubleTap",
-  "price": 599000,
+  "price": 499000,
   "images": [
     "data/wearimages/bomber-doubletap/bomber-doubletap-1.jpg",
     "data/wearimages/bomber-doubletap/bomber-doubletap-2.jpg"
@@ -2899,7 +2899,7 @@
   "id": "14100339117331226",
   "slug": "shtany-esc",
   "title": "ESC",
-  "price": 539000,
+  "price": 439000,
   "images": [
     "data/wearimages/shtany-esc/shtany-esc-1.jpg",
     "data/wearimages/shtany-esc/shtany-esc-2.jpg"
@@ -2934,7 +2934,7 @@
       "id": "14100338681907914",
       "slug": "botinki-quadren",
       "title": "QuadreN",
-      "price": 899000,
+      "price": 799000,
       "images": [
   "data/wearimages/botinki-quadren/botinki-quadren-1.jpg",
   "data/wearimages/botinki-quadren/botinki-quadren-2.jpg"
@@ -2976,7 +2976,7 @@
   "id": "14100338266183946",
   "slug": "kurtka-makeup",
   "title": "MakeUp",
-  "price": 699000,
+  "price": 599000,
   "images": [
     "data/wearimages/kurtka-makeup/kurtka-makeup-1.jpg",
     "data/wearimages/kurtka-makeup/kurtka-makeup-2.jpg"
@@ -3013,7 +3013,7 @@
   "id": "14100337821468370",
   "slug": "shtany-baggyfit",
   "title": "BaggyFit",
-  "price": 499000,
+  "price": 399000,
   "images": [
     "data/wearimages/shtany-baggyfit/shtany-baggyfit-1.jpg",
     "data/wearimages/shtany-baggyfit/shtany-baggyfit-2.jpg"
@@ -3048,7 +3048,7 @@
       "id": "14100337258719034",
       "slug": "svitshot-besunota",
       "title": "Besunota",
-      "price": 489000,
+      "price": 389000,
       "images": [
   "data/wearimages/svitshot-besunota/svitshot-besunota-1.jpg",
   "data/wearimages/svitshot-besunota/svitshot-besunota-2.jpg"
@@ -3085,7 +3085,7 @@
   "id": "14100336683644162",
   "slug": "futbolka-seylormoon",
   "title": "SailorMoon",
-  "price": 449000,
+  "price": 349000,
   "images": [
     "data/wearimages/futbolka-seylormoon/futbolka-seylormoon-1.jpg",
     "data/wearimages/futbolka-seylormoon/futbolka-seylormoon-2.jpg"
@@ -3121,7 +3121,7 @@
       "id": "14100336165815290",
       "slug": "sumka-gilbone",
       "title": "GilBone",
-      "price": 549000,
+      "price": 449000,
       "images": [
   "data/wearimages/sumka-gilbone/sumka-gilbone-1.jpg",
   "data/wearimages/sumka-gilbone/sumka-gilbone-2.jpg"
@@ -3148,7 +3148,7 @@
   "id": "14099649521963554",
   "slug": "botinki-skullz",
   "title": "SkullZ",
-  "price": 1099000,
+  "price": 999000,
   "images": [
     "data/wearimages/botinki-skullz/botinki-skullz-1.jpg",
     "data/wearimages/botinki-skullz/botinki-skullz-2.jpg"
@@ -3185,7 +3185,7 @@
   "id": "14099648805677138",
   "slug": "kozhanka-houdiein",
   "title": "HoudieIn",
-  "price": 599000,
+  "price": 499000,
   "images": [
     "data/wearimages/kozhanka-houdiein/kozhanka-houdiein-1.jpg",
     "data/wearimages/kozhanka-houdiein/kozhanka-houdiein-2.jpg"
@@ -3223,7 +3223,7 @@
       "id": "14099648269787426",
       "slug": "zipka-verblee",
       "title": "VerBlee",
-      "price": 429000,
+      "price": 329000,
       "images": [
   "data/wearimages/zipka-verblee/zipka-verblee-1.jpg",
   "data/wearimages/zipka-verblee/zipka-verblee-2.jpg"
@@ -3259,7 +3259,7 @@
       "id": "14099647504432026",
       "slug": "botinki-plara",
       "title": "Plara",
-      "price": 1299000,
+      "price": 1199000,
       "images": [
   "data/wearimages/botinki-plara/botinki-plara-1.jpg",
   "data/wearimages/botinki-plara/botinki-plara-2.jpg"
@@ -3300,7 +3300,7 @@
   "id": "14099646970628722",
   "slug": "zipka-chestchris",
   "title": "ChestChris",
-  "price": 569000,
+  "price": 469000,
   "images": [
     "data/wearimages/zipka-chestchris/zipka-chestchris-1.jpg",
     "data/wearimages/zipka-chestchris/zipka-chestchris-2.jpg"
@@ -3336,7 +3336,7 @@
   "id": "14099646323993322",
   "slug": "bomber-vetements",
   "title": "VETEMENTS",
-  "price": 999000,
+  "price": 899000,
   "images": [
     "data/wearimages/bomber-vetements/bomber-vetements-1.jpg",
     "data/wearimages/bomber-vetements/bomber-vetements-2.jpg"
@@ -3366,7 +3366,7 @@
   "id": "14099646073826738",
   "slug": "khudi-helm",
   "title": "Helm",
-  "price": 559000,
+  "price": 459000,
   "images": [
     "data/wearimages/khudi-helm/khudi-helm-1.jpg",
     "data/wearimages/khudi-helm/khudi-helm-2.jpg"
@@ -3400,7 +3400,7 @@
       "id": "14099645692133874",
       "slug": "longsliv-gothict",
       "title": "GothicT",
-      "price": 469000,
+      "price": 369000,
       "images": [
   "data/wearimages/longsliv-gothict/longsliv-gothict-1.jpg",
   "data/wearimages/longsliv-gothict/longsliv-gothict-2.jpg"
@@ -3436,7 +3436,7 @@
   "id": "14099645315374690",
   "slug": "pukhovik-bapuel",
   "title": "Bapuel",
-  "price": 599000,
+  "price": 499000,
   "images": [
     "data/wearimages/pukhovik-bapuel/pukhovik-bapuel-1.jpg",
     "data/wearimages/pukhovik-bapuel/pukhovik-bapuel-2.jpg"
@@ -3469,7 +3469,7 @@
   "id": "14099644665223850",
   "slug": "sviter-bone",
   "title": "Bone",
-  "price": 529000,
+  "price": 429000,
   "images": [
     "data/wearimages/sviter-bone/sviter-bone-1.jpg",
     "data/wearimages/sviter-bone/sviter-bone-2.jpg"
@@ -3503,7 +3503,7 @@
   "id": "14099644157472210",
   "slug": "dzhinsy-swap",
   "title": "Swap",
-  "price": 499000,
+  "price": 399000,
   "images": [
     "data/wearimages/dzhinsy-swap/dzhinsy-swap-1.jpg",
     "data/wearimages/dzhinsy-swap/dzhinsy-swap-2.jpg"
@@ -3540,7 +3540,7 @@
   "id": "14099643769255626",
   "slug": "botinki-newrock-gothic",
   "title": "NewRock Gothic",
-  "price": 1069000,
+  "price": 969000,
   "images": [
     "data/wearimages/botinki-newrock-gothic/botinki-newrock-gothic-1.jpg",
     "data/wearimages/botinki-newrock-gothic/botinki-newrock-gothic-2.jpg"
@@ -3581,7 +3581,7 @@
       "id": "14099643161958354",
       "slug": "svitshot-lanadelrey",
       "title": "LanaDelRey",
-      "price": 469000,
+      "price": 369000,
       "images": [
   "data/wearimages/svitshot-lanadelrey/svitshot-lanadelrey-1.jpg",
   "data/wearimages/svitshot-lanadelrey/svitshot-lanadelrey-2.jpg"
@@ -3617,7 +3617,7 @@
       "id": "14099605900020202",
       "slug": "krossovki-balenciaga-rod",
       "title": "Balenciaga Rod",
-      "price": 829000,
+      "price": 729000,
       "images": [
   "data/wearimages/krossovki-balenciaga-rod/krossovki-balenciaga-rod-1.jpg",
   "data/wearimages/krossovki-balenciaga-rod/krossovki-balenciaga-rod-2.jpg"
@@ -3661,7 +3661,7 @@
       "id": "14099605059221010",
       "slug": "botinki-rickowens-diz",
       "title": "RickOwens Diz",
-      "price": 829000,
+      "price": 729000,
       "images": [
   "data/wearimages/botinki-rickowens-diz/botinki-rickowens-diz-1.jpg",
   "data/wearimages/botinki-rickowens-diz/botinki-rickowens-diz-2.jpg"
@@ -3700,7 +3700,7 @@
   "id": "14099604590638706",
   "slug": "zipka-diesel",
   "title": "Diesel",
-  "price": 529000,
+  "price": 429000,
   "images": [
     "data/wearimages/zipka-diesel/zipka-diesel-1.jpg",
     "data/wearimages/zipka-diesel/zipka-diesel-2.jpg"
@@ -3735,7 +3735,7 @@
   "id": "14099604375762266",
   "slug": "plashch-peaky",
   "title": "Peaky",
-  "price": 669000,
+  "price": 569000,
   "images": [
     "data/wearimages/plashch-peaky/plashch-peaky-1.jpg",
     "data/wearimages/plashch-peaky/plashch-peaky-2.jpg"
@@ -3772,7 +3772,7 @@
   "id": "14099586349779306",
   "slug": "bomber-bomabard",
   "title": "Bomabard",
-  "price": 899000,
+  "price": 799000,
   "images": [
     "data/wearimages/bomber-bomabard/bomber-bomabard-1.jpg",
     "data/wearimages/bomber-bomabard/bomber-bomabard-2.jpg"
@@ -3810,7 +3810,7 @@
       "id": "14099585608215154",
       "slug": "kedy-rickowens-pinky",
       "title": "RickOwens Pinky",
-      "price": 899000,
+      "price": 799000,
       "images": [
   "data/wearimages/kedy-rickowens-pinky/kedy-rickowens-pinky-1.jpg",
   "data/wearimages/kedy-rickowens-pinky/kedy-rickowens-pinky-2.jpg"
@@ -3850,7 +3850,7 @@
   "id": "14099584986167466",
   "slug": "kardigan-meison-margiela",
   "title": "Meison Margiela",
-  "price": 499000,
+  "price": 399000,
   "images": [
     "data/wearimages/kardigan-meison-margiela/kardigan-meison-margiela-1.jpg",
     "data/wearimages/kardigan-meison-margiela/kardigan-meison-margiela-2.jpg"
@@ -3881,7 +3881,7 @@
   "id": "14099584338766378",
   "slug": "shtany-military",
   "title": "Military",
-  "price": 549000,
+  "price": 449000,
   "images": [
     "data/wearimages/shtany-military/shtany-military-1.jpg",
     "data/wearimages/shtany-military/shtany-military-2.jpg"
@@ -3917,7 +3917,7 @@
       "id": "14099583877079226",
       "slug": "kozhanka-pumpy",
       "title": "Pumpy",
-      "price": 649000,
+      "price": 549000,
       "images": [
   "data/wearimages/kozhanka-pumpy/kozhanka-pumpy-1.jpg",
   "data/wearimages/kozhanka-pumpy/kozhanka-pumpy-2.jpg"
@@ -3951,7 +3951,7 @@
   "id": "14099572598510314",
   "slug": "svitshot-hikikamori",
   "title": "Hikikamori",
-  "price": 469000,
+  "price": 369000,
   "images": [
     "data/wearimages/svitshot-hikikamori/svitshot-hikikamori-1.jpg",
     "data/wearimages/svitshot-hikikamori/svitshot-hikikamori-2.jpg"
@@ -3987,7 +3987,7 @@
   "id": "14099571347514538",
   "slug": "dzhinsy-y2k-fat",
   "title": "Y2K fat",
-  "price": 529000,
+  "price": 429000,
   "images": [
     "data/wearimages/dzhinsy-y2k-fat/dzhinsy-y2k-fat-1.jpg",
     "data/wearimages/dzhinsy-y2k-fat/dzhinsy-y2k-fat-2.jpg"
@@ -4021,7 +4021,7 @@
   "id": "14099570949298050",
   "slug": "dzhinsovka-jiggy",
   "title": "Jiggy",
-  "price": 569000,
+  "price": 469000,
   "images": [
     "data/wearimages/dzhinsovka-jiggy/dzhinsovka-jiggy1.jpg",
     "data/wearimages/dzhinsovka-jiggy/dzhinsovka-jiggy-2.jpg"
@@ -4061,7 +4061,7 @@
       "id": "14099570277021322",
       "slug": "kedy-rickowens-star",
       "title": "RickOwens Star",
-      "price": 799000,
+      "price": 699000,
       "images": [
   "data/wearimages/kedy-rickowens-star/kedy-rickowens-star-1.jpg",
   "data/wearimages/kedy-rickowens-star/kedy-rickowens-star-2.jpg"
@@ -4101,7 +4101,7 @@
   "id": "14099569802716794",
   "slug": "kozhanka-noisy",
   "title": "Noisy",
-  "price": 529000,
+  "price": 429000,
   "images": [
     "data/wearimages/kozhanka-noisy/kozhanka-noisy-1.jpg",
     "data/wearimages/kozhanka-noisy/kozhanka-noisy-2.jpg"
@@ -4138,7 +4138,7 @@
   "id": "14098176356243322",
   "slug": "kurtka-beaststreet",
   "title": "BeastStreet",
-  "price": 769000,
+  "price": 669000,
   "images": [
     "data/wearimages/kurtka-beaststreet/kurtka-beaststreet-1.jpg",
     "data/wearimages/kurtka-beaststreet/kurtka-beaststreet-2.jpg"
@@ -4169,7 +4169,7 @@
       "id": "14098175677098890",
       "slug": "sapogi-raiseup",
       "title": "Midnight",
-      "price": 769000,
+      "price": 669000,
       "images": [
   "data/wearimages/sapogi-raiseup/sapogi-raiseup-1.jpg",
   "data/wearimages/sapogi-raiseup/sapogi-raiseup-2.jpg"
@@ -4208,7 +4208,7 @@
   "id": "14098175148781226",
   "slug": "tufli-dr-martens-quad",
   "title": "Dr.Martens Quad",
-  "price": 669000,
+  "price": 569000,
   "images": [
     "data/wearimages/tufli-dr-martens-quad/tufli-dr-martens-quad-1.jpg",
     "data/wearimages/tufli-dr-martens-quad/tufli-dr-martens-quad-2.jpg"
@@ -4247,7 +4247,7 @@
   "id": "14098174623187722",
   "slug": "botinki-dr-martens",
   "title": "Dr.Martens",
-  "price": 769000,
+  "price": 669000,
   "images": [
     "data/wearimages/botinki-dr-martens/botinki-dr-martens-1.jpg",
     "data/wearimages/botinki-dr-martens/botinki-dr-martens-2.jpg"
@@ -4292,7 +4292,7 @@
   "id": "14098174152324562",
   "slug": "botinki-newrock-woodseek",
   "title": "NewRock WoodSeek",
-  "price": 999000,
+  "price": 899000,
   "images": [
     "data/wearimages/botinki-newrock-woodseek/botinki-newrock-woodseek-1.jpg",
     "data/wearimages/botinki-newrock-woodseek/botinki-newrock-woodseek-2.jpg"
@@ -4333,7 +4333,7 @@
   "id": "14098160939155114",
   "slug": "kurtka-mechx",
   "title": "MechX",
-  "price": 799000,
+  "price": 699000,
   "images": [
     "data/wearimages/kurtka-mechx/kurtka-mechx-1.jpg",
     "data/wearimages/kurtka-mechx/kurtka-mechx-2.jpg"
@@ -4368,7 +4368,7 @@
   "id": "14098160253065706",
   "slug": "zipka-2shape",
   "title": "2Shape",
-  "price": 669000,
+  "price": 569000,
   "images": [
     "data/wearimages/zipka-2shape/zipka-2shape-1.jpg",
     "data/wearimages/zipka-2shape/zipka-2shape-2.jpg"
@@ -4403,7 +4403,7 @@
       "id": "14098159387967562",
       "slug": "khudi-beajoy",
       "title": "BeaJoy",
-      "price": 549000,
+      "price": 449000,
       "images": [
   "data/wearimages/khudi-beajoy/khudi-beajoy-1.jpg",
   "data/wearimages/khudi-beajoy/khudi-beajoy-2.jpg"
@@ -4438,7 +4438,7 @@
   "id": "14098158877457594",
   "slug": "botinki-newrock-desertbeach",
   "title": "NewRock DesertBeach",
-  "price": 999000,
+  "price": 899000,
   "images": [
     "data/wearimages/botinki-newrock-desertbeach/botinki-newrock-desertbeach-1.jpg",
     "data/wearimages/botinki-newrock-desertbeach/botinki-newrock-desertbeach-2.jpg"
@@ -4474,7 +4474,7 @@
   "id": "14098158369745610",
   "slug": "botinki-newrock-pinkblade",
   "title": "NewRock PinkBlade",
-  "price": 999000,
+  "price": 899000,
   "images": [
     "data/wearimages/botinki-newrock-pinkblade/botinki-newrock-pinkblade-1.jpg",
     "data/wearimages/botinki-newrock-pinkblade/botinki-newrock-pinkblade-2.jpg"
@@ -4518,7 +4518,7 @@
       "id": "14097484288658290",
       "slug": "botinki-newrock-snakeseek",
       "title": "NewRock SnakeSeek",
-      "price": 999000,
+      "price": 899000,
       "images": [
   "data/wearimages/botinki-newrock-snakeseek/botinki-newrock-snakeseek-1.jpg",
   "data/wearimages/botinki-newrock-snakeseek/botinki-newrock-snakeseek-2.jpg"
@@ -4563,7 +4563,7 @@
   "id": "14097483828200186",
   "slug": "dzhinsy-bloodbad",
   "title": "BloodBad",
-  "price": 549000,
+  "price": 449000,
   "images": [
     "data/wearimages/dzhinsy-bloodbad/dzhinsy-bloodbad-1.jpg",
     "data/wearimages/dzhinsy-bloodbad/dzhinsy-bloodbad-2.jpg"
@@ -4600,7 +4600,7 @@
   "id": "14097483213968554",
   "slug": "longsliv-starskull",
   "title": "StarSkull",
-  "price": 549000,
+  "price": 449000,
   "images": [
     "data/wearimages/longsliv-starskull/longsliv-starskull-1.jpg",
     "data/wearimages/longsliv-starskull/longsliv-starskull-2.jpg"
@@ -4636,7 +4636,7 @@
       "id": "14097482467855394",
       "slug": "botinki",
       "title": "NewRock Attack",
-      "price": 849000,
+      "price": 749000,
       "images": [
   "data/wearimages/botinki/botinki-1.jpg",
   "data/wearimages/botinki/botinki-2.jpg"
@@ -4678,7 +4678,7 @@
   "id": "14097482008212426",
   "slug": "botinki-newrock",
   "title": "NewRock Long",
-  "price": 999000,
+  "price": 899000,
   "images": [
     "data/wearimages/botinki-newrock/botinki-newrock-1.jpg",
     "data/wearimages/botinki-newrock/botinki-newrock-2.jpg"
@@ -4719,7 +4719,7 @@
       "id": "14097481272880154",
       "slug": "sumka-angelbarcelo",
       "title": "AngelBarcelo",
-      "price": 529000,
+      "price": 429000,
       "images": [
   "data/wearimages/sumka-angelbarcelo/sumka-angelbarcelo-1.jpg",
   "data/wearimages/sumka-angelbarcelo/sumka-angelbarcelo-2.jpg"
@@ -4746,7 +4746,7 @@
   "id": "14097444909673202",
   "slug": "kurtka-hewvico",
   "title": "Hewvico",
-  "price": 699000,
+  "price": 599000,
   "images": [
     "data/wearimages/kurtka-hewvico/kurtka-hewvico-1.jpg",
     "data/wearimages/kurtka-hewvico/kurtka-hewvico-2.jpg"
@@ -4782,7 +4782,7 @@
   "id": "14097442974404618",
   "slug": "svitshot-cupid",
   "title": "Cupid",
-  "price": 499000,
+  "price": 399000,
   "images": [
     "data/wearimages/svitshot-cupid/svitshot-cupid-1.jpg",
     "data/wearimages/svitshot-cupid/svitshot-cupid-2.jpg"
@@ -4822,7 +4822,7 @@
   "id": "14097441625931778",
   "slug": "zipka-skull-e",
   "title": "Skull-E",
-  "price": 599000,
+  "price": 499000,
   "images": [
     "data/wearimages/zipka-skull-e/zipka-skull-e-1.jpg",
     "data/wearimages/zipka-skull-e/zipka-skull-e-2.jpg"
@@ -4860,7 +4860,7 @@
   "id": "14097439854978738",
   "slug": "kardigan-catcase",
   "title": "Catcase",
-  "price": 649000,
+  "price": 549000,
   "images": [
     "data/wearimages/kardigan-catcase/kardigan-catcase-1.jpg",
     "data/wearimages/kardigan-catcase/kardigan-catcase-2.jpg"
@@ -4896,7 +4896,7 @@
       "id": "14097436393178994",
       "slug": "kedy-ro-2024",
       "title": "RO 2024",
-      "price": 899000,
+      "price": 799000,
       "images": [
   "data/wearimages/kedy-ro-2024/kedy-ro-2024-1.jpg",
   "data/wearimages/kedy-ro-2024/kedy-ro-2024-2.jpg"
@@ -4932,7 +4932,43 @@
           ["46", "295"]
         ]
       }
-    }
+    },
+     {
+  "id": "14099646323973322",
+  "slug": "bomber-vetements-m-stock",
+  "title": "VETEMENTS",
+  "price": 800000,
+  "images": [
+    "data/wearimages/bomber-vetements/bomber-vetements-1.jpg",
+    "data/wearimages/bomber-vetements/bomber-vetements-2.jpg"
+  ],
+  "realPhotos": [],
+  "description": "Бомбер VETEMENTS \n\nРазмеры: M-XL\n\nЦвета: черный\n\nЦена: 799.000 сум\n\nреал фото нет",
+  "material": "Хлопок/полиэстер",
+  "colors": [
+    "Черный"
+  ],
+  "sizes": ["M"],
+  "category": "Куртки",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [],
+   "readyStock": true,
+      "inStockNow": true,
+      "stockType": "ready",
+      "tags": [
+  "in-stock"
+],
+  "categoryId": "kurtki",
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["INT", "Грудь (см)", "Рукав (см)", "Длина (см)"],
+    "rows": [
+      ["M", "132", "64", "67"],
+      ["L", "136", "66", "69"],
+      ["XL", "140", "68", "71"]
+    ]
+  }
+}
   ],
   "categories": [
   {
