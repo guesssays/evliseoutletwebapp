@@ -3849,7 +3849,7 @@
  {
   "id": "14099584986167466",
   "slug": "kardigan-meison-margiela",
-  "title": "Meison Margiela",
+  "title": "Maison Margiela",
   "price": 399000,
   "images": [
     "data/wearimages/kardigan-meison-margiela/kardigan-meison-margiela-1.jpg",
@@ -4642,9 +4642,6 @@
   "data/wearimages/botinki/botinki-2.jpg"
 ],
       "realPhotos": [
-
-  "data/wearimages/botinki/botinki-3.jpg",
-  "data/wearimages/botinki/botinki-4.jpg"
 ],
       "description": "Ботинки \n\nРазмеры: 37-45\n\nЦвета: черный\n\nЦена: 649.000 сум",
       "material": "Хлопок/полиэстер",
