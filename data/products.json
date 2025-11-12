@@ -2072,7 +2072,7 @@
 ],
       "sizes": ["36", "37", "38", "39", "40", "41", "42", "43", "44"],
       "category": "Кроссовки",
-      "sizeChartType": "clothes",
+      "sizeChartType": "shoes",
       "sizeChartImages": [],
       "categoryId": "krossovki",
       "sizeChart": {
@@ -4965,9 +4965,929 @@
       ["XL", "140", "68", "71"]
     ]
   }
-}
+},
+
+ {
+  "id": "14103671523213354",
+  "slug": "svitshot-linebullet",
+  "title": "LineBullet",
+  "price": 329000,
+  "images": [
+    "data/wearimages/svitshot-linebullet/svitshot-linebullet-1.jpg",
+    "data/wearimages/svitshot-linebullet/svitshot-linebullet-2.jpg"
   ],
-  "categories": [
+  "realPhotos": [
+    "data/wearimages/svitshot-linebullet/svitshot-linebullet-3.jpg",
+    "data/wearimages/svitshot-linebullet/svitshot-linebullet-4.jpg"
+  ],
+  "description": "Свитшот LineBullet\n\nРазмеры: S, M, L, XL\n\nЦвета: белый\n\nЦена: 329.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Белый"],
+  "sizes": ["S", "M", "L", "XL"],
+  "category": "Свитшоты",
+  "categoryId": "svitshoty",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [
+    "data/wearimages/svitshot-linebullet/svitshot-linebullet-5.jpg"
+  ],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Длина (см)", "Грудь (см)", "Длина рукава (см)"],
+    "rows": [
+      ["S", "65", "94", "60"],
+      ["M", "66", "98", "61"],
+      ["L", "67", "102", "62"],
+      ["XL", "68", "106", "63"]
+    ]
+  }
+},
+    {
+  "id": "14103671011588882",
+  "slug": "svitshot-liny",
+  "title": "Liny",
+  "price": 349000,
+  "images": [
+    "data/wearimages/svitshot-liny/svitshot-liny-1.jpg",
+    "data/wearimages/svitshot-liny/svitshot-liny-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/svitshot-liny/svitshot-liny-3.jpg",
+    "data/wearimages/svitshot-liny/svitshot-liny-4.jpg"
+  ],
+  "description": "Свитшот Liny\n\nРазмеры: S, M, L\n\nЦвета: черный, красный \n\nЦена: 349.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Черный", "Красный"],
+  "sizes": ["S", "M", "L"],
+  "category": "Свитшоты",
+  "categoryId": "svitshoty",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [
+    "data/wearimages/svitshot-liny/svitshot-liny-5.jpg"
+  ],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Длина (см)", "Плечи (см)", "Грудь (см)", "Длина рукава (см)"],
+    "rows": [
+      ["S", "52", "38", "79", "59.5"],
+      ["M", "53.5", "39", "83", "61"],
+      ["L", "55", "40", "87", "62.5"]
+    ]
+  }
+},
+{
+  "id": "14103670607170490",
+  "slug": "svitshot-unexpected",
+  "title": "Unexpected",
+  "price": 329000,
+  "images": [
+    "data/wearimages/svitshot-unexpected/svitshot-unexpected-1.jpg",
+    "data/wearimages/svitshot-unexpected/svitshot-unexpected-2.jpg"
+  ],
+  "realPhotos": [],
+  "description": "Свитшот Unexpected \n\nРазмеры: S, M, L\n\nЦвета: розовый \n\nЦена: 329.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Розовый"],
+  "sizes": ["S", "M", "L"],
+  "category": "Свитшоты",
+  "categoryId": "svitshoty",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [
+    "data/wearimages/svitshot-unexpected/svitshot-unexpected-3.jpg"
+  ],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Грудь (см)", "Длина (см)", "Длина рукава (см)"],
+    "rows": [
+      ["S", "106", "62", "69"],
+      ["M", "106", "62", "69"],
+      ["L", "114", "66", "71"]
+    ]
+  }
+}
+,
+  {
+  "id": "14103670188226746",
+  "slug": "sviter-bones",
+  "title": "Свитер Bones",
+  "price": 349000,
+  "images": [
+    "data/wearimages/sviter-bones/sviter-bones-1.jpg",
+    "data/wearimages/sviter-bones/sviter-bones-2.jpg"
+  ],
+  "realPhotos": [],
+  "description": "Свитер Bones\n\nРазмеры: S, M, L\n\nЦвета: черный \n\nЦена: 349.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Черный"],
+  "sizes": ["S", "M", "L"],
+  "category": "Свитеры",
+  "categoryId": "svitery",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [
+    "data/wearimages/sviter-bones/sviter-bones-3.jpg"
+  ],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Плечи (см)", "Грудь (см)", "Длина (см)", "Длина рукава (см)"],
+    "rows": [
+      ["S", "58", "116", "76", "58"],
+      ["M", "60", "120", "78", "60"],
+      ["L", "62", "124", "80", "62"]
+    ]
+  }
+},
+    {
+  "id": "14103669574907138",
+  "slug": "kozhanka-redy",
+  "title": "Redy",
+  "price": 399000,
+  "images": [
+    "data/wearimages/kozhanka-redy/kozhanka-redy-1.jpg",
+    "data/wearimages/kozhanka-redy/kozhanka-redy-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/kozhanka-redy/kozhanka-redy-3.jpg",
+    "data/wearimages/kozhanka-redy/kozhanka-redy-4.jpg"
+  ],
+  "description": "Кожанка Redy\n\nРазмеры:  M, L, XL\n\nЦвета: красный \n\nЦена: 399.000",
+  "material": "45% PU, 55% искусственная кожа",
+  "colors": ["Красный"],
+  "sizes": ["M", "L", "XL"],
+  "category": "Кожанки",
+  "categoryId": "kozhanki",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [
+    "data/wearimages/kozhanka-redy/kozhanka-redy-3.jpg",
+    "data/wearimages/kozhanka-redy/kozhanka-redy-5.jpg"
+  ],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Длина (см)", "Длина рукава (см)", "Плечи (см)", "Грудь (см)"],
+    "rows": [
+      ["M", "62", "59.5", "50.5", "118"],
+      ["L", "64", "60.5", "52", "121"],
+      ["XL", "66", "61.5", "53.5", "125"]
+    ]
+  }
+},
+   {
+  "id": "14103668869452866",
+  "slug": "shtany-opm",
+  "title": "Opm",
+  "price": 599000,
+  "images": [
+    "data/wearimages/shtany-opm/shtany-opm-1.jpg",
+    "data/wearimages/shtany-opm/shtany-opm-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/shtany-opm/shtany-opm-3.jpg",
+    "data/wearimages/shtany-opm/shtany-opm-4.jpg"
+  ],
+  "description": "Штаны Opm\n\nРазмеры:  M, L, XL, 2XL\n\nЦвета: черный \n\nЦена: 599.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Черный"],
+  "sizes": ["M", "L", "XL", "2XL"],
+  "category": "Штаны",
+  "categoryId": "shtany",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Длина (см)", "Талия (см)", "Бедра (см)", "Бедро (см)", "Низ штанины (см)"],
+    "rows": [
+      ["M", "107", "72", "108", "72", "70"],
+      ["L", "109", "76", "112", "74", "71.5"],
+      ["XL", "111", "80", "116", "76", "73"],
+      ["2XL", "113", "84", "120", "78", "74.5"]
+    ]
+  }
+},
+   {
+  "id": "14103664835264778",
+  "slug": "botinki-ghou",
+  "title": "Ghou",
+  "price": 799000,
+  "images": [
+    "data/wearimages/botinki-ghou/botinki-ghou-1.jpg",
+    "data/wearimages/botinki-ghou/botinki-ghou-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/botinki-ghou/botinki-ghou-3.jpg",
+    "data/wearimages/botinki-ghou/botinki-ghou-4.jpg"
+  ],
+  "description": "Ботинки Ghou\n\nРазмеры: 39,40,41,42,43,44\n\nЦвета: черный\n\nЦена: 799.000",
+  "material": "Двухслойная кожа/велюр/текстиль",
+  "colors": ["Черный"],
+  "sizes": ["39", "40", "41", "42", "43", "44"],
+  "category": "Ботинки",
+  "categoryId": "botinki",
+  "sizeChartType": "shoes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "shoes",
+    "headers": ["US", "EU"],
+    "rows": [
+      ["4", "35"],
+      ["4.5", "36"],
+      ["5", "37"],
+      ["6", "38"],
+      ["7", "39"],
+      ["7.5", "40"],
+      ["8", "41"],
+      ["8.5", "42"],
+      ["9", "43"],
+      ["10", "44"]
+    ]
+  }
+},
+   {
+  "id": "14103664243516746",
+  "slug": "kozhanka-tale4",
+  "title": "Tale4",
+  "price": 699000,
+  "images": [
+    "data/wearimages/kozhanka-tale4/kozhanka-tale4-1.jpg",
+    "data/wearimages/kozhanka-tale4/kozhanka-tale4-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/kozhanka-tale4/kozhanka-tale4-3.jpg",
+    "data/wearimages/kozhanka-tale4/kozhanka-tale4-4.jpg"
+  ],
+  "description": "Кожанка Tale4\n\nРазмеры: S, M, L\n\nЦвета: черный \n\nЦена: 699.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Черный"],
+  "sizes": ["S", "M", "L"],
+  "category": "Кожанки",
+  "categoryId": "kozhanki",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Длина (см)", "Грудь (см)", "Плечи (см)", "Длина рукава (см)"],
+    "rows": [
+      ["S", "67", "104", "44", "70"],
+      ["M", "69", "107", "46", "71"],
+      ["L", "72", "115", "48", "73"]
+    ]
+  }
+},
+    {
+  "id": "14103661668547138",
+  "slug": "dzhinsy-spooky",
+  "title": "Spooky",
+  "price": 449000,
+  "images": [
+    "data/wearimages/dzhinsy-spooky/dzhinsy-spooky-1.jpg",
+    "data/wearimages/dzhinsy-spooky/dzhinsy-spooky-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/dzhinsy-spooky/dzhinsy-spooky-3.jpg",
+    "data/wearimages/dzhinsy-spooky/dzhinsy-spooky-4.jpg"
+  ],
+  "description": "Джинсы Spooky \n\nРазмеры:  M, L, XL, 2XL, 3XL\n\nЦвета: серый\n\nЦена: 449.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Серый"],
+  "sizes": ["M", "L", "XL", "2XL", "3XL"],
+  "category": "Джинсы",
+  "categoryId": "dzhinsy",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Подходит для роста (см)", "Подходит для веса (кг)"],
+    "rows": [
+      ["M", "160–168", "45–55"],
+      ["L", "170–178", "55–65"],
+      ["XL", "180–188", "60–80"]
+    ]
+  }
+},
+   {
+  "id": "14103661139488418",
+  "slug": "longsliv-desert",
+  "title": "Desert",
+  "price": 349000,
+  "images": [
+    "data/wearimages/longsliv-desert/longsliv-desert-1.jpg",
+    "data/wearimages/longsliv-desert/longsliv-desert-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/longsliv-desert/longsliv-desert-3.jpg",
+    "data/wearimages/longsliv-desert/longsliv-desert-4.jpg"
+  ],
+  "description": "Лонгслив Desert \n\nРазмеры: S, M, L\n\nЦвета: бежевый \n\nЦена: 349.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Бежевый"],
+  "sizes": ["S", "M", "L"],
+  "category": "Лонгсливы",
+  "categoryId": "longslivy",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Грудь (см)", "Длина рукава (см)", "Длина (см)", "Низ (см)"],
+    "rows": [
+      ["S", "77–92", "58.5", "46", "74–96"],
+      ["M", "81–96", "59.5", "47", "78–100"],
+      ["L", "85–100", "60.5", "48", "82–104"]
+    ]
+  }
+},
+    {
+      "id": "14103660733575650",
+      "slug": "botinki-moonboot",
+      "title": "MoonBoot",
+      "price": 999000,
+      "images": [
+        "data/wearimages/botinki-moonboot/botinki-moonboot-1.jpg",
+        "data/wearimages/botinki-moonboot/botinki-moonboot-2.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/botinki-moonboot/botinki-moonboot-3.jpg",
+        "data/wearimages/botinki-moonboot/botinki-moonboot-4.jpg"
+      ],
+      "description": "Ботинки MoonBoot\n\nРазмеры: 35,36,37,38,39,40,41,42,43\n\nЦвета: черный , белый , серый , зелёный \n\nЦена: 999.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Черный", "Белый", "Серый", "Зелёный"],
+      "sizes": ["35", "36", "37", "38", "39", "40", "41", "42", "43"],
+      "category": "Ботинки",
+      "categoryId": "botinki",
+      "sizeChartType": "shoes",
+      "sizeChartImages": [],
+     "sizeChart": {
+    "type": "shoes",
+    "headers": ["EU", "Длина стопы (мм)"],
+    "rows": [
+      ["35", "220"],
+      ["36", "225"],
+      ["37", "230"],
+      ["38", "235"],
+      ["39", "240"],
+      ["40", "245"],
+      ["41", "250"],
+      ["42", "260"],
+      ["43", "265"],
+      ["44", "270"],
+      ["45", "280"]
+    ]
+      }
+    },
+    {
+      "id": "14103660001998186",
+      "slug": "botinki-moncler",
+      "title": "Moncler",
+      "price": 1499000,
+      "images": [
+        "data/wearimages/botinki-moncler/botinki-moncler-1.jpg",
+        "data/wearimages/botinki-moncler/botinki-moncler-2.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/botinki-moncler/botinki-moncler-3.jpg",
+        "data/wearimages/botinki-moncler/botinki-moncler-4.jpg"
+      ],
+      "description": "Ботинки Moncler\n\nРазмеры: 35,36,37,38,39,40,41,42,43,44,45,46\n\nЦвета: черный \n\nЦена: 1.499.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Черный"],
+      "sizes": ["35","36","37","38","39","40","41","42","43","44","45","46"],
+      "category": "Ботинки",
+      "categoryId": "botinki",
+      "sizeChartType": "shoes",
+      "sizeChartImages": [],
+     "sizeChart": {
+    "type": "shoes",
+    "headers": ["EU", "Длина стопы (мм)"],
+    "rows": [
+      ["35", "220"],
+      ["36", "225"],
+      ["37", "230"],
+      ["38", "235"],
+      ["39", "240"],
+      ["40", "245"],
+      ["41", "250"],
+      ["42", "260"],
+      ["43", "265"],
+      ["44", "270"],
+      ["45", "280"]
+    ]
+      }
+    },
+    {
+      "id": "14103659174499978",
+      "slug": "botinki-vetero",
+      "title": "Vetero",
+      "price": 699000,
+      "images": [
+        "data/wearimages/botinki-vetero/botinki-vetero-1.jpg",
+        "data/wearimages/botinki-vetero/botinki-vetero-2.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/botinki-vetero/botinki-vetero-3.jpg",
+        "data/wearimages/botinki-vetero/botinki-vetero-4.jpg"
+      ],
+      "description": "Ботинки Vetero\n\nРазмеры: 35,36,37,38,39\n\nЦвета: черный , коричневый, бежевый\n\nЦена: 699.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Черный", "Коричневый", "Бежевый"],
+      "sizes": ["35", "36", "37", "38", "39"],
+      "category": "Сапоги",
+      "categoryId": "sapogi",
+      "sizeChartType": "shoes",
+      "sizeChartImages": [],
+      "sizeChart": {
+    "type": "shoes",
+    "headers": ["EU", "Длина стопы (мм)"],
+    "rows": [
+      ["34", "213–220"],
+      ["35", "221–225"],
+      ["36", "226–230"],
+      ["37", "231–235"],
+      ["38", "236–240"],
+      ["39", "241–245"],
+      ["40", "246–250"],
+      ["41", "251–255"]
+    ]
+      }
+    },
+   {
+  "id": "14103658266565026",
+  "slug": "krossovki-rosez",
+  "title": "Rosez",
+  "price": 1669000,
+  "images": [
+    "data/wearimages/krossovki-rosez/krossovki-rosez-1.jpg",
+    "data/wearimages/krossovki-rosez/krossovki-rosez-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/krossovki-rosez/krossovki-rosez-3.jpg",
+    "data/wearimages/krossovki-rosez/krossovki-rosez-4.jpg"
+  ],
+  "description": "Кроссовки Rosez\n\nРазмеры: 39,40,41,42,43,44\n\nЦвета: бежевый \n\nЦена: 1.669.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Бежевый"],
+  "sizes": ["39", "40", "41", "42", "43", "44"],
+  "category": "Кроссовки",
+  "categoryId": "krossovki",
+  "sizeChartType": "shoes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "shoes",
+    "headers": ["Эта модель (EU)", "Эквивалент спорт-кроссовок (EU)"],
+    "rows": [
+      ["39", "40"],
+      ["40", "41"],
+      ["41", "42"],
+      ["42", "43"],
+      ["43", "44"],
+      ["44", "45"]
+    ]
+  }
+},
+    {
+      "id": "14103657627188442",
+      "slug": "kozhanka-awake",
+      "title": "Awake",
+      "price": 799000,
+      "images": [
+        "data/wearimages/kozhanka-awake/kozhanka-awake-1.jpg",
+        "data/wearimages/kozhanka-awake/kozhanka-awake-2.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/kozhanka-awake/kozhanka-awake-2.jpg"
+      ],
+      "description": "Кожанка Awake\n\nРазмеры: S, M, L, XL\n\nЦвета: черный, синий, розовый \n\nЦена: 799.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Черный", "Синий", "Розовый"],
+      "sizes": ["S", "M", "L", "XL"],
+      "category": "Кожанки",
+      "categoryId": "kozhanki",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+    "type": "clothes",
+    "headers": ["INT", "Грудь (см)", "Длина (см)", "Плечи (см)", "Рукав (см)"],
+    "rows": [
+      ["S", "134", "67.5", "56.8", "60"],
+      ["M", "138", "69", "58", "61"],
+      ["L", "142", "70", "59.2", "62"],
+      ["XL", "146", "72", "60.4", "63"]
+    ]
+      }
+    },
+    {
+      "id": "14103656952679874",
+      "slug": "kedy-snakeskin",
+      "title": "SnakeSkin",
+      "price": 969000,
+      "images": [
+        "data/wearimages/kedy-snakeskin/kedy-snakeskin-1.jpg",
+        "data/wearimages/kedy-snakeskin/kedy-snakeskin-2.jpg"
+      ],
+      "realPhotos": [],
+      "description": "Кеды SnakeSkin\n\nРазмеры: 35,36,37,38,39,40,42,43,44,45,46,47\n\nЦвета: белый\n\nЦена: 969.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Белый"],
+      "sizes": ["35","36","37","38","39","40","42","43","44","45","46","47"],
+      "category": "Кеды",
+      "categoryId": "kedy",
+      "sizeChartType": "shoes",
+      "sizeChartImages": [],
+       "sizeChart": {
+        "type": "shoes",
+        "headers": ["EU", "Длина стопы (мм)"],
+        "rows": [
+          ["38", "240"],
+          ["39", "245"],
+          ["40", "250"],
+          ["41", "255"],
+          ["42", "260"],
+          ["43", "265"],
+          ["44", "270"],
+          ["45", "285"],
+          ["46", "295"]
+        ]
+      }
+    },
+    {
+  "id": "14103655261015330",
+  "slug": "plashch-matrix",
+  "title": "Matrix",
+  "price": 769000,
+  "images": [
+    "data/wearimages/plashch-matrix/plashch-matrix-1.jpg",
+    "data/wearimages/plashch-matrix/plashch-matrix-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/plashch-matrix/plashch-matrix-3.jpg",
+    "data/wearimages/plashch-matrix/plashch-matrix-4.jpg"
+  ],
+  "description": "Плащ Matrix\n\nРазмеры: S, M, L\n\nЦвета: черный \n\nЦена: 769.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Черный"],
+  "sizes": ["S", "M", "L"],
+  "category": "Плащи",
+  "categoryId": "plashchi",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Длина (см)", "Грудь (см)", "Плечи (см)", "Длина рукава (см)"],
+    "rows": [
+      ["S", "134", "134", "58", "65"],
+      ["M", "136", "138", "59", "67"],
+      ["L", "138", "142", "60", "69"]
+    ]
+  }
+},
+ {
+  "id": "14103653937790834",
+  "slug": "futbolka-paradise",
+  "title": "Paradise",
+  "price": 349000,
+  "images": [
+    "data/wearimages/futbolka-paradise/futbolka-paradise-1.jpg",
+    "data/wearimages/futbolka-paradise/futbolka-paradise-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/futbolka-paradise/futbolka-paradise-3.jpg",
+    "data/wearimages/futbolka-paradise/futbolka-paradise-4.jpg"
+  ],
+  "description": "Футболка Paradise\n\nРазмеры: S, M, L, XL\n\nЦвета: серый\n\nЦена: 349.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Серый"],
+  "sizes": ["S", "M", "L", "XL"],
+  "category": "Футболки",
+  "categoryId": "futbolki",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Подходит для веса (кг)"],
+    "rows": [
+      ["S", "40–47.5"],
+      ["M", "47.5–52.5"],
+      ["L", "52.5–57.5"],
+      ["XL", "57.5–62.5"]
+    ]
+  }
+},
+   {
+  "id": "14103456631024874",
+  "slug": "kozhanka-modern",
+  "title": "Modern",
+  "price": 680000,
+  "images": [
+    "data/wearimages/kozhanka-modern/kozhanka-modern-1.jpg",
+    "data/wearimages/kozhanka-modern/kozhanka-modern-2.jpg"
+  ],
+  "realPhotos": [],
+  "description": "Кожанка Modern\n\nРазмеры: S, M, L\n\nЦвета: чёрный\n\nЦена: 680.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Чёрный"],
+  "sizes": ["S", "M", "L"],
+  "category": "Кожанки",
+  "categoryId": "kozhanki",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [
+    "data/wearimages/kozhanka-modern/kozhanka-modern-3.jpg"
+  ],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Плечи (см)", "Длина рукава (см)", "Длина (см)", "Грудь (см)"],
+    "rows": [
+      ["S", "48", "50", "72", "86"],
+      ["M", "49", "51", "73", "90"],
+      ["L", "50", "52", "74", "94"]
+    ]
+  }
+},
+   {
+  "id": "14103456194993538",
+  "slug": "kurtka-weasel",
+  "title": "Weasel",
+  "price": 599000,
+  "images": [
+    "data/wearimages/kurtka-weasel/kurtka-weasel-1.jpg",
+    "data/wearimages/kurtka-weasel/kurtka-weasel-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/kurtka-weasel/kurtka-weasel-3.jpg",
+    "data/wearimages/kurtka-weasel/kurtka-weasel-4.jpg"
+  ],
+  "description": "Куртка Weasel\n\nРазмеры: XS, S, M, L\n\nЦвета: белый, бежевый\n\nЦена: 599.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Белый", "Бежевый"],
+  "sizes": ["XS", "S", "M", "L"],
+  "category": "Куртки",
+  "categoryId": "kurtki",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Грудь (см)", "Плечи (см)", "Длина рукава (см)", "Длина (см)"],
+    "rows": [
+      ["XS", "110", "54", "53", "60"],
+      ["S", "114", "55", "54", "61"],
+      ["M", "118", "56", "55", "62"],
+      ["L", "122", "57", "56", "63"]
+    ]
+  }
+},
+    {
+      "id": "14103455905535194",
+      "slug": "kozhanka-redskin",
+      "title": "RedSkin",
+      "price": 569000,
+      "images": [
+        "data/wearimages/kozhanka-redskin/kozhanka-redskin-1.jpg",
+        "data/wearimages/kozhanka-redskin/kozhanka-redskin-2.jpg"
+      ],
+      "realPhotos": [
+        "data/wearimages/kozhanka-redskin/kozhanka-redskin-3.jpg",
+        "data/wearimages/kozhanka-redskin/kozhanka-redskin-4.jpg"
+      ],
+      "description": "Кожанка RedSkin\n\nРазмеры: S, M, L, XL, 2XL\n\nЦвета: красный\n\nЦена: 569.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Красный"],
+      "sizes": ["S", "M", "L", "XL", "2XL"],
+      "category": "Кожанки",
+      "categoryId": "kozhanki",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Плечи (см)", "Длина рукава (см)", "Длина (см)", "Грудь (см)"],
+    "rows": [
+      ["S", "48", "50", "72", "86"],
+      ["M", "49", "51", "73", "90"],
+      ["L", "50", "52", "74", "94"]
+    ]
+      }
+    },
+   {
+  "id": "14103454065821282",
+  "slug": "kurtka-cutblez",
+  "title": "Cutblez",
+  "price": 499000,
+  "images": [
+    "data/wearimages/kurtka-cutblez/kurtka-cutblez-1.jpg",
+    "data/wearimages/kurtka-cutblez/kurtka-cutblez-2.jpg"
+  ],
+  "realPhotos": [],
+  "description": "Куртка Cutblez\n\nРазмеры: S, M, L\n\nЦвета: чёрный, бежевый\n\nЦена: 499.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Чёрный", "Бежевый"],
+  "sizes": ["S", "M", "L"],
+  "category": "Куртки",
+  "categoryId": "kurtki",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Грудь (см)", "Длина рукава (см)", "Талия (см)", "Длина (см)"],
+    "rows": [
+      ["S", "90", "56", "66", "44"],
+      ["M", "94", "57", "69", "45"],
+      ["L", "98", "58", "72", "46"]
+    ]
+  }
+},
+    {
+  "id": "14103453034494458",
+  "slug": "kurtka-ghetto",
+  "title": "Ghetto",
+  "price": 649000,
+  "images": [
+    "data/wearimages/kurtka-ghetto/kurtka-ghetto-1.jpg",
+    "data/wearimages/kurtka-ghetto/kurtka-ghetto-2.jpg"
+  ],
+  "realPhotos": [],
+  "description": "Куртка Ghetto\n\nРазмеры: S, M, L, XL\n\nЦвета: зелёный, чёрный\n\nЦена: 649.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Зелёный", "Чёрный"],
+  "sizes": ["S", "M", "L", "XL"],
+  "category": "Куртки",
+  "categoryId": "kurtki",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [
+    "data/wearimages/kurtka-ghetto/kurtka-ghetto-3.jpg"
+  ],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Длина (см)", "Грудь (см)", "Плечи (см)", "Длина рукава (см)"],
+    "rows": [
+      ["S", "64", "128", "53", "68"],
+      ["M", "66", "132", "54.5", "69"],
+      ["L", "68", "136", "56", "70"],
+      ["XL", "70", "140", "57.5", "71"]
+    ]
+  }
+},
+   {
+  "id": "14103452311565186",
+  "slug": "tovar1",
+  "title": "VenomThrel",
+  "price": 699000,
+  "images": [
+    "data/wearimages/tovar/tovar-1.jpg",
+    "data/wearimages/tovar/tovar-2.jpg"
+  ],
+  "realPhotos": [],
+  "description": "",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Чёрный"],
+  "sizes": ["M", "L", "XL"],
+  "category": "Куртки",
+  "categoryId": "kurtki",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [
+    "data/wearimages/tovar/tovar-3.jpg"
+  ],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Плечи (см)", "Грудь (см)", "Длина (см)", "Длина рукава (см)"],
+    "rows": [
+      ["M", "71", "138", "73", "58"],
+      ["L", "73", "143", "76", "59"],
+      ["XL", "75", "148", "78", "60"]
+    ]
+  }
+},
+    {
+  "id": "14103451308378346",
+  "slug": "tovar-14103451308378346",
+  "title": "KID",
+  "price": 565000,
+  "images": [
+    "data/wearimages/tovar-14103451308378346/tovar-14103451308378346-1.jpg",
+    "data/wearimages/tovar-14103451308378346/tovar-14103451308378346-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/tovar-14103451308378346/tovar-14103451308378346-3.jpg",
+    "data/wearimages/tovar-14103451308378346/tovar-14103451308378346-4.jpg"
+  ],
+  "description": "",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Белый", "Чёрный"],
+  "sizes": ["S", "M", "L", "XL", "2XL"],
+  "category": "Куртки",
+  "categoryId": "kurtki",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Грудь (см)", "Длина рукава (см)", "Длина (см)", "Плечи (см)"],
+    "rows": [
+      ["S", "120", "56", "70", "58"],
+      ["M", "126", "58", "72", "59"],
+      ["L", "132", "60", "74", "60"],
+      ["XL", "138", "62", "76", "61"],
+      ["2XL", "144", "64", "78", "62"]
+    ]
+  }
+},
+   {
+  "id": "14103450620121882",
+  "slug": "kurtka-smarter",
+  "title": "Smarter",
+  "price": 480000,
+  "images": [
+    "data/wearimages/kurtka-smarter/kurtka-smarter-1.jpg",
+    "data/wearimages/kurtka-smarter/kurtka-smarter-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/kurtka-smarter/kurtka-smarter-3.jpg",
+    "data/wearimages/kurtka-smarter/kurtka-smarter-4.jpg"
+  ],
+  "description": "Куртка Smarter\n\nРазмеры: S, M, L, XL, 2XL\n\nЦвета: белый, чёрный\n\nЦена: 480.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Белый", "Чёрный"],
+  "sizes": ["S", "M", "L", "XL", "2XL"],
+  "category": "Куртки",
+  "categoryId": "kurtki",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [
+    "data/wearimages/kurtka-smarter/kurtka-smarter-5.jpg"
+  ],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Грудь (см)", "Длина (см)", "Плечи (см)", "Длина рукава (см)"],
+    "rows": [
+      ["S", "116", "65", "49", "59"],
+      ["M", "121", "66", "50", "60"],
+      ["L", "126", "67", "51", "61"],
+      ["XL", "131", "68", "52", "62"],
+      ["2XL", "136", "69", "53", "63"]
+    ]
+  }
+},
+   {
+  "id": "14103449681904314",
+  "slug": "kurtka-lotus",
+  "title": "Lotus",
+  "price": 680000,
+  "images": [
+    "data/wearimages/kurtka-lotus/kurtka-lotus-1.jpg",
+    "data/wearimages/kurtka-lotus/kurtka-lotus-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/kurtka-lotus/kurtka-lotus-3.jpg",
+    "data/wearimages/kurtka-lotus/kurtka-lotus-4.jpg"
+  ],
+  "description": "Куртка Lotus\n\nРазмеры: S, M, L\n\nЦвета: красный\n\nЦена: 680.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Красный"],
+  "sizes": ["S", "M", "L"],
+  "category": "Куртки",
+  "categoryId": "kurtki",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Длина (см)", "Грудь (см)", "Плечи (см)", "Длина рукава (см)"],
+    "rows": [
+      ["S", "60.5", "132", "54", "63"],
+      ["M", "62", "136", "55", "64"],
+      ["L", "63.5", "140", "56", "65"]
+    ]
+  }
+},
+   {
+  "id": "14103448663194002",
+  "slug": "kurtka-militaryskin",
+  "title": "MilitarySkin",
+  "price": 599000,
+  "images": [
+    "data/wearimages/kurtka-militaryskin/kurtka-militaryskin-1.jpg",
+    "data/wearimages/kurtka-militaryskin/kurtka-militaryskin-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/kurtka-militaryskin/kurtka-militaryskin-3.jpg",
+    "data/wearimages/kurtka-militaryskin/kurtka-militaryskin-4.jpg"
+  ],
+  "description": "Куртка MilitarySkin\n\nРазмеры: M, L, XL, 2XL \n\nЦвета: зелёный\n\nЦена: 599.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Зелёный"],
+  "sizes": ["M", "L", "XL", "2XL"],
+  "category": "Куртки",
+  "categoryId": "kurtki",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [
+    "data/wearimages/kurtka-militaryskin/kurtka-militaryskin-5.jpg"
+  ],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Подходит для роста (см)", "Подходит для веса (кг)", "Грудь (см)", "Плечи (см)", "Длина (см)"],
+    "rows": [
+      ["M", "158–168", "50–60", "122", "61", "66"],
+      ["L", "160–170", "60–70", "126", "62", "67"],
+      ["XL", "170–180", "70–80", "130", "63", "69"],
+      ["2XL", "180–188", "80–90", "134", "64", "71"]
+    ]
+  }
+}
+
+  
+
+  ],
+"categories": [
   {
     "id": "tops",
     "slug": "tops",
@@ -4982,6 +5902,8 @@
       { "slug": "kardigany", "name": "Кардиганы" },
       { "slug": "polo", "name": "Поло" },
       { "slug": "palto", "name": "Пальто" },
+      { "slug": "plashchi", "name": "Плащи" },
+      { "slug": "longslivy", "name": "Лонгсливы" },
       { "slug": "futbolki", "name": "Футболки" }
     ]
   },
@@ -5021,4 +5943,5 @@
     "children": []
   }
 ]
+
 }
