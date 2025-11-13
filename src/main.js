@@ -687,7 +687,7 @@ function setTabbarCTA(arg){
   killExternalCTA(); document.body.classList.add('has-cta');
 
   let id='ctaBtn', html='', onClick=null;
-  if (typeof arg==='string'){ html = arg; } else { ({id='ctaBtn', html:'', onClick:null} = arg||{}); }
+  if (typeof arg==='string'){ html = arg; } else { ({id='ctaBtn', html='', onClick=null} = arg||{}); }
 
   inner.classList.add('is-cta');
   inner.innerHTML = `<button id="${id}" class="btn" style="flex:1">${html}</button>`;
@@ -762,28 +762,10 @@ async function router(){
 
   const inAdmin = document.body.classList.contains('admin-mode');
 
-  // --- НОВАЯ логика admin-mode: больше нет принудительного редиректа на #/admin ---
   if (inAdmin){
-    // Если явно попросили экран логина админа — выходим из admin-mode и показываем логин
-    if (parts[0] === 'admin-login') {
-      setAdminMode(false);
-      return renderAdminLogin();
-    }
-
-    // Если маршрут по-прежнему /admin — обычный рендер админки
-    if (parts[0] === 'admin') {
-      if (!canAccessAdmin()){
-        setAdminMode(false);
-        tWarn('Доступ в админ-панель ограничен');
-        location.hash = '#/admin-login';
-        return;
-      }
-      return renderAdmin();
-    }
-
-    // Любой другой маршрут при включённом admin-mode:
-    // просто выключаем admin-mode и продолжаем обычный роутинг ниже
-    setAdminMode(false);
+    if (parts.length===0 || parts[0] !== 'admin'){ location.hash = '#/admin'; return renderAdmin(); }
+    if (!canAccessAdmin()){ setAdminMode(false); tWarn('Доступ в админ-панель ограничен'); location.hash = '#/admin-login'; return; }
+    return renderAdmin();
   }
 
   if (parts.length===0) {
@@ -798,8 +780,8 @@ async function router(){
     const params = {}; for (let i=0;i<p.length;i++){ if (p[i].startsWith(':')) params[p[i].slice(1)] = decodeURIComponent(parts[i]); else if (p[i] !== parts[i]) return null; }
     return params;
   };
-  const mPromo = match('promo');
-  if (mPromo) { clearBootSkeletonMark(); return renderPromo(router); }
+const mPromo = match('promo');
+if (mPromo) { clearBootSkeletonMark(); return renderPromo(router); }
 
   const m1=match('category/:slug'); if (m1){ clearBootSkeletonMark(); return renderCategory(m1); }
   const m2=match('product/:id');   if (m2){ clearBootSkeletonMark(); return renderProduct(m2); }
@@ -871,11 +853,6 @@ async function router(){
   }
 
   if (match('ref')){ return renderRefBridge(); }
-
-  // Новый роут для экрана логина админа
-  if (match('admin-login')) {
-    return renderAdminLogin();
-  }
 
   if (match('admin')){
     if (!canAccessAdmin()){
