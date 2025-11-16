@@ -4677,12 +4677,12 @@
   "title": "NewRock Long",
   "price": 899000,
   "images": [
-    "data/wearimages/botinki-newrock/botinki-newrock-1.jpg",
-    "data/wearimages/botinki-newrock/botinki-newrock-2.jpg"
+    "data/wearimages/botinki-newrock-long/botinkinewrocklong2.jpg",
+    "data/wearimages/botinki-newrock-long/botinkinewrocklong1.jpg"
   ],
   "realPhotos": [
-    "data/wearimages/botinki-newrock/botinki-newrock-3.jpg",
-    "data/wearimages/botinki-newrock/botinki-newrock-4.jpg"
+    "data/wearimages/botinki-newrock-long/botinkinewrocklong3.jpg",
+    "data/wearimages/botinki-newrock-long/botinkinewrocklong4.jpg"
   ],
   "description": "Ботинки NewRock\n\nРазмеры: 35-45\n\nЦвета: черный\n\nЦена: 799.000 сум",
   "material": "Хлопок/полиэстер",
