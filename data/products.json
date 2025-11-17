@@ -4853,6 +4853,38 @@
     ]
   }
 },
+
+{
+  "id": "14098159387967563",
+  "slug": "khudi-grands",
+  "title": "Grands",
+  "price": 349000,
+  "images": [
+    "data/wearimages/khudi-grands/khudi-grands-1.jpg"
+  ],
+  "realPhotos": [
+  ],
+  "description": "Худи Grands\n\nРазмеры: S,M,L\n\nЦвета: черный\n\nРазмерная сетка нет\n\nЦена: 449.000 сум",
+  "material": "Хлопок/полиэстер",
+  "colors": [
+    "Черный"
+  ],
+  "sizes": ["S", "M", "L", "XL", "2XL"],
+  "category": "Худи",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [],
+  "categoryId": "khudi",
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["INT", "Длина (см)", "Плечи (см)", "Грудь (см)", "Рукав (см)"],
+    "rows": [
+      ["S", "62", "47", "124", "65"],
+      ["M", "64", "49", "128", "66"],
+      ["L", "66", "52", "132", "67"],
+      ["XL", "68", "55", "136", "68"]
+    ]
+  }
+},
    {
   "id": "14097439854978738",
   "slug": "kardigan-catcase",
