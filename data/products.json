@@ -4885,6 +4885,39 @@
     ]
   }
 },
+{
+  "id": "14098159387967463",
+  "slug": "svitshot-kigami",
+  "title": "Kigami",
+  "price": 350000,
+  "images": [
+    "data/wearimages/svitshot-kigami/svitshot-kigami-1.jpg",
+    "data/wearimages/svitshot-kigami/svitshot-kigami-2.jpg"
+  ],
+  "realPhotos": ["data/wearimages/svitshot-kigami/svitshot-kigami-3.jpg",
+    "data/wearimages/svitshot-kigami/svitshot-kigami-4.jpg"],
+  "description": "Свитшот Kigami\n\nРазмеры: M,L,XL,2XL\n\nЦвета: красный, черный\n\nРазмерная сетка есть\n\nЦена: 350.000 сум",
+  "material": "Хлопок/полиэстер",
+  "colors": [
+    "Красный",
+    "Черный"
+  ],
+  "sizes": ["M", "L", "XL", "2XL"],
+  "category": "Свитшоты",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [],
+  "categoryId": "svitshoty",
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Рост (см)", "Вес (кг)"],
+    "rows": [
+      ["M", "155–168", "45–55"],
+      ["L", "168–175", "55–63"],
+      ["XL", "170–178", "63–73"],
+      ["2XL", "175–185", "72–80"]
+    ]
+  }
+},
    {
   "id": "14097439854978738",
   "slug": "kardigan-catcase",
