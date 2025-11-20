@@ -5947,7 +5947,390 @@
       ["2XL", "180–188", "80–90", "134", "64", "71"]
     ]
   }
-}
+},
+   {
+  "id": "14109112254758546",
+  "slug": "woollen",
+  "title": "Woollen",
+  "price": 979000,
+  "images": ["data/wearimages/woollen/woollen-1.jpg","data/wearimages/woollen/woollen-2.jpg"],
+  "realPhotos": [],
+  "description": "Сапоги Woollen\n\nРазмеры: 34, 35, 36, 37, 38, 39, 40\n\nЦвета: чёрный, белый\n\nЦена: 979.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Чёрный","Белый"],
+  "sizes": ["34","35","36","37","38","39","40"],
+  "category": "Сапоги",
+  "categoryId": "sapogi",
+  "sizeChartType": "shoes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "shoes",
+    "headers": ["EU","Длина стопы (мм)"],
+    "rows": [
+      ["34","220"],["35","225"],["36","230"],
+      ["37","235"],["38","240"],["39","245"],
+      ["40","250"]
+    ]
+  }
+},
+ {
+  "id": "14109111641833706",
+  "slug": "shabby",
+  "title": "Shabby",
+  "price": 369000,
+  "images": ["data/wearimages/shabby/shabby-1.jpg","data/wearimages/shabby/shabby-2.jpg"],
+  "realPhotos": ["data/wearimages/shabby/shabby-3.jpg"],
+  "description": "Штаны Shabby\n\nРазмеры: S, M, L, XL, 2XL, 3XL\n\nЦвета: чёрный\n\nЦена: 369.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Чёрный"],
+  "sizes": ["S","M","L","XL","2XL","3XL"],
+  "category": "Штаны",
+  "categoryId": "shtany",
+  "sizeChartType": "clothes",
+  "sizeChartImages": ["data/wearimages/shabby/shabby-3.jpg"],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["INT","Рост (см)","Вес (кг)"],
+    "rows": [
+      ["S",   "155–160", "43–48"],
+      ["M",   "155–165", "45–55"],
+      ["L",   "165–175", "53–63"],
+      ["XL",  "170–178", "58–70"],
+      ["2XL", "172–180", "65–78"],
+      ["3XL", "180–190", "78–85"]
+    ]
+  }
+},
+
+    {
+      "id": "14109111131794042",
+      "slug": "deeply",
+      "title": "Deeply",
+      "price": 699000,
+      "images": ["data/wearimages/deeply/deeply-1.jpg","data/wearimages/deeply/deeply-2.jpg"],
+      "realPhotos": [],
+      "description": "Зипка Deeply\n\nРазмеры: M, L, XL, 2XL\n\nЦвета: чёрный, синий\n\nЦена: 699.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный","Синий"],
+      "sizes": ["M","L","XL","2XL"],
+      "category": "Зипки",
+      "categoryId": "zipki",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+    "type": "clothes",
+    "headers": ["INT", "Длина (см)", "Низ (см)", "Грудь (см)", "Рукав (см)", "Рекомендуемый вес (кг)"],
+    "rows": [
+      ["M", 70, 100, 100, 52, "40–50"],
+      ["L", 73, 110, 110, 53, "50–60"],
+      ["XL", 75, 118, 118, 54, "60–75"],
+      ["2XL", 77, 130, 130, 55, "75–100"],
+      ["3XL", 79, 140, 140, 56, "100–125"],
+      ["4XL", 81, 150, 150, 57, "125–150"]
+    ]
+      }
+    },
+   {
+  "id": "14109110644556674",
+  "slug": "kelly",
+  "title": "Kelly",
+  "price": 1120000,
+  "images": ["data/wearimages/kelly/kelly-1.jpg","data/wearimages/kelly/kelly-2.jpg"],
+  "realPhotos": [],
+  "description": "Сапоги Kelly\n\nРазмеры: 34, 35, 36, 37, 38, 39\n\nЦвета: коричневый, чёрный\n\nЦена: 1.120.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Коричневый","Чёрный"],
+  "sizes": ["34","35","36","37","38","39"],
+  "category": "Сапоги",
+  "categoryId": "sapogi",
+  "sizeChartType": "shoes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "shoes",
+    "headers": ["EU","Длина стопы (мм)"],
+    "rows": [
+      ["34","220"],
+      ["35","225"],
+      ["36","230"],
+      ["37","235"],
+      ["38","240"],
+      ["39","245"]
+    ]
+  }
+},
+    {
+      "id": "14109110023631570",
+      "slug": "twenty",
+      "title": "Twenty",
+      "price": 769000,
+      "images": ["data/wearimages/twenty/twenty-1.jpg","data/wearimages/twenty/twenty-2.jpg"],
+      "realPhotos": ["data/wearimages/twenty/twenty-3.jpg","data/wearimages/twenty/twenty-4.jpg"],
+      "description": "Сапоги Twenty\n\nРазмеры: 35, 36, 37, 38, 39\n\nЦвета: чёрный, красный, бежевый\n\nЦена: 769.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный","Красный","Бежевый"],
+      "sizes": ["35","36","37","38","39"],
+      "category": "Сапоги",
+      "categoryId": "sapogi",
+      "sizeChartType": "shoes",
+      "sizeChartImages": [],
+       "sizeChart": {
+    "type": "shoes",
+    "headers": ["EU","Длина стопы (мм)"],
+    "rows": [
+      ["34","220"],
+      ["35","225"],
+      ["36","230"],
+      ["37","235"],
+      ["38","240"],
+      ["39","245"]
+    ]
+      }
+    },
+    {
+      "id": "14109107675201530",
+      "slug": "allstar",
+      "title": "AllStar",
+      "price": 669000,
+      "images": ["data/wearimages/allstar/allstar-1.jpg","data/wearimages/allstar/allstar-2.jpg"],
+      "realPhotos": ["data/wearimages/allstar/allstar-3.jpg","data/wearimages/allstar/allstar-4.jpg"],
+      "description": "Кеды AllStar\n\nРазмеры: 34, 35, 36, 37, 38, 39\n\nЦвета: бежевый, розовый, красный, чёрный, синий, коричневый, белый\n\nЦена: 669.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Бежевый","Розовый","Красный","Чёрный","Синий","Коричневый","Белый"],
+      "sizes": ["34","35","36","37","38","39"],
+      "category": "Кеды",
+      "categoryId": "kedy",
+      "sizeChartType": "shoes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "shoes",
+        "headers": ["EU", "Длина стопы (мм)"],
+        "rows": [
+          ["38", "240"],
+          ["39", "245"],
+          ["40", "250"],
+          ["41", "255"],
+          ["42", "260"],
+          ["43", "265"],
+          ["44", "270"],
+          ["45", "285"],
+          ["46", "295"]
+        ]
+      }
+    },
+   {
+  "id": "14109106726606578",
+  "slug": "grime",
+  "title": "Grime",
+  "price": 359000,
+  "images": ["data/wearimages/grime/grime-1.jpg","data/wearimages/grime/grime-2.jpg"],
+  "realPhotos": ["data/wearimages/grime/grime-3.jpg","data/wearimages/grime/grime-4.jpg"],
+  "description": "Поло Grime\n\nРазмеры: M, L, XL\n\nЦвета: чёрный\n\nЦена: 359.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Чёрный"],
+  "sizes": ["M","L","XL"],
+  "category": "Поло",
+  "categoryId": "polo",
+  "sizeChartType": "clothes",
+  "sizeChartImages": ["data/wearimages/grime/grime-5.jpg"],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["INT","Длина (см)","Грудь (см)","Рукав (см)","Плечи (см)"],
+    "rows": [
+      ["M","67","112","20","47"],
+      ["L","69","116","21","49"],
+      ["XL","71","120","22","51"]
+    ]
+  }
+},
+    {
+  "id": "14109106030466314",
+  "slug": "helvetica",
+  "title": "Helvetica",
+  "price": 279000,
+  "images": ["data/wearimages/helvetica/helvetica-1.jpg","data/wearimages/helvetica/helvetica-2.jpg"],
+  "realPhotos": ["data/wearimages/helvetica/helvetica-3.jpg","data/wearimages/helvetica/helvetica-4.jpg"],
+  "description": "Футболка Helvetica\n\nРазмеры: S, M, L, XL\n\nЦвета: чёрный\n\nЦена: 279.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Чёрный"],
+  "sizes": ["S","M","L","XL"],
+  "category": "Футболки",
+  "categoryId": "futbolki",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["INT","Длина (см)","Грудь (см)","Рукав (см)","Плечи (см)"],
+    "rows": [
+      ["S","63","86","20","39.5"],
+      ["M","64","90","20.5","40.5"],
+      ["L","65","94","21","41.5"],
+      ["XL","66","96","21.5","42.5"]
+    ]
+  }
+},
+   {
+  "id": "14109104950005906",
+  "slug": "falst",
+  "title": "Falst",
+  "price": 499000,
+  "images": ["data/wearimages/falst/falst-1.jpg","data/wearimages/falst/falst-2.jpg"],
+  "realPhotos": ["data/wearimages/falst/falst-3.jpg","data/wearimages/falst/falst-4.jpg"],
+  "description": "Брюки Falst\n\nРазмеры: M, L, XL, 2XL, 3XL\n\nЦвета: белый, чёрный \n\nЦена: 499.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Белый","Чёрный"],
+  "sizes": ["M","L","XL","2XL","3XL"],
+  "category": "Брюки",
+  "categoryId": "bryuki",
+  "sizeChartType": "clothes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["INT","Длина (см)","Бёдра (см)","Талия (см)","Низ штанины (см)","Рост (см)","Вес (кг)"],
+    "rows": [
+      ["M","103","104","72","60","160–165","90–110"],
+      ["L","105","108","76","61","165–170","115–125"],
+      ["XL","107","112","80","62","170–175","130–140"],
+      ["2XL","109","116","84","63","175–180","145–155"],
+      ["3XL","111","120","88","64","180–185","160–165"]
+    ]
+  }
+},
+    {
+  "id": "14109103878861642",
+  "slug": "aphextwin",
+  "title": "AphexTwin",
+  "price": 459000,
+  "images": ["data/wearimages/aphextwin/aphextwin-1.jpg","data/wearimages/aphextwin/aphextwin-2.jpg"],
+  "realPhotos": ["data/wearimages/aphextwin/aphextwin-3.jpg","data/wearimages/aphextwin/aphextwin-4.jpg"],
+  "description": "Свитер AphexTwin\n\nРазмеры M, L, XL, 2XL\n\nЦвета: белый, чёрный\n\nЦена: 459.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Белый","Чёрный"],
+  "sizes": ["M","L","XL","2XL"],
+  "category": "Свитеры",
+  "categoryId": "svitery",
+  "sizeChartType": "clothes",
+  "sizeChartImages": ["data/wearimages/aphextwin/aphextwin-5.jpg"],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["INT","Длина (см)","Грудь (см)","Плечи (см)","Рукав (см)"],
+    "rows": [
+      ["M","64","116","46","52"],
+      ["L","65","120","47","53"],
+      ["XL","66","124","48","54"]
+    ]
+  }
+},
+   {
+  "id": "14109103182212658",
+  "slug": "hb",
+  "title": "HB",
+  "price": 369000,
+  "images": [
+    "data/wearimages/hb/hb-1.jpg",
+    "data/wearimages/hb/hb-2.jpg"
+  ],
+  "realPhotos": [
+    "data/wearimages/hb/hb-3.jpg",
+    "data/wearimages/hb/hb-4.jpg"
+  ],
+  "description": "Сумка HB\n\nЦвета: зелёный\n\nЦена: 369.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Зелёный"],
+  "sizes": [],
+  "category": "Сумки",
+  "categoryId": "sumki"
+}, 
+   {
+  "id": "14109102673117530",
+  "slug": "toolong",
+  "title": "TooLong",
+  "price": 739000,
+  "images": ["data/wearimages/toolong/toolong-1.jpg", "data/wearimages/toolong/toolong-2.jpg"],
+  "realPhotos": [],
+  "description": "Плащ TooLong\n\nРазмеры: S, M, L, XL\n\nЦвета: чёрный\n\nЦена: 739.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Чёрный"],
+  "sizes": ["S", "M", "L", "XL"],
+  "category": "Плащи",
+  "categoryId": "plashchi",
+  "sizeChartType": "clothes",
+  "sizeChartImages": ["data/wearimages/toolong/toolong-3.jpg"],
+  "sizeChart": {
+    "type": "clothes",
+    "headers": ["INT", "Длина (см)", "Грудь (см)", "Рукав (см)", "Плечи (см)"],
+    "rows": [
+      ["S",  "127", "114", "60.5", "44.5"],
+      ["M",  "129", "118", "61.5", "46"],
+      ["L",  "131", "122", "62.5", "47.5"],
+      ["XL", "133", "126", "63.5", "49"]
+    ]
+  }
+},
+
+    {
+  "id": "14109101897986522",
+  "slug": "camel",
+  "title": "Camel",
+  "price": 769000,
+  "images": [
+    "data/wearimages/camel/camel-1.jpg",
+    "data/wearimages/camel/camel-2.jpg"
+  ],
+  "realPhotos": [
+
+    "data/wearimages/camel/camel-3.jpg",
+    "data/wearimages/camel/camel-4.jpg"
+  ],
+  "description": "Кроссовки Camel\n\nРазмеры: 35, 36, 37, 38, 39, 40\n\nЦвета: розовый, бежевый, чёрный, серый\n\nЦена: 769.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Розовый","Бежевый","Чёрный","Серый"],
+  "sizes": ["35","36","37","38","39","40"],
+  "category": "Кроссовки",
+  "categoryId": "krossovki",
+  "sizeChartType": "shoes",
+  "sizeChartImages": ["data/wearimages/camel/camel-4.jpg"],
+  "sizeChart": {
+    "type": "shoes",
+    "headers": ["EU","Длина стопы (мм)","Ширина стопы (мм)"],
+    "rows": [
+      ["35","225","82"],
+      ["36","230","84"],
+      ["37","235","86"],
+      ["38","240","88"],
+      ["39","245","90"],
+      ["40","250","92"]
+    ]
+  }
+},
+
+    {
+      "id": "14109101027807146",
+      "slug": "mustheaven",
+      "title": "MustHeaven",
+      "price": 420000,
+      "images": ["data/wearimages/mustheaven/mustheaven-1.jpg","data/wearimages/mustheaven/mustheaven-2.jpg"],
+      "realPhotos": [],
+      "description": "Зипка MustHeaven\n\nРазмеры: S, M, L\n\nЦвета: белый\n\nЦена: 420.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Белый"],
+      "sizes": ["S","M","L"],
+      "category": "Зипки",
+      "categoryId": "zipki",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+    "type": "clothes",
+    "headers": ["INT", "Длина (см)", "Низ (см)", "Грудь (см)", "Рукав (см)", "Рекомендуемый вес (кг)"],
+    "rows": [
+      ["M", 70, 100, 100, 52, "40–50"],
+      ["L", 73, 110, 110, 53, "50–60"],
+      ["XL", 75, 118, 118, 54, "60–75"],
+      ["2XL", 77, 130, 130, 55, "75–100"],
+      ["3XL", 79, 140, 140, 56, "100–125"],
+      ["4XL", 81, 150, 150, 57, "125–150"]
+    ]
+      }
+    }
 
   
 
@@ -5978,7 +6361,8 @@
     "name": "Низ",
     "children": [
       { "slug": "dzhinsy", "name": "Джинсы" },
-      { "slug": "shtany", "name": "Штаны" }
+      { "slug": "shtany", "name": "Штаны" },
+      { "slug": "bryuki", "name": "Брюки" }
     ]
   },
   {
