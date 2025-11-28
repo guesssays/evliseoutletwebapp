@@ -6330,7 +6330,38 @@
       ["4XL", 81, 150, 150, 57, "125–150"]
     ]
       }
-    }
+    },
+{
+  "id": "14109110644556654",
+  "slug": "Rabbit",
+  "title": "Rabbit",
+  "price": 470000,
+  "images": [
+    "data/wearimages/rabbit/rabbit-1.jpg",
+    "data/wearimages/rabbit/rabbit-2.jpg"
+  ],
+  "realPhotos": [],
+  "description": "Сапоги rabbit\n\nРазмеры: 34, 35, 36, 37, 38, 39\n\nЦвета: коричневый, чёрный\n\nЦена: 1.120.000",
+  "material": "Хлопок/полиэстер",
+  "colors": ["Коричневый", "Чёрный", "Белый"],
+  "sizes": ["35", "36", "37", "38", "39", "40"],
+  "category": "Сапоги",
+  "categoryId": "sapogi",
+  "sizeChartType": "shoes",
+  "sizeChartImages": [],
+  "sizeChart": {
+    "type": "shoes",
+    "headers": ["EU", "Длина стопы (мм)"],
+    "rows": [
+      ["35", "225"],
+      ["36", "230"],
+      ["37", "235"],
+      ["38", "240"],
+      ["39", "245"],
+      ["40", "250"]
+    ]
+  }
+}
 
   
 
