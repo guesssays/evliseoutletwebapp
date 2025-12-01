@@ -3,7 +3,7 @@ import { state } from './state.js';
 
 function defaults() {
   return {
-    enabled: true,
+    enabled: false,
     slug: 'newyear-2026',
     title: 'Новогодняя акция',
 
