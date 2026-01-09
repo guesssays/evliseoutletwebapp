@@ -6941,7 +6941,7 @@
     {
       "id": "14142471819622442",
       "slug": "bomber-christ",
-      "title": "Бомбер Christ",
+      "title": "Christ",
       "price": 739000,
       "images": ["data/wearimages/bomber-christ/bomber-christ-1.jpg", "data/wearimages/bomber-christ/bomber-christ-2.jpg"],
       "realPhotos": ["data/wearimages/bomber-christ/bomber-christ-3.jpg"],
@@ -6949,8 +6949,8 @@
       "material": "Хлопок/полиэстер",
       "colors": ["Серый"],
       "sizes": ["L", "XL", "2XL", "3XL", "4XL"],
-      "category": "Новинки",
-      "categoryId": "novinki",
+      "category": "Куртки",
+      "categoryId": "kurtki",
       "sizeChartType": "clothes",
       "sizeChartImages": ["data/wearimages/bomber-christ/bomber-christ-4.jpg"],
       "sizeChart": {
