@@ -6361,10 +6361,839 @@
       ["40", "250"]
     ]
   }
+},
+    {
+      "id": "14143065631710682",
+      "slug": "dramag",
+      "title": "DramaG",
+      "price": 569000,
+      "images": ["data/wearimages/dramag/dramag-1.jpg", "data/wearimages/dramag/dramag-2.jpg", "data/wearimages/dramag/dramag-3.jpg", "data/wearimages/dramag/dramag-4.jpg"],
+      "realPhotos": ["data/wearimages/dramag/dramag-3.jpg", "data/wearimages/dramag/dramag-4.jpg"],
+      "description": "Джинсы DramaG\n\nРазмеры: XS, S, M, L, XL\n\nЦвета: чёрный\n\nЦена: 569.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный"],
+      "sizes": ["XS", "S", "M", "L", "XL"],
+      "category": "Джинсы",
+      "categoryId": "dzhinsy",
+      "sizeChartType": "clothes",
+      "sizeChartImages": ["data/wearimages/dramag/dramag-3.jpg"],
+"sizeChart": {
+  "type": "clothes",
+  "headers": ["INT", "Рост (см)", "Вес (кг)", "A (см)", "B (см)", "C (см)"],
+  "rows": [
+    ["XS", "155–170", "50–60", "107", "71", "28"],
+    ["S",  "165–175", "60–70", "107", "76", "29"],
+    ["M",  "170–180", "65–80", "109.5", "81", "30"],
+    ["L",  "175–185", "75–85", "112", "86", "32"],
+    ["XL", "175–188", "80–90", "112", "91", "33"]
+  ]
 }
 
-  
+    },
+    {
+      "id": "14143064052603202",
+      "slug": "fearless",
+      "title": "Fearless",
+      "price": 449000,
+      "images": ["data/wearimages/fearless/fearless-1.jpg", "data/wearimages/fearless/fearless-2.jpg"],
+      "realPhotos": ["data/wearimages/fearless/fearless-3.jpg"],
+      "description": "Худи Fearless \n\nРазмеры: S, M\n\nЦвета: чёрный\n\nЦена: 449.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный"],
+      "sizes": ["S", "M"],
+      "category": "Худи",
+      "categoryId": "khudi",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+    "type": "clothes",
+    "headers": ["INT", "Длина (см)", "Плечи (см)", "Грудь (см)", "Рукав (см)"],
+    "rows": [
+      ["S", "62", "47", "124", "65"],
+      ["M", "64", "49", "128", "66"],
+      ["L", "66", "52", "132", "67"],
+      ["XL", "68", "55", "136", "68"]
+    ]
+      }
+    },
+    {
+      "id": "14143063557374586",
+      "slug": "thundery",
+      "title": "Thundery",
+      "price": 349000,
+      "images": ["data/wearimages/thundery/thundery-1.jpg", "data/wearimages/thundery/thundery-2.jpg"],
+      "realPhotos": [],
+      "description": "Штаны Thundery\n\nРазмеры: S, M, L, XL, 2XL, 3XL\n\nЦвета: чёрный, серый, розовый \n\nЦена: 349.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный", "Серый", "Розовый"],
+      "sizes": ["S", "M", "L", "XL", "2XL", "3XL"],
+      "category": "Штаны",
+      "categoryId": "shtany",
+      "sizeChartType": "clothes",
+      "sizeChartImages": ["data/wearimages/thundery/thundery-3.jpg"],
+     "sizeChart": {
+  "type": "clothes",
+  "headers": ["INT", "Талия (см)", "Бёдра (см)", "Длина (см)"],
+  "rows": [
+    ["S",   "84",  "113", "105"],
+    ["M",   "88",  "117", "106"],
+    ["L",   "92",  "121", "107"],
+    ["XL",  "96",  "125", "108"],
+    ["2XL", "100", "129", "109"],
+    ["3XL", "104", "133", "110"]
+  ]
+}
 
+    },
+    {
+      "id": "14143062426162594",
+      "slug": "curvel",
+      "title": "CurveL",
+      "price": 499000,
+      "images": ["data/wearimages/curvel/curvel-1.jpg", "data/wearimages/curvel/curvel-2.jpg"],
+      "realPhotos": ["data/wearimages/curvel/curvel-3.jpg", "data/wearimages/curvel/curvel-4.jpg"],
+      "description": "Зипка CurveL\n\nРазмеры: M, L, XL, 2XL\n\nЦвета: чёрный\n\nЦена: 499.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный"],
+      "sizes": ["M", "L", "XL", "2XL"],
+      "category": "Зипки",
+      "categoryId": "zipki",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+    "type": "clothes",
+    "headers": ["INT", "Длина (см)", "Низ (см)", "Грудь (см)", "Рукав (см)", "Рекомендуемый вес (кг)"],
+    "rows": [
+      ["M", 70, 100, 100, 52, "40–50"],
+      ["L", 73, 110, 110, 53, "50–60"],
+      ["XL", 75, 118, 118, 54, "60–75"],
+      ["2XL", 77, 130, 130, 55, "75–100"],
+      ["3XL", 79, 140, 140, 56, "100–125"],
+      ["4XL", 81, 150, 150, 57, "125–150"]
+    ]
+      }
+    },
+    {
+      "id": "14143062112678402",
+      "slug": "razor",
+      "title": "Razor",
+      "price": 599000,
+      "images": ["data/wearimages/razor/razor-1.jpg", "data/wearimages/razor/razor-2.jpg"],
+      "realPhotos": ["data/wearimages/razor/razor-3.jpg", "data/wearimages/razor/razor-4.jpg"],
+      "description": "Кеды Razor\n\nРазмеры:  36, 37, 38, 39, 40, 41, 42, 43, 44\n\nЦвета: чёрный, серый, красный  \n\nЦена: 599.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный", "Серый", "Красный"],
+      "sizes": ["36", "37", "38", "39", "40", "41", "42", "43", "44"],
+      "category": "Кеды",
+      "categoryId": "kedy",
+      "sizeChartType": "shoes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "shoes",
+        "headers": ["EU", "Длина стопы (мм)"],
+        "rows": [
+          ["38", "240"],
+          ["39", "245"],
+          ["40", "250"],
+          ["41", "255"],
+          ["42", "260"],
+          ["43", "265"],
+          ["44", "270"],
+          ["45", "285"],
+          ["46", "295"]
+        ]
+      }
+    },
+    {
+      "id": "14143061265672626",
+      "slug": "aman",
+      "title": "aMan",
+      "price": 399000,
+      "images": ["data/wearimages/aman/aman-1.jpg", "data/wearimages/aman/aman-2.jpg"],
+      "realPhotos": [],
+      "description": "Свитшот aMan\n\nРазмеры: S, M, L, XL, 2XL\n\nЦвета: белый\n\nЦена: 399.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Белый"],
+      "sizes": ["S", "M", "L", "XL", "2XL"],
+      "category": "Свитшоты",
+      "categoryId": "svitshoty",
+      "sizeChartType": "clothes",
+      "sizeChartImages": ["data/wearimages/aman/aman-3.jpg"],
+      "sizeChart": {
+  "type": "clothes",
+  "headers": [
+    "INT",
+    "Длина изделия (см)",
+    "Грудь (см)",
+    "Талия (см)",
+    "Бёдра (см)",
+    "Рукав (см)",
+    "Плечи (см)"
+  ],
+  "rows": [
+    ["S", "-",   "-",   "-", "-", "-", "-"],
+    ["M", "68",  "116", "-", "-", "50", "58"],
+    ["L", "70",  "120", "-", "-", "51", "60"],
+    ["XL","72",  "124", "-", "-", "52", "62"],
+    ["2XL","-",  "-",   "-", "-", "-", "-"]
+  ]
+}
+
+    },
+    {
+      "id": "14143059739436066",
+      "slug": "triplewibe",
+      "title": "TripleWibe",
+      "price": 489000,
+      "images": ["data/wearimages/triplewibe/triplewibe-1.jpg", "data/wearimages/triplewibe/triplewibe-2.jpg"],
+      "realPhotos": ["data/wearimages/triplewibe/triplewibe-3.jpg", "data/wearimages/triplewibe/triplewibe-4.jpg"],
+      "description": "Джинсы TripleWibe\n\nРазмеры: M, L, XL\n\nЦвета: чёрный\n\nЦена: 489.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный"],
+      "sizes": ["M", "L", "XL"],
+      "category": "Джинсы",
+      "categoryId": "dzhinsy",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+    "type": "clothes",
+    "headers": ["INT", "Длина (см)", "Талия (см)", "Бедра (см)"],
+    "rows": [
+      ["S", "101", "64", "90"],
+      ["M", "102", "68", "94"],
+      ["L", "103", "72", "98"],
+      ["XL", "104", "76", "102"],
+      ["2XL", "105", "82", "106"],
+      ["3XL", "105", "88", "110"],
+      ["4XL", "105", "92", "114"]
+    ]
+  }
+    },
+    {
+      "id": "14143059044277234",
+      "slug": "human",
+      "title": "Human",
+      "price": 469000,
+      "images": ["data/wearimages/human/human-1.jpg", "data/wearimages/human/human-2.jpg"],
+      "realPhotos": ["data/wearimages/human/human-3.jpg"],
+      "description": "Поло Human\n\nРазмеры: M, L, XL\n\nЦвета: чёрный, синий, зелёный, белый \n\nЦена: 469.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный", "Синий", "Зелёный", "Белый"],
+      "sizes": ["M", "L", "XL"],
+      "category": "Поло",
+      "categoryId": "polo",
+      "sizeChartType": "clothes",
+      "sizeChartImages": ["data/wearimages/human/human-4.jpg"],
+    "sizeChart": {
+  "type": "clothes",
+  "headers": [
+    "INT",
+    "Длина изделия (см)",
+    "Плечи (см)",
+    "Грудь (см)",
+    "Рукав (см)",
+    "Вес (кг)",
+    "Рост (см)"
+  ],
+  "rows": [
+    ["M",  "68", "58", "116", "50", "50–65", "165–175"],
+    ["L",  "70", "60", "120", "51", "65–75", "175–185"],
+    ["XL", "72", "62", "124", "52", "75–85", "180–190"]
+  ]
+}
+    },
+    {
+      "id": "14143057547880410",
+      "slug": "lagalaxy",
+      "title": "LaGalaxy",
+      "price": 499000,
+      "images": ["data/wearimages/lagalaxy/lagalaxy-1.jpg", "data/wearimages/lagalaxy/lagalaxy-2.jpg"],
+      "realPhotos": [],
+      "description": "Кардиган LaGalaxy\n\nРазмеры: M, L, XL\n\nЦвета: чёрный, синий, голубой\n\nЦена: 499.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный", "Синий", "Голубой"],
+      "sizes": ["M", "L", "XL"],
+      "category": "Кардиганы",
+      "categoryId": "kardigany",
+      "sizeChartType": "clothes",
+      "sizeChartImages": ["data/wearimages/lagalaxy/lagalaxy-3.jpg"],
+      "sizeChart": {
+  "type": "clothes",
+  "headers": [
+    "INT",
+    "Длина изделия (см)",
+    "Плечи (см)",
+    "Грудь (см)",
+    "Рукав (см)",
+    "Вес (кг)",
+    "Рост (см)"
+  ],
+  "rows": [
+    ["M",  "68", "58", "116", "50", "50–65", "165–175"],
+    ["L",  "70", "60", "120", "51", "65–75", "175–185"],
+    ["XL", "72", "62", "124", "52", "75–85", "180–190"]
+  ]
+}
+
+    },
+    {
+      "id": "14143056738182538",
+      "slug": "drek",
+      "title": "Drek",
+      "price": 469000,
+      "images": ["data/wearimages/drek/drek-1.jpg", "data/wearimages/drek/drek-2.jpg"],
+      "realPhotos": ["data/wearimages/drek/drek-3.jpg", "data/wearimages/drek/drek-4.jpg"],
+      "description": "Кроссовки Drek\n\nРазмеры: 35, 36, 37, 38, 39, 40, 41, 42, 43, 44\n\nЦвета: зелёный, голубой, фиолетовый \n\nЦена: 469.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Зелёный", "Голубой", "Фиолетовый"],
+      "sizes": ["35", "36", "37", "38", "39", "40", "41", "42", "43", "44"],
+      "category": "Кроссовки",
+      "categoryId": "krossovki",
+      "sizeChartType": "shoes",
+      "sizeChartImages": ["data/wearimages/drek/drek-3.jpg"],
+      "sizeChart": {
+    "type": "shoes",
+    "headers": ["EU","Длина стопы (мм)","Ширина стопы (мм)"],
+    "rows": [
+      ["35","225","82"],
+      ["36","230","84"],
+      ["37","235","86"],
+      ["38","240","88"],
+      ["39","245","90"],
+      ["40","250","92"]
+    ]
+  }
+    },
+    {
+      "id": "14143055925781786",
+      "slug": "kumaro",
+      "title": "Kumaro",
+      "price": 689000,
+      "images": ["data/wearimages/kumaro/kumaro-1.jpg", "data/wearimages/kumaro/kumaro-2.jpg"],
+      "realPhotos": ["data/wearimages/kumaro/kumaro-3.jpg", "data/wearimages/kumaro/kumaro-4.jpg"],
+      "description": "Кроссовки Kumaro\n\nРазмеры:  35, 36, 37, 38, 39, 40, 41, 42, 43, 44\n\nЦвета: красный , белый черный\n\nЦена: 689.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Красный", "Белый черный"],
+      "sizes": ["35", "36", "37", "38", "39", "40", "41", "42", "43", "44"],
+      "category": "Кроссовки",
+      "categoryId": "krossovki",
+      "sizeChartType": "shoes",
+      "sizeChartImages": ["data/wearimages/kumaro/kumaro-4.jpg"],
+       "sizeChart": {
+    "type": "shoes",
+    "headers": ["EU","Длина стопы (мм)","Ширина стопы (мм)"],
+    "rows": [
+      ["35","225","82"],
+      ["36","230","84"],
+      ["37","235","86"],
+      ["38","240","88"],
+      ["39","245","90"],
+      ["40","250","92"]
+    ]
+  }
+    },
+    {
+      "id": "14143055348353546",
+      "slug": "pinkink",
+      "title": "Pinkink",
+      "price": 239000,
+      "images": ["data/wearimages/pinkink/pinkink-1.jpg", "data/wearimages/pinkink/pinkink-2.jpg"],
+      "realPhotos": [],
+      "description": "Сумка Pinkink\n\nЦвета: чёрный, белый\n\nЦена: 239.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный", "Белый"],
+      "sizes": [],
+      "category": "Сумки",
+      "categoryId": "sumki"
+    },
+    {
+      "id": "14143054804312834",
+      "slug": "otc",
+      "title": "OTC",
+      "price": 599000,
+      "images": ["data/wearimages/otc/otc-1.jpg", "data/wearimages/otc/otc-2.jpg"],
+      "realPhotos": ["data/wearimages/otc/otc-3.jpg", "data/wearimages/otc/otc-4.jpg"],
+      "description": "Куртка OTC\n\nРазмеры: S, M, L, XL, 2XL, 3XL \n\nЦвета: чёрный, белый \n\nЦена: 599.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный", "Белый"],
+      "sizes": ["S", "M", "L", "XL", "2XL", "3XL"],
+      "category": "Куртки",
+      "categoryId": "kurtki",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+      "sizeChart": {
+  "type": "clothes",
+  "headers": [
+    "INT",
+    "Длина изделия (см)",
+    "Грудь (см)",
+    "Плечи (см)",
+    "Рукав (см)"
+  ],
+  "rows": [
+    ["M",   "65", "133", "-", "77"],
+    ["L",   "67", "137", "-", "79"],
+    ["XL",  "69", "141", "-", "81"],
+    ["2XL", "71", "145", "-", "83"]
+  ]
+}
+
+    },
+    {
+      "id": "14142476830877706",
+      "slug": "chloe",
+      "title": "CHLOE",
+      "price": 649000,
+      "images": ["data/wearimages/chloe/chloe-1.jpg", "data/wearimages/chloe/chloe-2.jpg"],
+      "realPhotos": ["data/wearimages/chloe/chloe-3.jpg", "data/wearimages/chloe/chloe-4.jpg"],
+      "description": "Куртка CHLOE\n\nРазмеры: M, L, XL, 2XL, 3XL\n\nЦвета: серый, черный \n\nЦена: 649.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Серый", "Черный"],
+      "sizes": ["M", "L", "XL", "2XL", "3XL"],
+      "category": "Куртки",
+      "categoryId": "kurtki",
+      "sizeChartType": "clothes",
+      "sizeChartImages": ["data/wearimages/chloe/chloe-5.jpg"],
+      "sizeChart": {
+  "type": "clothes",
+  "headers": [
+    "INT",
+    "Плечи (см)",
+    "Грудь (см)",
+    "Длина изделия (см)",
+    "Рост (см)",
+    "Вес (кг)"
+  ],
+  "rows": [
+    ["M",  "55", "126", "68", "160–170", "50–55"],
+    ["L",  "57", "130", "70", "170–175", "55–65"],
+    ["XL", "59", "134", "72", "175–180", "65–75"],
+    ["2XL","61", "138", "74", "180–185", "75–85"],
+    ["3XL","63", "142", "76", "185–195", "85–90"]
+  ]
+}
+
+    },
+    {
+      "id": "14142476374795842",
+      "slug": "huggie",
+      "title": "Huggie",
+      "price": 799000,
+      "images": ["data/wearimages/huggie/huggie-1.jpg", "data/wearimages/huggie/huggie-2.jpg"],
+      "realPhotos": ["data/wearimages/huggie/huggie-3.jpg", "data/wearimages/huggie/huggie-4.jpg"],
+      "description": "Сапоги Huggie \n\nРазмеры: 36, 37, 38, 39, 40, 41, 42, 43\n\nЦвета: чёрный\n\nЦена: 799.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный"],
+      "sizes": ["36", "37", "38", "39", "40", "41", "42", "43"],
+      "category": "Сапоги",
+      "categoryId": "sapogi",
+      "sizeChartType": "shoes",
+      "sizeChartImages": [],
+     "sizeChart": {
+  "type": "shoes",
+  "headers": ["EU", "Длина стопы (см)"],
+  "rows": [
+    ["36", "22.5–23.0"],
+    ["37", "23.0–23.5"],
+    ["38", "23.5–24.0"],
+    ["39", "24.0–24.5"],
+    ["40", "24.5–25.0"],
+    ["41", "25.5–26.0"],
+    ["42", "26.5–27.0"],
+    ["43", "27.0–27.5"]
+  ]
+}
+
+    },
+    {
+      "id": "14142475867104066",
+      "slug": "geronimo",
+      "title": "Geronimo",
+      "price": 799000,
+      "images": ["data/wearimages/geronimo/geronimo-1.jpg", "data/wearimages/geronimo/geronimo-2.jpg"],
+      "realPhotos": ["data/wearimages/geronimo/geronimo-3.jpg"],
+      "description": "Куртка Geronimo \n\nРазмеры: M, L, XL, 2XL\n\nЦвета: серый, красный \n\nЦена: 799.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Серый", "Красный"],
+      "sizes": ["M", "L", "XL", "2XL"],
+      "category": "Куртки",
+      "categoryId": "kurtki",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+     "sizeChart": {
+    "type": "clothes",
+    "headers": ["Размер", "Длина (см)", "Грудь (см)", "Плечи (см)", "Длина рукава (см)"],
+    "rows": [
+      ["S", "60.5", "132", "54", "63"],
+      ["M", "62", "136", "55", "64"],
+      ["L", "63.5", "140", "56", "65"]
+    ]
+  }
+    },
+    {
+      "id": "14142475438833954",
+      "slug": "flameon",
+      "title": "Flameon",
+      "price": 649000,
+      "images": ["data/wearimages/flameon/flameon-1.jpg", "data/wearimages/flameon/flameon-2.jpg"],
+      "realPhotos": ["data/wearimages/flameon/flameon-3.jpg", "data/wearimages/flameon/flameon-4.jpg"],
+      "description": "Сапоги Flameon\n\nРазмеры: 38, 39, 40, 41, 42, 43\n\nЦвета: черный , розовый, белый \n\nЦена: 649.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Черный", "Розовый", "Белый"],
+      "sizes": ["38", "39", "40", "41", "42", "43"],
+      "category": "Сапоги",
+      "categoryId": "sapogi",
+      "sizeChartType": "shoes",
+      "sizeChartImages": [],
+      "sizeChart": {
+        "type": "shoes",
+        "headers": ["EU", "Длина стопы (мм)"],
+        "rows": [
+          ["38", "240"],
+          ["39", "245"],
+          ["40", "250"],
+          ["41", "255"],
+          ["42", "260"],
+          ["43", "265"],
+          ["44", "270"],
+          ["45", "285"],
+          ["46", "295"]
+        ]
+      }
+    },
+    {
+      "id": "14142474745451514",
+      "slug": "ropex",
+      "title": "Ropex",
+      "price": 649000,
+      "images": ["data/wearimages/ropex/ropex-1.jpg", "data/wearimages/ropex/ropex-2.jpg"],
+      "realPhotos": ["data/wearimages/ropex/ropex-3.jpg", "data/wearimages/ropex/ropex-4.jpg"],
+      "description": "Кроссовки Ropex\n\nРазмеры: 36, 37, 38, 39, 40, 41, 42, 43, 44\n\nЦвета: красный, черный, серый\n\nЦена: 649.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Красный", "Черный", "Серый"],
+      "sizes": ["36", "37", "38", "39", "40", "41", "42", "43", "44"],
+      "category": "Кроссовки",
+      "categoryId": "krossovki",
+      "sizeChartType": "shoes",
+      "sizeChartImages": ["data/wearimages/ropex/ropex-3.jpg"],
+      "sizeChart": {
+    "type": "shoes",
+    "headers": ["EU","Длина стопы (мм)","Ширина стопы (мм)"],
+    "rows": [
+      ["35","225","82"],
+      ["36","230","84"],
+      ["37","235","86"],
+      ["38","240","88"],
+      ["39","245","90"],
+      ["40","250","92"]
+    ]
+  }
+    },
+    {
+      "id": "14142473039645042",
+      "slug": "xchi",
+      "title": "XChi",
+      "price": 269000,
+      "images": ["data/wearimages/xchi/xchi-1.jpg", "data/wearimages/xchi/xchi-2.jpg"],
+      "realPhotos": ["data/wearimages/xchi/xchi-3.jpg", "data/wearimages/xchi/xchi-4.jpg"],
+      "description": "Сумка XChi\n\nЦвета: серый \n\nЦена: 269.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Серый"],
+      "sizes": [],
+      "category": "Сумки",
+      "categoryId": "sumki"
+    },
+    {
+      "id": "14142472474227474",
+      "slug": "dollhouse",
+      "title": "DollHouse",
+      "price": 399000,
+      "images": ["data/wearimages/dollhouse/dollhouse-1.jpg", "data/wearimages/dollhouse/dollhouse-2.jpg"],
+      "realPhotos": [],
+      "description": "Худи DollHouse\n\nРазмеры:  L, XL, 2XL, 3XL, 4XL \n\nЦвета: черный, красный, коричневый \n\nЦена: 399.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Черный", "Красный", "Коричневый"],
+      "sizes": ["L", "XL", "2XL", "3XL", "4XL"],
+      "category": "Худи",
+      "categoryId": "khudi",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+     "sizeChart": {
+  "type": "clothes",
+  "headers": [
+    "INT",
+    "Грудь (см)",
+    "Длина изделия (см)",
+    "Рукав (см)",
+    "Плечи (см)",
+    "Вес (кг)"
+  ],
+  "rows": [
+    ["L",  "110", "76", "54", "54", "40–57.5"],
+    ["XL", "120", "77", "55", "55", "57.5–72.5"],
+    ["2XL","130", "78", "56", "56", "72.5–95"],
+    ["3XL","140", "79", "57", "57", "95–120"],
+    ["4XL","150", "80", "58", "58", "120–150"]
+  ]
+}
+
+    },
+    {
+      "id": "14142471819622442",
+      "slug": "bomber-christ",
+      "title": "Бомбер Christ",
+      "price": 739000,
+      "images": ["data/wearimages/bomber-christ/bomber-christ-1.jpg", "data/wearimages/bomber-christ/bomber-christ-2.jpg"],
+      "realPhotos": ["data/wearimages/bomber-christ/bomber-christ-3.jpg"],
+      "description": "Бомбер Christ\n\nРазмеры: L, XL, 2XL, 3XL, 4XL\n\nЦвета: серый\n\nЦена: 739.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Серый"],
+      "sizes": ["L", "XL", "2XL", "3XL", "4XL"],
+      "category": "Новинки",
+      "categoryId": "novinki",
+      "sizeChartType": "clothes",
+      "sizeChartImages": ["data/wearimages/bomber-christ/bomber-christ-4.jpg"],
+      "sizeChart": {
+  "type": "clothes",
+  "headers": [
+    "INT",
+    "Рост (см)",
+    "Вес (кг)"
+  ],
+  "rows": [
+    ["L",   "165–170", "100–125"],
+    ["XL",  "170–175", "125–150"],
+    ["2XL", "175–180", "150–175"],
+    ["3XL", "180–185", "175–190"],
+    ["4XL", "185–190", "190–220"]
+  ]
+}
+
+    },
+    {
+      "id": "14142470475163426",
+      "slug": "unig",
+      "title": "UniG",
+      "price": 449000,
+      "images": ["data/wearimages/unig/unig-1.jpg", "data/wearimages/unig/unig-2.jpg"],
+      "realPhotos": [],
+      "description": "Свитер UniG\n\nРазмеры: M, L, XL\n\nЦвета: чёрный, синий\n\nЦена: 449.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный", "Синий"],
+      "sizes": ["M", "L", "XL"],
+      "category": "Свитеры",
+      "categoryId": "svitery",
+      "sizeChartType": "clothes",
+      "sizeChartImages": ["data/wearimages/unig/unig-3.jpg"],
+     "sizeChart": {
+  "type": "clothes",
+  "headers": [
+    "INT",
+    "Длина изделия (см)",
+    "Плечи (см)",
+    "Грудь (см)",
+    "Рукав (см)",
+    "Вес (кг)",
+    "Рост (см)"
+  ],
+  "rows": [
+    ["M",  "68", "58", "116", "50", "50–65", "165–175"],
+    ["L",  "70", "60", "120", "51", "65–75", "175–185"],
+    ["XL", "72", "62", "124", "52", "75–85", "180–190"]
+  ]
+}
+
+    },
+    {
+      "id": "14142469745163874",
+      "slug": "brazil",
+      "title": "Brazil",
+      "price": 399000,
+      "images": ["data/wearimages/brazil/brazil-1.jpg", "data/wearimages/brazil/brazil-2.jpg"],
+      "realPhotos": ["data/wearimages/brazil/brazil-4.jpg"],
+      "description": "Свитшот Brazil\n\nРазмеры: S, M, L, XL\n\nЦвета: жёлтый \n\nЦена: 399.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Жёлтый"],
+      "sizes": ["S", "M", "L", "XL"],
+      "category": "Свитшоты",
+      "categoryId": "svitshoty",
+      "sizeChartType": "clothes",
+      "sizeChartImages": ["data/wearimages/brazil/brazil-3.jpg"],
+    "sizeChart": {
+  "type": "clothes",
+  "headers": [
+    "INT",
+    "Грудь (см)",
+    "Плечи (см)",
+    "Рукав (см)",
+    "Длина (см)"
+  ],
+  "rows": [
+    ["S",  "120", "61", "58", "70"],
+    ["M",  "124", "63", "60", "72"],
+    ["L",  "128", "65", "62", "74"],
+    ["XL", "132", "67", "64", "76"]
+  ]
+}
+
+    },
+    {
+      "id": "14142469136204026",
+      "slug": "ninshag",
+      "title": "NinShag",
+      "price": 449000,
+      "images": ["data/wearimages/ninshag/ninshag-1.jpg", "data/wearimages/ninshag/ninshag-2.jpg"],
+      "realPhotos": ["data/wearimages/ninshag/ninshag-3.jpg", "data/wearimages/ninshag/ninshag-4.jpg"],
+      "description": "Штаны NinShag\n\nРазмеры: M, L, XL, 2XL, 3XL, 4XL \n\nЦвета: чёрный, серый \n\nЦена: 449.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный", "Серый"],
+      "sizes": ["M", "L", "XL", "2XL", "3XL", "4XL"],
+      "category": "Штаны",
+      "categoryId": "shtany",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+     "sizeChart": {
+    "type": "clothes",
+    "headers": ["INT","Рост (см)","Вес (кг)"],
+    "rows": [
+      ["S",   "155–160", "43–48"],
+      ["M",   "155–165", "45–55"],
+      ["L",   "165–175", "53–63"],
+      ["XL",  "170–178", "58–70"],
+      ["2XL", "172–180", "65–78"],
+      ["3XL", "180–190", "78–85"]
+    ]
+  }
+    },
+    {
+      "id": "14142467659966146",
+      "slug": "scc",
+      "title": "SCC",
+      "price": 649000,
+      "images": ["data/wearimages/scc/scc-1.jpg", "data/wearimages/scc/scc-2.jpg"],
+      "realPhotos": ["data/wearimages/scc/scc-3.jpg", "data/wearimages/scc/scc-4.jpg"],
+      "description": "Штаны SCC\n\nРазмеры: S, M, L, XL, 2XL, 3XL\n\nЦвета: чёрный, красный \n\nЦена: 649.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный", "Красный"],
+      "sizes": ["S", "M", "L", "XL", "2XL", "3XL"],
+      "category": "Штаны",
+      "categoryId": "shtany",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+     "sizeChart": {
+  "type": "clothes",
+  "headers": [
+    "INT",
+    "Талия (см)",
+    "Бёдра (см)",
+    "Длина (см)",
+    "Низ штанины (см)"
+  ],
+  "rows": [
+    ["S",   "80", "138", "95",  "70"],
+    ["M",   "84", "142", "97",  "74"],
+    ["L",   "88", "146", "100", "78"],
+    ["XL",  "92", "150", "103", "82"],
+    ["2XL", "96", "154", "106", "86"],
+    ["3XL", "98", "158", "109", "90"]
+  ]
+}
+
+    },
+    {
+      "id": "14142466598446122",
+      "slug": "krosovki-styrsyn-3z",
+      "title": "STYRSYN 3z",
+      "price": 499000,
+      "images": ["data/wearimages/krosovki-styrsyn-3z/krosovki-styrsyn-3z-1.jpg", "data/wearimages/krosovki-styrsyn-3z/krosovki-styrsyn-3z-2.jpg"],
+      "realPhotos": ["data/wearimages/krosovki-styrsyn-3z/krosovki-styrsyn-3z-3.jpg", "data/wearimages/krosovki-styrsyn-3z/krosovki-styrsyn-3z-4.jpg"],
+      "description": "Кросовки STYRSYN 3z\n\nРазмеры: 36, 37, 38, 39, 40, 41, 42, 43, 44\n\nЦвета: красный , черный , белый , жёлтый \n\nЦена: 499.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Красный", "Черный", "Белый", "Жёлтый"],
+      "sizes": ["36", "37", "38", "39", "40", "41", "42", "43", "44"],
+      "category": "Кроссовки",
+      "categoryId": "krossovki",
+      "sizeChartType": "shoes",
+      "sizeChartImages": [],
+      "sizeChart": {
+    "type": "shoes",
+    "headers": ["EU", "Длина стопы (мм)"],
+    "rows": [
+      ["36", "230"],
+      ["37", "235"],
+      ["38", "240"],
+      ["39", "245"],
+      ["40", "250"],
+      ["41", "255"],
+      ["42", "260"],
+      ["43", "265"]
+    ]
+      }
+    },
+    {
+      "id": "14142465626045866",
+      "slug": "vilian",
+      "title": "Vilian",
+      "price": 749000,
+      "images": ["data/wearimages/vilian/vilian-1.jpg", "data/wearimages/vilian/vilian-2.jpg"],
+      "realPhotos": ["data/wearimages/vilian/vilian-3.jpg", "data/wearimages/vilian/vilian-4.jpg"],
+      "description": "Кроссовки Vilian\n\nРазмеры: 38, 39, 40, 41, 42, 43\n\nЦвета: чёрный, белый, серый \n\nЦена: 749.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный", "Белый", "Серый"],
+      "sizes": ["38", "39", "40", "41", "42", "43"],
+      "category": "Кроссовки",
+      "categoryId": "krossovki",
+      "sizeChartType": "shoes",
+      "sizeChartImages": ["data/wearimages/vilian/vilian-3.jpg"],
+      "sizeChart": {
+    "type": "shoes",
+    "headers": ["EU", "Длина стопы (мм)"],
+    "rows": [
+      ["36", "230"],
+      ["37", "235"],
+      ["38", "240"],
+      ["39", "245"],
+      ["40", "250"],
+      ["41", "255"],
+      ["42", "260"],
+      ["43", "265"]
+    ]
+      }
+    },
+    {
+      "id": "14142463912528658",
+      "slug": "anibi",
+      "title": "AniBi",
+      "price": 319000,
+      "images": ["data/wearimages/anibi/anibi-1.jpg", "data/wearimages/anibi/anibi-2.jpg"],
+      "realPhotos": ["data/wearimages/anibi/anibi-3.jpg", "data/wearimages/anibi/anibi-4.jpg"],
+      "description": "Футболка AniBi\n\nРазмеры: M, L, XL, 2XL, 3XL \n\nЦвета: чёрный\n\nЦена: 319.000",
+      "material": "Хлопок/полиэстер",
+      "colors": ["Чёрный"],
+      "sizes": ["M", "L", "XL", "2XL", "3XL"],
+      "category": "Футболки",
+      "categoryId": "futbolki",
+      "sizeChartType": "clothes",
+      "sizeChartImages": [],
+"sizeChart": {
+  "type": "clothes",
+  "headers": [
+    "INT",
+    "Длина изделия (см)",
+    "Грудь (см)",
+    "Плечи (см)",
+    "Рукав (см)"
+  ],
+  "rows": [
+    ["M",   "68", "100", "44", "20"],
+    ["L",   "70", "106", "46", "21"],
+    ["XL",  "72", "112", "48", "22"],
+    ["2XL", "74", "118", "50", "23"],
+    ["3XL", "76", "124", "52", "24"]
+  ]
+}
+
+    }
   ],
 "categories": [
   {
